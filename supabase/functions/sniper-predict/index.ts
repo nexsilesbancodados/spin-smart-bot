@@ -1322,6 +1322,18 @@ serve(async (req) => {
       const learnedBoost = learnedStrategyBoosts[st.type] || 0;
       st.score += learnedBoost * 3;
 
+      // ====== SELF-CORRECTION: 5-round weight adjustment ======
+      const selfCorrectionWeight = strategyWeightAdjust[st.type] || 0;
+      st.score += selfCorrectionWeight;
+
+      // ====== NOISE PENALTY: reduce confidence when too many noisy spins ======
+      if (noiseCount > 5) st.score -= 5; // many outliers = less reliable data
+      if (noiseCount > 10) st.score -= 10;
+
+      // ====== CHAOS PENALTY: reduce if dealer is chaotic ======
+      if (chaoticDealer && ['sniper', 'voisins', 'setor_oposto'].includes(st.type)) st.score -= 10; // sector strategies unreliable with chaotic dealer
+      if (!chaoticDealer && microArcStd < 2 && ['sniper', 'voisins'].includes(st.type)) st.score += 8; // bonus for sector strats with consistent dealer
+
       // PERFORMANCE-BASED WEIGHT: boost strategies that historically perform well
       const perf = strategyPerformance[st.type];
       if (perf && perf.total >= 5) {
