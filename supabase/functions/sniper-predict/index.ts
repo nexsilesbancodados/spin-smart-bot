@@ -6018,7 +6018,7 @@ serve(async (req) => {
           convergence_score: totalLayers,
           mesa_mode: mesaMode,
           justification: winner.justification,
-        }).then(() => {}).catch(() => {});
+        });
       }
 
       // ========================================================
@@ -6058,7 +6058,7 @@ serve(async (req) => {
             lastNumber: numbers[0],
             pullChain: daniGreen.mod5Pull.slice(0, 5),
           },
-        }, { onConflict: 'id' }).then(() => {}).catch(() => {});
+        }, { onConflict: 'id' });
 
         // Also save terminal pattern if strong
         if (daniGreen.mod1.count >= 4) {
@@ -6074,7 +6074,7 @@ serve(async (req) => {
               bestTerminals: [daniGreen.mod1.terminal, daniGreen.mod1.pair],
               count: daniGreen.mod1.count,
             },
-          }, { onConflict: 'id' }).then(() => {}).catch(() => {});
+          }, { onConflict: 'id' });
         }
 
         // Save pull pattern learning
@@ -6092,7 +6092,7 @@ serve(async (req) => {
                 source: numbers[1],
                 target: recentHit.actual_number,
               },
-            }, { onConflict: 'id' }).then(() => {}).catch(() => {});
+            }, { onConflict: 'id' });
           }
         }
       }
@@ -6135,7 +6135,7 @@ serve(async (req) => {
           best_streak: existingStats?.best_streak || 0,
           current_streak: existingStats?.current_streak || 0,
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'strategy_type' }).then(() => {}).catch(() => {});
+        }, { onConflict: 'strategy_type' });
       } catch { /* ignore stats errors */ }
     }
 
@@ -6405,11 +6405,11 @@ serve(async (req) => {
         };
 
         if (exA?.id) {
-          await supabase.from('ai_learned_patterns').update(rowA).eq('id', exA.id).catch(()=>{});
+          await supabase.from('ai_learned_patterns').update(rowA).eq('id', exA.id);
         } else {
           await supabase.from('ai_learned_patterns').insert({
             learning_type: 'error_pattern', title: titulo, ...rowA
-          }).catch(()=>{});
+          });
         }
       }
     }
