@@ -38,6 +38,39 @@ export type Database = {
         }
         Relationships: []
       }
+      pattern_insights: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          description: string
+          id: string
+          numbers_involved: number[] | null
+          pattern_type: string
+          recommendation: string | null
+          source_data: Json | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          description: string
+          id?: string
+          numbers_involved?: number[] | null
+          pattern_type: string
+          recommendation?: string | null
+          source_data?: Json | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          description?: string
+          id?: string
+          numbers_involved?: number[] | null
+          pattern_type?: string
+          recommendation?: string | null
+          source_data?: Json | null
+        }
+        Relationships: []
+      }
       resultados_roleta: {
         Row: {
           created_at: string
