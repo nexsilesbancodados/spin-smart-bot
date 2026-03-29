@@ -2372,6 +2372,57 @@ serve(async (req) => {
           return m >= 0 && m <= 36 && m !== nums[i] && nums[i-1] === m;
         }},
         { name: 'Complementar (=37)', emoji: '♻️', check: (nums, i) => i > 0 && nums[i] > 0 && nums[i-1] > 0 && nums[i] + nums[i-1] === 37 },
+        // === STREAKS & SEQUENCES ===
+        { name: '3+ Altos Seguidos', emoji: '🔝', check: (nums, i) => i >= 2 && nums[i] >= 19 && nums[i-1] >= 19 && nums[i-2] >= 19 },
+        { name: '3+ Baixos Seguidos', emoji: '⬇️', check: (nums, i) => i >= 2 && nums[i] >= 1 && nums[i] <= 18 && nums[i-1] >= 1 && nums[i-1] <= 18 && nums[i-2] >= 1 && nums[i-2] <= 18 },
+        { name: '3+ Vermelhos', emoji: '❤️', check: (nums, i) => i >= 2 && getColor(nums[i]) === 'red' && getColor(nums[i-1]) === 'red' && getColor(nums[i-2]) === 'red' },
+        { name: '3+ Pretos', emoji: '🖤', check: (nums, i) => i >= 2 && getColor(nums[i]) === 'black' && getColor(nums[i-1]) === 'black' && getColor(nums[i-2]) === 'black' },
+        { name: '3+ Pares Seguidos', emoji: '🟦', check: (nums, i) => i >= 2 && nums[i] > 0 && nums[i] % 2 === 0 && nums[i-1] > 0 && nums[i-1] % 2 === 0 && nums[i-2] > 0 && nums[i-2] % 2 === 0 },
+        { name: '3+ Ímpares Seguidos', emoji: '🟧', check: (nums, i) => i >= 2 && nums[i] > 0 && nums[i] % 2 === 1 && nums[i-1] > 0 && nums[i-1] % 2 === 1 && nums[i-2] > 0 && nums[i-2] % 2 === 1 },
+        // === GANGORRA (seesaw) ===
+        { name: 'Gangorra Alto↕Baixo', emoji: '🎢', check: (nums, i) => {
+          if (i < 2 || nums[i] === 0 || nums[i-1] === 0 || nums[i-2] === 0) return false;
+          const h = (n: number) => n >= 19;
+          return h(nums[i]) !== h(nums[i-1]) && h(nums[i-1]) !== h(nums[i-2]);
+        }},
+        { name: 'Gangorra Cor', emoji: '🎡', check: (nums, i) => {
+          if (i < 2 || nums[i] === 0 || nums[i-1] === 0 || nums[i-2] === 0) return false;
+          const c0 = getColor(nums[i]), c1 = getColor(nums[i-1]), c2 = getColor(nums[i-2]);
+          return c0 !== 'green' && c1 !== 'green' && c2 !== 'green' && c0 !== c1 && c1 !== c2;
+        }},
+        { name: 'Gangorra Par↕Ímpar', emoji: '🔃', check: (nums, i) => {
+          if (i < 2 || nums[i] === 0 || nums[i-1] === 0 || nums[i-2] === 0) return false;
+          return (nums[i] % 2) !== (nums[i-1] % 2) && (nums[i-1] % 2) !== (nums[i-2] % 2);
+        }},
+        // === ROTAÇÃO DÚZIAS & COLUNAS ===
+        { name: 'Rotação Dúzias (D1→D2→D3)', emoji: '🔄', check: (nums, i) => {
+          if (i < 2) return false;
+          const d0 = getDozen(nums[i]), d1 = getDozen(nums[i-1]), d2 = getDozen(nums[i-2]);
+          return d0 > 0 && d1 > 0 && d2 > 0 && d0 !== d1 && d1 !== d2 && d0 !== d2;
+        }},
+        { name: 'Mesma Dúzia 3x', emoji: '🎲', check: (nums, i) => {
+          if (i < 2) return false;
+          const d0 = getDozen(nums[i]), d1 = getDozen(nums[i-1]), d2 = getDozen(nums[i-2]);
+          return d0 > 0 && d0 === d1 && d1 === d2;
+        }},
+        { name: 'Rotação Colunas', emoji: '🔁', check: (nums, i) => {
+          if (i < 2) return false;
+          const c0 = getColumn(nums[i]), c1 = getColumn(nums[i-1]), c2 = getColumn(nums[i-2]);
+          return c0 > 0 && c1 > 0 && c2 > 0 && c0 !== c1 && c1 !== c2 && c0 !== c2;
+        }},
+        { name: 'Mesma Coluna 3x', emoji: '📏', check: (nums, i) => {
+          if (i < 2) return false;
+          const c0 = getColumn(nums[i]), c1 = getColumn(nums[i-1]), c2 = getColumn(nums[i-2]);
+          return c0 > 0 && c0 === c1 && c1 === c2;
+        }},
+        // === GAPS & DELAYS ===
+        { name: 'Mesmo Setor 3x', emoji: '🗺️', check: (nums, i) => {
+          if (i < 2) return false;
+          const s0 = getSector(nums[i]), s1 = getSector(nums[i-1]), s2 = getSector(nums[i-2]);
+          return s0 !== 'Zero' && s0 === s1 && s1 === s2;
+        }},
+        { name: 'Vizinho Cilindro 2x', emoji: '🎰', check: (nums, i) => i > 0 && wheelDist(nums[i], nums[i-1]) <= 2 },
+        { name: 'Mesmo Terminal 3x', emoji: '🔟', check: (nums, i) => i >= 2 && nums[i] % 10 === nums[i-1] % 10 && nums[i-1] % 10 === nums[i-2] % 10 },
       ];
       const check50 = numbers.slice(0, 50);
       for (const fc of fidelityChecks) {
