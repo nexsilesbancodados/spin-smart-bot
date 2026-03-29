@@ -5422,6 +5422,29 @@ serve(async (req) => {
       }
     }
 
+    // ESTRATÉGIA: TOP NÚMEROS PELA MATRIZ 37×37
+    if (matrizTotal >= 20) {
+      const topMatriz = Object.entries(matrizCombinado)
+        .sort(([,a],[,b]) => (b as number) - (a as number))
+        .slice(0, 6)
+        .filter(([,v]) => (v as number) > maxMatriz * 0.3)
+        .map(([n]) => Number(n));
+
+      if (topMatriz.length >= 3) {
+        const mScore = sumScores(topMatriz) + matrizTotal * 0.1;
+        const mBt = backtestSet(topMatriz);
+        strategies.push({
+          type: 'matriz_numerica', label: `🔢 Matriz Numérica (${matrizTotal} obs)`, emoji: '🔢',
+          numbers: topMatriz,
+          coverage: (topMatriz.length / 37) * 100,
+          payout: 36 - topMatriz.length,
+          score: mScore + mBt * 30 + (matrizTotal > 100 ? 15 : matrizTotal > 50 ? 8 : 0),
+          probability: Math.min(95, Math.round(40 + mScore * 2 + mBt * 35 + (matrizTotal > 100 ? 10 : 0))),
+          justification: `Matriz histórica 37×37: números mais frequentes após ${lastNum0}. ${matrizTotal} observações. Top: ${topMatriz.join(',')}.`,
+        });
+      }
+    }
+
     // REED TRACKING: suppress strategies that failed 4+ consecutive times
     const reedPenalty: Record<string, number> = {};
     for (const st of Object.keys(strategyPerformance)) {
