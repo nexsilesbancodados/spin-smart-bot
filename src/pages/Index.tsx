@@ -1020,6 +1020,30 @@ const Index = () => {
                     <span className="font-mono font-bold text-blue-400">{sniperData.memoryWindows.macro.topDebt.slice(0, 3).join(', ')}</span>
                   </span>
                 )}
+                {sniperData?.kellyBetting && (
+                  <span className={`flex items-center gap-1 px-2 py-1 rounded-lg border ${
+                    sniperData.kellyBetting.riskLevel === 'conservative'
+                      ? 'bg-green-500/10 border-green-500/20'
+                      : sniperData.kellyBetting.riskLevel === 'aggressive'
+                      ? 'bg-red-500/10 border-red-500/20'
+                      : 'bg-secondary/60 border-border'
+                  }`}>
+                    <span className="text-muted-foreground">Kelly:</span>
+                    <span className={`font-bold ${
+                      sniperData.kellyBetting.riskLevel === 'conservative' ? 'text-green-400' :
+                      sniperData.kellyBetting.riskLevel === 'aggressive' ? 'text-red-400' : 'text-foreground'
+                    }`}>
+                      {sniperData.kellyBetting.unitMultiplier}x
+                    </span>
+                    <span className={`text-[7px] font-semibold ${
+                      sniperData.kellyBetting.riskLevel === 'conservative' ? 'text-green-400/70' :
+                      sniperData.kellyBetting.riskLevel === 'aggressive' ? 'text-red-400/70' : 'text-muted-foreground'
+                    }`}>
+                      {sniperData.kellyBetting.riskLevel === 'conservative' ? '🛡️' :
+                       sniperData.kellyBetting.riskLevel === 'aggressive' ? '🔥' : '⚖️'}
+                    </span>
+                  </span>
+                )}
               </div>
             </div>
           )}
