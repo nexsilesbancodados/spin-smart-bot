@@ -148,7 +148,7 @@ const Index = () => {
               <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
-          <div className="bg-cyan-500 text-center py-1.5 text-xs font-bold text-black tracking-wide">
+          <div className="bg-primary text-center py-1.5 text-xs font-bold text-primary-foreground tracking-wide">
             ⚡ {provider} • {table}
           </div>
         </div>

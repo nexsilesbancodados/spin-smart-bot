@@ -20,7 +20,7 @@ const NumberHistory = ({ history }: NumberHistoryProps) => {
           <div
             key={i}
             className={`${colorClass(h.color)} w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-foreground transition-all ${
-              i === 0 ? 'ring-2 ring-cyan-400 scale-110 shadow-lg' : ''
+              i === 0 ? 'ring-2 ring-accent scale-110 shadow-lg' : ''
             }`}
           >
             {h.value}
