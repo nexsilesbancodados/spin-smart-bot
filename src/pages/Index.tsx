@@ -140,16 +140,18 @@ const Index = () => {
 
   useEffect(() => { loadInsights(); loadLearned(); }, [loadInsights, loadLearned]);
 
-  // CONTINUOUS AUTO-LEARNING ENGINE (throttled to save AI credits)
+  // CONTINUOUS AUTO-LEARNING ENGINE (disabled when credits exhausted)
   const autoLearnRef = useRef<NodeJS.Timeout | null>(null);
   const cycleRef = useRef(0);
   const autoLearnErrorCount = useRef(0);
+  const autoLearnDisabled = useRef(false);
   useEffect(() => {
     const runContinuousLearn = async () => {
-      // Back off if too many errors (rate limits / no credits)
-      if (autoLearnErrorCount.current >= 3) {
-        console.log('[AutoLearn] Pausado por excesso de erros. Tentando novamente em 5 min.');
-        autoLearnErrorCount.current = 0;
+      if (autoLearnDisabled.current) return;
+      if (autoLearnErrorCount.current >= 2) {
+        console.warn('[AutoLearn] Desativado — créditos AI esgotados ou rate limit. Recarregue a página para tentar novamente.');
+        autoLearnDisabled.current = true;
+        setAutoLearnStatus('idle');
         return;
       }
       const cycle = cycleRef.current;
@@ -159,11 +161,11 @@ const Index = () => {
         if (cycle % 3 === 0) {
           setAutoLearnStatus('learning');
           const res = await supabase.functions.invoke('ai-learn');
-          if (res.error) throw res.error;
+          if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message || 'ai-learn failed');
         } else if (cycle % 3 === 1) {
           setAutoLearnStatus('analyzing');
           const res = await supabase.functions.invoke('auto-analyze-patterns');
-          if (res.error) throw res.error;
+          if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message || 'auto-analyze failed');
         } else {
           setAutoLearnStatus('backtesting');
           await supabase.functions.invoke('sniper-predict');
@@ -171,15 +173,20 @@ const Index = () => {
         await Promise.all([loadInsights(), loadLearned()]);
         setLastAutoLearnTime(new Date());
         autoLearnErrorCount.current = 0;
-      } catch (err) {
+      } catch (err: any) {
         autoLearnErrorCount.current++;
-        console.error(`[AutoLearn] Ciclo ${cycle} erro (${autoLearnErrorCount.current}/3):`, err);
+        const msg = err?.message || String(err);
+        const isCreditError = msg.includes('402') || msg.includes('429') || msg.includes('Credits') || msg.includes('Rate') || msg.includes('credit');
+        if (isCreditError) {
+          autoLearnDisabled.current = true;
+          console.warn('[AutoLearn] AI credits exhausted — auto-learn disabled.');
+        }
+        console.error(`[AutoLearn] Ciclo ${cycle} erro (${autoLearnErrorCount.current}):`, msg);
       } finally {
         setAutoLearnStatus('idle');
       }
     };
-    const initialTimeout = setTimeout(runContinuousLearn, 15_000);
-    // Run every 5 minutes instead of 45s to avoid rate limits
+    const initialTimeout = setTimeout(runContinuousLearn, 20_000);
     autoLearnRef.current = setInterval(runContinuousLearn, 300_000);
     return () => { clearTimeout(initialTimeout); if (autoLearnRef.current) clearInterval(autoLearnRef.current); };
   }, [loadInsights, loadLearned]);
