@@ -499,10 +499,11 @@ serve(async (req) => {
 
     // MERGE: If client sent numbers, prepend any that aren't in DB yet (instant reaction)
     let numbers: number[];
+    let entries = allEntries.slice(0, sampleSize);
     if (clientNumbers && clientNumbers.length >= 5) {
       // Client numbers are already in order (newest first) — use them as primary
       // But merge with DB for deeper history
-      const dbNums = allEntries.slice(0, sampleSize).map(e => e.number);
+      const dbNums = entries.map(e => e.number);
       // Find overlap point: first client number that matches start of DB sequence
       let overlapIdx = -1;
       for (let ci = 0; ci < Math.min(10, clientNumbers.length); ci++) {
@@ -512,16 +513,13 @@ serve(async (req) => {
         }
       }
       if (overlapIdx >= 0 && overlapIdx > 0) {
-        // Client has newer numbers not in DB yet
         numbers = [...clientNumbers.slice(0, overlapIdx), ...dbNums].slice(0, sampleSize);
       } else {
-        // No overlap found or client is ahead — trust client numbers, pad with DB
         const clientSlice = clientNumbers.slice(0, sampleSize);
         const remaining = sampleSize - clientSlice.length;
         numbers = remaining > 0 ? [...clientSlice, ...dbNums.slice(0, remaining)] : clientSlice;
       }
     } else {
-      const entries = allEntries.slice(0, sampleSize);
       numbers = entries.map(e => e.number);
     }
     const learned = learnedRes.data || [];
