@@ -3858,6 +3858,82 @@ serve(async (req) => {
           justification: winner.justification,
         }).then(() => {}).catch(() => {});
       }
+
+      // ========================================================
+      // AI SELF-LEARNING: Save learned patterns from this spin
+      // ========================================================
+      if (isNewNumber && numbers.length >= 20) {
+        const topTerminals = sortedTerminals50.slice(0, 3).map(([t]) => Number(t));
+        const hotNums = numScores.slice(0, 8).map(s => s.num);
+        const bestStrat = winner.type;
+        const topReasons = numScores.slice(0, 3).flatMap(s => s.reasons).slice(0, 5);
+        
+        // Save current session learning
+        const learningTitle = `Spin ${numbers[0]} @ ${new Date().toISOString().slice(0, 16)}`;
+        const learningKnowledge = [
+          `Regime: ${sessionRegime} (E=${(sessionEntropy * 100).toFixed(0)}%)`,
+          `Dealer: ${dealerSignature.consistency}, arco=${dealerSignature.arcMean}±${dealerSignature.arcStdDev}`,
+          `Terminais quentes: T${topTerminals.join(',T')}`,
+          `Estratégia vencedora: ${bestStrat} (${finalProbability}%)`,
+          `Sinais: ${topReasons.join('; ')}`,
+          `Top candidatos: ${hotNums.slice(0, 5).join(',')}`,
+        ].join(' | ');
+
+        await supabase.from('ai_learned_patterns').upsert({
+          learning_type: 'session_spin',
+          title: learningTitle,
+          knowledge: learningKnowledge,
+          accuracy: finalProbability,
+          data_points: numbers.length,
+          metadata: {
+            hotNumbers: hotNums,
+            bestTerminals: topTerminals,
+            bestStrategy: bestStrat,
+            entropy: sessionEntropy,
+            dealerMode: dealerSignature.dealerMode,
+            mesaMode,
+            regime: sessionRegime,
+            lastNumber: numbers[0],
+            pullChain: daniGreen.mod5Pull.slice(0, 5),
+          },
+        }, { onConflict: 'id' }).then(() => {}).catch(() => {});
+
+        // Also save terminal pattern if strong
+        if (daniGreen.mod1.count >= 4) {
+          const termTitle = `Terminal T${daniGreen.mod1.terminal} dominante`;
+          await supabase.from('ai_learned_patterns').upsert({
+            learning_type: 'terminal_dominance',
+            title: termTitle,
+            knowledge: `T${daniGreen.mod1.terminal} apareceu ${daniGreen.mod1.count}x em 15 giros. Dupla: T${daniGreen.mod1.pair}. Regime: ${sessionRegime}`,
+            accuracy: Math.min(95, 60 + daniGreen.mod1.count * 5),
+            data_points: 15,
+            metadata: {
+              hotNumbers: TERMINALS_MAP[daniGreen.mod1.terminal] || [],
+              bestTerminals: [daniGreen.mod1.terminal, daniGreen.mod1.pair],
+              count: daniGreen.mod1.count,
+            },
+          }, { onConflict: 'id' }).then(() => {}).catch(() => {});
+        }
+
+        // Save pull pattern learning
+        if (daniGreen.mod5Pull.length > 0 && resolvedHistory.length > 0) {
+          const recentHit = resolvedHistory.find(p => p.hit && p.actual_number !== null);
+          if (recentHit && daniGreen.mod5Pull.includes(recentHit.actual_number as number)) {
+            await supabase.from('ai_learned_patterns').upsert({
+              learning_type: 'pull_confirmed',
+              title: `Puxada ${numbers[1]}→${recentHit.actual_number} confirmada`,
+              knowledge: `Número ${numbers[1]} puxou ${recentHit.actual_number} conforme tabela mestre. Pull map validado.`,
+              accuracy: 85,
+              data_points: resolvedHistory.filter(p => p.hit).length,
+              metadata: {
+                hotNumbers: daniGreen.mod5Pull.slice(0, 8),
+                source: numbers[1],
+                target: recentHit.actual_number,
+              },
+            }, { onConflict: 'id' }).then(() => {}).catch(() => {});
+          }
+        }
+      }
     }
 
     // ==========================================
