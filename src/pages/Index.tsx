@@ -881,7 +881,7 @@ const Index = () => {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {[50, 100, 250, 500].map(lim => (
-                    <button key={lim} onClick={() => { setHistoryLimit(lim); setSelectedNum(null); }}
+                    <button key={lim} onClick={() => { startTransition(() => { setHistoryLimit(lim); setSelectedNum(null); }); }}
                       className={`text-[9px] px-2.5 py-1 rounded-lg font-bold transition-all ${
                         historyLimit === lim ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-secondary text-muted-foreground border border-border'
                       }`}>
