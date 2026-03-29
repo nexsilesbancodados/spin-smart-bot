@@ -485,6 +485,9 @@ const Index = () => {
           console.log(`❌ ERRO — ${label} — Previsto: ${row.predicted_main}, Saiu: ${row.actual_number}`);
         }
 
+        // Sound feedback
+        playSound(isHit ? 'hit' : 'miss', soundEnabled);
+
         // Also sync from DB after a short delay to stay accurate
         setTimeout(() => loadPredStats(), 2000);
       }
