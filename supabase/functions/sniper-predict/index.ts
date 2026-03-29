@@ -75,32 +75,32 @@ const PULL_MAP: Record<number, number[]> = {
   8:  [11, 9, 10],
   9:  [34, 35, 36, 3, 16, 26, 23, 24, 32, 31],
   10: [20, 5, 18, 11, 14, 24],
-  11: [8, 18, 16, 21],
-  12: [21],
-  13: [31],
-  14: [24, 21, 18],
-  15: [4, 19, 21],
-  16: [24, 21, 18, 14],
-  17: [34, 6, 25],
-  18: [8, 18, 28],
-  19: [9, 19, 29],
-  20: [4, 14],
-  21: [19],
-  22: [33, 2],
-  23: [32, 11, 2],
-  24: [21, 18, 14],
+  11: [8, 18, 16, 21, 30, 1],
+  12: [21, 7, 28, 35],
+  13: [31, 27, 36, 6],
+  14: [24, 21, 18, 31, 9],
+  15: [4, 19, 21, 32, 0],
+  16: [24, 21, 18, 14, 6, 26],
+  17: [34, 6, 25, 27, 7],
+  18: [8, 18, 28, 7],
+  19: [9, 19, 29, 4, 21],
+  20: [4, 14, 10, 30],
+  21: [19, 2, 4, 23],
+  22: [33, 2, 32, 12],
+  23: [32, 11, 2, 33, 13],
+  24: [21, 18, 14, 34, 4],
   25: [2, 4, 17, 28, 29, 12, 7, 18],
   26: [6, 16, 26, 36, 3, 0],
   27: [28, 29, 24, 22, 26, 33, 31, 34, 35, 36],
   28: [13, 14, 15, 16, 17, 18],
-  29: [35],
+  29: [35, 28, 22],
   30: [4, 8, 16, 9, 18, 22, 5, 25, 3],
-  31: [13],
-  32: [2, 12, 22, 32],
-  33: [16],
-  34: [16],
+  31: [13, 9, 14],
+  32: [2, 12, 22, 32, 0, 15],
+  33: [16, 3, 23, 13],
+  34: [16, 6, 4, 24],
   35: [0, 3, 7, 12, 26, 28, 29, 35],
-  36: [3, 10, 27],
+  36: [3, 10, 27, 6],
 };
 
 const PULL_TERMINALS: Record<number, number[]> = {
@@ -141,43 +141,43 @@ const ZERO_TERMINAL_NUMS = [0, 10, 20, 30];
 
 // Pull Maps
 const FULL_PULL_MAP: Record<number, number[]> = {
-  0:  [10, 20, 30, 32, 15, 26, 3, 33, 31],
-  1:  [11, 35, 16, 4, 18, 28, 27, 29, 33],
-  2:  [14, 1, 13, 18, 35, 29],
-  3:  [13, 27, 6, 11, 30, 8],
-  4:  [26, 15, 18, 32, 33, 16, 8],
-  5:  [3, 33, 16, 24, 10, 18],
-  6:  [8, 15, 31, 21, 22, 23],
-  7:  [16, 18, 17, 30, 31],
-  8:  [11, 9, 10],
-  9:  [34, 35, 36, 3, 16, 26, 23, 24, 32, 31],
-  10: [20, 5, 18, 11, 14, 24],
-  11: [8, 18, 16, 21],
-  12: [21],
-  13: [31],
-  14: [24, 21, 18],
-  15: [4, 19, 21],
-  16: [24, 21, 18, 14],
-  17: [34, 6, 25],
-  18: [8, 18, 28],
-  19: [9, 19, 29],
-  20: [4, 14],
-  21: [19],
-  22: [33, 2],
-  23: [32, 11, 2],
-  24: [21, 18, 14],
+  0:  [10, 20, 30, 32, 15, 26, 3, 33, 31, 35],
+  1:  [11, 35, 16, 4, 18, 28, 27, 29, 33, 14, 31],
+  2:  [14, 1, 13, 18, 35, 29, 12, 22],
+  3:  [13, 27, 6, 11, 30, 8, 23, 33],
+  4:  [26, 15, 18, 32, 33, 16, 8, 24, 14],
+  5:  [3, 33, 16, 24, 10, 18, 15, 25],
+  6:  [8, 15, 31, 21, 22, 23, 16, 26],
+  7:  [16, 18, 17, 30, 31, 28, 12],
+  8:  [11, 9, 10, 18, 28, 23],
+  9:  [34, 35, 36, 3, 16, 26, 23, 24, 32, 31, 29],
+  10: [20, 5, 18, 11, 14, 24, 30],
+  11: [8, 18, 16, 21, 30, 1],
+  12: [21, 7, 28, 35],
+  13: [31, 27, 36, 6],
+  14: [24, 21, 18, 31, 9],
+  15: [4, 19, 21, 32, 0],
+  16: [24, 21, 18, 14, 6, 26],
+  17: [34, 6, 25, 27, 7],
+  18: [8, 18, 28, 7],
+  19: [9, 19, 29, 4, 21],
+  20: [4, 14, 10, 30],
+  21: [19, 2, 4, 23],
+  22: [33, 2, 32, 12],
+  23: [32, 11, 2, 33, 13],
+  24: [21, 18, 14, 34, 4],
   25: [2, 4, 17, 28, 29, 12, 7, 18],
   26: [6, 16, 26, 36, 3, 0],
   27: [28, 29, 24, 22, 26, 33, 31, 34, 35, 36],
-  28: [13, 14, 15, 16, 17, 18],
-  29: [35],
+  28: [13, 14, 15, 16, 17, 18, 7],
+  29: [35, 28, 22],
   30: [4, 8, 16, 9, 18, 22, 5, 25, 3],
-  31: [13],
-  32: [2, 12, 22, 32],
-  33: [16],
-  34: [16],
+  31: [13, 9, 14],
+  32: [2, 12, 22, 32, 0, 15],
+  33: [16, 3, 23, 13],
+  34: [16, 6, 4, 24],
   35: [0, 3, 7, 12, 26, 28, 29, 35],
-  36: [3, 10, 27],
+  36: [3, 10, 27, 6],
 };
 const FULL_PULL_TERMINALS: Record<number, number[]> = {
   0:  [0, 2, 3, 5],
@@ -3745,6 +3745,14 @@ serve(async (req) => {
         const pull2 = FULL_PULL_MAP[numbers[1]] || PULL_MAP[numbers[1]];
         if (pull2?.includes(n)) { s += 5; r.push(`🔗 DuplaPuxa!`); }
       }
+      // TRIPLE PULL CONFIRMATION: número puxado pelos 3 últimos = boost máximo
+      if (numbers.length >= 3 && pullTargets?.includes(n)) {
+        const pull2 = FULL_PULL_MAP[numbers[1]] || PULL_MAP[numbers[1]];
+        const pull3 = FULL_PULL_MAP[numbers[2]] || PULL_MAP[numbers[2]];
+        if (pull2?.includes(n) && pull3?.includes(n)) {
+          s += 10; r.push(`🔱 TRIPLE PULL(${numbers[2]}→${numbers[1]}→${numbers[0]}→${n})`);
+        }
+      }
       
       // C2: TERMINAL DO NÚMERO — boost same terminal as last number (25 pts)
       if (n % 10 === lastNum % 10 && n !== lastNum) { s += 4; r.push(`📚 C2:MesmoT${lastNum % 10}`); signalFlags['C2'] = true; }
@@ -3993,14 +4001,15 @@ serve(async (req) => {
     // Helper: DEEP backtest — tests strategy against historical data with sliding window
     const backtestSet = (nums: number[]) => {
       let hits = 0, tests = 0;
-      // Use up to 200 test windows for more reliable backtest
-      const maxTests = Math.min(200, numbers.length - 10);
-      for (let w = 0; w < maxTests; w++) {
+      // numbers está em ordem decrescente (index 0 = mais recente)
+      // Para testar "o que veio DEPOIS", precisamos de índices MENORES
+      // Simulamos: dado que temos numbers[i], o resultado seguinte foi numbers[i-1]
+      const maxTests = Math.min(150, numbers.length - 2);
+      for (let w = 1; w < maxTests; w++) {
         tests++;
-        // Test if any of the predicted numbers appear in the next 1-3 spins
-        if (nums.includes(numbers[w + 5])) hits += 1;
-        else if (nums.includes(numbers[w + 6])) hits += 0.5; // partial credit for ±1 spin
-        else if (nums.includes(numbers[w + 7])) hits += 0.25; // partial credit for ±2 spins
+        const nextNum = numbers[w - 1]; // número que veio DEPOIS de numbers[w]
+        if (nums.includes(nextNum)) hits += 1;
+        else if (w >= 2 && nums.includes(numbers[w - 2])) hits += 0.4; // +1 spin
       }
       return tests > 0 ? hits / tests : 0;
     };
