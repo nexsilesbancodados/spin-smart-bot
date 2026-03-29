@@ -1118,7 +1118,7 @@ serve(async (req) => {
     }
 
     // I81-I100: Convergência cruzada entre blocos
-    const blockScores = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH];
+    const blockScores = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH, blocoK / maxK];
     const highBlocks = blockScores.filter(s => s > 0.7).length;
     blocoI += Math.min(20, highBlocks * 4);
 
