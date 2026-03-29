@@ -48,7 +48,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
     useGale: false,
     maxGaleSteps: 3,
     galeFactor: 2,
-    minProbability: 50,
+    minProbability: 80,
   });
 
   const [stats, setStats] = useState<BetStats>({
@@ -63,13 +63,12 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
   const prevNumberRef = useRef<number | null>(null);
   const autoBetRef = useRef(false);
 
-  // Auto-reset waitingResult after 40s to prevent stuck state
+  // Auto-reset waitingResult after 60s to prevent stuck state
   useEffect(() => {
     if (!stats.waitingResult) return;
     const timeout = setTimeout(() => {
-      console.log('[BetPanel] ⏱️ Timeout: resetando waitingResult após 40s');
       setStats(prev => prev.waitingResult ? { ...prev, waitingResult: false } : prev);
-    }, 40000);
+    }, 60000);
     return () => clearTimeout(timeout);
   }, [stats.waitingResult]);
 
@@ -133,27 +132,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
   // Place a bet (manual or auto)
   const placeBet = useCallback(() => {
-    console.log('[BetPanel] placeBet called', {
-      hasSignal: !!sniperData?.signal,
-      hasNumbers: !!sniperData?.strategy?.numbers?.length,
-      waitingResult: stats.waitingResult,
-      stopped: stats.stopped,
-      mode: sniperData?.mode,
-      probability: sniperData?.signal?.probability,
-    });
-
-    if (!sniperData?.signal || !sniperData?.strategy?.numbers?.length) {
-      console.log('[BetPanel] ❌ Sem sinal ou números para apostar');
-      return;
-    }
-    if (stats.waitingResult) {
-      console.log('[BetPanel] ❌ Aguardando resultado da aposta anterior');
-      return;
-    }
-    if (stats.stopped) {
-      console.log('[BetPanel] ❌ Parado por stop loss/win');
-      return;
-    }
+    if (!sniperData?.signal || !sniperData?.strategy?.numbers || stats.waitingResult || stats.stopped) return;
 
     const numbers = sniperData.strategy.numbers.slice(0, 12);
     const betAmount = getCurrentBetAmount();
@@ -181,7 +160,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
       console.log('[BetPanel] PostMessage sent');
     }
 
-    console.log(`[BetPanel] ✅ Aposta FEITA: R$${betAmount.toFixed(2)} em [${numbers.join(',')}] prob=${sniperData.signal.probability}%`);
+    console.log(`[BetPanel] 🎯 Aposta: R$${betAmount.toFixed(2)} em [${numbers.join(',')}]`);
   }, [sniperData, stats.waitingResult, stats.stopped, getCurrentBetAmount]);
 
   // Auto-bet: place bet when sniper signal is strong enough
@@ -192,14 +171,9 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
   useEffect(() => {
     if (!autoBetRef.current || stats.stopped || stats.waitingResult) return;
     if (!sniperData?.signal || !sniperData?.strategy?.numbers?.length) return;
-    
-    // Accept sniper, alert, AND monitoring modes (any mode with a valid signal)
-    if (sniperData.signal.probability < config.minProbability) {
-      console.log(`[BetPanel] Auto-bet: prob ${sniperData.signal.probability}% < min ${config.minProbability}%`);
-      return;
-    }
-
-    console.log(`[BetPanel] 🤖 Auto-bet disparando! mode=${sniperData.mode} prob=${sniperData.signal.probability}%`);
+    // Accept both 'sniper' and 'alert' modes
+    if (sniperData.mode !== 'sniper' && sniperData.mode !== 'alert') return;
+    if (sniperData.signal.probability < config.minProbability) return;
 
     // Auto place
     const timer = setTimeout(() => {
@@ -313,7 +287,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
               <div>
                 <label className="text-[9px] text-muted-foreground mb-1 block font-bold">PROBABILIDADE MÍNIMA (%)</label>
                 <div className="flex gap-1.5">
-                  {[40, 50, 60, 70, 80].map(v => (
+                  {[70, 75, 80, 85, 90].map(v => (
                     <button key={v} onClick={() => setConfig(prev => ({ ...prev, minProbability: v }))}
                       className={`flex-1 py-1.5 rounded-md text-[10px] font-bold transition-all ${
                         config.minProbability === v
