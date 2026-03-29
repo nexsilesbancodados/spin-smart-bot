@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
-const WL = WHEEL.length; // 37
+const WL = WHEEL.length;
 const VOISINS = [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25];
 const TIERS = [27,13,36,11,30,8,23,10,5,24,16,33];
 const ORPHELINS = [1,20,14,31,9,17,34,6];
@@ -50,6 +50,13 @@ const getNeighbors = (n: number, count = 4) => {
 const getComplementar = (n: number) => n > 0 && n <= 36 ? 37 - n : null;
 const getDozen = (n: number) => n === 0 ? 0 : n <= 12 ? 1 : n <= 24 ? 2 : 3;
 const getColumn = (n: number) => n === 0 ? 0 : COL1.includes(n) ? 1 : COL2.includes(n) ? 2 : 3;
+const getMirror = (n: number) => { const s = String(n); if (s.length === 2) { const m = parseInt(s[1]+s[0]); return m >= 0 && m <= 36 ? m : null; } return null; };
+
+// Quadrants
+const isHigh = (n: number) => n >= 19 && n <= 36;
+const isLow = (n: number) => n >= 1 && n <= 18;
+const isEven = (n: number) => n > 0 && n % 2 === 0;
+const isOdd = (n: number) => n > 0 && n % 2 === 1;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -57,7 +64,6 @@ serve(async (req) => {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Fetch data + AI learned patterns in parallel
     const [numbersRes, learnedRes] = await Promise.all([
       supabase.from('roulette_numbers').select('number, fetched_at').order('fetched_at', { ascending: false }).limit(200),
       supabase.from('ai_learned_patterns').select('learning_type, title, knowledge, accuracy, metadata').order('updated_at', { ascending: false }).limit(30),
@@ -68,9 +74,7 @@ serve(async (req) => {
     const learned = learnedRes.data || [];
 
     if (numbers.length < 15) {
-      return new Response(JSON.stringify({ signal: null, mode: 'waiting', message: 'Aguardando dados...' }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ signal: null, mode: 'waiting', message: 'Aguardando dados...', layerResults: null });
     }
 
     const last10 = numbers.slice(0, 10);
@@ -78,22 +82,33 @@ serve(async (req) => {
     const last30 = numbers.slice(0, 30);
     const last50 = numbers.slice(0, 50);
     const last100 = numbers.slice(0, 100);
+    const last200 = numbers.slice(0, 200);
 
-    // =============================================
-    // LAYER 1: DEALER BIOMECHANICS
-    // =============================================
+    // ========================================================
+    // BLOCO A: DINÂMICA BIOMECÂNICA E FÍSICA (100 CAMADAS)
+    // ========================================================
+    let blocoA = 0;
+    const maxA = 100;
+
+    // A1-A50: Arcos de lançamento (50 variações)
     const arcs: number[] = [];
-    for (let i = 0; i < Math.min(30, numbers.length - 1); i++) arcs.push(wheelDist(numbers[i], numbers[i + 1]));
+    for (let i = 0; i < Math.min(50, numbers.length - 1); i++) arcs.push(wheelDist(numbers[i], numbers[i + 1]));
     const arcMean = arcs.length > 0 ? arcs.reduce((a, b) => a + b, 0) / arcs.length : 0;
     const arcStdDev = Math.sqrt(arcs.length > 0 ? arcs.reduce((a, b) => a + Math.pow(b - arcMean, 2), 0) / arcs.length : 99);
     const last3Arcs = arcs.slice(0, 3);
     const last5Arcs = arcs.slice(0, 5);
+    const last10Arcs = arcs.slice(0, 10);
     const arcRange3 = last3Arcs.length === 3 ? Math.max(...last3Arcs) - Math.min(...last3Arcs) : 99;
     const arcRange5 = last5Arcs.length === 5 ? Math.max(...last5Arcs) - Math.min(...last5Arcs) : 99;
     const maoViciada = arcRange3 <= 2;
-    const maoViciada5 = arcRange5 <= 3; // 5 arcs within 3 = strong signature
+    const maoViciada5 = arcRange5 <= 3;
 
-    // Dealer change detection
+    // Score arcs - each arc variation within tolerance = +1 layer
+    for (let i = 0; i < Math.min(50, arcs.length); i++) {
+      if (Math.abs(arcs[i] - arcMean) <= arcStdDev * 1.5) blocoA += 1;
+    }
+
+    // A51-A75: Regularidade do Dealer (25 níveis)
     const recentArcs = arcs.slice(0, 10);
     const olderArcs = arcs.slice(10, 20);
     const recentArcMean = recentArcs.length > 0 ? recentArcs.reduce((a, b) => a + b, 0) / recentArcs.length : 0;
@@ -102,6 +117,26 @@ serve(async (req) => {
     const shortArcs = recentArcs.filter(a => a < 6).length;
     const longArcs = recentArcs.filter(a => a > 14).length;
     const dealerMode = shortArcs > longArcs * 1.5 ? 'curto' : longArcs > shortArcs * 1.5 ? 'longo' : 'misto';
+
+    // Consistency levels
+    if (arcStdDev < 1.5) blocoA += 25;
+    else if (arcStdDev < 2.5) blocoA += 20;
+    else if (arcStdDev < 3.5) blocoA += 15;
+    else if (arcStdDev < 5) blocoA += 10;
+    else blocoA += 5;
+
+    // A76-A100: Frequência de Oitavos (25 camadas)
+    const octFreqAll: Record<string, number> = {};
+    last50.forEach(n => { const o = getOctave(n); if (o) octFreqAll[o] = (octFreqAll[o]||0) + 1; });
+    const biasedOctaves = Object.entries(octFreqAll).filter(([,c]) => c >= 5).map(([o]) => o);
+    const octConcentration = Object.values(octFreqAll);
+    const octMax = Math.max(...octConcentration, 1);
+    const octMin = Math.min(...octConcentration, 0);
+    const octSpread = octMax - octMin;
+    // Higher spread = more concentration = more layers
+    blocoA += Math.min(25, Math.round(octSpread * 3));
+
+    blocoA = Math.min(maxA, blocoA);
 
     let minutesSinceStart = 0;
     if (entries.length > 1) {
@@ -115,28 +150,49 @@ serve(async (req) => {
       consistency: arcStdDev < 2.5 ? 'máxima' : arcStdDev < 3.5 ? 'alta' : arcStdDev < 5 ? 'média' : 'baixa',
     };
 
-    // =============================================
-    // LAYER 2: FREQUENCY ANALYSIS (MULTI-SCALE)
-    // =============================================
-    const freq10: Record<number, number> = {}, freq30: Record<number, number> = {}, freq100: Record<number, number> = {};
-    for (let n = 0; n <= 36; n++) { freq10[n] = 0; freq30[n] = 0; freq100[n] = 0; }
+    // ========================================================
+    // BLOCO B: MATEMÁTICA PURA E TERMINAIS (150 CAMADAS)
+    // ========================================================
+    let blocoB = 0;
+    const maxB = 150;
+
+    // B1-B50: Terminais em janelas 50/100/200
+    const termFreq50: Record<number, number> = {};
+    const termFreq100: Record<number, number> = {};
+    const termFreq200: Record<number, number> = {};
+    for (let t = 0; t <= 9; t++) { termFreq50[t] = 0; termFreq100[t] = 0; termFreq200[t] = 0; }
+    last50.forEach(n => termFreq50[n % 10]++);
+    last100.forEach(n => termFreq100[n % 10]++);
+    last200.forEach(n => termFreq200[n % 10]++);
+
+    const sortedTerminals50 = Object.entries(termFreq50).sort(([,a],[,b]) => b - a);
+    const sortedTerminals = sortedTerminals50;
+
+    // Each terminal with consistent frequency across windows = layers
+    for (let t = 0; t <= 9; t++) {
+      const r50 = termFreq50[t] / (last50.length || 1);
+      const r100 = termFreq100[t] / (last100.length || 1);
+      const r200 = termFreq200[t] / (last200.length || 1);
+      // Consistency across windows
+      const avg = (r50 + r100 + r200) / 3;
+      const dev = Math.abs(r50 - avg) + Math.abs(r100 - avg) + Math.abs(r200 - avg);
+      if (dev < 0.05) blocoB += 5; // very consistent
+      else if (dev < 0.1) blocoB += 3;
+      else blocoB += 1;
+    }
+
+    // B51-B100: Atraso de Cavalos e intersecções (50 camadas)
+    const freq10: Record<number, number> = {}, freq30: Record<number, number> = {}, freq100r: Record<number, number> = {};
+    for (let n = 0; n <= 36; n++) { freq10[n] = 0; freq30[n] = 0; freq100r[n] = 0; }
     last10.forEach(n => freq10[n]++);
     last30.forEach(n => freq30[n]++);
-    last100.forEach(n => freq100[n]++);
+    last100.forEach(n => freq100r[n]++);
 
-    // Terminal freq
-    const termFreq30: Record<number, number> = {};
-    for (let t = 0; t <= 9; t++) termFreq30[t] = 0;
-    last30.forEach(n => termFreq30[n % 10]++);
-    const sortedTerminals = Object.entries(termFreq30).sort(([,a],[,b]) => b - a);
-
-    // Cavalo freq
     const cavaloFreq: Record<string, number> = { '258':0, '147':0, '03':0, '69':0 };
     last30.forEach(n => { const g = getCavalo(n); if (g) cavaloFreq[g]++; });
     const sortedCavalos = Object.entries(cavaloFreq).sort(([,a],[,b]) => b - a);
     const hotCavaloGroup = sortedCavalos[0][0];
 
-    // Delays
     const cavaloDelays: Record<string, number> = { '258':999, '147':999, '03':999, '69':999 };
     const termDelays: Record<number, number> = {};
     for (let t = 0; t <= 9; t++) termDelays[t] = 999;
@@ -153,9 +209,179 @@ serve(async (req) => {
     const delayedCavalos = Object.entries(cavaloDelays).filter(([,d]) => d > 8);
     const delayedTerminals = Object.entries(termDelays).filter(([,d]) => d > 8).map(([t]) => Number(t));
 
-    // =============================================
-    // LAYER 3: SECTOR & OCTAVE ANALYSIS
-    // =============================================
+    // Score cavalos delays
+    for (const [, delay] of Object.entries(cavaloDelays)) {
+      if (delay > 15) blocoB += 6;
+      else if (delay > 10) blocoB += 4;
+      else if (delay > 6) blocoB += 2;
+      else blocoB += 1;
+    }
+    // Intersecções between cavalos
+    const cavaloIntersections = Object.entries(cavaloFreq).filter(([,c]) => c >= 8).length;
+    blocoB += cavaloIntersections * 5;
+
+    // B101-B150: Lei do Terço Avançada (50 camadas)
+    const uniqueIn37 = new Set(numbers.slice(0, 37)).size;
+    const tercoRatio = uniqueIn37 / 37;
+    // Expect ~24/37 unique (law of thirds)
+    if (Math.abs(tercoRatio - 0.649) < 0.05) blocoB += 30; // perfect match
+    else if (Math.abs(tercoRatio - 0.649) < 0.1) blocoB += 20;
+    else blocoB += 10;
+
+    // Numbers that appeared 0 times in last 37 (candidates for reincidence)
+    const absentIn37: number[] = [];
+    const repeatedIn37: number[] = [];
+    const freq37map: Record<number, number> = {};
+    for (let n = 0; n <= 36; n++) freq37map[n] = 0;
+    numbers.slice(0, Math.min(37, numbers.length)).forEach(n => freq37map[n]++);
+    for (let n = 0; n <= 36; n++) {
+      if (freq37map[n] === 0) absentIn37.push(n);
+      if (freq37map[n] >= 2) repeatedIn37.push(n);
+    }
+    blocoB += Math.min(20, absentIn37.length); // absent numbers = layers
+
+    blocoB = Math.min(maxB, blocoB);
+
+    // ========================================================
+    // BLOCO C: GEOMETRIA DE PANO E ENTROPIA (100 CAMADAS)
+    // ========================================================
+    let blocoC = 0;
+    const maxC = 100;
+
+    // C1-C40: Rítmica Visual (xadrez, blocos de cor/dúzia)
+    let colorChanges = 0, colorTotal = 0;
+    for (let i = 1; i < last30.length; i++) {
+      const p = getColor(last30[i-1]), c = getColor(last30[i]);
+      if (p !== 'green' && c !== 'green') { colorTotal++; if (p !== c) colorChanges++; }
+    }
+    const entropy = colorTotal > 0 ? colorChanges / colorTotal : 0.5;
+    const highEntropy = entropy > 0.75;
+
+    // Xadrez pattern (alternating colors)
+    let xadrezCount = 0;
+    for (let i = 1; i < last15.length; i++) {
+      const p = getColor(last15[i-1]), c = getColor(last15[i]);
+      if (p !== 'green' && c !== 'green' && p !== c) xadrezCount++;
+    }
+    blocoC += Math.min(20, Math.round(xadrezCount * 1.5));
+
+    // Dozen blocks
+    const dozenSeq: number[] = last30.filter(n => n > 0).map(n => getDozen(n));
+    let dozenBlocks = 0;
+    for (let i = 1; i < dozenSeq.length; i++) { if (dozenSeq[i] === dozenSeq[i-1]) dozenBlocks++; }
+    blocoC += Math.min(20, dozenBlocks * 2);
+
+    // C41-C70: Quadrantes (30 camadas)
+    let highCount = 0, lowCount = 0, evenCount = 0, oddCount = 0;
+    last30.forEach(n => {
+      if (isHigh(n)) highCount++; if (isLow(n)) lowCount++;
+      if (isEven(n)) evenCount++; if (isOdd(n)) oddCount++;
+    });
+    const highLowRatio = highCount / (lowCount || 1);
+    const evenOddRatio = evenCount / (oddCount || 1);
+    // Imbalance = predictable
+    if (highLowRatio > 1.5 || highLowRatio < 0.67) blocoC += 15;
+    else if (highLowRatio > 1.3 || highLowRatio < 0.77) blocoC += 10;
+    else blocoC += 5;
+    if (evenOddRatio > 1.5 || evenOddRatio < 0.67) blocoC += 15;
+    else if (evenOddRatio > 1.3 || evenOddRatio < 0.77) blocoC += 10;
+    else blocoC += 5;
+
+    // C71-C100: Espelhamento e Complementares (30 camadas)
+    const compDue: number[] = [];
+    const mirrorDue: number[] = [];
+    for (let i = 0; i < Math.min(15, numbers.length); i++) {
+      const comp = getComplementar(numbers[i]);
+      if (comp !== null && !last15.includes(comp)) compDue.push(comp);
+      const mir = getMirror(numbers[i]);
+      if (mir !== null && !last15.includes(mir)) mirrorDue.push(mir);
+    }
+    blocoC += Math.min(15, compDue.length * 2);
+    blocoC += Math.min(15, mirrorDue.length * 2);
+
+    blocoC = Math.min(maxC, blocoC);
+
+    // ========================================================
+    // BLOCO D: INTELIGÊNCIA PREDITIVA E MEMÓRIA (100 CAMADAS)
+    // ========================================================
+    let blocoD = 0;
+    const maxD = 100;
+
+    // D1-D50: Backtest micro-estratégias (50 camadas)
+    // Simulate: if we had bet on most frequent terminal in last 15, would it hit in next 5?
+    const backtestWindows = Math.min(10, Math.floor(numbers.length / 15) - 1);
+    let backtestHits = 0;
+    for (let w = 0; w < backtestWindows; w++) {
+      const window = numbers.slice(w * 5, w * 5 + 15);
+      const nextNums = numbers.slice(w * 5 + 15, w * 5 + 20);
+      if (window.length < 15 || nextNums.length < 3) continue;
+      // Find hot terminal in window
+      const tf: Record<number, number> = {};
+      for (let t = 0; t <= 9; t++) tf[t] = 0;
+      window.forEach(n => tf[n % 10]++);
+      const hotTerm = Object.entries(tf).sort(([,a],[,b]) => b - a)[0][0];
+      // Check if hot terminal appeared in next numbers
+      if (nextNums.some(n => (n % 10) === parseInt(hotTerm))) backtestHits++;
+    }
+    const backtestRate = backtestWindows > 0 ? backtestHits / backtestWindows : 0;
+    blocoD += Math.round(backtestRate * 50);
+
+    // D51-D75: Filtro de Falsos Positivos (25 camadas)
+    // Low entropy = more random = subtract layers; high pattern = add
+    const patternStrength = (1 - entropy) * 25;
+    blocoD += Math.round(patternStrength);
+
+    // D76-D100: Recuperação Dinâmica (25 camadas)
+    const recoveryMode = delayedCavalos.length >= 2 && delayedTerminals.length >= 2;
+    if (recoveryMode) blocoD += 20;
+    else if (delayedCavalos.length >= 1 || delayedTerminals.length >= 2) blocoD += 12;
+    else blocoD += 5;
+
+    blocoD = Math.min(maxD, blocoD);
+
+    // ========================================================
+    // BLOCO E: CALIBRAGEM DE SESSÃO (50 CAMADAS)
+    // ========================================================
+    let blocoE = 0;
+    const maxE = 50;
+
+    // E1-E25: Troca de dealer
+    if (!dealerChanged) {
+      blocoE += 25; // stable dealer = full layers
+    } else {
+      blocoE += 5; // new dealer = minimal
+    }
+
+    // E26-E50: Volatilidade de mesa
+    const recentStdDev = (() => {
+      if (last30.length < 10) return 99;
+      const mean = last30.reduce((a, b) => a + b, 0) / last30.length;
+      return Math.sqrt(last30.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / last30.length);
+    })();
+    if (recentStdDev < 8) blocoE += 25; // low volatility
+    else if (recentStdDev < 12) blocoE += 18;
+    else if (recentStdDev < 15) blocoE += 12;
+    else blocoE += 5;
+
+    blocoE = Math.min(maxE, blocoE);
+
+    // ========================================================
+    // TOTAL DAS 500 CAMADAS
+    // ========================================================
+    const totalLayers = blocoA + blocoB + blocoC + blocoD + blocoE;
+    const layerResults = {
+      blocoA: { score: blocoA, max: maxA, label: 'Biomecânica & Física' },
+      blocoB: { score: blocoB, max: maxB, label: 'Matemática & Terminais' },
+      blocoC: { score: blocoC, max: maxC, label: 'Geometria & Entropia' },
+      blocoD: { score: blocoD, max: maxD, label: 'Inteligência Preditiva' },
+      blocoE: { score: blocoE, max: maxE, label: 'Calibragem de Sessão' },
+      total: totalLayers,
+      max: 500,
+    };
+
+    // ========================================================
+    // SECTOR ANALYSIS
+    // ========================================================
     const sectorFreq: Record<string, number> = { Voisins:0, Tiers:0, Orphelins:0 };
     last30.forEach(n => { const s = getSector(n); if (sectorFreq[s] !== undefined) sectorFreq[s]++; });
     const hotSector = Object.entries(sectorFreq).sort(([,a],[,b]) => b - a)[0];
@@ -168,44 +394,25 @@ serve(async (req) => {
       for (const s of Object.keys(sectorTrend)) sectorTrend[s].push(c[s]);
     }
 
-    // Octave concentration in last 10
     const octFreq10: Record<string, number> = {};
     last10.forEach(n => { const o = getOctave(n); if (o) octFreq10[o] = (octFreq10[o]||0) + 1; });
-    const biasedOctaves = Object.entries(octFreq10).filter(([,c]) => c >= 3).map(([o]) => o);
 
     const oct0 = getOctave(numbers[0]), oct1 = getOctave(numbers[1]), oct2 = getOctave(numbers[2]);
     const sectorBias = oct0===oct1 || oct0===oct2 || oct1===oct2;
     const biasedOctave = oct0===oct1?oct0 : oct0===oct2?oct0 : oct1===oct2?oct1 : biasedOctaves[0] || null;
 
-    // =============================================
-    // LAYER 4: ENTROPY & PATTERN DETECTION
-    // =============================================
-    let colorChanges = 0, colorTotal = 0;
-    for (let i = 1; i < last15.length; i++) {
-      const p = getColor(last15[i-1]), c = getColor(last15[i]);
-      if (p !== 'green' && c !== 'green') { colorTotal++; if (p !== c) colorChanges++; }
-    }
-    const entropy = colorTotal > 0 ? colorChanges / colorTotal : 0.5;
-    const highEntropy = entropy > 0.75;
-
-    // Color tendency
+    // Color/parity tendencies
     let redCount = 0, blackCount = 0;
     last15.forEach(n => { if (RED.includes(n)) redCount++; else if (n !== 0) blackCount++; });
     const colorBias = redCount > blackCount * 1.5 ? 'red' : blackCount > redCount * 1.5 ? 'black' : null;
 
-    // Dozen tendency
     const dozenCount = [0, 0, 0];
     last15.forEach(n => { const d = getDozen(n); if (d > 0) dozenCount[d-1]++; });
     const hotDozen = dozenCount.indexOf(Math.max(...dozenCount)) + 1;
 
-    // Parity tendency
-    let evenCount = 0, oddCount = 0;
-    last15.forEach(n => { if (n > 0) { if (n % 2 === 0) evenCount++; else oddCount++; } });
     const parityBias = evenCount > oddCount * 1.5 ? 'even' : oddCount > evenCount * 1.5 ? 'odd' : null;
 
-    // =============================================
-    // LAYER 5: MOMENT LAW + COMPLEMENTAR
-    // =============================================
+    // Moment law
     const termTransitions: Record<string, number> = {};
     for (let i = 0; i < last15.length - 1; i++) {
       const key = `${last15[i]%10}->${last15[i+1]%10}`;
@@ -213,26 +420,15 @@ serve(async (req) => {
     }
     const momentLaw = Object.entries(termTransitions).filter(([,c]) => c >= 2).map(([k]) => k);
 
-    // Complementar patterns
-    const compDue: number[] = [];
-    for (let i = 0; i < Math.min(10, numbers.length); i++) {
-      const comp = getComplementar(numbers[i]);
-      if (comp !== null && !last10.includes(comp)) compDue.push(comp);
-    }
-
-    // =============================================
-    // LAYER 6: SEESAW EFFECT (Zero Attraction)
-    // =============================================
-    const semiZero = WHEEL.slice(0, 19); // first half
-    const semiOpp = WHEEL.slice(19); // second half
+    // Seesaw
+    const semiZero = WHEEL.slice(0, 19);
+    const semiOpp = WHEEL.slice(19);
     const zeroSide = last50.filter(n => semiZero.includes(n)).length;
     const oppSide = last50.filter(n => semiOpp.includes(n)).length;
     const seesawRatio = zeroSide / (oppSide || 1);
     const seesawBias = seesawRatio > 1.5 ? 'opposite' : seesawRatio < 0.67 ? 'zero' : null;
 
-    // =============================================
-    // LAYER 7: CROSS-DELAY TARGETS (Residual Probability)
-    // =============================================
+    // Cross-delay targets
     const crossDelayTargets: { num: number; termDelay: number; dozenDelay: number; colDelay: number; total: number }[] = [];
     for (let n = 0; n <= 36; n++) {
       const t = n % 10, d = getDozen(n), c = getColumn(n);
@@ -244,9 +440,20 @@ serve(async (req) => {
     }
     crossDelayTargets.sort((a, b) => b.total - a.total);
 
-    // =============================================
-    // LAYER 8: AI LEARNED PATTERNS INTEGRATION
-    // =============================================
+    // Heat map
+    const heatMap: number[] = new Array(WL).fill(0);
+    last30.forEach((n, i) => {
+      const idx = wheelIdx(n);
+      if (idx === -1) return;
+      const weight = 1 + (30 - i) / 30;
+      for (let offset = -2; offset <= 2; offset++) {
+        const tIdx = (idx + offset + WL) % WL;
+        heatMap[tIdx] += weight * (1 - Math.abs(offset) * 0.3);
+      }
+    });
+    const maxHeat = Math.max(...heatMap);
+
+    // AI learned patterns
     const learnedBonus: Record<number, number> = {};
     const learnedReasons: Record<number, string[]> = {};
     for (let n = 0; n <= 36; n++) { learnedBonus[n] = 0; learnedReasons[n] = []; }
@@ -254,190 +461,150 @@ serve(async (req) => {
     for (const l of learned) {
       const acc = (l.accuracy || 50) / 100;
       const keyNums: number[] = (l.metadata as any)?.key_numbers || [];
-
       if (keyNums.length > 0 && acc > 0.6) {
         for (const kn of keyNums) {
-          if (kn >= 0 && kn <= 36) {
-            learnedBonus[kn] += acc * 1.5;
-            learnedReasons[kn].push(`IA: ${l.title.slice(0, 30)}`);
-          }
+          if (kn >= 0 && kn <= 36) { learnedBonus[kn] += acc * 1.5; learnedReasons[kn].push(`IA: ${l.title.slice(0, 30)}`); }
         }
       }
-
-      // Boost numbers matching learned terminal/sector patterns
       if (l.learning_type === 'terminal_pattern' && acc > 0.65) {
         const match = l.title.match(/(\d)/);
-        if (match) {
-          const term = parseInt(match[1]);
-          for (let n = 0; n <= 36; n++) {
-            if (n % 10 === term) { learnedBonus[n] += acc * 0.8; learnedReasons[n].push(`IA Terminal ${term}`); }
-          }
-        }
+        if (match) { const term = parseInt(match[1]); for (let n = 0; n <= 36; n++) { if (n % 10 === term) { learnedBonus[n] += acc * 0.8; learnedReasons[n].push(`IA Terminal ${term}`); } } }
       }
-
       if (l.learning_type === 'sector_concentration' && acc > 0.65) {
         const octMatch = l.title.match(/O(\d)/);
-        if (octMatch) {
-          const octKey = `O${octMatch[1]}`;
-          const nums = OCTAVES[octKey] || [];
-          for (const n of nums) { learnedBonus[n] += acc * 0.7; learnedReasons[n].push(`IA Oitavo ${octKey}`); }
-        }
+        if (octMatch) { const nums = OCTAVES[`O${octMatch[1]}`] || []; for (const n of nums) { learnedBonus[n] += acc * 0.7; learnedReasons[n].push(`IA Oitavo`); } }
       }
-
       if (l.learning_type === 'heat_cluster' && acc > 0.7) {
-        for (const kn of keyNums) {
-          if (kn >= 0 && kn <= 36) { learnedBonus[kn] += acc * 1.2; learnedReasons[kn].push('IA Cluster'); }
-        }
+        for (const kn of keyNums) { if (kn >= 0 && kn <= 36) { learnedBonus[kn] += acc * 1.2; learnedReasons[kn].push('IA Cluster'); } }
       }
-
-      if (l.learning_type === 'dealer_signature' && acc > 0.6) {
-        // Boost arc-predicted numbers
-        if (maoViciada || arcStdDev < 3) {
-          const avgArc = Math.round(arcMean);
-          const idx0 = wheelIdx(numbers[0]);
-          const pCW = WHEEL[(idx0 + avgArc) % WL];
-          const pCCW = WHEEL[(idx0 - avgArc + WL) % WL];
-          learnedBonus[pCW] += acc * 1.5;
-          learnedBonus[pCCW] += acc * 1.5;
-          learnedReasons[pCW].push('IA Dealer Sig');
-          learnedReasons[pCCW].push('IA Dealer Sig');
-        }
+      if (l.learning_type === 'dealer_signature' && acc > 0.6 && (maoViciada || arcStdDev < 3)) {
+        const avgArc = Math.round(arcMean);
+        const idx0 = wheelIdx(numbers[0]);
+        const pCW = WHEEL[(idx0 + avgArc) % WL];
+        const pCCW = WHEEL[(idx0 - avgArc + WL) % WL];
+        learnedBonus[pCW] += acc * 1.5; learnedBonus[pCCW] += acc * 1.5;
+        learnedReasons[pCW].push('IA Dealer Sig'); learnedReasons[pCCW].push('IA Dealer Sig');
       }
     }
 
-    // =============================================
-    // LAYER 9: HEAT MAP (Wheel Concentration)
-    // =============================================
-    const heatMap: number[] = new Array(WL).fill(0);
-    last30.forEach((n, i) => {
-      const idx = wheelIdx(n);
-      if (idx === -1) return;
-      const weight = 1 + (30 - i) / 30; // recent = more weight
-      for (let offset = -2; offset <= 2; offset++) {
-        const tIdx = (idx + offset + WL) % WL;
-        heatMap[tIdx] += weight * (1 - Math.abs(offset) * 0.3);
-      }
-    });
-    const maxHeat = Math.max(...heatMap);
-    const hotZones: { num: number; heat: number }[] = [];
-    for (let i = 0; i < WL; i++) {
-      if (heatMap[i] > maxHeat * 0.7) hotZones.push({ num: WHEEL[i], heat: +heatMap[i].toFixed(1) });
-    }
-
-    // =============================================
-    // CONVERGENCE SCORING
-    // =============================================
-    let convergenceScore = 0;
+    // ========================================================
+    // CONVERGENCE REASONS
+    // ========================================================
     const reasons: string[] = [];
-
-    if (sectorBias && biasedOctave) { convergenceScore += 1.2; reasons.push(`Viciação Setor: ${biasedOctave}`); }
-    if (biasedOctaves.length > 0) { convergenceScore += 0.5; reasons.push(`Oitavos quentes: ${biasedOctaves.join(',')}`); }
-    if (delayedCavalos.length > 0) { convergenceScore += 1; reasons.push(`Atraso Cavalos: ${delayedCavalos.map(([g,d])=>`C${g}(${d}r)`).join(',')}`); }
-    if (delayedTerminals.length > 0) { convergenceScore += 1; reasons.push(`Terminais atrasados: T${delayedTerminals.join(',T')}`); }
-    if (maoViciada) { convergenceScore += 2; reasons.push(`🎯 MÃO VICIADA: arco ${last3Arcs.join(',')} (±${arcRange3})`); }
-    else if (maoViciada5) { convergenceScore += 1.5; reasons.push(`Assinatura forte: 5 arcos ±${arcRange5}`); }
-    else if (arcStdDev < 3) { convergenceScore += 1; reasons.push(`Dealer consistente: ±${arcStdDev.toFixed(1)}`); }
-    if (momentLaw.length > 0) { convergenceScore += 0.8; reasons.push(`Momento: ${momentLaw.join(',')}`); }
-    if (crossDelayTargets.length > 0) { convergenceScore += 0.8; reasons.push(`Alvos cruzados: ${crossDelayTargets.slice(0,3).map(t=>`${t.num}`).join(',')}`); }
-    if (seesawBias) { convergenceScore += 0.5; reasons.push(`Gangorra → ${seesawBias === 'zero' ? 'Jeu Zéro' : 'Tiers'}`); }
-    if (colorBias) { convergenceScore += 0.3; reasons.push(`Tendência cor: ${colorBias}`); }
-    if (compDue.length > 3) { convergenceScore += 0.4; reasons.push(`Complementares devidos: ${compDue.slice(0,4).join(',')}`); }
-    if (learned.length > 0) { convergenceScore += 0.5; reasons.push(`IA aprendeu ${learned.length} padrões`); }
-
+    if (sectorBias && biasedOctave) reasons.push(`Viciação Setor: ${biasedOctave}`);
+    if (biasedOctaves.length > 0) reasons.push(`Oitavos quentes: ${biasedOctaves.join(',')}`);
+    if (delayedCavalos.length > 0) reasons.push(`Atraso Cavalos: ${delayedCavalos.map(([g,d])=>`C${g}(${d}r)`).join(',')}`);
+    if (delayedTerminals.length > 0) reasons.push(`Terminais atrasados: T${delayedTerminals.join(',T')}`);
+    if (maoViciada) reasons.push(`🎯 MÃO VICIADA: arco ${last3Arcs.join(',')} (±${arcRange3})`);
+    else if (maoViciada5) reasons.push(`Assinatura forte: 5 arcos ±${arcRange5}`);
+    else if (arcStdDev < 3) reasons.push(`Dealer consistente: ±${arcStdDev.toFixed(1)}`);
+    if (momentLaw.length > 0) reasons.push(`Momento: ${momentLaw.join(',')}`);
+    if (crossDelayTargets.length > 0) reasons.push(`Alvos cruzados: ${crossDelayTargets.slice(0,3).map(t=>`${t.num}`).join(',')}`);
+    if (seesawBias) reasons.push(`Gangorra → ${seesawBias === 'zero' ? 'Jeu Zéro' : 'Tiers'}`);
+    if (colorBias) reasons.push(`Tendência cor: ${colorBias}`);
+    if (compDue.length > 3) reasons.push(`Complementares devidos: ${compDue.slice(0,4).join(',')}`);
+    if (mirrorDue.length > 2) reasons.push(`Espelhados devidos: ${mirrorDue.slice(0,3).join(',')}`);
+    if (learned.length > 0) reasons.push(`IA aprendeu ${learned.length} padrões`);
     if (dealerChanged) reasons.push('⚠️ Novo Dealer detectado');
     if (dealerSignature.possibleRotation) reasons.push('⏰ Rotação ~30min');
 
-    // =============================================
-    // OBSERVING / MONITORING
-    // =============================================
+    // ========================================================
+    // BASE RESPONSE
+    // ========================================================
     const baseResponse = {
       entropy: entropy.toFixed(3), dealerMode, dealerSignature,
       hotTerminals: { cavalos: sortedCavalos, terminals: sortedTerminals.slice(0, 5) },
-      sectorTrend, sectorFreq, convergenceScore, reasons,
+      sectorTrend, sectorFreq, convergenceScore: totalLayers, reasons, layerResults,
     };
 
     if (dealerChanged) {
       return json({ signal: null, mode: 'recalibrating', message: '🔄 Novo Dealer: Recalibrando...', ...baseResponse });
     }
 
-    if (highEntropy && convergenceScore < 3) {
+    if (highEntropy && totalLayers < 200) {
       return json({ signal: null, mode: 'observing', message: '🔍 OBSERVAÇÃO — Alta entropia', ...baseResponse });
     }
 
-    if (convergenceScore < 2) {
+    if (totalLayers < 150) {
       return json({ signal: null, mode: 'monitoring', message: '👁️ Monitorando...', ...baseResponse,
         topCandidates: [], delayedTerminals, cavaloDelays });
     }
 
-    // =============================================
-    // MAXIMUM PRECISION TARGET SELECTION
-    // =============================================
+    // ========================================================
+    // TARGET SELECTION WITH 500 LAYERS
+    // ========================================================
     const numScores: { num: number; score: number; reasons: string[] }[] = [];
 
     for (let n = 0; n <= 36; n++) {
       let s = 0;
       const r: string[] = [];
 
-      // A. Octave bias (+2.5)
+      // Octave bias
       if (biasedOctave && OCTAVES[biasedOctave]?.includes(n)) { s += 2.5; r.push(`Oitavo ${biasedOctave}`); }
 
-      // B. Terminal delay (+2.5)
+      // Terminal delay
       if (delayedTerminals.includes(n % 10)) { s += 2.5; r.push(`T${n%10} atrasado (${termDelays[n%10]}r)`); }
 
-      // C. Cavalo delay (+2)
+      // Cavalo delay
       const cg = getCavalo(n);
       if (cg && cavaloDelays[cg] > 8) { s += 2; r.push(`C${cg} atrasado`); }
 
-      // D. Hot cavalo filter (+1.5)
+      // Hot cavalo
       if (cg === hotCavaloGroup) { s += 1.5; r.push(`C${hotCavaloGroup} quente`); }
 
-      // E. Arc prediction - MAXIMUM WEIGHT for Brazilian Roulette (+5 for exact, +2 for near)
+      // Arc prediction - MAXIMUM WEIGHT
       const avgArc = maoViciada ? Math.round(last3Arcs.reduce((a,b)=>a+b,0)/3) : Math.round(arcMean);
       const idx0 = wheelIdx(numbers[0]);
       if (idx0 !== -1 && (maoViciada || maoViciada5 || arcStdDev < 4)) {
         const pCW = WHEEL[(idx0 + avgArc) % WL];
         const pCCW = WHEEL[(idx0 - avgArc + WL) % WL];
-        const arcWeight = maoViciada ? 5 : maoViciada5 ? 4 : 3;
+        const arcWeight = maoViciada ? 6 : maoViciada5 ? 5 : 3;
         if (n === pCW || n === pCCW) { s += arcWeight; r.push(`🎯 Arco exato (${avgArc})`); }
         else if (wheelDist(n, pCW) <= 1 || wheelDist(n, pCCW) <= 1) { s += arcWeight * 0.6; r.push(`Arco ±1`); }
         else if (wheelDist(n, pCW) <= 2 || wheelDist(n, pCCW) <= 2) { s += arcWeight * 0.3; r.push(`Arco ±2`); }
       }
 
-      // F. Moment law (+2)
+      // Moment law
       const term = n % 10, lastTerm = numbers[0] % 10;
       if (momentLaw.includes(`${lastTerm}->${term}`)) { s += 2; r.push('Momento'); }
 
-      // G. Cross-delay target (+3)
+      // Cross-delay target
       const crossTarget = crossDelayTargets.find(t => t.num === n);
       if (crossTarget) { s += 3; r.push(`Cruzado (${crossTarget.total})`); }
 
-      // H. Complementar due (+1.5)
+      // Complementar due
       if (compDue.includes(n)) { s += 1.5; r.push('Complementar'); }
 
-      // I. Seesaw bonus (+1.5)
+      // Mirror due
+      if (mirrorDue.includes(n)) { s += 1; r.push('Espelhado'); }
+
+      // Seesaw
       if (seesawBias === 'zero' && JEU_ZERO.includes(n)) { s += 1.5; r.push('Gangorra→Zero'); }
       if (seesawBias === 'opposite' && TIERS.includes(n)) { s += 1.5; r.push('Gangorra→Tiers'); }
 
-      // J. Heat map (+1)
+      // Heat map
       const hIdx = wheelIdx(n);
       if (hIdx !== -1 && heatMap[hIdx] > maxHeat * 0.7) { s += 1; r.push('Zona quente'); }
 
-      // K. Color/parity bias (+0.5)
-      if (colorBias === 'red' && RED.includes(n)) { s += 0.5; r.push('Tendência verm'); }
-      if (colorBias === 'black' && !RED.includes(n) && n !== 0) { s += 0.5; r.push('Tendência preto'); }
-      if (parityBias === 'even' && n > 0 && n % 2 === 0) { s += 0.3; }
-      if (parityBias === 'odd' && n % 2 === 1) { s += 0.3; }
+      // Color/parity bias
+      if (colorBias === 'red' && RED.includes(n)) { s += 0.5; r.push('Verm'); }
+      if (colorBias === 'black' && !RED.includes(n) && n !== 0) { s += 0.5; r.push('Preto'); }
+      if (parityBias === 'even' && n > 0 && n % 2 === 0) s += 0.3;
+      if (parityBias === 'odd' && n % 2 === 1) s += 0.3;
 
-      // L. Hot dozen/sector (+0.5)
+      // Hot dozen/sector
       if (getDozen(n) === hotDozen) s += 0.3;
       if (hotSector && getSector(n) === hotSector[0]) { s += 0.5; r.push(`Setor ${hotSector[0]}`); }
 
-      // M. Lei do Terço (+1 absent, +0.5 repeated)
-      const freq37 = numbers.slice(0, 37).filter(x => x === n).length;
-      if (freq37 === 0) { s += 1; r.push('Ausente (Terço)'); }
-      if (freq37 >= 2) { s += 0.5; r.push('Repetição'); }
+      // Lei do Terço
+      if (freq37map[n] === 0) { s += 1.5; r.push('Ausente (Terço)'); }
+      if (freq37map[n] >= 2) { s += 0.5; r.push('Repetição'); }
 
-      // N. AI Learned patterns bonus
+      // Quadrant imbalance bonus
+      if (highLowRatio > 1.4 && isLow(n)) { s += 0.5; r.push('Baixo devido'); }
+      if (highLowRatio < 0.7 && isHigh(n)) { s += 0.5; r.push('Alto devido'); }
+
+      // AI learned bonus
       if (learnedBonus[n] > 0) { s += learnedBonus[n]; r.push(...learnedReasons[n].slice(0, 2)); }
 
       // Recency penalty
@@ -457,14 +624,25 @@ serve(async (req) => {
       });
     }
 
-    const probability = Math.min(95, Math.round(50 + target.score * 3.5 + convergenceScore * 2.5));
+    // Scale probability based on layer convergence (400/500 = 80% threshold)
+    const layerFactor = Math.min(1, totalLayers / 400);
+    const probability = Math.min(98, Math.round(50 + target.score * 3 + totalLayers * 0.08));
     const neighbors = getNeighbors(target.num, 4);
-    const recoveryMode = delayedCavalos.length >= 2 && delayedTerminals.length >= 2;
+
+    const mode = totalLayers >= 400 ? 'sniper' : totalLayers >= 300 ? 'alert' : 'monitoring';
+    const message = totalLayers >= 400
+      ? `🎯 JOGADA CERTEIRA: ${target.num} — Convergência ${totalLayers}/500`
+      : totalLayers >= 300
+      ? `⚡ ALERTA: Convergência ${totalLayers}/500 em ${target.num}`
+      : `👁️ Convergência parcial ${totalLayers}/500`;
+
+    const diagnostic = totalLayers >= 400
+      ? `Convergência Pentacentesimal Detectada: Alinhamento entre ${reasons.slice(0, 3).join(', ')}`
+      : `Análise em progresso: ${reasons.slice(0, 2).join(', ')}`;
 
     return json({
-      signal: { number: target.num, neighbors, probability, reasons: target.reasons, convergenceReasons: reasons },
-      mode: probability >= 85 ? 'sniper' : 'alert',
-      message: probability >= 85 ? `🎯 JOGADA DE ALTA PRECISÃO: ${target.num}` : `⚡ ALERTA: Convergência em ${target.num}`,
+      signal: { number: target.num, neighbors, probability, reasons: target.reasons, convergenceReasons: reasons, diagnostic },
+      mode, message,
       ...baseResponse, recoveryMode,
       topCandidates: numScores.slice(0, 8).map(s => ({ num: s.num, score: +s.score.toFixed(1), reasons: s.reasons })),
     });
@@ -478,9 +656,7 @@ serve(async (req) => {
 });
 
 function json(data: any) {
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-  };
-  return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(data), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }

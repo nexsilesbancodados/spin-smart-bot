@@ -6,6 +6,7 @@ import {
   Hash, Flame, Snowflake, Target, BarChart3, ChevronDown,
   BookOpen, Zap, Clock, GraduationCap, Crosshair, Eye, AlertTriangle, Download
 } from 'lucide-react';
+import Scanner500 from '@/components/Scanner500';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
@@ -253,6 +254,9 @@ const Index = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto p-3 space-y-3">
 
+          {/* 🔬 SCANNER 500 */}
+          <Scanner500 layerResults={sniperData?.layerResults || null} isScanning={!!sniperData} />
+
           {/* 🎯 SNIPER PANEL */}
           {sniperData && (
             <motion.div
@@ -326,6 +330,9 @@ const Index = () => {
                       <div className={`text-2xl font-bold font-mono ${sniperData.signal.probability >= 85 ? 'text-primary' : 'text-yellow-400'}`}>
                         {sniperData.signal.probability}%
                       </div>
+                      <span className="text-[8px] text-muted-foreground">
+                        {sniperData.layerResults ? `${sniperData.layerResults.total}/500` : 'probabilidade'}
+                      </span>
                       <span className="text-[8px] text-muted-foreground">probabilidade</span>
                     </div>
                   </div>
@@ -334,6 +341,11 @@ const Index = () => {
                       <span key={i} className="text-[7px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-semibold">{r}</span>
                     ))}
                   </div>
+                  {sniperData.signal.diagnostic && (
+                    <div className="text-[8px] text-primary/70 italic mt-1 px-1">
+                      ⚡ {sniperData.signal.diagnostic}
+                    </div>
+                  )}
                   {sniperData.topCandidates && (
                     <div className="flex items-center gap-1 mt-1">
                       <span className="text-[8px] text-muted-foreground">Top 5:</span>
