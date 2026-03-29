@@ -86,18 +86,6 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
   const mainNumber = sniperData.signal?.number;
   const probability = sniperData.signal?.probability || 0;
 
-  // Get diverse alternatives (different bet categories)
-  const topAlternatives: any[] = sniperData.topAlternatives || [];
-  const winnerCategory = sniperData.strategy ? getBetTypeCategory(sniperData.strategy.type) : '';
-  
-  // Filter alternatives to show diverse types
-  const seenCategories = new Set([winnerCategory]);
-  const diverseAlternatives = topAlternatives.filter((alt: any) => {
-    const cat = getBetTypeCategory(alt.type);
-    if (seenCategories.has(cat)) return false;
-    seenCategories.add(cat);
-    return true;
-  }).slice(0, 3);
 
   return (
     <motion.div
@@ -263,24 +251,10 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
 
                 {/* ===== JOGADA COMBINADA — Fusão das alternativas ===== */}
                 {(() => {
-                  if (diverseAlternatives.length === 0) return null;
-                  // Merge all alternative numbers into one combined set (deduped)
-                  const allAltNums: number[] = [];
-                  const allAltLabels: string[] = [];
-                  const allAltEmojis: string[] = [];
-                  let maxProb = 0;
-                  diverseAlternatives.forEach((alt: any) => {
-                    alt.numbers.forEach((n: number) => {
-                      if (!allAltNums.includes(n)) allAltNums.push(n);
-                    });
-                    allAltLabels.push(getBetTypeLabel(alt.type));
-                    allAltEmojis.push(alt.emoji);
-                    if (alt.probability > maxProb) maxProb = alt.probability;
-                  });
-                  // Also add protection
-                  PROTECTION_NUMBERS.forEach(n => { if (!allAltNums.includes(n)) allAltNums.push(n); });
-                  const avgProb = Math.round(diverseAlternatives.reduce((s: number, a: any) => s + a.probability, 0) / diverseAlternatives.length);
-                  const combinedCoverage = ((allAltNums.length / 37) * 100).toFixed(1);
+                  const cb = sniperData.combinedBet;
+                  if (!cb || !cb.numbers?.length) return null;
+                  const highlighted: number[] = cb.highlighted || [];
+                  const strats: any[] = cb.strategiesUsed || [];
 
                   return (
                     <motion.div
@@ -291,32 +265,40 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                       <div className="flex items-center gap-2 px-3 py-2 bg-yellow-500/10 border-b border-yellow-500/20">
                         <Zap className="w-3.5 h-3.5 text-yellow-400" />
                         <span className="text-[10px] font-black tracking-wide text-yellow-400">
-                          JOGADA COMBINADA — FUSÃO DE {diverseAlternatives.length} ESTRATÉGIAS
+                          JOGADA COMBINADA — {strats.length} ESTRATÉGIAS DIVERSAS
                         </span>
-                        <span className={`ml-auto text-sm font-black font-mono ${probColor(avgProb)}`}>
-                          {avgProb}%
+                        <span className={`ml-auto text-sm font-black font-mono ${probColor(cb.avgProbability)}`}>
+                          {cb.avgProbability}%
                         </span>
                       </div>
 
-                      {/* Tags das estratégias combinadas */}
+                      {/* Tags das estratégias */}
                       <div className="flex flex-wrap gap-1.5 px-3 pt-2.5">
-                        {diverseAlternatives.map((alt: any, i: number) => (
+                        {strats.map((s: any, i: number) => (
                           <span key={i} className="text-[8px] px-2 py-0.5 rounded-md bg-secondary/60 text-foreground/80 border border-border/40 font-bold">
-                            {alt.emoji} {alt.label}
+                            {s.emoji} {s.label}
                           </span>
                         ))}
                       </div>
 
-                      {/* Todos os números combinados */}
+                      {/* Números — destacar os que aparecem em 2+ estratégias */}
                       <div className="px-3 py-2.5">
-                        <span className="text-[9px] text-muted-foreground font-bold block mb-1.5">🎯 {allAltNums.length} NÚMEROS COBERTOS:</span>
+                        {highlighted.length > 0 && (
+                          <span className="text-[9px] text-yellow-400 font-bold block mb-1">⭐ {highlighted.length} números em múltiplas estratégias:</span>
+                        )}
                         <div className="flex flex-wrap gap-1">
-                          {allAltNums.map((n: number, i: number) => {
+                          {cb.numbers.map((n: number, i: number) => {
                             const isProt = PROTECTION_NUMBERS.includes(n);
+                            const isHighlighted = highlighted.includes(n);
                             return (
-                              <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold ring-1 relative ${colorClass(n, isProt)}`}>
+                              <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold ring-1 relative ${
+                                isHighlighted
+                                  ? 'ring-2 ring-yellow-400 shadow-md shadow-yellow-400/30 ' + (n === 0 ? 'bg-green-600 text-white' : RED_NUMBERS.includes(n) ? 'bg-red-600 text-white' : 'bg-zinc-800 text-white')
+                                  : colorClass(n, isProt)
+                              }`}>
                                 {n}
-                                {isProt && <span className="absolute -top-0.5 -right-0.5 text-[6px]">🛡️</span>}
+                                {isProt && !isHighlighted && <span className="absolute -top-0.5 -right-0.5 text-[6px]">🛡️</span>}
+                                {isHighlighted && <span className="absolute -top-0.5 -right-0.5 text-[6px]">⭐</span>}
                               </div>
                             );
                           })}
@@ -324,11 +306,17 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                       </div>
 
                       <div className="flex items-center gap-2 px-3 py-1.5 border-t border-yellow-500/15 text-[9px] text-muted-foreground">
-                        <span><strong className="text-foreground">{allAltNums.length}</strong> números</span>
+                        <span><strong className="text-foreground">{cb.numbers.length}</strong> números</span>
                         <span className="text-border">•</span>
-                        <span><strong className="text-foreground">{combinedCoverage}%</strong> cobertura</span>
+                        <span><strong className="text-foreground">{cb.coverage}%</strong> cobertura</span>
                         <span className="text-border">•</span>
-                        <span>Payout: <strong className="text-foreground">{Math.round(36 / allAltNums.length)}x</strong></span>
+                        <span>Payout: <strong className="text-foreground">{cb.payout}x</strong></span>
+                        {highlighted.length > 0 && (
+                          <>
+                            <span className="text-border">•</span>
+                            <span className="text-yellow-400 font-bold">⭐ {highlighted.length} convergentes</span>
+                          </>
+                        )}
                       </div>
                     </motion.div>
                   );
