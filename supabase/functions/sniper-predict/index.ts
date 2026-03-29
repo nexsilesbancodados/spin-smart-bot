@@ -2793,6 +2793,45 @@ serve(async (req) => {
         transitionMatrix.terminalMatrix[termSeq200[i]][termSeq200[i + 1]]++;
       }
 
+      // ── MATRIZ 37×37: número→número (histórico completo) ──────────
+      const numMatrix: Record<number, Record<number, number>> = {};
+      for (let a = 0; a <= 36; a++) {
+        numMatrix[a] = {};
+        for (let b = 0; b <= 36; b++) numMatrix[a][b] = 0;
+      }
+      const numMatrixN = Math.min(500, numbers.length);
+      for (let i = 0; i < numMatrixN - 1; i++) {
+        numMatrix[numbers[i + 1]][numbers[i]]++;
+      }
+      const lastNum0 = numbers[0];
+      const matrizRow = numMatrix[lastNum0] || {};
+      const matrizTotal = Object.values(matrizRow).reduce((a, b) => a + b, 0);
+      const matrizProb: Record<number, number> = {};
+      if (matrizTotal >= 10) {
+        for (let n = 0; n <= 36; n++) {
+          matrizProb[n] = (matrizRow[n] || 0) / matrizTotal;
+        }
+      }
+      const matrizProb2: Record<number, number> = {};
+      const matrizProb3: Record<number, number> = {};
+      if (numbers.length >= 2) {
+        const row2 = numMatrix[numbers[1]] || {};
+        const total2 = Object.values(row2).reduce((a, b) => a + b, 0);
+        if (total2 >= 8) for (let n = 0; n <= 36; n++) matrizProb2[n] = (row2[n] || 0) / total2;
+      }
+      if (numbers.length >= 3) {
+        const row3 = numMatrix[numbers[2]] || {};
+        const total3 = Object.values(row3).reduce((a, b) => a + b, 0);
+        if (total3 >= 8) for (let n = 0; n <= 36; n++) matrizProb3[n] = (row3[n] || 0) / total3;
+      }
+      const matrizCombinado: Record<number, number> = {};
+      for (let n = 0; n <= 36; n++) {
+        matrizCombinado[n] = (matrizProb[n] || 0) * 3 +
+                              (matrizProb2[n] || 0) * 2 +
+                              (matrizProb3[n] || 0) * 1;
+      }
+      const maxMatriz = Math.max(...Object.values(matrizCombinado), 0.001);
+
       // PREDICT next sector from transition matrix
       const lastSector = getSector(numbers[0]);
       if (lastSector !== 'Zero' && transitionMatrix.sectorMatrix[lastSector]) {
@@ -3571,8 +3610,28 @@ serve(async (req) => {
         const source = (l.metadata as any)?.source;
         const target = (l.metadata as any)?.target;
         if (typeof source === 'number' && source === numbers[0] && typeof target === 'number') {
-          learnedBonus[target] += 3.0; // Directly confirmed pull from current number
+          learnedBonus[target] += 3.0;
           learnedReasons[target].push('IA Pull Confirmado!');
+        }
+      }
+      // MATRIX TRANSITION: usar pares aprendidos como boost direto
+      if (l.learning_type === 'matrix_transition') {
+        const meta = l.metadata as any;
+        if (meta?.source === numbers[0] && meta?.target >= 0 && meta?.target <= 36) {
+          const boost = ((l.accuracy || 50) / 100) * 6;
+          learnedBonus[meta.target] = (learnedBonus[meta.target] || 0) + boost;
+          learnedReasons[meta.target].push(`🔢 Matriz(${(l.accuracy || 50).toFixed(0)}%)`);
+        }
+      }
+      // HIT PATTERN: acertos recentes têm muito peso
+      if (l.learning_type === 'hit_pattern') {
+        const recencyBoostHit = 2.5;
+        const keyNums: number[] = (l.metadata as any)?.key_numbers || [];
+        for (const kn of keyNums) {
+          if (kn >= 0 && kn <= 36) {
+            learnedBonus[kn] += ((l.accuracy || 50) / 100) * recencyBoostHit;
+            learnedReasons[kn].push(`✅ hit_pattern`);
+          }
         }
       }
     }
@@ -4002,6 +4061,16 @@ serve(async (req) => {
       }
       if (transitionMatrix.predictedTerminal !== null && n % 10 === transitionMatrix.predictedTerminal) {
         s += 2; r.push(`📊 Matriz→T${transitionMatrix.predictedTerminal}`);
+      }
+      // MATRIZ 37×37: boost proporcional à probabilidade histórica
+      if (matrizCombinado[n] > 0 && matrizTotal >= 10) {
+        const matrizNorm = matrizCombinado[n] / maxMatriz;
+        if (matrizNorm > 0.15) {
+          const boost = matrizNorm * 8;
+          s += boost;
+          r.push(`📊 Matriz(${((matrizProb[n]||0)*100).toFixed(0)}%)`);
+          signalFlags['MATRIZ_NUM'] = true;
+        }
       }
       // DOZEN PRESSURE TRIGGER
       if (transitionMatrix.dozenPressureTrigger?.active && getDozen(n) === transitionMatrix.dozenPressureTrigger.dozen) {
