@@ -18,6 +18,7 @@ import StatsBar from '@/components/StatsBar';
 import Last12Numbers from '@/components/Last12Numbers';
 import ZeroPressure from '@/components/ZeroPressure';
 import SniperSignal from '@/components/SniperSignal';
+import ManualInput from '@/components/ManualInput';
 import WheelMap from '@/components/WheelMap';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -113,6 +114,10 @@ const Index = () => {
   const [sampleSize, setSampleSize] = useState(100);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showPredHistory, setShowPredHistory] = useState(false);
+
+  const handleManualNumbers = (nums: number[]) => {
+    setApiNumbers(prev => [...nums, ...prev].slice(0, 1000));
+  };
 
   // Track if sniper is already being fetched to avoid double calls
   const sniperFetchingRef = useRef(false);
@@ -813,6 +818,7 @@ const Index = () => {
                       {lim}
                     </button>
                   ))}
+                  <ManualInput onAddNumbers={handleManualNumbers} />
                   <span className="text-[8px] text-muted-foreground font-mono ml-1">{Math.min(historyLimit, allNumbers.length)} giros</span>
                   <button onClick={async () => {
                     if (!confirm('Limpar todo o histórico?')) return;
@@ -999,6 +1005,51 @@ const Index = () => {
                   );
                 })}
               </div>
+              {/* Dupla Dani Green */}
+              {(() => {
+                const DUPLAS: Record<string, number[]> = {
+                  'T1+T6': [1,11,21,31,6,16,26,36],
+                  'T2+T7': [2,12,22,32,7,17,27],
+                  'T3+T8': [3,13,23,33,8,18,28],
+                  'T4+T9': [4,14,24,34,9,19,29],
+                  'T0+T5': [10,20,30,5,15,25,35],
+                };
+                const TERMINAL_TO_DUPLA: Record<number, string> = {
+                  1:'T1+T6',6:'T1+T6',2:'T2+T7',7:'T2+T7',
+                  3:'T3+T8',8:'T3+T8',4:'T4+T9',9:'T4+T9',0:'T0+T5',5:'T0+T5'
+                };
+                const last15 = allNumbers.slice(0, 15);
+                const tFreq: Record<number,number> = {};
+                last15.forEach(n => { const t = n%10; tFreq[t] = (tFreq[t]||0)+1; });
+                const hotT = Object.entries(tFreq).sort(([,a],[,b])=>b-a)[0];
+                if (!hotT) return null;
+                const hotTerminal = Number(hotT[0]);
+                const dupKey = TERMINAL_TO_DUPLA[hotTerminal];
+                const dupNums = DUPLAS[dupKey] || [];
+                const distintos = Object.keys(tFreq).length;
+                const entropiaLabel = distintos <= 4 ? '🎯 Baixa — Entrar' : distintos <= 7 ? '⚠️ Média' : '🔀 Alta — Aguardar';
+                const entropiaColor = distintos <= 4 ? 'text-green-400' : distintos <= 7 ? 'text-yellow-400' : 'text-red-400';
+
+                return (
+                  <div className="mt-3 pt-3 border-t border-border space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wide">Entropia (15)</span>
+                      <span className={`text-[8px] font-bold ${entropiaColor}`}>{entropiaLabel}</span>
+                    </div>
+                    <div className="bg-primary/10 border border-primary/30 rounded-lg p-2">
+                      <div className="flex items-center gap-1 mb-1.5">
+                        <span className="text-[8px] font-bold text-primary">🔥 DUPLA DANI GREEN</span>
+                        <span className="ml-auto text-[8px] font-mono font-bold text-primary">{dupKey}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-0.5">
+                        {dupNums.map(n => (
+                          <div key={n} className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold border border-white/10 ${colorClass(n)}`}>{n}</div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

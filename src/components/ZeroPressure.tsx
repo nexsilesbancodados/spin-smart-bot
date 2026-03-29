@@ -1,64 +1,48 @@
-import { useMemo } from 'react';
-import { AlertTriangle, Shield, Flame } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-interface ZeroPressureProps {
-  allNumbers: number[];
-}
+interface Props { allNumbers: number[] }
 
-const ZeroPressure = ({ allNumbers }: ZeroPressureProps) => {
-  const roundsWithoutZero = useMemo(() => {
-    const idx = allNumbers.indexOf(0);
-    return idx === -1 ? allNumbers.length : idx;
-  }, [allNumbers]);
+const ZeroPressure = ({ allNumbers }: Props) => {
+  const delay = allNumbers.findIndex(n => n === 0);
+  const absence = delay === -1 ? allNumbers.length : delay;
 
-  const { level, label, color, borderColor, barColor, recommendation } = useMemo(() => {
-    if (roundsWithoutZero > 40) return {
-      level: 3, label: 'CRÍTICO', color: 'text-red-400', borderColor: 'border-red-500/60',
-      barColor: 'bg-red-500', recommendation: '🚨 ANOMALIA — Vizinhos do Zero (9 fichas)'
-    };
-    if (roundsWithoutZero > 25) return {
-      level: 2, label: 'Pressão Alta', color: 'text-orange-400', borderColor: 'border-orange-500/50',
-      barColor: 'bg-orange-500', recommendation: 'Jeu Zero (4 fichas) recomendado'
-    };
-    if (roundsWithoutZero > 14) return {
-      level: 1, label: 'Atenção', color: 'text-yellow-400', borderColor: 'border-yellow-500/40',
-      barColor: 'bg-yellow-500', recommendation: 'Considere 1 ficha no zero'
-    };
-    return {
-      level: 0, label: 'Normal', color: 'text-emerald-400', borderColor: 'border-emerald-500/30',
-      barColor: 'bg-emerald-500', recommendation: ''
-    };
-  }, [roundsWithoutZero]);
+  const level = absence >= 41 ? 'critical' : absence >= 26 ? 'high' : absence >= 15 ? 'medium' : 'normal';
+  const pct = Math.min((absence / 74) * 100, 100);
 
-  const barPercent = Math.min((roundsWithoutZero / 60) * 100, 100);
+  const config = {
+    normal:   { color: 'text-green-400',  border: 'border-green-500/30',  bg: 'bg-green-500/10',  bar: 'from-green-500 to-emerald-400', label: 'Normal',       tip: '' },
+    medium:   { color: 'text-yellow-400', border: 'border-yellow-500/30', bg: 'bg-yellow-500/10', bar: 'from-yellow-500 to-amber-400',  label: 'Atenção',      tip: '1 ficha no zero' },
+    high:     { color: 'text-orange-400', border: 'border-orange-500/30', bg: 'bg-orange-500/10', bar: 'from-orange-500 to-red-400',    label: 'Pressão Alta', tip: 'Jeu Zero (4 fichas)' },
+    critical: { color: 'text-red-400',    border: 'border-red-500/40',    bg: 'bg-red-500/15',    bar: 'from-red-500 to-rose-400',      label: '🚨 ANOMALIA',  tip: 'Vizinhos do Zero (9 fichas)' },
+  }[level];
+
+  if (absence < 10) return null;
 
   return (
-    <div className={`bg-card border ${borderColor} rounded-xl p-3 transition-all ${level === 3 ? 'animate-pulse' : ''}`}>
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          {level >= 2 ? <Flame className={`w-4 h-4 ${color}`} /> : <Shield className={`w-4 h-4 ${color}`} />}
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pressão do Zero</span>
+    <motion.div
+      animate={level === 'critical' ? { boxShadow: ['0 0 0px rgba(239,68,68,0)', '0 0 20px rgba(239,68,68,0.3)', '0 0 0px rgba(239,68,68,0)'] } : {}}
+      transition={{ repeat: Infinity, duration: 1.5 }}
+      className={`rounded-xl border p-3 ${config.bg} ${config.border} flex items-center gap-3`}
+    >
+      <div className="text-2xl">🟢</div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <span className={`text-[10px] font-bold tracking-widest uppercase ${config.color}`}>PRESSÃO DO ZERO</span>
+          <span className={`text-xs font-mono font-black ${config.color}`}>{absence} rodadas</span>
         </div>
-        <span className={`text-xs font-bold ${color}`}>{label}</span>
+        <div className="w-full h-1.5 bg-secondary/60 rounded-full overflow-hidden mb-1">
+          <motion.div
+            className={`h-full rounded-full bg-gradient-to-r ${config.bar}`}
+            animate={{ width: `${pct}%` }}
+            transition={{ duration: 0.6 }}
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <span className={`text-[9px] font-bold ${config.color}`}>{config.label}</span>
+          {config.tip && <span className="text-[8px] text-muted-foreground">→ {config.tip}</span>}
+        </div>
       </div>
-
-      <div className="flex items-center gap-3">
-        <span className={`text-3xl font-black tabular-nums ${color}`}>{roundsWithoutZero}</span>
-        <div className="flex-1">
-          <div className="text-[10px] text-muted-foreground mb-1">rodadas sem zero</div>
-          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-            <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${barPercent}%` }} />
-          </div>
-        </div>
-      </div>
-
-      {recommendation && (
-        <div className="mt-2 flex items-center gap-1.5 text-[11px] font-medium" style={{ color: 'inherit' }}>
-          <AlertTriangle className={`w-3 h-3 ${color} flex-shrink-0`} />
-          <span className={color}>{recommendation}</span>
-        </div>
-      )}
-    </div>
+    </motion.div>
   );
 };
 
