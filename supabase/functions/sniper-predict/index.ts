@@ -2186,8 +2186,14 @@ serve(async (req) => {
       st.score += selfCorrectionWeight;
 
       // ====== NOISE PENALTY: reduce confidence when too many noisy spins ======
-      if (noiseCount > 5) st.score -= 5; // many outliers = less reliable data
+      if (noiseCount > 5) st.score -= 5;
       if (noiseCount > 10) st.score -= 10;
+      // ====== WHITE NOISE GUARD: strongly penalize all strategies if mesa is chaotic ======
+      if (randomnessIndex.overall >= 75) st.score -= 15;
+      else if (randomnessIndex.overall >= 60) st.score -= 8;
+      // ====== KELLY BOOST: multiply score by confidence when Kelly is strong ======
+      if (kellyBetting.unitMultiplier >= 3) st.score += 5;
+      else if (kellyBetting.unitMultiplier <= 0.5) st.score -= 5;
 
       // ====== CHAOS PENALTY: reduce if dealer is chaotic ======
       if (chaoticDealer && ['sniper', 'voisins', 'setor_oposto'].includes(st.type)) st.score -= 10; // sector strategies unreliable with chaotic dealer
