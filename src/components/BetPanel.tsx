@@ -442,7 +442,61 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
         </div>
       )}
 
-      {/* Action buttons */}
+      {/* Scoreboard - Placar de Acertos e Erros */}
+      {stats.history.length > 0 && (
+        <div className="bg-secondary/30 border border-border rounded-lg p-2.5 mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[9px] font-bold text-primary tracking-wider">📊 PLACAR DE RESULTADOS</span>
+            <span className="text-[8px] text-muted-foreground">{stats.history.length} resultado{stats.history.length > 1 ? 's' : ''}</span>
+          </div>
+          
+          {/* Visual dots row */}
+          <div className="flex flex-wrap gap-1 mb-2">
+            {stats.history.slice(0, 15).map((r, i) => (
+              <motion.div
+                key={r.timestamp}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold border ${
+                  r.won
+                    ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                    : 'bg-destructive/20 border-destructive/50 text-destructive'
+                }`}
+                title={r.won ? `✅ Acertou! Nº ${r.actual}` : `❌ Errou. Nº ${r.actual}`}
+              >
+                {r.won ? '✓' : '✗'}
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Last result detail */}
+          {stats.history.length > 0 && (
+            <div className={`rounded-md p-2 text-[9px] flex items-center gap-2 ${
+              stats.history[0].won
+                ? 'bg-green-500/10 border border-green-500/30'
+                : 'bg-destructive/10 border border-destructive/30'
+            }`}>
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border ${
+                getColor(stats.history[0].actual) === 'red' ? 'bg-red-600 text-white border-red-500/50' :
+                getColor(stats.history[0].actual) === 'black' ? 'bg-gray-800 text-white border-gray-600/50' :
+                'bg-green-600 text-white border-green-500/50'
+              }`}>
+                {stats.history[0].actual}
+              </div>
+              <div className="flex-1">
+                <span className={`font-bold ${stats.history[0].won ? 'text-green-400' : 'text-destructive'}`}>
+                  {stats.history[0].won ? '✅ ACERTOU!' : '❌ ERROU'}
+                </span>
+                <span className="text-muted-foreground ml-2">
+                  {stats.history[0].profit >= 0 ? '+' : ''}R${stats.history[0].profit.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+
       <div className="flex gap-2">
         <Button
           onClick={placeBet}
