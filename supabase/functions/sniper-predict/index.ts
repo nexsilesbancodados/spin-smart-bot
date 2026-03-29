@@ -461,16 +461,32 @@ serve(async (req) => {
     const aiLearnings: string[] = [];
 
     // ========================================================
-    // MÓDULOS DANI GREEN — Detecção de Padrões
+    // 100 ESTRATÉGIAS — Detecção de Padrões
     // ========================================================
     const daniGreen = {
       mod1: detectHotTerminal(numbers, 15),
+      mod1Cold: detectColdTerminal(numbers, 15),
       mod2: detectHighLowBias(numbers, 10),
       mod4: detectZeroPressure(numbers),
       mod5LastNum: numbers[0],
       mod5Pull: FULL_PULL_MAP[numbers[0]] || PULL_MAP[numbers[0]] || [],
       mod5PullTerminals: FULL_PULL_TERMINALS[numbers[0]] || PULL_TERMINALS[numbers[0]] || [],
       mod6: detectAscendingTerminals(numbers),
+    };
+
+    // Extended detectors (100 strategies)
+    const ext = {
+      terminalRepetido: detectTerminalRepetido(numbers),
+      terminalAlternado: detectTerminalAlternado(numbers, 10),
+      centralProg: detectCentralProgression(numbers),
+      colorStreak: detectColorStreak(numbers),
+      parImpar: detectParImparBias(numbers, 10),
+      altoLowAlt: detectAltoLowAlternation(numbers),
+      mirrorDue: detectMirrorDue(numbers),
+      zeroAfterNeighbors: detectZeroAfterNeighbors(numbers),
+      gatilhoPerfeito: detectGatilhoPerfeito(numbers, daniGreen.mod1.terminal, daniGreen.mod5Pull),
+      isPostZero: numbers.length > 0 && numbers[0] === 0,
+      lastIsZeroRecent: numbers.slice(0, 5).includes(0),
     };
 
     // ========================================================
