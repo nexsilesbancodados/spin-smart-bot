@@ -105,10 +105,6 @@ export const VISUAL_MIRRORS = [
   [11, 23, 35],
   [12, 24, 36],  // último de cada dúzia
 ];
-export const RED_EVEN = [12, 14, 16, 18, 30, 32, 34, 36];
-export const RED_ODD = [1, 3, 5, 7, 9, 19, 21, 23, 25, 27];
-export const BLACK_EVEN = [2, 4, 6, 8, 10, 20, 22, 24, 26, 28];
-export const BLACK_ODD = [11, 13, 15, 17, 29, 31, 33, 35];
 
 // === 10. Utility Functions ===
 
