@@ -13,12 +13,16 @@ interface RouletteContextType {
   alerts: Alert[];
   provider: string;
   table: string;
+  autoMode: boolean;
+  autoSpeed: number;
   setProvider: (p: string) => void;
   setTable: (t: string) => void;
   addNumber: (n: number) => void;
   addNumbers: (nums: number[]) => void;
   clearHistory: () => void;
   dismissAlert: (id: string) => void;
+  toggleAutoMode: () => void;
+  setAutoSpeed: (speed: number) => void;
 }
 
 const RouletteContext = createContext<RouletteContextType | null>(null);
@@ -107,12 +111,14 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [provider, setProvider] = useState('Playtech');
   const [table, setTable] = useState('Roleta Brasileira');
+  const [autoMode, setAutoMode] = useState(false);
+  const [autoSpeed, setAutoSpeedState] = useState(8); // seconds between numbers
+  const autoRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const addNumber = useCallback((n: number) => {
     const entry: RouletteNumber = { value: n, color: getNumberColor(n), timestamp: new Date() };
     setHistory(prev => {
       const updated = [entry, ...prev];
-      // Detect patterns
       const newAlerts = detectPatterns(updated);
       if (newAlerts.length > 0) {
         setAlerts(prev => [...newAlerts, ...prev].slice(0, 10));
@@ -146,7 +152,36 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
     setAlerts(prev => prev.filter(a => a.id !== id));
   }, []);
 
-  // Listen for external POST messages (from scraper iframe postMessage)
+  const toggleAutoMode = useCallback(() => {
+    setAutoMode(prev => !prev);
+  }, []);
+
+  const setAutoSpeed = useCallback((speed: number) => {
+    setAutoSpeedState(speed);
+  }, []);
+
+  // Auto mode: generate random numbers at interval
+  useEffect(() => {
+    if (autoMode) {
+      autoRef.current = setInterval(() => {
+        const num = generateRandomNumber();
+        addNumber(num);
+      }, autoSpeed * 1000);
+    } else {
+      if (autoRef.current) {
+        clearInterval(autoRef.current);
+        autoRef.current = null;
+      }
+    }
+    return () => {
+      if (autoRef.current) {
+        clearInterval(autoRef.current);
+        autoRef.current = null;
+      }
+    };
+  }, [autoMode, autoSpeed, addNumber]);
+
+  // Listen for external POST messages
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       try {
@@ -165,8 +200,9 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <RouletteContext.Provider value={{
-      history, alerts, provider, table,
+      history, alerts, provider, table, autoMode, autoSpeed,
       setProvider, setTable, addNumber, addNumbers, clearHistory, dismissAlert,
+      toggleAutoMode, setAutoSpeed,
     }}>
       {children}
     </RouletteContext.Provider>
