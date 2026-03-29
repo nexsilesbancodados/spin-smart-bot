@@ -230,6 +230,21 @@ const Index = () => {
             <CircleDot className="w-5 h-5 text-primary animate-spin-slow" />
             <span className="font-display text-sm tracking-[0.15em] text-primary font-bold hidden sm:inline">ROULETTE PRO</span>
             <span className="text-[7px] px-1.5 py-0.5 bg-primary/20 rounded-full text-primary font-bold border border-primary/30">AI 24H</span>
+            {autoLearnStatus !== 'idle' && (
+              <motion.span
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={`text-[7px] px-1.5 py-0.5 rounded-full font-bold border flex items-center gap-1 ${
+                  autoLearnStatus === 'learning' ? 'bg-primary/20 text-primary border-primary/30' :
+                  autoLearnStatus === 'analyzing' ? 'bg-accent/20 text-accent border-accent/30' :
+                  'bg-accent/20 text-accent border-accent/30'
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                {autoLearnStatus === 'learning' ? '🧠' : autoLearnStatus === 'analyzing' ? '🔍' : '🎯'}
+                {autoLearnStatus === 'learning' ? 'APRENDENDO' : autoLearnStatus === 'analyzing' ? 'ANALISANDO' : 'TESTANDO'}
+              </motion.span>
+            )}
           </div>
 
           <div className="relative shrink-0">
