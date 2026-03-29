@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   Activity, MonitorPlay, RefreshCw, Brain, Sparkles, TrendingUp,
   Hash, Flame, Snowflake, Target, BarChart3, ChevronDown,
-  Zap, Clock, GraduationCap, Crosshair, Eye, AlertTriangle
+  Zap, Clock, GraduationCap, Crosshair, Eye, AlertTriangle, Power
 } from 'lucide-react';
 import Scanner500 from '@/components/Scanner500';
 import PatternPanel24h from '@/components/PatternPanel24h';
