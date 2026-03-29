@@ -16,6 +16,7 @@ import PullRadar from '@/components/PullRadar';
 import Navbar from '@/components/Navbar';
 import StatsBar from '@/components/StatsBar';
 import Last12Numbers from '@/components/Last12Numbers';
+import ZeroPressure from '@/components/ZeroPressure';
 import SniperSignal from '@/components/SniperSignal';
 import { motion, AnimatePresence } from 'framer-motion';
 
