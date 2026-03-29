@@ -5617,6 +5617,79 @@ serve(async (req) => {
     strategies.sort((a, b) => b.score - a.score || b.payout - a.payout);
 
     const winner = strategies[0];
+
+    // ── ENSEMBLE SUPREMO: eleger o número #1 de todas as fontes ──
+    const ensembleScore: Record<number, number> = {};
+    const ensembleSources: Record<number, string[]> = {};
+    for (let n = 0; n <= 36; n++) { ensembleScore[n] = 0; ensembleSources[n] = []; }
+    numScores.slice(0, 10).forEach((ns: any, i: number) => {
+      const w = (10 - i) / 10;
+      ensembleScore[ns.num] += ns.score * w;
+      ensembleSources[ns.num].push(`Score(${ns.score.toFixed(0)})`);
+    });
+    strategies.slice(0, 15).forEach((st: any) => {
+      const stWeight = (st.score / (strategies[0]?.score || 1)) * 5;
+      st.numbers.slice(0, 5).forEach((n: number, j: number) => {
+        ensembleScore[n] += stWeight * (1 - j * 0.15);
+        if (j === 0) ensembleSources[n].push(`${st.emoji}${st.type}`);
+      });
+    });
+    if (matrizTotal >= 15) {
+      for (let n = 0; n <= 36; n++) {
+        if ((matrizProb[n] || 0) > 0.05) {
+          ensembleScore[n] += (matrizProb[n] || 0) * 50;
+          ensembleSources[n].push(`Matriz(${((matrizProb[n]||0)*100).toFixed(0)}%)`);
+        }
+      }
+    }
+    for (let n = 0; n <= 36; n++) {
+      if (learnedBonus[n] > 0) { ensembleScore[n] += learnedBonus[n] * 3; ensembleSources[n].push('IA'); }
+    }
+    for (let n = 0; n <= 36; n++) {
+      if (deepPullChain[n] >= 5) { ensembleScore[n] += deepPullChain[n] * 0.8; ensembleSources[n].push(`Chain(${deepPullChain[n].toFixed(0)})`); }
+    }
+    const ensembleRanking = Object.entries(ensembleScore)
+      .map(([n, s]) => ({ num: Number(n), score: s, sources: ensembleSources[Number(n)] }))
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score);
+    const ensembleTop1 = ensembleRanking[0] || null;
+    const ensembleTop5 = ensembleRanking.slice(0, 5).map(e => e.num);
+
+    // ESTRATÉGIA ENSEMBLE SUPREMO
+    if (ensembleTop5.length >= 3 && ensembleTop1) {
+      const ensNums = [...new Set([...ensembleTop5, ...PROTECTION_NUMBERS])];
+      const ensScore = sumScores(ensNums) + ensembleTop1.score * 0.5;
+      const ensBt = backtestSet(ensNums);
+      strategies.push({
+        type: 'ensemble_supremo',
+        label: `🌟 Ensemble Supremo → ${ensembleTop1.num}`,
+        emoji: '🌟',
+        numbers: ensNums,
+        coverage: (ensNums.length / 37) * 100,
+        payout: 36 - ensNums.length,
+        score: ensScore + ensBt * 40 + ensembleRanking[0].sources.length * 5,
+        probability: Math.min(95, Math.round(
+          45 + ensBt * 35 + ensembleRanking[0].sources.length * 4 + (matrizTotal > 50 ? 8 : 0)
+        )),
+        justification: `ENSEMBLE de ${ensembleRanking.length} candidatos × ${strategies.length} estratégias × Matriz 37×37 (${matrizTotal} obs). Convergência máxima em ${ensembleTop1.num}: ${ensembleTop1.sources.slice(0,3).join(', ')}.`,
+      });
+      // Re-sort after adding ensemble
+      strategies.sort((a, b) => b.score - a.score || b.payout - a.payout);
+    }
+
+    // Se o ensemble top1 não está nos números do winner, adicionar como proteção
+    if (ensembleTop1 && !winner.numbers.includes(ensembleTop1.num)) {
+      winner.numbers.unshift(ensembleTop1.num);
+      aiLearnings.push(`🎯 ENSEMBLE: nº${ensembleTop1.num} eleito por ${ensembleTop1.sources.length} fontes independentes`);
+    }
+
+    const ensembleResult = {
+      top1: ensembleTop1?.num ?? null,
+      top5: ensembleTop5,
+      topScore: ensembleTop1?.score ?? 0,
+      sources: ensembleTop1?.sources?.slice(0, 5) ?? [],
+    };
+
     const allStrategies = strategies.map(s => ({
       type: s.type, label: s.label, emoji: s.emoji,
       numbers: s.numbers, coverage: +s.coverage.toFixed(1), payout: s.payout,
