@@ -31,7 +31,27 @@ const SessionSummary = ({ allNumbers }: Props) => {
 
     const distintos = new Set(s50.slice(0,15).map(n=>n%10)).size;
 
-    return { hot, cold, corDom, reds, blacks, hotTerminal, zeroDelay, distintos, total: s50.length };
+    // Recomendação automática baseada nos indicadores
+    let recomendacao = '';
+    let recColor = 'text-muted-foreground';
+    if (distintos <= 4 && zeroDelay < 40) {
+      recomendacao = '✅ ENTRAR — Entropia baixa, sessão concentrada';
+      recColor = 'text-green-400';
+    } else if (zeroDelay > 40) {
+      recomendacao = '🚨 PRESSÃO ZERO CRÍTICA — priorizar Vizinhos do Zero';
+      recColor = 'text-red-400';
+    } else if (distintos >= 8) {
+      recomendacao = '⏸ AGUARDAR — Alta dispersão, sem padrão claro';
+      recColor = 'text-orange-400';
+    } else if (hot.length >= 3) {
+      recomendacao = '🔥 MODO QUENTE — múltiplos números repetindo';
+      recColor = 'text-yellow-400';
+    } else {
+      recomendacao = '👁️ OBSERVAR — Sessão neutra';
+      recColor = 'text-blue-400';
+    }
+
+    return { hot, cold, corDom, reds, blacks, hotTerminal, zeroDelay, distintos, total: s50.length, recomendacao, recColor };
   }, [allNumbers[0], allNumbers.length]);
 
   if (!stats) return null;
@@ -121,6 +141,12 @@ const SessionSummary = ({ allNumbers }: Props) => {
           </div>
         </div>
       </div>
+
+      {stats.recomendacao && (
+        <div className={`text-[9px] font-bold text-center pt-2 border-t border-border/50 ${stats.recColor}`}>
+          {stats.recomendacao}
+        </div>
+      )}
     </motion.div>
   );
 };

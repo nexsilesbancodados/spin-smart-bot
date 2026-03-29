@@ -205,6 +205,13 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
           ANÁLISE MULTI-JOGADA
         </span>
         
+        {/* Ultra Conservador Badge */}
+        {sniperData?.ultraConservadorMode && (
+          <span className="text-[7px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold">
+            🛡️ CONSERVADOR
+          </span>
+        )}
+
         {/* REED Badge */}
         <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] font-black ${reedColor} ${reedStopped ? 'animate-pulse' : ''}`}>
           <span>REED: {reedCount}/4</span>
@@ -275,6 +282,21 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                probability >= 25 ? '3-4 fichas' : 'Não entrar'}
             </span>
           </div>
+          {/* Win Rate Recente */}
+          {sniperData?.recentWinRate !== undefined && (
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-[7px] text-muted-foreground">Win rate recente (10):</span>
+              <span className={`text-[8px] font-mono font-bold ${
+                sniperData.recentWinRate >= 0.5 ? 'text-green-400' :
+                sniperData.recentWinRate >= 0.3 ? 'text-yellow-400' :
+                'text-red-400'
+              }`}>
+                {(sniperData.recentWinRate * 100).toFixed(0)}%
+                {sniperData.recentWinRate >= 0.5 ? ' 🔥' :
+                 sniperData.recentWinRate < 0.25 ? ' 🛡️' : ''}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -328,6 +350,16 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
               </span>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Dealer Shift Alert */}
+      {sniperData?.dealerShift?.detected && (
+        <div className="mx-4 mt-2 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center gap-2">
+          <span className="text-sm">🎭</span>
+          <span className="text-[8px] text-purple-400 font-bold">
+            DEALER SHIFT — Arco {sniperData.dealerShift.oldArc} → {sniperData.dealerShift.newArc} | Padrão reiniciando
+          </span>
         </div>
       )}
 
