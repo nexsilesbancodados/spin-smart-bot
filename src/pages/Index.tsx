@@ -189,6 +189,19 @@ const Index = () => {
                 />
               </label>
             </div>
+            {/* Webhook URL for extension */}
+            <div className="px-2 py-1.5 bg-card/50 border-t border-border">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[9px] font-bold text-muted-foreground tracking-wider">WEBHOOK URL</span>
+                <button onClick={copyWebhook} className="flex items-center gap-0.5 text-[9px] text-primary hover:text-primary/80">
+                  {copiedWebhook ? <Check className="w-2.5 h-2.5" /> : <Copy className="w-2.5 h-2.5" />}
+                  {copiedWebhook ? 'Copiado!' : 'Copiar'}
+                </button>
+              </div>
+              <div className="text-[8px] text-muted-foreground bg-secondary/50 rounded px-1.5 py-1 font-mono truncate select-all">
+                {webhookUrl}
+              </div>
+            </div>
           </div>
 
           {/* Scrollable content */}
