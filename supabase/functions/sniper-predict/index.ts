@@ -1394,6 +1394,24 @@ serve(async (req) => {
       }
       // BACKPROPAGATION: weight by best dimension
       if (backpropWeights['physical'] > 0.3 && maoViciada) { const idx0 = wheelIdx(numbers[0]); if (idx0 !== -1 && wheelDist(n, WHEEL[(idx0 + Math.round(arcMean)) % WL]) <= 3) { s += 2; r.push('🔄 Backprop Phys'); } }
+      // FLOW DYNAMICS: concentration bonus
+      if (mesaFlowState.mode === 'concentracao' && mesaFlowState.clusterZone && getSector(n) === mesaFlowState.clusterZone) { s += 3; r.push(`🔥 Zona ${mesaFlowState.clusterZone}`); }
+      // FLOW DYNAMICS: gangorra prediction (opposite sector)
+      if (mesaFlowState.mode === 'gangorra' && mesaFlowState.gangorraSequence.length >= 2) {
+        const lastSec = getSector(numbers[0]);
+        const predictedSec = lastSec === 'Voisins' ? 'Tiers' : lastSec === 'Tiers' ? 'Voisins' : lastSec === 'Orphelins' ? 'Voisins' : 'Tiers';
+        if (getSector(n) === predictedSec) { s += 2.5; r.push(`🔄 Gangorra→${predictedSec}`); }
+      }
+      // PULL PATTERNS: numbers that are "pulled" by the latest number
+      for (const pp of pullPatterns) {
+        if (pp.source === numbers[0]) {
+          const target = pp.targets.find(t => t.num === n);
+          if (target && target.count >= 2) { s += Math.min(3, target.count * 0.8); r.push(`🧲 Puxada(${pp.source}→${n})`); }
+          if (getSector(n) === pp.dominantSector) { s += 1; r.push(`🧲 Setor puxado`); }
+        }
+      }
+      // TERMINAL PROGRESSION: predicted next terminal from escalation
+      if (terminalProgression.predictedNext !== null && n % 10 === terminalProgression.predictedNext) { s += 2.5; r.push(`🐎 Escada T${terminalProgression.predictedNext}`); }
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
