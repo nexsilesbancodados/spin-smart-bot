@@ -401,6 +401,7 @@ const Index = () => {
         autoLearnStatus={autoLearnStatus}
         onShowHistory={() => setShowPredHistory(!showPredHistory)}
         aiEnabled={aiEnabled} setAiEnabled={setAiEnabled}
+        strategyFilter={strategyFilter} setStrategyFilter={setStrategyFilter}
       />
 
       {/* ═══════ STATS BAR ═══════ */}
