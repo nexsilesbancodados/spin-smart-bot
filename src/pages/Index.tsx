@@ -6,14 +6,23 @@ import BotControls from '@/components/BotControls';
 import ProfitChart from '@/components/ProfitChart';
 import BetSuggestion from '@/components/BetSuggestion';
 import QuickNumberPad from '@/components/QuickNumberPad';
+import AnalysisFilter from '@/components/AnalysisFilter';
+import PremiumTable from '@/components/PremiumTable';
 import { CircleDot, Settings, ChevronDown } from 'lucide-react';
 
-const PROVIDERS = ['Playtech', 'Evolution', 'Pragmatic', 'Ezugi'];
-const TABLES: Record<string, string[]> = {
-  Playtech: ['Roleta Brasileira', 'Roleta Europeia', 'Speed Roulette', 'Quantum Roulette'],
-  Evolution: ['Lightning Roulette', 'Immersive Roulette', 'Brazilian Roulette', 'Auto Roulette'],
-  Pragmatic: ['Mega Roulette', 'PowerUp Roulette', 'Speed Roulette', 'Auto Roulette'],
-  Ezugi: ['Roulette Brasileira', 'European Roulette', 'Speed Roulette'],
+const PROVIDERS: Record<string, { label: string; tables: string[] }> = {
+  Playtech: {
+    label: 'Playtech',
+    tables: ['Roleta Brasileira', 'Mega Fire Blaze Roulette Live', 'Roulette'],
+  },
+  Evolution: {
+    label: 'Evolution',
+    tables: ['Roleta Immersiva', 'Roulette Evo', 'Roleta Relâmpago XXXtreme', 'Roleta ao Vivo'],
+  },
+  Pragmatic: {
+    label: 'Pragmatic',
+    tables: ['PowerUP Roulette', 'Roulette Macao', 'Brasileira Roleta'],
+  },
 };
 
 const INITIAL_BOT: BotState = {
@@ -36,6 +45,7 @@ const Index = () => {
   const [provider, setProvider] = useState('Playtech');
   const [table, setTable] = useState('Roleta Brasileira');
   const [showSettings, setShowSettings] = useState(false);
+  const [activeTab, setActiveTab] = useState<'roleta' | 'aulas' | 'bacbo'>('roleta');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fibIndex = useRef(0);
 
@@ -100,40 +110,41 @@ const Index = () => {
   const hotNumbers = getHotNumbers(history, 10);
 
   return (
-    <div className="min-h-screen bg-gradient-casino">
-      {/* Header */}
-      <header className="border-b border-border px-4 py-3">
+    <div className="min-h-screen bg-gradient-casino flex flex-col">
+      {/* Navbar */}
+      <nav className="bg-secondary border-b border-border px-4 py-2.5">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CircleDot className="w-6 h-6 text-primary animate-spin-slow" />
-            <h1 className="font-display text-base tracking-wider text-glow-green">ROULETTE PRO</h1>
+            <CircleDot className="w-5 h-5 text-primary animate-spin-slow" />
+            <span className="font-display text-sm tracking-wider text-glow-green">ANALISES PARA ROLETA</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${bot.isRunning ? 'bg-primary/10 text-primary border border-primary/30' : 'bg-secondary text-muted-foreground'}`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${bot.isRunning ? 'bg-primary animate-pulse-neon' : 'bg-muted-foreground'}`} />
-              {bot.isRunning ? 'ATIVO' : 'OFF'}
-            </div>
-            <button onClick={() => setShowSettings(!showSettings)} className="p-1.5 rounded-md bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+            <span className="text-xs text-muted-foreground px-2 py-0.5 bg-accent/20 rounded text-accent font-semibold">Free</span>
+            <button onClick={() => setShowSettings(!showSettings)} className="p-1.5 rounded-md bg-card text-muted-foreground hover:text-foreground transition-colors">
               <Settings className="w-4 h-4" />
             </button>
           </div>
         </div>
-      </header>
+      </nav>
 
-      <main className="max-w-2xl mx-auto p-4 space-y-3">
-        {/* Provider & Table Selectors — like the reference */}
+      {/* Main Content */}
+      <main className="flex-1 max-w-2xl mx-auto w-full p-3 space-y-3 pb-16">
+        {/* Provider & Table Selectors */}
         <div className="bg-card rounded-lg border border-border overflow-hidden">
           <div className="flex">
-            <div className="flex-1 relative">
+            <div className="flex-1 relative border-r border-border">
               <select
                 value={provider}
                 onChange={e => {
                   setProvider(e.target.value);
-                  setTable(TABLES[e.target.value][0]);
+                  setTable(PROVIDERS[e.target.value].tables[0]);
                 }}
-                className="w-full bg-card text-foreground text-sm font-semibold px-3 py-2.5 appearance-none cursor-pointer border-r border-border focus:outline-none"
+                className="w-full bg-card text-foreground text-sm font-semibold px-3 py-2.5 appearance-none cursor-pointer focus:outline-none"
               >
-                {PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
+                <option value="" disabled>Selecione Provedor</option>
+                {Object.entries(PROVIDERS).map(([key, p]) => (
+                  <option key={key} value={key}>{p.label}</option>
+                ))}
               </select>
               <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
@@ -143,32 +154,43 @@ const Index = () => {
                 onChange={e => setTable(e.target.value)}
                 className="w-full bg-card text-foreground text-sm font-semibold px-3 py-2.5 appearance-none cursor-pointer focus:outline-none"
               >
-                {(TABLES[provider] || []).map(t => <option key={t} value={t}>{t}</option>)}
+                {PROVIDERS[provider]?.tables.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
               </select>
               <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
           <div className="bg-primary text-center py-1.5 text-xs font-bold text-primary-foreground tracking-wide">
-            ⚡ {provider} • {table}
+            ⚡ {PROVIDERS[provider]?.label} • {table}
           </div>
         </div>
 
-        {/* Quick Number Pad — tap to add */}
+        {/* Premium Table */}
+        <PremiumTable history={history} />
+
+        {/* Analysis Filter */}
+        <AnalysisFilter history={history} />
+
+        {/* Quick Number Pad */}
         <QuickNumberPad onAddNumber={addNumber} />
 
         {/* Histórico Rodadas */}
         <NumberHistory history={history} />
 
-        {/* Números Puxados (hot numbers) */}
+        {/* Números Puxado */}
         <div className="bg-card rounded-lg p-4 border border-border">
           <h3 className="font-display text-sm text-foreground mb-3 tracking-wider text-center">Números Puxado</h3>
           <div className="flex flex-wrap gap-1.5 justify-center">
-            {hotNumbers.length > 0 ? hotNumbers.map(h => {
+            {hotNumbers.length > 0 && history.length > 0 ? hotNumbers.map(h => {
               const color = getNumberColor(h.number);
               const colorClass = color === 'red' ? 'bg-roulette-red' : color === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
               return (
-                <div key={h.number} className={`${colorClass} w-9 h-9 rounded-sm flex items-center justify-center text-xs font-bold text-foreground`}>
+                <div key={h.number} className={`${colorClass} w-9 h-9 rounded-sm flex items-center justify-center text-xs font-bold text-foreground relative`}>
                   {h.number}
+                  <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-[8px] rounded-full w-3.5 h-3.5 flex items-center justify-center font-bold">
+                    {h.freq}
+                  </span>
                 </div>
               );
             }) : (
@@ -183,7 +205,7 @@ const Index = () => {
         {/* Stats */}
         <StatsPanel history={history} />
 
-        {/* Settings Panel (collapsible) */}
+        {/* Settings Panel */}
         {showSettings && (
           <div className="space-y-3">
             <BotControls
@@ -197,6 +219,28 @@ const Index = () => {
           </div>
         )}
       </main>
+
+      {/* Footer Navigation */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-secondary border-t border-border">
+        <div className="max-w-2xl mx-auto flex justify-around">
+          {[
+            { id: 'aulas' as const, icon: '📚', label: 'Aulas' },
+            { id: 'roleta' as const, icon: '🎰', label: 'Roleta' },
+            { id: 'bacbo' as const, icon: '🎲', label: 'BacBo' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 flex flex-col items-center py-2 text-xs transition-colors ${
+                activeTab === tab.id ? 'text-primary' : 'text-muted-foreground'
+              }`}
+            >
+              <span className="text-lg">{tab.icon}</span>
+              <span className="font-medium">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      </footer>
     </div>
   );
 };
