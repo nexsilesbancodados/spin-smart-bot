@@ -720,21 +720,27 @@ Deno.serve(async (req) => {
     }).slice(0, 15);
 
     // ─── Salvar no banco ──────────────────────────────────────
-    const rows = topPatterns.map(p => ({
-      pattern_type: p.type,
-      description: `[${p.windows_found.join('/')}W | BT:${(p.bt*100).toFixed(0)}%] ${p.description}`,
-      confidence: Math.min(100, p.score),
-      numbers_involved: p.numbers.slice(0, 20),
-      recommendation: p.recommendation,
-      source_data: {
-        analyzed_numbers: allNums.slice(0, 10),
-        total_analyzed: allNums.length,
-        backtest_rate: p.bt,
-        windows_confirmed: p.windows_found,
-        score: p.score,
-        validated: true,
-      },
-    }));
+    const rows = topPatterns.map(p => {
+      // Confidence real = backtest × 60 + janelas_bonus × 5
+      const windowBonus = Math.min(5, p.windows_found.length) * 5;
+      const btBonus = Math.round(p.bt * 60);
+      const realConfidence = Math.min(90, Math.max(20, btBonus + windowBonus));
+      return {
+        pattern_type: p.type,
+        description: `[${p.windows_found.length}W BT:${(p.bt*100).toFixed(0)}%] ${p.description}`,
+        confidence: realConfidence,
+        numbers_involved: p.numbers.slice(0, 20),
+        recommendation: p.recommendation,
+        source_data: {
+          analyzed_numbers: allNums.slice(0, 10),
+          total_analyzed: allNums.length,
+          backtest_rate: p.bt,
+          windows_confirmed: p.windows_found,
+          score: p.score,
+          validated: true,
+        },
+      };
+    });
 
     await supabase.from("pattern_insights").insert(rows);
 
@@ -762,7 +768,7 @@ Deno.serve(async (req) => {
       const redetected = topPatterns.find(p => p.type === mem.pattern_type);
       if (redetected) {
         await supabase.from('pattern_insights')
-          .update({ confidence: Math.min(98, (mem.confidence || 50) + 3) })
+          .update({ confidence: Math.min(85, (mem.confidence || 50) + 3) })
           .eq('id', mem.id);
       }
     }
