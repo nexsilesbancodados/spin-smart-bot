@@ -613,6 +613,12 @@ Deno.serve(async (req) => {
       detectSequenceRepeat,
       detectPullPattern,
       detectHighLowAlternation,
+      detectDuplaDaniGreen,
+      detectZeroCritical,
+      detectEntropiaBaixa,
+      detectNearMissConsecutivo,
+      detectDuziaCiclo,
+      detectComboOuro,
     ];
 
     const detectedPatterns: PatternResult[] = [];
