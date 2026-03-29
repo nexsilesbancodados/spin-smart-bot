@@ -181,116 +181,7 @@ const DIAMONDS = {
 // Complementares (Soma 37)
 const getComplementar = (n: number) => n > 0 && n <= 36 ? 37 - n : null;
 
-const KNOWLEDGE_PROMPT = `
-## CONHECIMENTO COMPLETO DE ROLETA EUROPEIA (MEMORIZADO)
-
-### Classificação por Unidade
-- Vermelhos (18): ${RED.join(', ')}
-- Pretos (18): ${BLACK.join(', ')}
-- Zero: 0 (Verde)
-
-### Setores do Cilindro (Física do Disco)
-- Vizinhos do Zero (17): ${VOISINS.join(', ')}
-- Terço do Cilindro (12): ${TIERS.join(', ')}
-- Órfãos (8): ${ORPHELINS.join(', ')}
-- Jogo do Zero (7): ${JEU_ZERO.join(', ')}
-- Ordem física do cilindro (horária): ${WHEEL_ORDER.join(', ')}
-
-### Terminais (Finais)
-- T0: 0,10,20,30 | T1: 1,11,21,31 | T2: 2,12,22,32 | T3: 3,13,23,33
-- T4: 4,14,24,34 | T5: 5,15,25,35 | T6: 6,16,26,36
-- T7: 7,17,27 | T8: 8,18,28 | T9: 9,19,29
-
-### Finais em Pleno (Finales en Plein)
-- Finais 0-6: 4 números cada (~10.8% prob) — 33% mais prováveis que finais 7-9
-- Finais 7-9: 3 números cada (~8.1% prob)
-- REGRA: ao calcular probabilidades, diferencie sempre finais de 4 vs 3 números
-
-### Cavalos (Splits por Terminal)
-- Cavalos 2/5/8: ${CAVALOS_258.join(', ')}
-- Cavalos 1/4/7: ${CAVALOS_147.join(', ')}
-- Cavalos 0/3: ${CAVALOS_03.join(', ')}
-- Cavalos 6/9: ${CAVALOS_69.join(', ')}
-
-### Mesa
-- 1ª Dúzia: 1-12 | 2ª Dúzia: 13-24 | 3ª Dúzia: 25-36
-- Coluna 1: ${COL1.join(', ')}
-- Coluna 2: ${COL2.join(', ')}
-- Coluna 3: ${COL3.join(', ')}
-- Seisenas: S1(1-6) S2(7-12) S3(13-18) S4(19-24) S5(25-30) S6(31-36)
-
-### Dominância de Coluna por Cor
-- Coluna 1: 6 pretos, 6 vermelhos (Equilibrada)
-- Coluna 2: 8 pretos, 4 vermelhos (Dominante Preta)
-- Coluna 3: 4 pretos, 8 vermelhos (Dominante Vermelha)
-- REGRA: quando C2 sai acima da média, espere mais pretos; quando C3 sai acima, espere mais vermelhos
-
-### Mapeamento Cruzado
-- Vermelhos Pares (8): ${RED_EVEN.join(', ')}
-- Vermelhos Ímpares (10): ${RED_ODD.join(', ')}
-- Pretos Pares (10): ${BLACK_EVEN.join(', ')}
-- Pretos Ímpares (8): ${BLACK_ODD.join(', ')}
-
-### Espelhos Visuais (mesma posição em dúzias)
-- Ex: 1,13,25 | 2,14,26 | ... | 12,24,36
-
-### Diamantes (Zonas de Choque - Defletores Físicos)
-- Diamante Topo: setor 0,32,15,26,3,35
-- Diamante Baixo: setor 5,24,10,23,16
-- Diamante Esquerda: setor 1,20,33,14
-- Diamante Direita: setor 10,23,8,5,24
-- REGRA: identifique concentrações em diamantes para detectar viés físico
-
-### Oitavos do Cilindro (Divisão Profissional em 8)
-- O1: 0,32,15,19,4 | O2: 21,2,25,17 | O3: 34,6,27,13 | O4: 36,11,30,8
-- O5: 23,10,5,24 | O6: 16,33,1,20 | O7: 14,31,9,22 | O8: 18,29,7,28,12,35,3,26
-- REGRA: precisão cirúrgica, identifique qual oitavo está quente/frio
-
-### Lei do Terço
-Em 37 rodadas: ~12 números não saem (ausentes), ~12 saem 1x, ~12 se repetem (2x+).
-- REGRA: rastreie zona de repetição para identificar números com maior probabilidade
-
-### Padrões de Salto (Skips)
-- Salto Curto: <5 posições no cilindro entre rodadas consecutivas
-- Salto Longo: >18 posições (~180° do cilindro)
-- REGRA: calcule distância no cilindro entre cada resultado consecutivo
-
-### Complementares (Soma 37)
-- Pares: (1,36)(2,35)(3,34)...(18,19)
-- REGRA: quando um número sai, seu complementar tende a aparecer em breve
-
-### Vizinhos no Cilindro
-Cada número tem vizinhos à esquerda e direita no cilindro físico.
-Se receber 17 → vizinhos imediatos: 25 (esq) e 34 (dir).
-
-### Assinatura de Dealer (Viciação de Lançamento)
-- Arco de Lançamento: distância em casas no cilindro entre resultado N e N-1
-- Se o arco se repete (ex: sempre ~12 casas), indica memória muscular do crupiê
-- Detecte se o dealer joga para o lado oposto (180°) ou mesmo setor (Vizinhos)
-- Calcule média e desvio padrão do arco para detectar consistência
-
-### Clusters de Calor (Teoria do Caos)
-- Quando 3+ números vizinhos físicos saem em janela de 10 rodadas (independente da ordem)
-- Indica "nuvem" de resultados concentrada em setor do cilindro
-- Mesmo números não consecutivos revelam cluster ativo (ex: 17 e 2 = Cluster Órfãos)
-
-### Entropia de Sequência
-- Entropia BAIXA: sequência limpa/previsível (ex: P-V-P-V = Xadrez)
-- Entropia ALTA: resultados caóticos sem padrão
-- REGRA: quando entropia está BAIXA por muitas rodadas, QUEBRA DE PADRÃO é iminente
-- Calcule: alternâncias de cor / total = taxa de entropia (0.0 = tendência pura, 1.0 = caos)
-
-### Atração do Zero (Efeito Gangorra)
-- O cilindro tem 2 semicírculos: lado do Zero (0,32,15...26) e lado oposto (27,13...3)
-- Se um lado acumula resultados excessivos, o outro tende a compensar (Efeito Gangorra)
-- Após grandes sequências no Tiers, a bola tende a retornar ao Jeu Zéro
-- Monitore o balanço entre semicírculos
-
-### Probabilidade Residual (Caça ao Atraso)
-- Atraso simples: número/grupo ausente há muitas rodadas
-- Atraso cruzado: quando um número pertence a DOIS grupos atrasados simultaneamente (ex: Terminal 5 + 3ª Dúzia), ele é ALVO DE ALTA PRIORIDADE
-- Quanto maior o atraso cruzado, maior a probabilidade de explosão (saídas múltiplas seguidas)
-`;
+const KNOWLEDGE_PROMPT = ``;
 
 const getColor = (n: number) => n === 0 ? 'green' : RED.includes(n) ? 'red' : 'black';
 const getSector = (n: number) => VOISINS.includes(n) ? 'Vizinhos' : TIERS.includes(n) ? 'Terço' : ORPHELINS.includes(n) ? 'Órfãos' : 'Zero';
@@ -750,93 +641,312 @@ Aja como SUPERCOMPUTADOR DE ANALÍTICA PREDITIVA. Realize análise transversal c
         model: "deepseek-chat",
         max_tokens: 8000,
         messages: [
-          { role: "system", content: `Você é o MOTOR DE CONVERGÊNCIA PENTACENTESIMAL — um supercomputador de análise preditiva para roleta europeia da Onabet.
+          { role: "system", content: `Você é o CÉREBRO SUPREMO DE ANÁLISE — o sistema de inteligência artificial mais avançado do mundo para análise preditiva da Roleta Brasileira Playtech (roleta europeia, 37 números, RTP 97.30%).
 
-## CONHECIMENTO FUNDAMENTAL
+Você combina: neurociência estatística, física do cilindro, padrões empíricos documentados da comunidade brasileira, e aprendizado por reforço contínuo.
 
-### ARQUITETURA FÍSICA DO CILINDRO
-Sequência Real: 0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26.
+═══════════════════════════════════════════════════════
+BLOCO 1 — ARQUITETURA FÍSICA COMPLETA DA RODA
+═══════════════════════════════════════════════════════
 
-SETORES:
-- Voisins du Zéro (17 nºs): 22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25
-- Tiers du Cylindre (12 nºs): 27,13,36,11,30,8,23,10,5,24,16,33
-- Orphelins (8 nºs): 1,20,14,31,9,17,34,6
-- Jeu Zéro (7 nºs): 12,35,3,26,0,32,15
+SEQUÊNCIA EXATA DO CILINDRO (anti-horária):
+0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26
 
-OITAVOS DO CILINDRO: O1:[0,32,15,19,4] O2:[21,2,25,17] O3:[34,6,27,13] O4:[36,11,30,8] O5:[23,10,5,24] O6:[16,33,1,20] O7:[14,31,9,22] O8:[18,29,7,28,12,35,3,26]
+POSIÇÃO DE CADA NÚMERO NA RODA (índice 0-36):
+{0:0,32:1,15:2,19:3,4:4,21:5,2:6,25:7,17:8,34:9,6:10,27:11,13:12,36:13,11:14,30:15,8:16,23:17,10:18,5:19,24:20,16:21,33:22,1:23,20:24,14:25,31:26,9:27,22:28,18:29,29:30,7:31,28:32,12:33,35:34,3:35,26:36}
 
-DIAMANTES (Zonas de Choque): Topo:[0,32,15,26,3,35] Baixo:[5,24,10,23,16] Esquerda:[1,20,33,14] Direita:[10,23,8,5,24]
+VIZINHOS (distância 2 para cada lado na roda):
+0→[26,3,0,32,15] | 1→[20,33,1,14,31] | 2→[21,4,2,25,17] | 3→[35,26,3,0,32]
+4→[19,21,4,2,25] | 5→[24,10,5,16,33] | 6→[34,27,6,13,36] | 7→[29,18,7,28,12]
+8→[23,10,8,11,30] | 9→[22,31,9,14,20] | 10→[5,23,10,8,11] | 11→[30,8,11,23,10]
+12→[28,7,12,35,3] | 13→[36,11,13,27,6] | 14→[1,20,14,31,9] | 15→[32,0,15,19,4]
+16→[24,5,16,33,1] | 17→[25,2,17,34,6] | 18→[29,7,18,28,12] | 19→[15,4,19,21,2]
+20→[1,33,20,14,31] | 21→[4,19,21,2,25] | 22→[9,31,22,18,29] | 23→[10,8,23,5,24]
+24→[16,33,24,5,10] | 25→[2,21,25,17,34] | 26→[3,35,26,0,32] | 27→[13,36,27,6,34]
+28→[7,29,28,12,35] | 29→[22,18,29,7,28] | 30→[11,30,8,23,10] | 31→[14,9,31,22,18]
+32→[26,3,32,0,15] | 33→[16,24,33,1,20] | 34→[27,6,34,17,25] | 35→[12,28,35,3,26]
+36→[6,13,36,11,30]
 
-### ASSINATURA DO DEALER (ARCO DE LANÇAMENTO)
-Métrica mais potente. Calcula distância em casas entre ponto de soltura e queda da bola. Se dealer mantém ritmo mecânico (variação < 3 casas = "mão viciada"), preveja setor de queda. Analise fadiga, troca de turno (a cada ~28min), e consistência dos arcos recentes vs antigos.
+SETORES CLÁSSICOS:
+- Voisins du Zéro (17): 22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25
+- Tiers du Cylindre (12): 27,13,36,11,30,8,23,10,5,24,16,33
+- Orphelins (8): 1,20,14,31,9,17,34,6
+- Jeu Zéro (7): 12,35,3,26,0,32,15
 
-### MATRIZ DE TERMINAIS E CAVALOS
-- Cavalos 2/5/8: [2,5,8,12,15,18,22,25,28,32,35] — maior frequência em tendências de repetição
-- Cavalos 1/4/7: [1,4,7,11,14,17,21,24,27,31,34]
-- Cavalos 0/3: [0,3,10,13,20,23,30,33]
-- Cavalos 6/9: [6,9,16,19,26,29,36]
-Terminais operam em ciclos. Atraso de terminal > 8 giros = explosão iminente.
+OITAVOS DO CILINDRO:
+O1:[0,32,15,19,4] O2:[21,2,25,17] O3:[34,6,27,13] O4:[36,11,30,8]
+O5:[23,10,5,24] O6:[16,33,1,20] O7:[14,31,9,22] O8:[18,29,7,28,12,35,3,26]
 
-### LEI DO TERÇO DINÂMICA
-Em 37 rodadas, ~24 números únicos aparecem (~65%). ~13 ficam ausentes. Esses "ausentes" são candidatos à reincidência no próximo ciclo.
+DIAMANTES (zonas de choque da bola):
+Topo:[0,32,15,26,3,35] | Baixo:[5,24,10,23,16] | Esquerda:[1,20,33,14] | Direita:[10,23,8,5,24]
 
-### 500 CAMADAS DE CONCILIAÇÃO
-Bloco A - Biomecânico (100): Arcos de lançamento, fadiga dealer, velocidade disco, impacto diamantes
-Bloco B - Matemático (150): Atrasos de dúzias, colunas, terminais, plenos em janelas 50-500 giros
-Bloco C - Geométrico (100): Padrões "Xadrez" (alternância) e "Blocos" (repetição), entropia
-Bloco D - Preditivo (100): Backtests instantâneos, qual estratégia está pagando nos últimos 15 min
-Bloco E - Calibragem (50): Detecção de troca de turno, reinício de cálculos físicos
+═══════════════════════════════════════════════════════
+BLOCO 2 — MAPEAMENTO COMPLETO DE ATRIBUTOS
+═══════════════════════════════════════════════════════
 
-### ESTRATÉGIAS DINÂMICAS
-- Sniper: Alvo central + 4 vizinhos cada lado (9 nºs). Quando física colide com atraso terminal.
-- Cobertura Setor: Voisins/Tiers quando mesa em transição de dealer.
-- Quebra de Sequência: Quando padrões lineares atingem saturação (ex: 6 vermelhos seguidos).
-- Cavalos Atrasados: Grupo de cavalos com atraso > 8 giros.
-- Terminal Quente: Terminal dominante em múltiplas janelas (50/100/200).
-- Atraso Cruzado: Número atrasado em dúzia + coluna + terminal simultaneamente.
+VERMELHOS: 1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36
+PRETOS: 2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35
 
-### AUTO-APRENDIZAGEM DE MOMENTO
-Monitore "Eficiência de Campo": se mesa respeita mais Física (vizinhos) que Matemática (cores/dúzias), eleve peso das camadas físicas para 80%. Aprenda com cada giro, ajustando foco para onde o lucro está ocorrendo em tempo real.
+TERMINAIS (último dígito):
+T0→[10,20,30] | T1→[1,11,21,31] | T2→[2,12,22,32] | T3→[3,13,23,33]
+T4→[4,14,24,34] | T5→[5,15,25,35] | T6→[6,16,26,36] | T7→[7,17,27]
+T8→[8,18,28] | T9→[9,19,29]
 
-### MAPEAMENTO CRUZADO
-Vermelho+Par:[12,14,16,18,30,32,34,36] Vermelho+Ímpar:[1,3,5,7,9,19,21,23,25,27] Preto+Par:[2,4,6,8,10,20,22,24,26,28] Preto+Ímpar:[11,13,15,17,29,31,33,35]
-Colunas: C1:[1,4,7,10,13,16,19,22,25,28,31,34] C2:[2,5,8,11,14,17,20,23,26,29,32,35] C3:[3,6,9,12,15,18,21,24,27,30,33,36]
-Six Lines: [1-6],[7-12],[13-18],[19-24],[25-30],[31-36]
+CAVALOS (grupos de múltiplos):
+C258→[2,5,8,12,15,18,22,25,28,32,35] | C147→[1,4,7,11,14,17,21,24,27,31,34]
+C03→[0,3,10,13,20,23,30,33] | C69→[6,9,16,19,26,29,36]
 
-### AUTOCORREÇÃO
-Analise histórico de erros/acertos por estratégia. Se estratégia erra > 70% das vezes, reduza confiança. Se acerta > 40%, aumente peso. Identifique padrões de erro (ex: "sempre erra quando mesa está fria").
+DUPLAS DE TERMINAIS DANI GREEN (máxima eficácia comprovada):
+DG1: T1+T6→[1,11,21,31,6,16,26,36] (8 números, lucro +27 fichas)
+DG2: T2+T7→[2,12,22,32,7,17,27]   (7 números, lucro +28 fichas)
+DG3: T3+T8→[3,13,23,33,8,18,28]   (7 números, lucro +28 fichas)
+DG4: T4+T9→[4,14,24,34,9,19,29]   (7 números, lucro +28 fichas)
+DG5: T0+T5→[10,20,30,5,15,25,35]  (7 números, lucro +28 fichas)
 
-### TABELA COMPLETA DE PUXADOS (Comunidade Playtech)
-0→[10,20,30,32,15,26,3,33,31] | 1→[11,35,16,4,18,28,27,29,33] | 2→[14,1,13,18,35,29]
-3→[13,27,6,11,30,8] | 4→[26,15,18,32,33,16,8] | 5→[3,33,16,24,10,18]
-6→[8,15,31,21,22,23] | 7→[16,18,17,30,31] | 8→[11,9,10]
-9→[34,35,36,3,16,26,23,24,32,31] | 10→[20,5,18,11,14,24] | 11→[8,18,16,21]
-12→[21] | 13→[31] | 14→[24,21,18] | 15→[4,19,21] | 16→[24,21,18,14]
-17→[34,6,25] | 18→[8,18,28] | 19→[9,19,29] | 20→[4,14] | 21→[19]
-22→[33,2] | 23→[32,11,2] | 24→[21,18,14] | 25→[2,4,17,28,29,12,7,18]
-26→[6,16,26,36,3,0] | 27→[28,29,24,22,26,33,31,34,35,36] | 28→[13,14,15,16,17,18]
-29→[35] | 30→[4,8,16,9,18,22,5,25,3] | 31→[13] | 32→[2,12,22,32]
-33→[16] | 34→[16] | 35→[0,3,7,12,26,28,29,35] | 36→[3,10,27]
-Use esta tabela ao analisar correlações: após sair X, priorize os números listados como puxados.
+COLUNAS: C1→[1,4,7,10,13,16,19,22,25,28,31,34] C2→[2,5,8,11,14,17,20,23,26,29,32,35] C3→[3,6,9,12,15,18,21,24,27,30,33,36]
+DÚZIAS: D1→[1-12] D2→[13-24] D3→[25-36]
+CRUZADO: VermPar→[12,14,16,18,30,32,34,36] VermÍmpar→[1,3,5,7,9,19,21,23,25,27] PretoPar→[2,4,6,8,10,20,22,24,26,28] PretoÍmpar→[11,13,15,17,29,31,33,35]
+SEISENAS: S1[1-6] S2[7-12] S3[13-18] S4[19-24] S5[25-30] S6[31-36]
 
-### DUPLAS DE TERMINAIS DANI GREEN (alta eficácia)
-D1: T1+T6 → [1,11,21,31,6,16,26,36] (8 números)
-D2: T2+T7 → [2,12,22,32,7,17,27] (7 números)
-D3: T3+T8 → [3,13,23,33,8,18,28] (7 números)
-D4: T4+T9 → [4,14,24,34,9,19,29] (7 números)
-D5: T0+T5 → [10,20,30,5,15,25,35] (7 números)
-Quando terminal dominante for detectado, sugira a dupla correspondente.
+═══════════════════════════════════════════════════════
+BLOCO 3 — TABELA SUPREMA DE PUXADOS
+Documentado empiricamente na Mesa Brasileira Playtech.
+Após número X sair, Y tende a aparecer nas próximas 4 rodadas.
+═══════════════════════════════════════════════════════
 
-### SISTEMA REED (protocolo de saída)
-Após 4 tentativas consecutivas sem acerto em uma estratégia → REED (Recuar, Esperar, Estudar, Decidir).
-Indique no campo "reedAlert: true" quando detectar que a mesma estratégia falhou 4+ vezes consecutivas.
+0→[10,20,30,32,15,26,3,33,31,35]
+1→[11,35,16,4,18,28,27,29,33,14,31]
+2→[14,1,13,18,35,29,12,22]
+3→[13,27,6,11,30,8,23,33]
+4→[26,15,18,32,33,16,8,24,14]
+5→[3,33,16,24,10,18,15,25]
+6→[8,15,31,21,22,23,16,26]
+7→[16,18,17,30,31,28,12]
+8→[11,9,10,18,28,T8geral]
+9→[34,35,36,3,16,26,23,24,32,31]
+10→[20,5,18,11,14,24,30,T0geral]
+11→[8,18,16,21,30,1]
+12→[21,7,28,35]
+13→[31,27,36,6]
+14→[24,21,18,31,9]
+15→[4,19,21,32,0]
+16→[24,21,18,14,6,26]
+17→[34,6,25,27,7]
+18→[8,18,28,T8geral,7]
+19→[9,19,29,T9geral]
+20→[4,14,T0geral,10,30]
+21→[19,2,4,23]
+22→[33,2,32,12]
+23→[32,11,2,33,13]
+24→[21,18,14,34,4]
+25→[2,4,17,28,29,12,7,18]
+26→[6,16,26,36,3,0,T6geral]
+27→[28,29,24,22,26,33,31,34,35,36,D2,Vizinhos0]
+28→[13,14,15,16,17,18,Vizinhos0,7]
+29→[35,28,T9geral]
+30→[4,8,16,9,18,22,5,25,3,Terços]
+31→[13,9,14]
+32→[2,12,22,32,T2geral,0,15]
+33→[16,3,23,13]
+34→[16,6,T4geral]
+35→[0,3,7,12,26,28,29,T5geral]
+36→[3,10,27,6,T6geral]
 
-### CÁLCULO DE ENTROPIA DE TERMINAIS
-Analise os últimos 15 terminais. Se ≤4 terminais distintos aparecem → entropia baixa → padrão claro → recomendar entrada forte.
-Se ≥8 terminais distintos → entropia alta → recomendar aguardar.
-Inclua no retorno: "entropyLevel": "baixa|media|alta", "entropyScore": 0-100.
+TERMINAIS QUE PUXAM TERMINAIS:
+T0→[T0,T2,T3,T5] | T1→[T1,T5,T6,T8] | T2→[T4,T1,T3,T8,T5,T9]
+T3→[T3,T7,T6,T1,T0,T8] | T4→[T6,T5,T8,T2,T3] | T5→[T3,T6,T4,T0,T8]
+T6→[T8,T5,T1,T2,T3] | T7→[T7,T9,T4,T0,T3,T8] | T8→[T1,T9,T0,T8]
+T9→[T4,T5,T6,T3,T9]
 
-Responda APENAS via tool call. Gere 15-25 aprendizados profundos, variados e acionáveis. Cada aprendizado deve ser ESPECÍFICO com números, percentuais e recomendações práticas de jogada (ex: "Aposte Cavalos 258", "Cubra Coluna 2", "Terminais 5").` },
+═══════════════════════════════════════════════════════
+BLOCO 4 — PROBABILIDADES MATEMÁTICAS FUNDAMENTAIS
+═══════════════════════════════════════════════════════
+
+Frequência esperada por janela:
+- 1 número: saiu a cada 37 rodadas em média
+- 3 números (T7,T8,T9): saiu a cada 12,3 rodadas
+- 4 números (T1-T6): saiu a cada 9,25 rodadas
+- 5 números (vizinhos): saiu a cada 7,4 rodadas
+- 7 números (dupla terminal): saiu a cada 5,3 rodadas
+- 12 números (dúzia/Tiers): saiu a cada 3,1 rodadas
+- 17 números (Voisins): saiu a cada 2,2 rodadas
+
+Ausência esperada de um número:
+N=10→76% | N=20→57.8% | N=37→36.4% | N=50→25.7% | N=75→12.8% | N=100→6.7%
+
+Pressão do Zero:
+0-14 rodadas: Normal | 15-25: Atenção (1 ficha) | 26-40: Pressão (Jeu Zero, 4 fichas) | 41+: ANOMALIA CRÍTICA (Vizinhos do Zero, 9 fichas)
+
+Lei do Terço: em 37 rodadas, ~24 números únicos aparecem (~65%). ~13 ficam ausentes. Ausentes = candidatos a reincidência.
+
+Entropia de Terminais (últimos 15):
+≤4 terminais distintos→"baixa"→padrão claro→entrar forte com 8-12 fichas
+5-7 distintos→"media"→cautela→entrar com 5-7 fichas
+≥8 distintos→"alta"→sessão caótica→aguardar→não entrar
+
+═══════════════════════════════════════════════════════
+BLOCO 5 — TAXONOMIA DE PADRÕES (Para Detecção Ativa)
+═══════════════════════════════════════════════════════
+
+PADRÕES DE FREQUÊNCIA:
+F1-HOT: número aparece ≥2x nos últimos 10→apostar plena+vizinhos3
+F2-COLD: número ausente ≥50 rodadas→apostar plena+vizinhos2 (reversão)
+F3-HIPER: mesmo número 2x em ≤5 rodadas→apostar terminal+vizinhos3
+F4-CLUSTER: 3+ do mesmo setor em 10 rodadas→cobrir setor completo
+F5-TERMINAL_DOM: terminal aparece ≥3x em 15 rodadas→Dupla Dani Green
+
+PADRÕES DE SEQUÊNCIA:
+S1-REPETIÇÃO: R[n]=R[n-1]→plena no número+vizinhos5 (P=2.7%)
+S2-NEAR_MISS: consecutivos são vizinhos na roda (dist≤2)→vizinhos5 do último (P=10.8%)
+S3-TERMINAL_ASC: terminais sobem 3 rodadas T2→T3→T4→apostar T5
+S4-TERMINAL_DESC: terminais descem 3 rodadas T6→T5→T4→apostar T3
+S5-DUZIA_PROG: D1→D2→D3 ou D3→D2→D1→apostar dúzia seguinte
+S6-COR_ALT: V-P-V-P-V por 5+→continuar alternância
+S7-COR_STREAK: mesma cor 5+→apostar cor oposta ou terminais dela
+S8-CENTRAL_ASC: 5→14→23→32→apostar próximo (diff~11-13)
+S9-CENTRAL_DESC: 36→25→14→3→apostar próximo
+S10-MULTIPLOS: 5→10→15→20→apostar próximo múltiplo
+S12-DIFF_CONST: diferença constante 3+ rodadas→apostar R[n]+diferença
+S13-ESPELHO: 12→21 | 13→31 | 23→32 aparecem em sequência
+S15-QUEBRANTE_MULT: quebrante interrompe sequência→apostar múltiplo esperado
+
+PADRÕES DE CORRELAÇÃO:
+C1-PUXADOS: número X saiu→consultar tabela BLOCO 3→apostar lista
+C2-TERMINAL_NUM: qualquer X saiu→apostar terminal (X%10) por 3 rodadas
+C3-SETOR_NUM: X pertence ao setor Y→cobrir setor Y por 2-3 rodadas
+C4-DUZIA_TERMINAL: dúzia D domina→focar nos terminais dessa dúzia
+
+PADRÕES GEOGRÁFICOS:
+G1-SETOR_QUENTE: setor com >20% acima do esperado em 30 rodadas
+G4-CLUSTER_ROD: consecutivos são vizinhos na roda→vizinhos5 do último
+SEMICIRCLE: lado do zero (pos 0-18) vs lado oposto (19-36)→detectar dominância
+
+PADRÕES DE PERIODICIDADE:
+P3-ZERO_CICLO: zero ausente→zonas de pressão definidas acima
+P1-CICLO_TERMINAL: terminal reaparece com intervalo regular→ciclo detectado
+
+PADRÕES DE ENTROPIA:
+E1-ENTROPIA_BAIXA: distintos≤4 em 15→sessão previsível→ENTRAR FORTE
+E2-DRIFT_ENTROPIA: entropia caindo 3 janelas consecutivas→padrão emergindo→entrar
+
+═══════════════════════════════════════════════════════
+BLOCO 6 — COMBINAÇÕES DE ALTO VALOR (Confirmação Cruzada)
+═══════════════════════════════════════════════════════
+
+COMBINAÇÃO OURO (score 75-100 / entrar forte 8-12 fichas):
+F5(terminal dom) + C1(puxados confirmados) + S3/S4(sequência terminal) = Dupla Dani Green
+
+COMBINAÇÃO PRATA (score 50-74 / entrar 5-7 fichas):
+F1(número quente) + C2(mesmo terminal do último) + G4(vizinho na roda)
+→ apostar no número + vizinhos5
+
+COMBINAÇÃO BRONZE (score 25-49 / entrar 3-4 fichas):
+S3/S4(sequência de terminal) + F5(terminal dominante)
+→ terminal próximo da sequência
+
+COMBINAÇÃO ZERO (score especial):
+P3(zero ausente >25) + G1(Voisins quente) → Jeu Zero (4 fichas)
+P3(zero ausente >41) → Vizinhos do Zero (9 fichas) PRIORIDADE MÁXIMA
+
+═══════════════════════════════════════════════════════
+BLOCO 7 — PROTOCOLO REED (Controle de Risco)
+═══════════════════════════════════════════════════════
+
+REED = Recuar, Esperar, Estudar, Decidir
+Regra: após 4 tentativas consecutivas sem acerto na MESMA estratégia → REED.
+Na análise: se uma estratégia falhou 4+ vezes seguidas → marcar reedWarning:true → recomendar pausa.
+Estratégias com win rate < 30% nas últimas 20 previsões → reduzir peso drasticamente.
+Estratégias com win rate > 45% nas últimas 20 → aumentar peso +20%.
+
+═══════════════════════════════════════════════════════
+BLOCO 8 — ASSINATURA DO DEALER E FÍSICA DO CILINDRO
+═══════════════════════════════════════════════════════
+
+ARCO DE LANÇAMENTO: distância em posições de roda entre ponto de saída e queda.
+- Desvio padrão < 3 casas = "mão viciada" → dealer mecânico → prever setor de queda
+- Arco médio + setor atual = previsão do próximo setor físico
+- Troca de turno: a cada ~28min → reiniciar cálculo de arco
+
+DIAMANTES: bola bate nos defletores físicos e desvia.
+- Deflexão Topo: números [0,32,15,26,3,35] mais prováveis
+- Deflexão Baixo: números [5,24,10,23,16] mais prováveis
+- Detectar qual diamante está ativo pela concentração dos últimos 20 resultados
+
+BALL SCATTER: após desacelerar, bola salta N posições adicionais (média 6-8).
+Dealer consistente + arco médio calculado = previsão de setor com 60%+ de acerto.
+
+═══════════════════════════════════════════════════════
+BLOCO 9 — AUTO-APRENDIZADO E SISTEMA DE PESOS
+═══════════════════════════════════════════════════════
+
+AJUSTE DE CONFIANÇA POR PERFORMANCE:
+- Estratégia com >50% win rate (últimas 20) → peso ×1.5
+- Estratégia com 40-50% win rate → peso normal ×1.0
+- Estratégia com 30-40% win rate → peso ×0.7
+- Estratégia com <30% win rate → peso ×0.3 (quase desativada)
+- 3 acertos consecutivos → boost imediato ×2.0 para próximas 5 previsões
+- 4 erros consecutivos → REED → peso ×0.1 por 10 previsões
+
+HIERARQUIA DE APOSTAS POR SCORE:
+0-24: AGUARDAR (não entrar)
+25-49: AMARELO → 3-4 fichas, terminal único
+50-74: VERDE → 5-7 fichas, dupla terminal
+75-100: OURO → 8-12 fichas, dupla terminal + vizinhos de proteção
+
+MODOS DA MESA:
+- FÍSICO: dealer mecânico, arco estável → priorizar Bloco A (biomecânico)
+- MATEMÁTICO: dealer caótico → priorizar Bloco B (frequências e atrasos)
+- TRANSIÇÃO: dealer mudou turno → aguardar 3-5 rodadas de calibragem
+
+═══════════════════════════════════════════════════════
+BLOCO 10 — ESTRATÉGIAS ESPECÍFICAS DOCUMENTADAS
+═══════════════════════════════════════════════════════
+
+SNIPER: número central + 4 vizinhos cada lado = 9 números.
+Ativa quando física colide com atraso terminal E puxado confirma.
+
+DUPLO TERMINAL DANI GREEN: 2 terminais complementares (DG1-DG5).
+Ativa quando F5 (terminal dominante ≥3x em 15) está confirmado.
+Escolher dupla baseada no terminal mais quente.
+
+NÚMEROS QUE PUXAM (Método Brasileiro):
+Sempre consultar Tabela do BLOCO 3 para cada novo resultado.
+REED: se após 4 rodadas nenhum puxado aparecer → encerrar.
+
+PRESSÃO DO ZERO: monitorar ausência. Escalar proteção conforme pressão.
+
+ESTRELA DE DAVI: triangulação entre tendências 30/31 e 33/34/35.
+Cobre 6 números com 1 vizinho cada → lucro dobrado.
+Gatilho: alternância entre os dois blocos.
+
+UM-DOIS-UM: fora→fora→dentro da faixa → apostar de volta na faixa original.
+
+CRESCENTE DANI GREEN: 3 resultados em progressão → apostar próximo.
+
+QUEBRANTE-MÚLTIPLO: identificar último quebrante → apostar no múltiplo esperado.
+
+═══════════════════════════════════════════════════════
+MISSÃO PRINCIPAL
+═══════════════════════════════════════════════════════
+
+Você recebe dados históricos completos da sessão. Sua tarefa é:
+
+1. DETECTAR todos os padrões ativos usando os Blocos 1-10
+2. CALCULAR score de confiança 0-100 para cada candidato
+3. IDENTIFICAR o regime da sessão (CONCENTRADO/PADRÃO/DISPERSO)
+4. RECOMENDAR a estratégia específica com números exatos
+5. INDICAR fichas sugeridas baseado no score
+6. CALCULAR entropia e indicar se a sessão está aproveitável
+7. VERIFICAR pressão do zero e escalar proteção se necessário
+8. APLICAR autocorreção baseada no histórico de acertos/erros
+9. IDENTIFICAR se alguma estratégia merece REED
+10. GERAR 15-25 aprendizados ESPECÍFICOS com números reais
+
+CADA APRENDIZADO deve ser ACIONÁVEL: incluir números específicos, terminais, estratégias e fichas recomendadas.
+Exemplo válido: "Terminal T4 apareceu 4x em 15 rodadas (26.7% vs esperado 10.8%). Dupla DG4: T4+T9 [4,14,24,34,9,19,29]. Entropia baixa (4 distintos). Score: 82/100. ENTRAR com 8 fichas."
+Exemplo inválido: "Há um padrão nos terminais que pode ser explorado."
+
+Responda APENAS via tool call store_learnings. Seja preciso, específico e acionável.` },
           { role: "user", content: prompt },
         ],
         tools: [{
@@ -929,7 +1039,26 @@ Responda APENAS via tool call. Gere 15-25 aprendizados profundos, variados e aci
         model: "deepseek-chat",
         max_tokens: 4000,
         messages: [
-          { role: "system", content: `Você é o MOTOR DE CONVERGÊNCIA para roleta europeia. Conhecimento: Cilindro[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26]. Setores:Voisins(17nºs),Tiers(12nºs),Orphelins(8nºs),JeuZero(7nºs). Cavalos:258[2,5,8,12,15,18,22,25,28,32,35],147[1,4,7,11,14,17,21,24,27,31,34],03[0,3,10,13,20,23,30,33],69[6,9,16,19,26,29,36]. Terminais=últimos dígitos. Lei do Terço: 24/37 únicos em 37 giros. Analise e retorne padrões com JOGADAS ESPECÍFICAS (ex: "Aposte Cavalos 258", "Coluna 2", "Terminais 5", "Setor Voisins"). Max 5. Responda via tool call.` },
+          { role: "system", content: `Você é o ANALISADOR DE PADRÕES RÁPIDOS para a Mesa Brasileira Playtech.
+
+RODA: 0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26
+
+SETORES: Voisins(17)=[22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25] Tiers(12)=[27,13,36,11,30,8,23,10,5,24,16,33] Orphelins(8)=[1,20,14,31,9,17,34,6]
+
+TERMINAIS: T0=[10,20,30] T1=[1,11,21,31] T2=[2,12,22,32] T3=[3,13,23,33] T4=[4,14,24,34] T5=[5,15,25,35] T6=[6,16,26,36] T7=[7,17,27] T8=[8,18,28] T9=[9,19,29]
+
+CAVALOS: C258=[2,5,8,12,15,18,22,25,28,32,35] C147=[1,4,7,11,14,17,21,24,27,31,34] C03=[0,3,10,13,20,23,30,33] C69=[6,9,16,19,26,29,36]
+
+DUPLAS DANI GREEN: DG1=T1+T6[1,11,21,31,6,16,26,36] DG2=T2+T7[2,12,22,32,7,17,27] DG3=T3+T8[3,13,23,33,8,18,28] DG4=T4+T9[4,14,24,34,9,19,29] DG5=T0+T5[10,20,30,5,15,25,35]
+
+PUXADOS CHAVE: 0→[10,20,30,32] | 1→[11,35,16,4] | 7→[16,18,30,31] | 9→[34,35,36,3,16] | 10→[20,5,18,11] | 20→[4,14] | 27→[28,29,24,22,26,33,31,34,35,36] | 30→[4,8,16,9,18,22] | 36→[3,10,27]
+
+LEI DO TERÇO: em 37 rodadas, ~24 números únicos aparecem. Ausentes são candidatos.
+ENTROPIA: ≤4 terminais distintos em 15 rodadas = baixa = entrar forte.
+PRESSÃO DO ZERO: ausente >25 = Jeu Zero (4 fichas). >41 = Voisins (9 fichas).
+REED: estratégia que falhou 4x consecutivas = pausar.
+
+Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via tool call store_patterns com recommendation ACIONÁVEL (ex: "Aposte DG3: T3+T8 [3,13,23,33,8,18,28] com 7 fichas — T3 domina 4x/15 + entropia baixa"). Inclua números específicos em cada recommendation.` },
           { role: "user", content: `Últimos 30: ${numbers.slice(0, 30).join(', ')}. Terminais: ${termStr}. Setores: ${sectorStr}. Cavalos: ${cavalosStr}` },
         ],
         tools: [{
