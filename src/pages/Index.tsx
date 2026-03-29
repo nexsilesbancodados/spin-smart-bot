@@ -4,7 +4,7 @@ import {
   CircleDot, Activity, Shield, ShieldCheck, MonitorPlay,
   RefreshCw, Wifi, WifiOff, Brain, Sparkles, TrendingUp,
   Hash, Flame, Snowflake, Target, BarChart3, ChevronDown,
-  BookOpen, Zap, Clock, GraduationCap
+  BookOpen, Zap, Clock, GraduationCap, Crosshair, Eye, AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -61,6 +61,8 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<'insights' | 'knowledge'>('insights');
   const [showAllHistory, setShowAllHistory] = useState(false);
   const prevNumbersRef = useRef<string>('');
+  const [sniperData, setSniperData] = useState<any>(null);
+  const [sniperCountdown, setSniperCountdown] = useState(13);
 
   // Fetch from API
   const fetchNumbers = useCallback(async () => {
@@ -100,6 +102,32 @@ const Index = () => {
     const interval = setInterval(() => { fetchNumbers(); fetchStored(); }, 3000);
     return () => clearInterval(interval);
   }, [fetchNumbers, fetchStored, isPolling]);
+
+  // Sniper prediction - runs every time new numbers arrive
+  const fetchSniper = useCallback(async () => {
+    try {
+      const res = await supabase.functions.invoke('sniper-predict');
+      if (res.data) {
+        setSniperData(res.data);
+        setSniperCountdown(13);
+      }
+    } catch (err) { console.error('Sniper error:', err); }
+  }, []);
+
+  useEffect(() => {
+    fetchSniper();
+    if (!isPolling) return;
+    const interval = setInterval(fetchSniper, 3000);
+    return () => clearInterval(interval);
+  }, [fetchSniper, isPolling]);
+
+  // Countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSniperCountdown(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Load insights + learned
   const loadInsights = useCallback(async () => {
@@ -212,6 +240,108 @@ const Index = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto p-3 space-y-3">
 
+          {/* 🎯 SNIPER PANEL */}
+          {sniperData && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`rounded-xl border p-4 transition-all ${
+                sniperData.mode === 'sniper'
+                  ? 'bg-gradient-to-r from-primary/30 via-yellow-500/10 to-primary/20 border-primary shadow-lg shadow-primary/20'
+                  : sniperData.mode === 'alert'
+                  ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/10 border-yellow-500/50'
+                  : sniperData.mode === 'observing'
+                  ? 'bg-gradient-to-r from-orange-500/10 to-destructive/10 border-orange-500/30'
+                  : 'bg-card border-border'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                {sniperData.mode === 'sniper' ? (
+                  <Crosshair className="w-5 h-5 text-primary animate-pulse" />
+                ) : sniperData.mode === 'alert' ? (
+                  <AlertTriangle className="w-5 h-5 text-yellow-400" />
+                ) : sniperData.mode === 'observing' ? (
+                  <Eye className="w-5 h-5 text-orange-400" />
+                ) : (
+                  <Eye className="w-5 h-5 text-muted-foreground" />
+                )}
+                <span className="font-display text-xs tracking-[0.2em] font-bold text-primary">SNIPER IA</span>
+                <div className="ml-auto flex items-center gap-2">
+                  {sniperData.entropy && (
+                    <span className="text-[8px] font-mono text-muted-foreground">Entropia: {sniperData.entropy}</span>
+                  )}
+                  {sniperData.dealerMode && (
+                    <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${
+                      sniperData.dealerMode === 'curto' ? 'bg-blue-500/20 text-blue-400' : sniperData.dealerMode === 'longo' ? 'bg-purple-500/20 text-purple-400' : 'bg-secondary text-muted-foreground'
+                    }`}>Dealer: {sniperData.dealerMode}</span>
+                  )}
+                  <div className={`flex items-center gap-1 px-2 py-1 rounded-lg font-mono text-xs font-bold ${
+                    sniperCountdown <= 3 ? 'bg-destructive/20 text-destructive animate-pulse' : sniperCountdown <= 7 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-secondary text-muted-foreground'
+                  }`}>
+                    <Clock className="w-3 h-3" />
+                    {sniperCountdown}s
+                  </div>
+                </div>
+              </div>
+
+              {sniperData.signal ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold shadow-lg border-2 ${
+                      sniperData.mode === 'sniper' ? 'bg-primary text-primary-foreground border-primary/50 ring-2 ring-primary/30 animate-pulse' : 'bg-yellow-500 text-black border-yellow-400'
+                    }`}>
+                      {sniperData.signal.number}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`text-sm font-bold ${sniperData.mode === 'sniper' ? 'text-primary' : 'text-yellow-400'}`}>
+                        {sniperData.message}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[9px] text-muted-foreground">Vizinhos:</span>
+                        <div className="flex gap-1">
+                          {sniperData.signal.neighbors.map((n: number, i: number) => (
+                            <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold border ${colorClass(n)} border-white/20`}>
+                              {n}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-2xl font-bold font-mono ${sniperData.signal.probability >= 85 ? 'text-primary' : 'text-yellow-400'}`}>
+                        {sniperData.signal.probability}%
+                      </div>
+                      <span className="text-[8px] text-muted-foreground">probabilidade</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {sniperData.signal.convergenceReasons?.map((r: string, i: number) => (
+                      <span key={i} className="text-[7px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-semibold">{r}</span>
+                    ))}
+                  </div>
+                  {sniperData.topCandidates && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className="text-[8px] text-muted-foreground">Top 5:</span>
+                      {sniperData.topCandidates.slice(0, 5).map((c: any, i: number) => (
+                        <span key={i} className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${i === 0 ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'}`}>
+                          {c.num} ({c.score})
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className={`text-sm font-semibold ${sniperData.mode === 'observing' ? 'text-orange-400' : 'text-muted-foreground'}`}>
+                    {sniperData.message}
+                  </p>
+                  {sniperData.convergenceScore !== undefined && (
+                    <span className="text-[8px] font-mono text-muted-foreground ml-auto">Score: {sniperData.convergenceScore}</span>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          )}
           {/* MONITORAMENTO */}
           <motion.div className={`rounded-xl border p-4 transition-all ${
             isCavaloEntry ? 'bg-gradient-to-r from-primary/20 to-yellow-500/10 border-primary/50 shadow-lg shadow-primary/10' : 'bg-card border-border'
