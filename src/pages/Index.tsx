@@ -114,6 +114,29 @@ const Index = () => {
 
   useEffect(() => { loadInsights(); loadLearned(); }, [loadInsights, loadLearned]);
 
+  // Auto-learn every 5 minutes
+  const autoLearnRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    const runAutoLearn = async () => {
+      try {
+        console.log('[AutoLearn] Iniciando aprendizado automático...');
+        await supabase.functions.invoke('ai-learn');
+        await Promise.all([loadInsights(), loadLearned()]);
+        console.log('[AutoLearn] Concluído.');
+      } catch (err) { console.error('[AutoLearn] Erro:', err); }
+    };
+
+    // First learn after 30s
+    const initialTimeout = setTimeout(runAutoLearn, 30_000);
+    // Then every 5 minutes
+    autoLearnRef.current = setInterval(runAutoLearn, 5 * 60 * 1000);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      if (autoLearnRef.current) clearInterval(autoLearnRef.current);
+    };
+  }, [loadInsights, loadLearned]);
+
   useEffect(() => {
     const ch1 = supabase.channel('insights_rt').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pattern_insights' }, () => loadInsights()).subscribe();
     const ch2 = supabase.channel('learned_rt').on('postgres_changes', { event: '*', schema: 'public', table: 'ai_learned_patterns' }, () => loadLearned()).subscribe();
