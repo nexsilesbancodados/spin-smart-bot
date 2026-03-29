@@ -882,6 +882,33 @@ serve(async (req) => {
             hit_type: hitType,
             resolved_at: resolvedAt,
           }).eq('id', pred.id).is('hit', null);
+
+          // Atualizar strategy_stats com acerto/erro
+          try {
+            const predStratType = pred.strategy_type || 'unknown';
+            const { data: ss } = await supabase
+              .from('strategy_stats')
+              .select('*')
+              .eq('strategy_type', predStratType)
+              .maybeSingle();
+
+            if (ss) {
+              const newHits = (ss as any).total_hits + (isHit ? 1 : 0);
+              const newStreak = isHit ? ((ss as any).current_streak || 0) + 1 : 0;
+              const newBest = Math.max((ss as any).best_streak || 0, newStreak);
+              await supabase.from('strategy_stats').update({
+                total_hits: newHits,
+                win_rate: newHits / (ss as any).total_predictions,
+                current_streak: newStreak,
+                best_streak: newBest,
+                exact_hits: (ss as any).exact_hits + (hitType === 'exact' ? 1 : 0),
+                neighbor_hits: (ss as any).neighbor_hits + (hitType === 'neighbor' ? 1 : 0),
+                last_hit_at: isHit ? new Date().toISOString() : (ss as any).last_hit_at,
+                last_miss_at: !isHit ? new Date().toISOString() : (ss as any).last_miss_at,
+                updated_at: new Date().toISOString(),
+              }).eq('strategy_type', predStratType);
+            }
+          } catch { /* ignore */ }
         }
       }
     } else if (unresolved.length === 0) {
