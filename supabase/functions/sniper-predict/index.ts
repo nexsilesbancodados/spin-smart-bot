@@ -2019,8 +2019,8 @@ serve(async (req) => {
       aiLearnings.push(`🔑 Assinatura terminal: T${mesaDNA.terminalSignature.join(',T')} consistentes`);
     }
 
-    const mode = totalLayers >= 840 && finalProbability >= 88 ? 'sniper'
-      : totalLayers >= 740 && finalProbability >= 80 ? 'alert'
+    const mode = totalLayers >= 920 && finalProbability >= 88 ? 'sniper'
+      : totalLayers >= 810 && finalProbability >= 80 ? 'alert'
       : 'monitoring';
 
     const message = mode === 'sniper'
