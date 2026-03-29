@@ -92,6 +92,10 @@ const Index = () => {
   const [showCasino, setShowCasino] = useState(false);
   const [predStats, setPredStats] = useState<{ hits: number; misses: number; exact: number; total: number }>({ hits: 0, misses: 0, exact: 0, total: 0 });
 
+  // === HISTORY INTERACTIVE STATES ===
+  const [historyLimit, setHistoryLimit] = useState(100);
+  const [selectedNum, setSelectedNum] = useState<number | null>(null);
+
   // Fetch from API
   const fetchNumbers = useCallback(async () => {
     try {
