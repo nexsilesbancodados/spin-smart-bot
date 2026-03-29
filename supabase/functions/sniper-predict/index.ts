@@ -3207,11 +3207,100 @@ serve(async (req) => {
     // ========================================================
     // BASE RESPONSE
     // ========================================================
+    // Add advanced analyses to detectedPatterns
+    // Momentum patterns
+    for (const [cat, mom] of Object.entries(sectorMomentum)) {
+      if (mom.trend === 'rising' && mom.momentum > 0.2) {
+        transitionMatrix.detectedPatterns.push({
+          name: `Momentum ${cat} Subindo`, emoji: '📈', confidence: Math.min(85, 55 + Math.round(mom.momentum * 100)),
+          description: `Setor ${cat} com momentum crescente (${(mom.momentum * 100).toFixed(0)}%). Tendência de continuação.`,
+          category: 'momentum', action: `Aposte no setor ${cat}`,
+        });
+      }
+    }
+    for (const [cat, mom] of Object.entries(dozenMomentum)) {
+      if (mom.trend === 'rising' && mom.momentum > 0.15 && cat) {
+        transitionMatrix.detectedPatterns.push({
+          name: `Momentum ${cat} Subindo`, emoji: '📊', confidence: Math.min(82, 50 + Math.round(mom.momentum * 100)),
+          description: `${cat} com momentum crescente. Frequência aumentando nas últimas rodadas.`,
+          category: 'momentum', action: `Aposte em ${cat}`,
+        });
+      }
+    }
+    // Volatility pattern
+    if (volatility.level === 'baixa') {
+      transitionMatrix.detectedPatterns.push({
+        name: `Volatilidade Baixa (${volatility.score})`, emoji: '🧊', confidence: 80,
+        description: `Sessão estável com volatilidade ${volatility.score}/100. Padrões são mais confiáveis.`,
+        category: 'volatilidade', action: 'Momento ideal — padrões são confiáveis',
+      });
+    } else if (volatility.level === 'extrema') {
+      transitionMatrix.detectedPatterns.push({
+        name: `Volatilidade Extrema (${volatility.score})`, emoji: '🌋', confidence: 70,
+        description: `Sessão muito instável. Arcos (±${volatility.arcVolatility}) e categorias (${volatility.categoryVolatility}%) variando muito.`,
+        category: 'volatilidade', action: 'CUIDADO — reduzir apostas ou aguardar',
+      });
+    }
+    // Breakout patterns
+    for (const bo of breakoutsDetected) {
+      transitionMatrix.detectedPatterns.push({
+        name: `Quebra: ${bo.type.replace('_', ' ')}`, emoji: '🔀', confidence: bo.confidence,
+        description: bo.description, category: 'breakout', action: 'Padrão anterior quebrou — nova tendência emergindo',
+      });
+    }
+    // Bayesian predictions
+    if (bayesSector.predicted && bayesSector.probability >= 40) {
+      transitionMatrix.detectedPatterns.push({
+        name: `Bayes: Setor ${bayesSector.predicted} (${bayesSector.probability}%)`, emoji: '🧮', confidence: bayesSector.probability,
+        description: `Probabilidade condicional Bayesiana aponta para setor ${bayesSector.predicted} com ${bayesSector.probability}% baseado em transições históricas.`,
+        category: 'bayesian', action: `Aposte no setor ${bayesSector.predicted}`,
+      });
+    }
+    if (bayesColor.predicted && bayesColor.probability >= 50 && bayesColor.predicted !== 'green') {
+      transitionMatrix.detectedPatterns.push({
+        name: `Bayes: ${bayesColor.predicted === 'red' ? 'Vermelho' : 'Preto'} (${bayesColor.probability}%)`, emoji: '🧮', confidence: bayesColor.probability,
+        description: `Análise Bayesiana de cor: ${bayesColor.predicted === 'red' ? 'Vermelho' : 'Preto'} com ${bayesColor.probability}% de probabilidade condicional.`,
+        category: 'bayesian', action: `Aposte em ${bayesColor.predicted === 'red' ? 'Vermelho' : 'Preto'}`,
+      });
+    }
+    // Wheel zone momentum
+    if (wheelZones.length > 0 && wheelZones[0].momentum > 3) {
+      transitionMatrix.detectedPatterns.push({
+        name: `Zona Quente: ${wheelZones[0].label}`, emoji: '🎰', confidence: Math.min(85, 50 + Math.round(wheelZones[0].momentum * 5)),
+        description: `${wheelZones[0].label} é a zona mais ativa do cilindro. Momentum: ${wheelZones[0].momentum}.`,
+        category: 'zona', action: `Cubra números da ${wheelZones[0].label}`,
+      });
+    }
+    // Fibonacci gaps
+    if (fibGaps.length >= 3) {
+      transitionMatrix.detectedPatterns.push({
+        name: `${fibGaps.length} Números em Intervalo Fibonacci`, emoji: '🔢', confidence: 65,
+        description: `Números ${fibGaps.slice(0, 4).map(f => f.number).join(', ')} estão em intervalos Fibonacci de ausência (${fibGaps.slice(0, 4).map(f => f.fibonacci + 'r').join(', ')}).`,
+        category: 'fibonacci', action: `Aposte nos números: ${fibGaps.slice(0, 4).map(f => f.number).join(', ')}`,
+      });
+    }
+    // Sort all detected patterns by confidence
+    transitionMatrix.detectedPatterns.sort((a, b) => b.confidence - a.confidence);
+
+    // AI learnings for advanced analyses
+    if (volatility.level !== 'média') aiLearnings.push(`📊 Volatilidade: ${volatility.level} (${volatility.score}/100) — Arco ±${volatility.arcVolatility}`);
+    if (breakoutsDetected.length > 0) aiLearnings.push(`🔀 ${breakoutsDetected.length} QUEBRA(S) DE PADRÃO detectada(s)`);
+    if (wheelZones[0]?.momentum > 4) aiLearnings.push(`🎰 Zona quente no cilindro: ${wheelZones[0].label} (mom.${wheelZones[0].momentum})`);
+    if (bayesSector.probability >= 50) aiLearnings.push(`🧮 Bayes: ${bayesSector.predicted} (${bayesSector.probability}%)`);
+
     const baseResponse = {
       entropy: entropy.toFixed(3), dealerMode, dealerSignature,
       hotTerminals: { cavalos: sortedCavalos, terminals: sortedTerminals.slice(0, 5) },
       sectorTrend, sectorFreq, convergenceScore: totalLayers, reasons, layerResults,
       ritmoCalibration, transitionMatrix,
+      advancedAnalysis: {
+        volatility,
+        momentum: { sector: sectorMomentum, dozen: dozenMomentum, color: colorMomentum, parity: parityMomentum, highLow: highLowMomentum },
+        bayesian: { sector: { predicted: bayesSector.predicted, probability: bayesSector.probability }, dozen: { predicted: bayesDozen.predicted, probability: bayesDozen.probability }, color: { predicted: bayesColor.predicted, probability: bayesColor.probability }, highLow: { predicted: bayesHighLow.predicted, probability: bayesHighLow.probability }, parity: { predicted: bayesParity.predicted, probability: bayesParity.probability } },
+        wheelZones: wheelZones.slice(0, 3),
+        fibonacciGaps: fibGaps.slice(0, 5),
+        breakouts: breakoutsDetected,
+      },
     };
 
     // Dealer change: don't block prediction, just add a warning
