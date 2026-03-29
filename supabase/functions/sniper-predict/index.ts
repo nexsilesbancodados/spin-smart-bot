@@ -791,7 +791,7 @@ serve(async (req) => {
     const olderArcs = arcs.slice(10, 20);
     const recentArcMean = recentArcs.length > 0 ? recentArcs.reduce((a, b) => a + b, 0) / recentArcs.length : 0;
     const olderArcMean = olderArcs.length > 0 ? olderArcs.reduce((a, b) => a + b, 0) / olderArcs.length : 0;
-    const dealerChanged = olderArcs.length >= 5 && Math.abs(recentArcMean - olderArcMean) > 5;
+    const dealerChanged = olderArcs.length >= 8 && Math.abs(recentArcMean - olderArcMean) > 9;
     const shortArcs = recentArcs.filter(a => a < 6).length;
     const longArcs = recentArcs.filter(a => a > 14).length;
     const dealerMode = shortArcs > longArcs * 1.5 ? 'curto' : longArcs > shortArcs * 1.5 ? 'longo' : 'misto';
@@ -2484,8 +2484,9 @@ serve(async (req) => {
       ritmoCalibration, transitionMatrix,
     };
 
+    // Dealer change: don't block prediction, just add a warning
     if (dealerChanged) {
-      return json({ signal: null, mode: 'recalibrating', message: '🔄 Novo Dealer: Recalibrando...', ...baseResponse, memoryWindows, aiLearnings, randomnessIndex, kellyBetting, dealerBiometrics, diamondDeflection: diamondDeflection.slice(0, 4), deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
+      aiLearnings.push('⚠️ Possível troca de dealer detectada — arco mudou significativamente');
     }
 
     // CHAOS AUTO-CALIBRATION: If dealer is chaotic AND dispersing wildly, pause signals
