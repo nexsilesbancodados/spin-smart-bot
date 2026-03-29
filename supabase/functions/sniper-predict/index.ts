@@ -1659,6 +1659,22 @@ serve(async (req) => {
       }
       // TERMINAL PROGRESSION: predicted next terminal from escalation
       if (terminalProgression.predictedNext !== null && n % 10 === terminalProgression.predictedNext) { s += 2.5; r.push(`🐎 Escada T${terminalProgression.predictedNext}`); }
+      // DIAMOND DEFLECTORS: if current diamond zone predicts a sector, boost numbers in that sector
+      if (numbers.length >= 2) {
+        const dfFromIdx = wheelIdx(numbers[0]);
+        const dfToIdx = wheelIdx(numbers[1]);
+        if (dfFromIdx !== -1 && dfToIdx !== -1) {
+          const dfMid = Math.floor((dfToIdx + dfFromIdx) / 2) % WL;
+          const dfZone = Math.floor(dfMid / Math.floor(WL / 8)) % 8;
+          const df = diamondDeflection.find(d => d.zone === dfZone + 1);
+          if (df && df.deflectionRate > 0.55 && getSector(n) === df.targetSector) { s += 2; r.push(`💎 Diamante→${df.targetSector.slice(0, 4)}`); }
+        }
+      }
+      // NOISE FILTER: penalize if mesa is unstable
+      if (randomnessIndex.overall >= 75) { s -= 2; }
+      else if (randomnessIndex.overall >= 50) { s -= 1; }
+      // DEALER BIOMETRICS: bonus if dealer is mechanical
+      if (dealerBiometrics.profileType === 'mecânico') { s += 1; r.push('🎭 Dealer mecânico'); }
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
