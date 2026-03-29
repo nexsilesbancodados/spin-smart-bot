@@ -399,6 +399,7 @@ const Index = () => {
         lastUpdate={lastUpdate} fetchNumbers={fetchNumbers} fetchStored={fetchStored}
         autoLearnStatus={autoLearnStatus}
         onShowHistory={() => setShowPredHistory(!showPredHistory)}
+        aiEnabled={aiEnabled} setAiEnabled={setAiEnabled}
       />
 
       {/* ═══════ STATS BAR ═══════ */}
