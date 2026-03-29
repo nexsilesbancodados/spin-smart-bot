@@ -4,9 +4,12 @@ import {
 } from 'lucide-react';
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-const colorClass = (n: number) => {
-  if (n === 0) return 'bg-green-600 text-white ring-green-400/40';
-  return RED_NUMBERS.includes(n) ? 'bg-red-600 text-white ring-red-400/30' : 'bg-zinc-800 text-white ring-zinc-500/30';
+const PROTECTION_NUMBERS = [0, 26, 32];
+const colorClass = (n: number, isProtection = false) => {
+  const base = n === 0 ? 'bg-green-600 text-white ring-green-400/40' 
+    : RED_NUMBERS.includes(n) ? 'bg-red-600 text-white ring-red-400/30' 
+    : 'bg-zinc-800 text-white ring-zinc-500/30';
+  return isProtection ? `${base} ring-2 ring-yellow-400/70` : base;
 };
 
 interface Props {
@@ -176,15 +179,24 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
             <div>
               <span className="text-[9px] text-muted-foreground font-bold block mb-2 tracking-wide">🎯 NÚMEROS COBERTOS:</span>
               <div className="flex flex-wrap gap-1.5">
-                {sniperData.strategy.numbers.slice(0, 18).map((n: number, i: number) => (
-                  <div key={i} className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ring-1 transition-transform hover:scale-110 ${
-                    i === 0 && sniperData.strategy.type === 'sniper'
-                      ? 'bg-primary text-primary-foreground ring-primary/50 ring-2 animate-pulse shadow-lg shadow-primary/30'
-                      : colorClass(n)
-                  }`}>
-                    {n}
-                  </div>
-                ))}
+                {sniperData.strategy.numbers.slice(0, 18).map((n: number, i: number) => {
+                  const isProt = PROTECTION_NUMBERS.includes(n);
+                  return (
+                    <div key={i} className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ring-1 transition-transform hover:scale-110 relative ${
+                      i === 0 && sniperData.strategy.type === 'sniper'
+                        ? 'bg-primary text-primary-foreground ring-primary/50 ring-2 animate-pulse shadow-lg shadow-primary/30'
+                        : colorClass(n, isProt)
+                    }`}>
+                      {n}
+                      {isProt && <span className="absolute -top-1 -right-1 text-[7px]">🛡️</span>}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Protection legend */}
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className="text-[8px]">🛡️</span>
+                <span className="text-[8px] text-yellow-400/80 font-semibold">Proteção fixa: 0, 26, 32 (sempre marcados)</span>
               </div>
             </div>
 
