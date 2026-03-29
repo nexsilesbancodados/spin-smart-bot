@@ -582,7 +582,7 @@ const Index = () => {
                             {sniperData.layerResults && (
                               <>
                                 <span>•</span>
-                                <span>{sniperData.layerResults.total}/500 camadas</span>
+                                <span>{sniperData.layerResults.total}/{sniperData.layerResults.max || 1000} camadas</span>
                               </>
                             )}
                           </div>
@@ -638,7 +638,7 @@ const Index = () => {
                         {sniperData.message}
                       </p>
                       {sniperData.convergenceScore !== undefined && (
-                        <span className="text-[8px] font-mono text-muted-foreground ml-auto">Camadas: {sniperData.convergenceScore}/500</span>
+                        <span className="text-[8px] font-mono text-muted-foreground ml-auto">Camadas: {sniperData.convergenceScore}/{sniperData.layerResults?.max || 1000}</span>
                       )}
                     </div>
                   )}
