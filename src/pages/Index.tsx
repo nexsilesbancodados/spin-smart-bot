@@ -421,6 +421,9 @@ const Index = () => {
             </motion.div>
           )}
 
+          {/* 💰 CENTRAL DE APOSTAS */}
+          <BetPanel sniperData={sniperData} allNumbers={allNumbers} />
+
           {/* 🎯 DEALER + TERMINALS + SECTOR ROW */}
           {sniperData && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
