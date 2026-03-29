@@ -8,7 +8,7 @@ import BetSuggestion from '@/components/BetSuggestion';
 import QuickNumberPad from '@/components/QuickNumberPad';
 import AnalysisFilter from '@/components/AnalysisFilter';
 import PremiumTable from '@/components/PremiumTable';
-import { CircleDot, Settings, ChevronDown } from 'lucide-react';
+import { CircleDot, Settings, ChevronDown, ClipboardPaste, X } from 'lucide-react';
 
 const PROVIDERS: Record<string, { label: string; tables: string[] }> = {
   Playtech: {
@@ -45,6 +45,8 @@ const Index = () => {
   const [provider, setProvider] = useState('Playtech');
   const [table, setTable] = useState('Roleta Brasileira');
   const [showSettings, setShowSettings] = useState(false);
+  const [showPasteHistory, setShowPasteHistory] = useState(false);
+  const [pasteText, setPasteText] = useState('');
   const [activeTab, setActiveTab] = useState<'roleta' | 'aulas' | 'bacbo'>('roleta');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fibIndex = useRef(0);
@@ -107,6 +109,26 @@ const Index = () => {
 
   useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
 
+  const importPastedNumbers = () => {
+    // Extract all numbers from pasted text (supports comma, space, newline, dash separators)
+    const numbers = pasteText.match(/\d+/g);
+    if (!numbers) return;
+    
+    // Parse and filter valid roulette numbers (0-36), reverse so oldest first
+    const validNumbers = numbers
+      .map(n => parseInt(n))
+      .filter(n => !isNaN(n) && n >= 0 && n <= 36);
+    
+    if (validNumbers.length === 0) return;
+    
+    // Add numbers in reverse order (last pasted = most recent)
+    const reversed = [...validNumbers].reverse();
+    reversed.forEach(n => addNumber(n));
+    
+    setPasteText('');
+    setShowPasteHistory(false);
+  };
+
   const hotNumbers = getHotNumbers(history, 10);
 
   return (
@@ -164,6 +186,56 @@ const Index = () => {
           <div className="bg-primary text-center py-1.5 text-xs font-bold text-primary-foreground tracking-wide">
             ⚡ {PROVIDERS[provider]?.label} • {table}
           </div>
+        </div>
+
+        {/* Colar Histórico */}
+        <div className="bg-card rounded-lg border border-border overflow-hidden">
+          <button
+            onClick={() => setShowPasteHistory(!showPasteHistory)}
+            className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-secondary/50 transition-colors"
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <ClipboardPaste className="w-4 h-4 text-primary" />
+              📋 Colar Histórico do Casino
+            </span>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showPasteHistory ? 'rotate-180' : ''}`} />
+          </button>
+          
+          {showPasteHistory && (
+            <div className="p-3 border-t border-border space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Copie os números do histórico da roleta no casino e cole aqui. Aceita qualquer formato: 
+                <span className="text-primary font-medium"> 32, 15, 0, 26, 3</span> ou 
+                <span className="text-primary font-medium"> 32 15 0 26 3</span>
+              </p>
+              <textarea
+                value={pasteText}
+                onChange={e => setPasteText(e.target.value)}
+                placeholder="Cole os números aqui... Ex: 32, 15, 0, 26, 3, 35, 12, 28, 7, 29, 18, 22, 9, 31, 14"
+                className="w-full bg-secondary border border-border rounded-md p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary min-h-[80px] resize-y"
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {pasteText.match(/\d+/g)?.filter(n => { const v = parseInt(n); return v >= 0 && v <= 36; }).length || 0} números detectados
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setPasteText(''); setShowPasteHistory(false); }}
+                    className="px-3 py-1.5 text-xs font-medium rounded bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={importPastedNumbers}
+                    disabled={!pasteText.trim()}
+                    className="px-4 py-1.5 text-xs font-bold rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    ✅ Importar Números
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Premium Table */}
