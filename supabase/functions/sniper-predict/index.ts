@@ -919,7 +919,38 @@ serve(async (req) => {
     };
 
     // ========================================================
-    // NOISE FILTER — Remove outlier spins (ball bouncing off diamonds)
+    // ADVANCED ANALYSES — Momentum, Volatility, Bayesian, Breakouts
+    // ========================================================
+    const sectorMomentum = calculateMomentum(numbers, n => getSector(n), 20);
+    const dozenMomentum = calculateMomentum(numbers, n => { const d = getDozen(n); return d > 0 ? `D${d}` : ''; }, 20);
+    const colorMomentum = calculateMomentum(numbers, n => getColor(n), 20);
+    const parityMomentum = calculateMomentum(numbers, n => n > 0 ? (n % 2 === 0 ? 'Par' : 'Ímpar') : '', 20);
+    const highLowMomentum = calculateMomentum(numbers, n => n > 0 ? (n >= 19 ? 'Alto' : 'Baixo') : '', 20);
+    
+    const volatility = calculateVolatility(numbers, 30);
+    const recencyFreq = recencyWeightedFreq(numbers);
+    const breakoutsDetected = detectBreakout(numbers);
+    const wheelZones = wheelZoneMomentum(numbers, 6);
+    const fibGaps = fibonacciGapAnalysis(numbers);
+    
+    // Bayesian predictions
+    const bayesSector = bayesianPredict(numbers, n => getSector(n));
+    const bayesDozen = bayesianPredict(numbers, n => { const d = getDozen(n); return d > 0 ? d : 0; });
+    const bayesColor = bayesianPredict(numbers, n => getColor(n));
+    const bayesHighLow = bayesianPredict(numbers, n => n > 0 ? (n >= 19 ? 'Alto' : 'Baixo') : 'Zero');
+    const bayesParity = bayesianPredict(numbers, n => n > 0 ? (n % 2 === 0 ? 'Par' : 'Ímpar') : 'Zero');
+    
+    // Multi-dimension convergence
+    const multiDimResults = multiDimensionConvergence(
+      numbers,
+      transitionMatrix?.predictedSector || bayesSector.predicted as string || null,
+      transitionMatrix?.predictedDozen || (bayesDozen.predicted ? Number(bayesDozen.predicted) : null),
+      transitionMatrix?.predictedTerminal ?? null,
+      colorBias || (bayesColor.predicted === 'red' || bayesColor.predicted === 'black' ? bayesColor.predicted as string : null),
+      daniGreen.mod2
+    );
+
+
     // ========================================================
     const rawArcs: number[] = [];
     for (let i = 0; i < Math.min(100, numbers.length - 1); i++) rawArcs.push(wheelDist(numbers[i], numbers[i + 1]));
