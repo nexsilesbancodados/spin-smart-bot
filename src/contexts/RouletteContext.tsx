@@ -122,7 +122,12 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
     lastAddedRef.current.push({ value: n, time: now });
     return false;
   }, []);
-      // Defer alert detection to avoid needing alerts state inside setHistory
+
+  const addNumber = useCallback((n: number) => {
+    if (isDuplicate(n)) return; // skip duplicate within dedup window
+    const entry: RouletteNumber = { value: n, color: getNumberColor(n), timestamp: new Date() };
+    setHistory(prev => {
+      const updated = [entry, ...prev];
       setTimeout(() => {
         setAlerts(currentAlerts => {
           const newAlerts = detectPatterns(updated, currentAlerts);
@@ -132,10 +137,12 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
       }, 0);
       return updated;
     });
-  }, []);
+  }, [isDuplicate]);
 
   const addNumbers = useCallback((nums: number[]) => {
-    const entries = nums.map(n => ({
+    const dedupedNums = nums.filter(n => !isDuplicate(n));
+    if (dedupedNums.length === 0) return;
+    const entries = dedupedNums.map(n => ({
       value: n,
       color: getNumberColor(n),
       timestamp: new Date(),
@@ -151,7 +158,7 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
       }, 0);
       return updated;
     });
-  }, []);
+  }, [isDuplicate]);
 
   const clearHistory = useCallback(() => {
     setHistory([]);
