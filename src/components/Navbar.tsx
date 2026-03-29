@@ -1,5 +1,5 @@
 import {
-  CircleDot, Brain, Shield, Wifi, WifiOff, RefreshCw, Download, History, Sparkles
+  CircleDot, Brain, Shield, Wifi, WifiOff, RefreshCw, Download, History, Sparkles, Power
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -14,12 +14,15 @@ interface NavbarProps {
   fetchStored: () => void;
   autoLearnStatus: 'idle' | 'learning' | 'analyzing' | 'backtesting';
   onShowHistory: () => void;
+  aiEnabled: boolean;
+  setAiEnabled: (v: boolean) => void;
 }
 
 const Navbar = ({
   isPolling, setIsPolling, isAnalyzing, triggerLearn,
   confidenceFilter, setConfidenceFilter, lastUpdate,
   fetchNumbers, fetchStored, autoLearnStatus, onShowHistory,
+  aiEnabled, setAiEnabled,
 }: NavbarProps) => (
   <nav className="border-b border-border/60 px-4 py-0 z-50 shrink-0 glass relative overflow-hidden">
     {/* Subtle top accent line */}
@@ -43,7 +46,7 @@ const Navbar = ({
         <span className="text-[7px] px-2 py-1 rounded-md font-bold border bg-primary/10 text-primary border-primary/30 font-display tracking-widest shadow-neon-cyan">
           AI 24H
         </span>
-        {autoLearnStatus !== 'idle' && (
+        {autoLearnStatus !== 'idle' && aiEnabled && (
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-neon-purple/10 border border-neon-purple/25 animate-pulse">
             <Sparkles className="w-3 h-3 text-purple-400" />
             <span className="text-[7px] font-bold text-purple-400 font-mono tracking-wider">
@@ -55,8 +58,20 @@ const Navbar = ({
 
       {/* Actions */}
       <div className="flex items-center gap-1.5">
+        {/* AI ON/OFF TOGGLE */}
+        <button onClick={() => setAiEnabled(!aiEnabled)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-bold transition-all border ${
+            aiEnabled
+              ? 'bg-primary/15 text-primary border-primary/30 shadow-neon-cyan'
+              : 'bg-destructive/10 text-destructive border-destructive/30'
+          }`}>
+          <Power className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">{aiEnabled ? 'IA ON' : 'IA OFF'}</span>
+          <span className={`w-1.5 h-1.5 rounded-full ${aiEnabled ? 'bg-primary animate-pulse shadow-[0_0_6px_hsl(var(--primary)/0.6)]' : 'bg-destructive'}`} />
+        </button>
+
         {/* IA Aprender */}
-        <button onClick={triggerLearn} disabled={isAnalyzing}
+        <button onClick={triggerLearn} disabled={isAnalyzing || !aiEnabled}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-bold transition-all border disabled:opacity-40
             bg-gradient-to-r from-primary/15 to-primary/5 text-primary border-primary/30 hover:from-primary/25 hover:to-primary/10 hover:shadow-neon-cyan">
           <Brain className={`w-3.5 h-3.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
