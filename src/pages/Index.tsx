@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition, lazy, Suspense } from 'react';
 
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -86,6 +86,44 @@ const PATTERN_ICONS: Record<string, typeof Brain> = {
   dozen_cycle: BarChart3, cavalos_pattern: Target, timing_pattern: Clock,
   streak_behavior: TrendingUp, sector_concentration: Target,
 };
+
+// Memoized history grid — avoids hundreds of motion.div re-renders
+const HistoryGrid = memo(({ historySlice, selectedNum, setSelectedNum, setDnaNumber, setDnaOpen }: {
+  historySlice: number[];
+  selectedNum: number | null;
+  setSelectedNum: (n: number | null) => void;
+  setDnaNumber: (n: number) => void;
+  setDnaOpen: (b: boolean) => void;
+}) => {
+  const rows = useMemo(() => {
+    const r: number[][] = [];
+    for (let i = 0; i < historySlice.length; i += 20) r.push(historySlice.slice(i, i + 20));
+    return r;
+  }, [historySlice]);
+
+  return (
+    <div className="space-y-1.5">
+      {rows.map((row, rowIdx) => (
+        <div key={rowIdx} className="flex gap-1 flex-wrap">
+          {row.map((n, i) => {
+            const isSelected = selectedNum === n;
+            const isDimmed = selectedNum !== null && selectedNum !== n;
+            return (
+              <div key={`${rowIdx}-${i}-${n}`}
+                onClick={() => setSelectedNum(selectedNum === n ? null : n)}
+                onDoubleClick={() => { setDnaNumber(n); setDnaOpen(true); }}
+                style={{ opacity: isDimmed ? 0.25 : 1 }}
+                className={`w-[32px] h-[32px] rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm cursor-pointer border transition-transform duration-100
+                  ${isSelected ? 'ring-2 ring-primary scale-110 bg-primary text-primary-foreground border-primary' : `${colorClass(n)} border-white/10 hover:scale-110`}`}>
+                {n}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+});
 
 const Index = () => {
   const [selectedTable] = useState(ROULETTE_TABLES[0]);
@@ -360,30 +398,30 @@ const Index = () => {
     finally { setIsAnalyzing(false); }
   };
 
-  // === Computed ===
-  const allNumbers = apiNumbers.length > 0 ? apiNumbers : storedNumbers;
-  const historySlice = allNumbers.slice(0, historyLimit);
+  // === Computed (memoized) ===
+  const allNumbers = useMemo(() => apiNumbers.length > 0 ? apiNumbers : storedNumbers, [apiNumbers, storedNumbers]);
+  const historySlice = useMemo(() => allNumbers.slice(0, historyLimit), [allNumbers, historyLimit]);
 
-  const terminalFreq = allNumbers.slice(0, 200).reduce<Record<number, number>>((acc, n) => {
+  const terminalFreq = useMemo(() => allNumbers.slice(0, 200).reduce<Record<number, number>>((acc, n) => {
     const t = n % 10; acc[t] = (acc[t] || 0) + 1; return acc;
-  }, {});
-  const maxTerminalFreq = Math.max(...Object.values(terminalFreq), 1);
+  }, {}), [allNumbers]);
+  const maxTerminalFreq = useMemo(() => Math.max(...Object.values(terminalFreq), 1), [terminalFreq]);
 
-  const computedCavalos = (() => {
+  const computedCavalos = useMemo(() => {
     const slice = allNumbers.slice(0, 50);
     if (slice.length < 5) return [];
     const freq: Record<string, number> = { '258': 0, '147': 0, '03': 0, '69': 0 };
     slice.forEach(n => { const g = getCavaloGroup(n); if (g) freq[g]++; });
     return Object.entries(freq).sort(([, a], [, b]) => b - a);
-  })();
+  }, [allNumbers]);
 
-  const computedSectors = (() => {
+  const computedSectors = useMemo(() => {
     const slice = allNumbers.slice(0, 100);
     if (slice.length < 5) return {};
     const freq: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0, Zero: 0 };
     slice.forEach(n => { freq[getSectorName(n)]++; });
     return freq;
-  })();
+  }, [allNumbers]);
 
   return (
     <div className="min-h-screen bg-gradient-casino flex flex-col relative">
@@ -843,7 +881,7 @@ const Index = () => {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {[50, 100, 250, 500].map(lim => (
-                    <button key={lim} onClick={() => { setHistoryLimit(lim); setSelectedNum(null); }}
+                    <button key={lim} onClick={() => { startTransition(() => { setHistoryLimit(lim); setSelectedNum(null); }); }}
                       className={`text-[9px] px-2.5 py-1 rounded-lg font-bold transition-all ${
                         historyLimit === lim ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-secondary text-muted-foreground border border-border'
                       }`}>
@@ -878,31 +916,7 @@ const Index = () => {
               {historySlice.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">Aguardando dados...</div>
               ) : (
-                <div className="space-y-1.5">
-                  {(() => {
-                    const hRows: number[][] = [];
-                    for (let i = 0; i < historySlice.length; i += 20) hRows.push(historySlice.slice(i, i + 20));
-                    return hRows.map((row, rowIdx) => (
-                      <div key={rowIdx} className="flex gap-1 flex-wrap">
-                        {row.map((n, i) => {
-                          const isSelected = selectedNum === n;
-                          const isDimmed = selectedNum !== null && selectedNum !== n;
-                          return (
-                            <motion.div key={`${rowIdx}-${i}-${n}`}
-                              initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: isDimmed ? 0.25 : 1 }}
-                              transition={{ duration: 0.12, delay: i * 0.005 }}
-                              onClick={() => setSelectedNum(selectedNum === n ? null : n)}
-                              onDoubleClick={() => { setDnaNumber(n); setDnaOpen(true); }}
-                              className={`w-[32px] h-[32px] rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm transition-all cursor-pointer border
-                                ${isSelected ? 'ring-2 ring-primary scale-110 bg-primary text-primary-foreground border-primary' : isDimmed ? `${colorClass(n)} border-white/5` : `${colorClass(n)} border-white/10 hover:scale-110`}`}>
-                              {n}
-                            </motion.div>
-                          );
-                        })}
-                      </div>
-                    ));
-                  })()}
-                </div>
+                <HistoryGrid historySlice={historySlice} selectedNum={selectedNum} setSelectedNum={setSelectedNum} setDnaNumber={setDnaNumber} setDnaOpen={setDnaOpen} />
               )}
 
               {/* Análise do número selecionado */}
