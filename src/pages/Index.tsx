@@ -724,7 +724,7 @@ const Index = () => {
                   1100 CAMADAS
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
                 {/* Ancestral Patterns */}
                 <div className="bg-secondary/40 rounded-lg p-2 border border-border">
                   <span className="text-[8px] font-bold text-purple-400 block mb-1">👻 SEQUÊNCIAS ANCESTRAIS</span>
