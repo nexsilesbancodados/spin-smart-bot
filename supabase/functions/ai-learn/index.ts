@@ -179,14 +179,25 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 1. Fetch last 24 hours
+    // 1. Fetch last 24 hours + prediction history
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: recentData } = await supabase
-      .from('roulette_numbers')
-      .select('number, color, fetched_at')
-      .gte('fetched_at', since)
-      .order('fetched_at', { ascending: false })
-      .limit(1000);
+    const [recentRes, predHistRes] = await Promise.all([
+      supabase
+        .from('roulette_numbers')
+        .select('number, color, fetched_at')
+        .gte('fetched_at', since)
+        .order('fetched_at', { ascending: false })
+        .limit(1000),
+      supabase
+        .from('prediction_history')
+        .select('strategy_type, strategy_label, predicted_numbers, predicted_main, probability, convergence_score, mesa_mode, actual_number, hit, hit_type, justification')
+        .not('hit', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(100),
+    ]);
+
+    const recentData = recentRes.data;
+    const predHistory = predHistRes.data || [];
 
     const numbers = (recentData || []).map((r: any) => r.number as number);
     if (numbers.length < 50) {
@@ -194,6 +205,43 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Calculate hit/miss stats from prediction history
+    const totalPredictions = predHistory.length;
+    const totalHits = predHistory.filter((p: any) => p.hit === true).length;
+    const totalMisses = predHistory.filter((p: any) => p.hit === false).length;
+    const exactHits = predHistory.filter((p: any) => p.hit_type === 'exact').length;
+    const winRate = totalPredictions > 0 ? ((totalHits / totalPredictions) * 100).toFixed(1) : '0';
+
+    // Strategy performance breakdown
+    const strategyPerf: Record<string, { hits: number; total: number }> = {};
+    predHistory.forEach((p: any) => {
+      if (!strategyPerf[p.strategy_type]) strategyPerf[p.strategy_type] = { hits: 0, total: 0 };
+      strategyPerf[p.strategy_type].total++;
+      if (p.hit) strategyPerf[p.strategy_type].hits++;
+    });
+    const strategyPerfStr = Object.entries(strategyPerf)
+      .map(([type, { hits, total }]) => `${type}: ${hits}/${total} (${((hits/total)*100).toFixed(0)}%)`)
+      .join(', ');
+
+    // Probability calibration (are high-prob predictions actually hitting more?)
+    const highProbPreds = predHistory.filter((p: any) => p.probability >= 85);
+    const highProbHits = highProbPreds.filter((p: any) => p.hit).length;
+    const lowProbPreds = predHistory.filter((p: any) => p.probability < 70);
+    const lowProbHits = lowProbPreds.filter((p: any) => p.hit).length;
+
+    // Mesa mode performance
+    const fisicoPerf = predHistory.filter((p: any) => p.mesa_mode === 'fisico');
+    const matPerf = predHistory.filter((p: any) => p.mesa_mode === 'matematico');
+    const fisicoHitRate = fisicoPerf.length > 0 ? ((fisicoPerf.filter((p: any) => p.hit).length / fisicoPerf.length) * 100).toFixed(0) : 'N/A';
+    const matHitRate = matPerf.length > 0 ? ((matPerf.filter((p: any) => p.hit).length / matPerf.length) * 100).toFixed(0) : 'N/A';
+
+    // Recent misses analysis (what numbers came instead?)
+    const recentMisses = predHistory.filter((p: any) => !p.hit).slice(0, 20);
+    const missedActuals = recentMisses.map((p: any) => p.actual_number).filter((n: any) => n !== null);
+    const missTerminals: Record<number, number> = {};
+    missedActuals.forEach((n: number) => { const t = n % 10; missTerminals[t] = (missTerminals[t] || 0) + 1; });
+    const topMissTerminals = Object.entries(missTerminals).sort(([,a],[,b]) => b - a).slice(0, 3).map(([t,c]) => `T${t}:${c}`).join(',');
 
     // 2. Previous knowledge
     const { data: prevKnowledge } = await supabase
@@ -529,6 +577,16 @@ Deno.serve(async (req) => {
 ### CONHECIMENTO PRÉVIO:
 ${prevStr || 'Primeiro aprendizado.'}
 
+### 📈 HISTÓRICO DE ACERTOS/ERROS DAS PREVISÕES:
+- Total previsões: ${totalPredictions} | Acertos: ${totalHits} | Erros: ${totalMisses} | Win Rate: ${winRate}%
+- Acertos exatos (número central): ${exactHits}
+- Performance por estratégia: ${strategyPerfStr || 'sem dados'}
+- Alta confiança (≥85%): ${highProbPreds.length} previsões, ${highProbHits} acertos (${highProbPreds.length > 0 ? ((highProbHits/highProbPreds.length)*100).toFixed(0) : 0}%)
+- Baixa confiança (<70%): ${lowProbPreds.length} previsões, ${lowProbHits} acertos (${lowProbPreds.length > 0 ? ((lowProbHits/lowProbPreds.length)*100).toFixed(0) : 0}%)
+- Modo Físico: ${fisicoHitRate}% win rate | Modo Matemático: ${matHitRate}% win rate
+- Terminais nos erros recentes: ${topMissTerminals || 'sem dados'}
+- Números que saíram nos erros: ${missedActuals.slice(0, 10).join(',') || 'sem dados'}
+
 ## MISSÃO:
 Aja como SUPERCOMPUTADOR DE ANALÍTICA PREDITIVA. Realize análise transversal completa:
 1. Viés de frequência com desvio padrão
@@ -553,7 +611,8 @@ Aja como SUPERCOMPUTADOR DE ANALÍTICA PREDITIVA. Realize análise transversal c
 20. CLUSTERS DE CALOR: valide os clusters detectados
 21. ENTROPIA: avalie probabilidade de quebra de padrão
 22. EFEITO GANGORRA: preveja transição entre semicírculos
-23. PROBABILIDADE RESIDUAL: priorize os alvos de atraso cruzado`;
+23. PROBABILIDADE RESIDUAL: priorize os alvos de atraso cruzado
+24. **AUTOCORREÇÃO**: Analise o histórico de erros/acertos. Identifique quais estratégias estão falhando e por quê. Ajuste recomendações para melhorar o win rate. Se uma estratégia erra consistentemente, reduza sua confiança. Se acerta, aumente.`;
 
     // 4. Call AI
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -578,7 +637,7 @@ Aja como SUPERCOMPUTADOR DE ANALÍTICA PREDITIVA. Realize análise transversal c
                   items: {
                     type: "object",
                     properties: {
-                      learning_type: { type: "string", enum: ["frequency_bias","terminal_pattern","color_tendency","dozen_cycle","cavalos_pattern","timing_pattern","streak_behavior","sector_concentration","column_pattern","sixline_pattern","cross_mapping","wheel_neighbors","parity_pattern","final_pleno","column_color_dominance","visual_mirror","octave_pattern","diamond_concentration","third_law","skip_pattern","complementar_pattern","sector_bias","tendency_mode","delay_break","mirror_pattern","active_pattern","block_pattern","dealer_signature","heat_cluster","entropy_analysis","seesaw_effect","residual_probability"] },
+                      learning_type: { type: "string", enum: ["frequency_bias","terminal_pattern","color_tendency","dozen_cycle","cavalos_pattern","timing_pattern","streak_behavior","sector_concentration","column_pattern","sixline_pattern","cross_mapping","wheel_neighbors","parity_pattern","final_pleno","column_color_dominance","visual_mirror","octave_pattern","diamond_concentration","third_law","skip_pattern","complementar_pattern","sector_bias","tendency_mode","delay_break","mirror_pattern","active_pattern","block_pattern","dealer_signature","heat_cluster","entropy_analysis","seesaw_effect","residual_probability","prediction_accuracy","strategy_performance","error_pattern","autocorrection"] },
                       title: { type: "string" },
                       knowledge: { type: "string" },
                       data_points: { type: "integer" },

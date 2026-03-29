@@ -107,6 +107,57 @@ export type Database = {
         }
         Relationships: []
       }
+      prediction_history: {
+        Row: {
+          actual_number: number | null
+          convergence_score: number
+          created_at: string
+          hit: boolean | null
+          hit_type: string | null
+          id: string
+          justification: string | null
+          mesa_mode: string | null
+          predicted_main: number | null
+          predicted_numbers: number[]
+          probability: number
+          resolved_at: string | null
+          strategy_label: string
+          strategy_type: string
+        }
+        Insert: {
+          actual_number?: number | null
+          convergence_score?: number
+          created_at?: string
+          hit?: boolean | null
+          hit_type?: string | null
+          id?: string
+          justification?: string | null
+          mesa_mode?: string | null
+          predicted_main?: number | null
+          predicted_numbers?: number[]
+          probability?: number
+          resolved_at?: string | null
+          strategy_label: string
+          strategy_type: string
+        }
+        Update: {
+          actual_number?: number | null
+          convergence_score?: number
+          created_at?: string
+          hit?: boolean | null
+          hit_type?: string | null
+          id?: string
+          justification?: string | null
+          mesa_mode?: string | null
+          predicted_main?: number | null
+          predicted_numbers?: number[]
+          probability?: number
+          resolved_at?: string | null
+          strategy_label?: string
+          strategy_type?: string
+        }
+        Relationships: []
+      }
       resultados_roleta: {
         Row: {
           created_at: string
