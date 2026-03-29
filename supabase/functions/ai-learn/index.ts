@@ -748,6 +748,7 @@ Aja como SUPERCOMPUTADOR DE ANALÍTICA PREDITIVA. Realize análise transversal c
       headers: { Authorization: `Bearer ${deepseekKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "deepseek-chat",
+        max_tokens: 8000,
         messages: [
           { role: "system", content: `Você é o MOTOR DE CONVERGÊNCIA PENTACENTESIMAL — um supercomputador de análise preditiva para roleta europeia da Onabet.
 
