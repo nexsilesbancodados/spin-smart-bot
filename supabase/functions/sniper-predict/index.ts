@@ -66,7 +66,7 @@ serve(async (req) => {
 
     // Fetch data + AI learned patterns + unresolved predictions + resolved history in parallel
     const [numbersRes, learnedRes, unresolvedRes, resolvedRes, insightsRes] = await Promise.all([
-      supabase.from('roulette_numbers').select('number, fetched_at').order('fetched_at', { ascending: false }).limit(200),
+      supabase.from('roulette_numbers').select('number, fetched_at').order('fetched_at', { ascending: false }).limit(1000),
       supabase.from('ai_learned_patterns').select('learning_type, title, knowledge, accuracy, metadata').order('updated_at', { ascending: false }).limit(30),
       supabase.from('prediction_history').select('id, predicted_numbers, predicted_main, strategy_type').is('hit', null).order('created_at', { ascending: false }).limit(10),
       supabase.from('prediction_history').select('strategy_type, strategy_label, predicted_numbers, predicted_main, probability, convergence_score, actual_number, hit, hit_type, mesa_mode, justification').not('hit', 'is', null).order('created_at', { ascending: false }).limit(200),
