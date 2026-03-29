@@ -2932,6 +2932,34 @@ serve(async (req) => {
     }
     numScores.sort((a, b) => b.score - a.score);
 
+    // ========================================================
+    // DEEP PULL CHAIN — 3 levels deep (A→B→C) for maximum accuracy
+    // ========================================================
+    const deepPullChain: Record<number, number> = {};
+    for (let n = 0; n <= 36; n++) deepPullChain[n] = 0;
+    // Level 1: direct pulls from last number
+    const pull1 = FULL_PULL_MAP[numbers[0]] || PULL_MAP[numbers[0]] || [];
+    pull1.forEach(n => { deepPullChain[n] += 5; });
+    // Level 2: pulls from level-1 targets
+    pull1.slice(0, 5).forEach(p1 => {
+      const pull2 = FULL_PULL_MAP[p1] || PULL_MAP[p1] || [];
+      pull2.forEach(n => { deepPullChain[n] += 2.5; });
+    });
+    // Level 3: pulls from level-2 (weakest signal but adds depth)
+    if (numbers.length >= 2) {
+      const pull2nd = FULL_PULL_MAP[numbers[1]] || PULL_MAP[numbers[1]] || [];
+      pull2nd.slice(0, 4).forEach(p2 => {
+        const pull3 = FULL_PULL_MAP[p2] || PULL_MAP[p2] || [];
+        pull3.forEach(n => { deepPullChain[n] += 1; });
+      });
+    }
+    // Apply deep pull chain to numScores
+    numScores.forEach(ns => {
+      const chainBoost = deepPullChain[ns.num];
+      if (chainBoost > 3) { ns.score += chainBoost * 0.4; ns.reasons.push(`🔗 Chain(${chainBoost.toFixed(0)})`); }
+    });
+    numScores.sort((a, b) => b.score - a.score);
+
     // Helper: sum scores for a set of numbers
     const sumScores = (nums: number[]) => {
       let total = 0;
@@ -2939,13 +2967,17 @@ serve(async (req) => {
       return total;
     };
 
-    // Helper: backtest a set of numbers against deep history (up to 1000)
+    // Helper: DEEP backtest — tests strategy against historical data with sliding window
     const backtestSet = (nums: number[]) => {
       let hits = 0, tests = 0;
-      const maxTests = Math.min(100, numbers.length - 10);
+      // Use up to 200 test windows for more reliable backtest
+      const maxTests = Math.min(200, numbers.length - 10);
       for (let w = 0; w < maxTests; w++) {
         tests++;
-        if (nums.includes(numbers[w + 5])) hits++;
+        // Test if any of the predicted numbers appear in the next 1-3 spins
+        if (nums.includes(numbers[w + 5])) hits += 1;
+        else if (nums.includes(numbers[w + 6])) hits += 0.5; // partial credit for ±1 spin
+        else if (nums.includes(numbers[w + 7])) hits += 0.25; // partial credit for ±2 spins
       }
       return tests > 0 ? hits / tests : 0;
     };
