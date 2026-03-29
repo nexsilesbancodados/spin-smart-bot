@@ -427,106 +427,100 @@ const Index = () => {
       <div className="flex-1 overflow-y-auto relative z-10">
         <div className="max-w-[1400px] mx-auto p-4 space-y-4">
 
-          {/* ─── SEÇÃO 1: Últimos 12 + Pressão do Zero ─── */}
+          {/* ─── SEÇÃO 1: Últimos 12 ─── */}
+          <Last12Numbers allNumbers={allNumbers} />
+
+          {/* ─── SEÇÃO 2: SNIPER (PRINCIPAL) ─── */}
           <div className="space-y-3">
-            <Last12Numbers allNumbers={allNumbers} />
-            <ZeroPressure allNumbers={allNumbers} />
+            {aiEnabled ? (
+              <SniperSignal
+                sniperData={sniperData}
+                sniperCountdown={sniperCountdown}
+                sniperStale={sniperStale}
+                lastPredResult={lastPredResult}
+                confidenceFilter={confidenceFilter}
+              />
+            ) : (
+              <div className="bg-card rounded-2xl border border-destructive/30 p-8 h-full flex items-center justify-center">
+                <div className="text-center space-y-3">
+                  <div className="w-14 h-14 rounded-full bg-destructive/10 border-2 border-destructive/30 flex items-center justify-center mx-auto">
+                    <Power className="w-7 h-7 text-destructive" />
+                  </div>
+                  <p className="text-sm font-bold text-destructive">IA DESLIGADA</p>
+                  <p className="text-xs text-muted-foreground">Clique em "IA ON" na barra superior para reativar</p>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* ─── SEÇÃO 2: SNIPER + MAPA DA RODA + BET PANEL ─── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Coluna Principal — Sniper */}
-            <div className="lg:col-span-2 space-y-3">
+          {/* ─── FERRAMENTAS (COLAPSÁVEL) ─── */}
+          <details className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden relative">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+            <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none text-sm font-bold text-foreground hover:bg-primary/5 transition-colors">
+              <ChevronDown className="w-4 h-4 text-primary/60 transition-transform" />
+              <span className="font-display text-[10px] tracking-[0.15em] text-primary">🛠️ FERRAMENTAS</span>
+            </summary>
+            <div className="p-4 border-t border-border/40 space-y-3">
               {/* Sample Size */}
-              <div className="bg-gradient-card rounded-xl border border-border/60 p-3 flex items-center gap-3 relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-                <span className="text-xs text-muted-foreground font-medium whitespace-nowrap font-display text-[9px] tracking-wider">📊 BASE DE ANÁLISE</span>
-                <input
-                  type="range" min={10} max={500} step={10}
-                  value={sampleSize}
+              <div className="bg-secondary/40 rounded-xl border border-border/60 p-3 flex items-center gap-3">
+                <span className="text-[9px] text-muted-foreground font-medium whitespace-nowrap font-display tracking-wider">📊 BASE</span>
+                <input type="range" min={10} max={500} step={10} value={sampleSize}
                   onChange={e => setSampleSize(Number(e.target.value))}
-                  className="flex-1 accent-primary h-2 cursor-pointer"
-                />
+                  className="flex-1 accent-primary h-2 cursor-pointer" />
                 <span className="text-sm font-bold text-primary font-mono min-w-[70px] text-right">{sampleSize} <span className="text-[8px] text-muted-foreground">jogadas</span></span>
               </div>
 
-              {/* Sniper Signal */}
-              {aiEnabled ? (
-                <SniperSignal
-                  sniperData={sniperData}
-                  sniperCountdown={sniperCountdown}
-                  sniperStale={sniperStale}
-                  lastPredResult={lastPredResult}
-                  confidenceFilter={confidenceFilter}
-                />
-              ) : (
-                <div className="bg-card rounded-2xl border border-destructive/30 p-8 h-full flex items-center justify-center">
-                  <div className="text-center space-y-3">
-                    <div className="w-14 h-14 rounded-full bg-destructive/10 border-2 border-destructive/30 flex items-center justify-center mx-auto">
-                      <Power className="w-7 h-7 text-destructive" />
-                    </div>
-                    <p className="text-sm font-bold text-destructive">IA DESLIGADA</p>
-                    <p className="text-xs text-muted-foreground">Clique em "IA ON" na barra superior para reativar as previsões</p>
-                  </div>
-                </div>
-              )}
-            </div>
+              {/* Pressão do Zero */}
+              <ZeroPressure allNumbers={allNumbers} />
 
-            {/* Coluna Lateral — Mapa + Bet */}
-            <div className="lg:col-span-1 space-y-3">
-              <details className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden group relative">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-                <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none text-sm font-bold text-foreground hover:bg-primary/5 transition-colors">
-                  <ChevronDown className="w-4 h-4 text-primary/60 transition-transform group-open:rotate-180" />
-                  <span className="font-display text-[10px] tracking-[0.15em] text-primary">🎡 MAPA DA RODA</span>
-                </summary>
-                <div className="p-4 border-t border-border/40">
-                  <WheelMap allNumbers={allNumbers} sniperData={sniperData} />
-                </div>
-              </details>
-              <BetPanel sniperData={sniperData} allNumbers={allNumbers} />
+              {/* Mapa + Bet */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <WheelMap allNumbers={allNumbers} sniperData={sniperData} />
+                <BetPanel sniperData={sniperData} allNumbers={allNumbers} />
+              </div>
             </div>
-          </div>
+          </details>
 
-          {/* ─── SEÇÃO 3: JOGADAS ALTERNATIVAS ─── */}
+          {/* ─── SEÇÃO 3: JOGADAS ALTERNATIVAS (COLAPSÁVEL) ─── */}
           {sniperData?.topAlternatives?.length > 0 && (
-            <div className="bg-gradient-card rounded-xl border border-border/60 p-4 relative overflow-hidden">
+            <details className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden relative">
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
-                  <BarChart3 className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <span className="font-display text-[10px] tracking-[0.2em] font-bold text-primary text-glow-cyan">JOGADAS ALTERNATIVAS</span>
+              <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none hover:bg-primary/5 transition-colors">
+                <ChevronDown className="w-4 h-4 text-primary/60 transition-transform" />
+                <BarChart3 className="w-3.5 h-3.5 text-primary" />
+                <span className="font-display text-[10px] tracking-[0.2em] font-bold text-primary">JOGADAS ALTERNATIVAS</span>
                 <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-bold font-mono">
                   TOP {sniperData.topAlternatives.length}
                 </span>
+              </summary>
+              <div className="p-4 border-t border-border/40">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {sniperData.topAlternatives.map((alt: any, i: number) => (
+                    <div key={i} className="bg-secondary/40 rounded-lg p-3 border border-border hover:border-primary/30 transition-all">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="text-sm">{alt.emoji}</span>
+                        <span className="text-[9px] font-bold text-foreground truncate">{alt.label}</span>
+                        <span className={`ml-auto text-[10px] font-mono font-bold ${alt.probability >= 80 ? 'text-primary' : alt.probability >= 65 ? 'text-yellow-400' : 'text-muted-foreground'}`}>
+                          {alt.probability}%
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {alt.numbers?.slice(0, 8).map((n: number, j: number) => (
+                          <div key={j} className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ${colorClass(n)} border border-white/10`}>{n}</div>
+                        ))}
+                        {alt.numbers?.length > 8 && <span className="text-[7px] text-muted-foreground self-center">+{alt.numbers.length - 8}</span>}
+                      </div>
+                      <p className="text-[7px] text-muted-foreground line-clamp-2 mb-1.5">{alt.justification}</p>
+                      <div className="flex items-center gap-2 text-[7px] text-muted-foreground">
+                        <span>Payout: {alt.payout}x</span>
+                        <span>•</span>
+                        <span>{alt.coverage}% cobertura</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {sniperData.topAlternatives.map((alt: any, i: number) => (
-                  <div key={i} className="bg-secondary/40 rounded-lg p-3 border border-border hover:border-primary/30 transition-all">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <span className="text-sm">{alt.emoji}</span>
-                      <span className="text-[9px] font-bold text-foreground truncate">{alt.label}</span>
-                      <span className={`ml-auto text-[10px] font-mono font-bold ${alt.probability >= 80 ? 'text-primary' : alt.probability >= 65 ? 'text-yellow-400' : 'text-muted-foreground'}`}>
-                        {alt.probability}%
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {alt.numbers?.slice(0, 8).map((n: number, j: number) => (
-                        <div key={j} className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ${colorClass(n)} border border-white/10`}>{n}</div>
-                      ))}
-                      {alt.numbers?.length > 8 && <span className="text-[7px] text-muted-foreground self-center">+{alt.numbers.length - 8}</span>}
-                    </div>
-                    <p className="text-[7px] text-muted-foreground line-clamp-2 mb-1.5">{alt.justification}</p>
-                    <div className="flex items-center gap-2 text-[7px] text-muted-foreground">
-                      <span>Payout: {alt.payout}x</span>
-                      <span>•</span>
-                      <span>{alt.coverage}% cobertura</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            </details>
           )}
 
           {/* ─── SEÇÃO 4: ANÁLISE AVANÇADA (COLAPSÁVEL) ─── */}
@@ -780,6 +774,16 @@ const Index = () => {
             </div>
           )}
 
+          {/* ─── HISTÓRICO & DADOS (COLAPSÁVEL) ─── */}
+          <details className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden relative">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+            <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none hover:bg-primary/5 transition-colors">
+              <ChevronDown className="w-4 h-4 text-primary/60" />
+              <Activity className="w-3.5 h-3.5 text-primary" />
+              <span className="font-display text-[10px] tracking-[0.2em] font-bold text-primary">HISTÓRICO & DADOS</span>
+              <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-bold font-mono">{allNumbers.length} giros</span>
+            </summary>
+            <div className="p-4 border-t border-border/40 space-y-4">
           {/* ─── SEÇÃO 5: STATUS BAR ─── */}
           {(sniperData?.memoryWindows || allNumbers.length >= 10) && (
             <div className="bg-card/80 rounded-xl border border-border p-3">
@@ -1107,6 +1111,8 @@ const Index = () => {
               </div>
             )}
           </div>
+            </div>
+          </details>
 
         </div>
       </div>
