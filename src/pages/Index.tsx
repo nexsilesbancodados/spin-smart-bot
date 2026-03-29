@@ -160,10 +160,15 @@ const Index = () => {
     const now = Date.now();
     if (now - lastSniperTriggerRef.current < 1200) return;
     if (sniperFetchingRef.current) return;
+    if (!aiEnabled) return; // AI toggle check
     sniperFetchingRef.current = true;
     lastSniperTriggerRef.current = now;
     try {
-      const res = await supabase.functions.invoke('sniper-predict', { body: { sampleSize } });
+      // Send client-side numbers for instant reaction (before DB sync)
+      const clientNums = apiNumbers.length > 0 ? apiNumbers.slice(0, sampleSize) : undefined;
+      const res = await supabase.functions.invoke('sniper-predict', { 
+        body: { sampleSize, numbers: clientNums } 
+      });
       if (res.data) {
         const key = `${res.data.strategy?.type}-${res.data.signal?.number}-${res.data.mode}`;
         if (key !== sniperPrevKey.current) {
@@ -178,7 +183,7 @@ const Index = () => {
       }
     } catch (err) { console.error('Sniper error:', err); }
     finally { sniperFetchingRef.current = false; }
-  }, [sampleSize]);
+  }, [sampleSize, aiEnabled, apiNumbers]);
 
   // === Data Fetching ===
   const fetchNumbers = useCallback(async () => {
