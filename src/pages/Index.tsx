@@ -8,6 +8,7 @@ import {
   BookOpen, Zap, Clock, GraduationCap, Crosshair, Eye, AlertTriangle, Download
 } from 'lucide-react';
 import Scanner500 from '@/components/Scanner500';
+import PatternPanel24h from '@/components/PatternPanel24h';
 import PredictionHistory from '@/components/PredictionHistory';
 import BetPanel from '@/components/BetPanel';
 import AILearningLog from '@/components/AILearningLog';
@@ -1034,6 +1035,11 @@ const Index = () => {
                 ))}
               </div>
             </motion.div>
+          )}
+
+          {/* PADRÕES IDENTIFICADOS 24H */}
+          {sniperData?.transitionMatrix && (
+            <PatternPanel24h sniperData={sniperData} />
           )}
 
           {/* LOG DE APRENDIZADO IA */}
