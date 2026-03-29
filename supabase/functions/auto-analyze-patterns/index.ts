@@ -73,6 +73,7 @@ Para cada padrão encontrado, retorne um JSON array com objetos contendo:
       },
       body: JSON.stringify({
         model: "deepseek-chat",
+        max_tokens: 4000,
         messages: [
           { role: "system", content: `Você é o MOTOR DE CONVERGÊNCIA PENTACENTESIMAL para roleta europeia da Onabet.
 
