@@ -4054,7 +4054,7 @@ serve(async (req) => {
     const cavBt = backtestSet(cavaloNums);
     strategies.push({
       type: 'cavalos', label: `Cavalos ${bestCavaloGroup[0]}`, emoji: '🐴',
-      numbers: cavaloNums, coverage: (cavaloNums.length/37)*100, payout: Math.round(36/cavaloNums.length * cavaloNums.length),
+      numbers: cavaloNums, coverage: (cavaloNums.length/37)*100, payout: 36 - cavaloNums.length,
       score: cavaloScore + cavBt * 18,
       probability: Math.min(98, Math.round(45 + cavaloScore * 1.8 + cavBt * 25)),
       justification: `Ciclo matemático favorece grupo C${bestCavaloGroup[0]} (${bestCavaloGroup[1]}x em 30). Terminais ${sortedTerminals.slice(0,2).map(([t])=>t).join(',')} dominantes.`,
@@ -4079,7 +4079,7 @@ serve(async (req) => {
     const voisBt = backtestSet(VOISINS);
     strategies.push({
       type: 'voisins', label: 'Vizinhos do Zero', emoji: '🎰',
-      numbers: [...VOISINS], coverage: (17/37)*100, payout: Math.round(36/17*17),
+      numbers: [...VOISINS], coverage: (17/37)*100, payout: 36 - 17,
       score: voisinsScore + voisBt * 16 + (mesaMode === 'fisico' ? 5 : 0),
       probability: Math.min(98, Math.round(50 + voisinsScore * 1.2 + voisBt * 28)),
       justification: `Atração física do centro do cilindro. Setor Voisins com ${sectorFreq['Voisins']}x em 30. ${seesawBias === 'zero' ? 'Gangorra favorece Zero.' : ''}`,
@@ -4095,7 +4095,7 @@ serve(async (req) => {
     const opBt = backtestSet(opSector);
     strategies.push({
       type: 'setor_oposto', label: opLabel, emoji: '🔄',
-      numbers: [...opSector], coverage: (opSector.length/37)*100, payout: Math.round(36/opSector.length * opSector.length),
+      numbers: [...opSector], coverage: (opSector.length/37)*100, payout: 36 - opSector.length,
       score: opScore + opBt * 16,
       probability: Math.min(98, Math.round(45 + opScore * 1.5 + opBt * 28)),
       justification: `Balanço de cilindro favorece ${opLabel}. ${seesawBias === 'opposite' ? 'Gangorra detectada contra Zero.' : `${opLabel} com concentração recente.`}`,
@@ -4253,7 +4253,7 @@ serve(async (req) => {
       const insBt = backtestSet(insightTopNums);
       strategies.push({
         type: 'insight_pattern', label: 'Padrão IA Detectado', emoji: '🧬',
-        numbers: insightTopNums, coverage: (insightTopNums.length / 37) * 100, payout: Math.round(36 / insightTopNums.length),
+        numbers: insightTopNums, coverage: (insightTopNums.length / 37) * 100, payout: 36 - insightTopNums.length,
         score: insScore + insBt * 20,
         probability: Math.min(98, Math.round(50 + insScore * 1.5 + insBt * 30)),
         justification: `Padrões detectados pela IA convergem em ${insightTopNums.length} números. Backtesting: ${(insBt * 100).toFixed(0)}%.`,
@@ -4267,7 +4267,7 @@ serve(async (req) => {
       const srpBt = backtestSet(surpriseNums);
       strategies.push({
         type: 'surprise_recovery', label: 'Recuperação Surpresa', emoji: '🎲',
-        numbers: surpriseNums, coverage: (surpriseNums.length / 37) * 100, payout: Math.round(36 / surpriseNums.length),
+        numbers: surpriseNums, coverage: (surpriseNums.length / 37) * 100, payout: 36 - surpriseNums.length,
         score: srpScore + srpBt * 18,
         probability: Math.min(98, Math.round(45 + srpScore * 1.8 + srpBt * 28)),
         justification: `Números que saem quando erramos: ${surpriseNums.slice(0, 5).join(',')}. Aprendido com ${Object.values(numberMissFreq).reduce((a, b) => a + b, 0)} erros.`,
@@ -4284,7 +4284,7 @@ serve(async (req) => {
       const crossBt = backtestSet(fullCrossNums);
       strategies.push({
         type: 'cross_delay', label: 'Atraso Cruzado', emoji: '💥',
-        numbers: fullCrossNums, coverage: (fullCrossNums.length / 37) * 100, payout: Math.round(36 / fullCrossNums.length),
+        numbers: fullCrossNums, coverage: (fullCrossNums.length / 37) * 100, payout: 36 - fullCrossNums.length,
         score: crossScore + crossBt * 22,
         probability: Math.min(98, Math.round(48 + crossScore * 2 + crossBt * 30)),
         justification: `${crossDelayTargets.length} números com atraso em múltiplos grupos. Explosão iminente: ${crossNums.slice(0, 4).join(',')}.`,
@@ -4312,7 +4312,7 @@ serve(async (req) => {
         const taBt = backtestSet(termNums);
         strategies.push({
           type: 'terminal_alternation', label: `🔄 Terminal ${predictedTerm} (Alternância)`, emoji: '🔄',
-          numbers: termNums, coverage: (termNums.length/37)*100, payout: Math.round(36/termNums.length),
+          numbers: termNums, coverage: (termNums.length/37)*100, payout: 36 - termNums.length,
           score: taScore + taBt * 22,
           probability: Math.min(98, Math.round(40 + taScore * 2 + taBt * 35)),
           justification: `Alternância de terminais detectada: T${lastTerm}→T${predictedTerm} (${nextTermCandidates[0].count}x). Padrão cíclico ativo.`,
@@ -4384,7 +4384,7 @@ serve(async (req) => {
       const caBt = backtestSet(sectorNums);
       strategies.push({
         type: 'cobertura_area', label: `🗺️ Cobertura ${transitionMatrix.predictedSector}`, emoji: '🗺️',
-        numbers: sectorNums, coverage: (sectorNums.length / 37) * 100, payout: Math.round(36 / sectorNums.length * sectorNums.length),
+        numbers: sectorNums, coverage: (sectorNums.length / 37) * 100, payout: 36 - sectorNums.length,
         score: caScore + caBt * 22 + (transitionMatrix.mesaModeLabel === 'ALTERNÂNCIA' ? 10 : 0),
         probability: Math.min(98, Math.round(45 + caScore * 1.5 + caBt * 30)),
         justification: `Matriz de transição: ${getSector(numbers[0])}→${transitionMatrix.predictedSector} (modo ${transitionMatrix.mesaModeLabel}). Fidelidade ${transitionMatrix.mesaModeStrength}%.`,
@@ -4398,7 +4398,7 @@ serve(async (req) => {
       const ctBt = backtestSet(crossTermNums);
       strategies.push({
         type: 'terminais_cruzados', label: `🐎 Terminal ${transitionMatrix.predictedTerminal} (Cruzado)`, emoji: '🐎',
-        numbers: crossTermNums, coverage: (crossTermNums.length / 37) * 100, payout: Math.round(36 / crossTermNums.length),
+        numbers: crossTermNums, coverage: (crossTermNums.length / 37) * 100, payout: 36 - crossTermNums.length,
         score: ctScore + ctBt * 22,
         probability: Math.min(98, Math.round(42 + ctScore * 2 + ctBt * 35)),
         justification: `Terminal cruzado: T${numbers[0] % 10}→T${transitionMatrix.predictedTerminal} via matriz de 200 giros.`,
@@ -4434,7 +4434,7 @@ serve(async (req) => {
       const hotBt = backtestSet(hotNums);
       strategies.push({
         type: 'hot_phase', label: '🔥 Fase Quente (Repetições)', emoji: '🔥',
-        numbers: hotNums, coverage: (hotNums.length/37)*100, payout: Math.round(36/hotNums.length),
+        numbers: hotNums, coverage: (hotNums.length/37)*100, payout: 36 - hotNums.length,
         score: hotScore + hotBt * 20,
         probability: Math.min(98, Math.round(45 + hotScore * 1.5 + hotBt * 30)),
         justification: `Mesa em fase quente: ${uniqueRepeated.join(',')} repetidos. Taxa repetição: ${(repeatRatio*100).toFixed(0)}%.`,
@@ -4447,7 +4447,7 @@ serve(async (req) => {
       const coldBt = backtestSet(topCold);
       strategies.push({
         type: 'cold_phase', label: '❄️ Fase Fria (Dispersão)', emoji: '❄️',
-        numbers: topCold, coverage: (topCold.length/37)*100, payout: Math.round(36/topCold.length),
+        numbers: topCold, coverage: (topCold.length/37)*100, payout: 36 - topCold.length,
         score: coldScore + coldBt * 20,
         probability: Math.min(98, Math.round(42 + coldScore * 1.5 + coldBt * 30)),
         justification: `Mesa dispersando: ${uniqueIn10}/10 únicos. Top alvos frios: ${topCold.slice(0,5).join(',')}.`,
@@ -4468,7 +4468,7 @@ serve(async (req) => {
       const hwBt = backtestSet(hwNums);
       strategies.push({
         type: 'historical_winners', label: 'Campeões Históricos', emoji: '🏆',
-        numbers: hwNums, coverage: (hwNums.length / 37) * 100, payout: Math.round(36 / hwNums.length),
+        numbers: hwNums, coverage: (hwNums.length / 37) * 100, payout: 36 - hwNums.length,
         score: hwScore + hwBt * 20,
         probability: Math.min(98, Math.round(50 + hwScore * 1.5 + hwBt * 30)),
         justification: `Números com histórico comprovado de acertos: ${histWinners.slice(0, 5).join(',')}. Total: ${histWinners.reduce((a, n) => a + (numberHitFreq[n] || 0), 0)} acertos.`,
@@ -4482,7 +4482,7 @@ serve(async (req) => {
       const gpBt = backtestSet(gpNums);
       strategies.push({
         type: 'genetic_cluster', label: `🧬 ${geneticPatterns[0].name}`, emoji: '🧬',
-        numbers: gpNums, coverage: (gpNums.length / 37) * 100, payout: Math.round(36 / gpNums.length),
+        numbers: gpNums, coverage: (gpNums.length / 37) * 100, payout: 36 - gpNums.length,
         score: gpScore + gpBt * 22,
         probability: Math.min(98, Math.round(45 + gpScore * 1.5 + gpBt * 30)),
         justification: `Padrão genético auto-descoberto: ${geneticPatterns[0].name}. Co-ocorrência forte: ${gpNums.slice(0, 5).join(',')}.`,
@@ -4498,7 +4498,7 @@ serve(async (req) => {
       const cyBt = backtestSet(cyNums);
       strategies.push({
         type: 'cylinder_bias', label: '🔩 Vício do Cilindro', emoji: '🔩',
-        numbers: cyNums.slice(0, 15), coverage: (Math.min(15, cyNums.length) / 37) * 100, payout: Math.round(36 / Math.min(15, cyNums.length)),
+        numbers: cyNums.slice(0, 15), coverage: (Math.min(15, cyNums.length) / 37) * 100, payout: 36 - Math.min(15, cyNums.length),
         score: cyScore + cyBt * 20 + (cylinderInertia.pinStrength > 20 ? 10 : 0),
         probability: Math.min(98, Math.round(48 + cyScore * 1.5 + cyBt * 28)),
         justification: `Micro-imperfeição detectada: ${cylinderInertia.biasedNums.length} posições viciadas. ${cylinderInertia.dominantPin !== null ? `Pino #${cylinderInertia.dominantPin + 1} dominante.` : ''}`,
@@ -4617,7 +4617,7 @@ serve(async (req) => {
         
         strategies.push({
           type: 'convergencia_absoluta', label: `💠 Convergência Absoluta → ${best.num}`, emoji: '💠',
-          numbers: absNums, coverage: (absNums.length / 37) * 100, payout: Math.round(36 / absNums.length),
+          numbers: absNums, coverage: (absNums.length / 37) * 100, payout: 36 - absNums.length,
           score: absScore + absBt * 35 + best.dimensions.length * 12 + (best.dimensions.length >= 7 ? 30 : best.dimensions.length >= 6 ? 15 : 0),
           probability: dimProb,
           justification: `CONVERGÊNCIA ABSOLUTA: ${best.num} confirmado por ${best.dimensions.length} dimensões independentes (${best.dimensions.join('+')}). ${best.details.join(', ')}. Backtest: ${(absBt * 100).toFixed(0)}%.`,
@@ -4638,7 +4638,7 @@ serve(async (req) => {
       const ritmoBt = backtestSet(ritmoNums);
       strategies.push({
         type: 'ritmo_calibrado', label: `🎯 Ritmo → ${ritmoCalibration.alvo}`, emoji: '🎯',
-        numbers: ritmoNums, coverage: (ritmoNums.length / 37) * 100, payout: Math.round(36 / ritmoNums.length),
+        numbers: ritmoNums, coverage: (ritmoNums.length / 37) * 100, payout: 36 - ritmoNums.length,
         score: ritmoScore + ritmoBt * 25 + (ritmoCalibration.confianca >= 90 ? 15 : ritmoCalibration.confianca >= 80 ? 8 : 0),
         probability: Math.min(98, Math.round(ritmoCalibration.confianca * 0.8 + ritmoBt * 25)),
         justification: `Arco direcional calibrado: alvo ${ritmoCalibration.alvo} (σ=${ritmoCalibration.estabilidade}, confiança ${ritmoCalibration.confianca}%). ${ritmoCalibration.mensagem}`,
@@ -4660,7 +4660,7 @@ serve(async (req) => {
         const fusionBt = backtestSet(fusionNums);
         strategies.push({
           type: 'archetype_fusion', label: `🏛️ Fusão de ${activeArchetypes.length} Arquétipos`, emoji: '🏛️',
-          numbers: fusionNums, coverage: (fusionNums.length / 37) * 100, payout: Math.round(36 / fusionNums.length),
+          numbers: fusionNums, coverage: (fusionNums.length / 37) * 100, payout: 36 - fusionNums.length,
           score: fusionScore + fusionBt * 22 + activeArchetypes.length * 3,
           probability: Math.min(98, Math.round(50 + fusionScore * 1.5 + fusionBt * 30 + activeArchetypes.length * 3)),
           justification: `${activeArchetypes.length} arquétipos convergem: ${activeArchetypes.map(a => a.emoji + a.name.split(' ')[0]).join(', ')}. Top: ${fusionNums.slice(0, 5).join(',')}.`,
@@ -4710,7 +4710,7 @@ serve(async (req) => {
       const ultraBt = backtestSet(ultraNums);
       strategies.push({
         type: 'ultra_sniper', label: `🔥 Ultra Sniper → ${ultraTarget.num}`, emoji: '🔥',
-        numbers: ultraNums, coverage: (ultraNums.length / 37) * 100, payout: Math.round(36 / ultraNums.length),
+        numbers: ultraNums, coverage: (ultraNums.length / 37) * 100, payout: 36 - ultraNums.length,
         score: ultraScore + ultraBt * 30 + (ultraTarget.reasons.length >= 6 ? 15 : ultraTarget.reasons.length >= 4 ? 8 : 0),
         probability: Math.min(98, Math.round(55 + ultraScore * 2 + ultraBt * 30 + ultraBonus * 0.5)),
         justification: `CONVERGÊNCIA SUPREMA: ${ultraTarget.num} com ${ultraTarget.reasons.length} sinais simultâneos. Chain: ${deepPullChain[ultraTarget.num].toFixed(0)}pts. ${ultraTarget.reasons.slice(0, 4).join(', ')}.`,
@@ -4747,7 +4747,7 @@ serve(async (req) => {
       const topFusionInfo = fusionCandidates.slice(0, 3).map(n => `${n}(${numberAppearanceCount[n]?.count}est)`).join(', ');
       strategies.push({
         type: 'fusao_suprema', label: `⚡ Fusão Suprema`, emoji: '⚡',
-        numbers: fusionFinalNums, coverage: (fusionFinalNums.length / 37) * 100, payout: Math.round(36 / fusionFinalNums.length),
+        numbers: fusionFinalNums, coverage: (fusionFinalNums.length / 37) * 100, payout: 36 - fusionFinalNums.length,
         score: fusionScore + fusionBt * 22 + fusionCandidates.length * 2,
         probability: Math.min(98, Math.round(45 + fusionScore * 1.4 + fusionBt * 25 + fusionCandidates.length * 3)),
         justification: `${fusionCandidates.length} números aparecem em 3+ estratégias simultâneas. Convergência máxima: ${topFusionInfo}. Interseção validada por backtest.`,
@@ -4767,7 +4767,7 @@ serve(async (req) => {
       const mod1Bt = backtestSet(mod1Nums);
       strategies.push({
         type: 'duplo_terminal', label: `🎰 Duplo T${t1}+T${t2}`, emoji: '🎰',
-        numbers: mod1Nums, coverage: (mod1Nums.length / 37) * 100, payout: Math.round(36 / mod1Nums.length),
+        numbers: mod1Nums, coverage: (mod1Nums.length / 37) * 100, payout: 36 - mod1Nums.length,
         score: mod1Score + mod1Bt * 25 + daniGreen.mod1.count * 4,
         probability: Math.min(98, Math.round(45 + mod1Score * 1.8 + mod1Bt * 30 + daniGreen.mod1.count * 3)),
         justification: `MÓD1 Dani Green: Terminal ${t1} quente (${daniGreen.mod1.count}x/15) + par T${t2}. Cobertura: ${mod1Nums.length} números. REED: max ${REED_MAX} rodadas.`,
@@ -4789,7 +4789,7 @@ serve(async (req) => {
         const mod2Bt = backtestSet(mod2Filtered);
         strategies.push({
           type: 'terminal_alto_baixo', label: `📊 Terminais ${isHi ? 'Altos' : 'Baixos'} T${hotT}+T${pairT}`, emoji: '📊',
-          numbers: mod2Filtered, coverage: (mod2Filtered.length / 37) * 100, payout: Math.round(36 / mod2Filtered.length),
+          numbers: mod2Filtered, coverage: (mod2Filtered.length / 37) * 100, payout: 36 - mod2Filtered.length,
           score: mod2Score + mod2Bt * 22 + 8,
           probability: Math.min(98, Math.round(48 + mod2Score * 2 + mod2Bt * 30)),
           justification: `MÓD2: Mesa puxando ${isHi ? 'ALTO' : 'BAIXO'} + Terminais T${hotT}+T${pairT} filtrados. ${mod2Filtered.length} alvos.`,
@@ -4806,7 +4806,7 @@ serve(async (req) => {
         const mod3Bt = backtestSet(mod3Nums);
         strategies.push({
           type: 'poucas_fichas', label: `💰 Conservador T${singleT}`, emoji: '💰',
-          numbers: mod3Nums, coverage: (mod3Nums.length / 37) * 100, payout: Math.round(36 / mod3Nums.length),
+          numbers: mod3Nums, coverage: (mod3Nums.length / 37) * 100, payout: 36 - mod3Nums.length,
           score: mod3Score + mod3Bt * 20 + (daniGreen.mod1.count >= 4 ? 10 : 0),
           probability: Math.min(98, Math.round(35 + mod3Score * 2.5 + mod3Bt * 35)),
           justification: `MÓD3 Poucas Fichas: Terminal ${singleT} (${mod3Nums.join(',')}) com ${mod3Nums.length} fichas. Stop loss: 3 rounds. Meta: +12 fichas.`,
@@ -4822,7 +4822,7 @@ serve(async (req) => {
       const mod4Bt = backtestSet(uniqueMod4);
       strategies.push({
         type: 'pressao_zero', label: `🟢 Pressão Zero (${daniGreen.mod4.delay}r)`, emoji: '🟢',
-        numbers: uniqueMod4, coverage: (uniqueMod4.length / 37) * 100, payout: Math.round(36 / uniqueMod4.length),
+        numbers: uniqueMod4, coverage: (uniqueMod4.length / 37) * 100, payout: 36 - uniqueMod4.length,
         score: mod4Score + mod4Bt * 25 + (daniGreen.mod4.delay >= 20 ? 15 : 8),
         probability: Math.min(98, Math.round(40 + mod4Score * 1.5 + mod4Bt * 30 + daniGreen.mod4.delay * 0.8)),
         justification: `MÓD4: Zero ausente há ${daniGreen.mod4.delay} giros. ${daniGreen.mod4.neighborsActive} vizinhos ativos. Gatilho confirmado!`,
@@ -4842,7 +4842,7 @@ serve(async (req) => {
       const mod5Bt = backtestSet(finalMod5);
       strategies.push({
         type: 'numeros_puxam', label: `🧲 Puxada do ${daniGreen.mod5LastNum}`, emoji: '🧲',
-        numbers: finalMod5, coverage: (finalMod5.length / 37) * 100, payout: Math.round(36 / finalMod5.length),
+        numbers: finalMod5, coverage: (finalMod5.length / 37) * 100, payout: 36 - finalMod5.length,
         score: mod5Score + mod5Bt * 22 + daniGreen.mod5Pull.length * 1.5,
         probability: Math.min(98, Math.round(45 + mod5Score * 1.5 + mod5Bt * 28)),
         justification: `MÓD5: ${daniGreen.mod5LastNum} puxa ${daniGreen.mod5Pull.slice(0,6).join(',')} + vizinhos. REED: max ${REED_MAX} rodadas sem acerto.`,
@@ -4856,7 +4856,7 @@ serve(async (req) => {
       const mod6Bt = backtestSet(mod6TermNums);
       strategies.push({
         type: 'crescente', label: `📈 Crescente → T${daniGreen.mod6.nextTerminal}`, emoji: '📈',
-        numbers: mod6TermNums, coverage: (mod6TermNums.length / 37) * 100, payout: Math.round(36 / mod6TermNums.length),
+        numbers: mod6TermNums, coverage: (mod6TermNums.length / 37) * 100, payout: 36 - mod6TermNums.length,
         score: mod6Score + mod6Bt * 25 + 10,
         probability: Math.min(98, Math.round(42 + mod6Score * 2 + mod6Bt * 32)),
         justification: `MÓD6: Sequência crescente T${daniGreen.mod6.sequence.join('→T')} detectada → próximo T${daniGreen.mod6.nextTerminal}. Max 2 tentativas.`,
@@ -4874,7 +4874,7 @@ serve(async (req) => {
         const duplaBt = backtestSet(dNums);
         strategies.push({
           type: 'dupla_terminal', label: `🎰 Dupla ${dKey}`, emoji: '🎰',
-          numbers: dNums, coverage: (dNums.length / 37) * 100, payout: Math.round(36 / dNums.length),
+          numbers: dNums, coverage: (dNums.length / 37) * 100, payout: 36 - dNums.length,
           score: duplaScore + duplaBt * 25 + daniGreen.mod1.count * 3 + (sessionEntropy < 0.5 ? 10 : 0),
           probability: Math.min(98, Math.round(45 + duplaScore * 1.8 + duplaBt * 30)),
           justification: `Dupla de Terminais ${dKey}: ${dNums.length} números. Sessão ${sessionRegime}. Entropia ${(sessionEntropy * 100).toFixed(0)}%.`,
@@ -4970,7 +4970,7 @@ serve(async (req) => {
                 const mBt = backtestSet(mNums);
                 strategies.push({
                   type: 'multiplos_seq', label: `🔢 Múltiplos ×${mult} → ${nextNum}`, emoji: '🔢',
-                  numbers: mNums, coverage: (mNums.length / 37) * 100, payout: Math.round(36 / mNums.length),
+                  numbers: mNums, coverage: (mNums.length / 37) * 100, payout: 36 - mNums.length,
                   score: mScore + mBt * 20 + 8,
                   probability: Math.min(98, Math.round(35 + mScore * 2 + mBt * 25)),
                   justification: `S10: Sequência de múltiplos ×${mult}: ${last3[2]}→${last3[1]}→${last3[0]}→${nextNum}. ${mNums.length} números cobertos.`,
@@ -4994,7 +4994,7 @@ serve(async (req) => {
           const dfBt = backtestSet(dfNums);
           strategies.push({
             type: 'diferenca_const', label: `📏 Diferença +${d1} → ${nextDiff}`, emoji: '📏',
-            numbers: dfNums, coverage: (dfNums.length / 37) * 100, payout: Math.round(36 / dfNums.length),
+            numbers: dfNums, coverage: (dfNums.length / 37) * 100, payout: 36 - dfNums.length,
             score: dfScore + dfBt * 20 + 6,
             probability: Math.min(98, Math.round(32 + dfScore * 2 + dfBt * 25)),
             justification: `S12: Diferença constante ${d1 > 0 ? '+' : ''}${d1}: ${numbers[2]}→${numbers[1]}→${numbers[0]}→${nextDiff}. Vizinhos incluídos.`,
@@ -5018,7 +5018,7 @@ serve(async (req) => {
         const hhBt = backtestSet(unique);
         strategies.push({
           type: 'hiper_quente', label: `🔥 Hiper-Quente ${hhNum} (2x/5)`, emoji: '🔥',
-          numbers: unique, coverage: (unique.length / 37) * 100, payout: Math.round(36 / unique.length),
+          numbers: unique, coverage: (unique.length / 37) * 100, payout: 36 - unique.length,
           score: hhScore + hhBt * 22 + 15,
           probability: Math.min(98, Math.round(50 + hhScore * 1.8 + hhBt * 28)),
           justification: `F3: Número ${hhNum} apareceu 2x nas últimas 5 rodadas! Terminal T${hhTerminal} + vizinhos 3. ${unique.length} números.`,
@@ -5038,7 +5038,7 @@ serve(async (req) => {
         const crBt = backtestSet(sectorPool);
         strategies.push({
           type: 'cluster_regional', label: `🗺️ Cluster ${hotSector[0]} (${hotSector[1]}x/10)`, emoji: '🗺️',
-          numbers: [...sectorPool], coverage: (sectorPool.length / 37) * 100, payout: Math.round(36 / sectorPool.length),
+          numbers: [...sectorPool], coverage: (sectorPool.length / 37) * 100, payout: 36 - sectorPool.length,
           score: crScore + crBt * 20 + Number(hotSector[1]) * 4,
           probability: Math.min(98, Math.round(42 + crScore * 1.5 + crBt * 22 + Number(hotSector[1]) * 3)),
           justification: `F4: ${hotSector[1]}x resultados no setor ${hotSector[0]} em 10 rodadas. Concentração forte. ${sectorPool.length} números.`,
@@ -5065,7 +5065,7 @@ serve(async (req) => {
           const c4Bt = backtestSet(c4Nums);
           strategies.push({
             type: 'duzia_terminal_corr', label: `📊 D${domDz + 1} × Terminais`, emoji: '📊',
-            numbers: c4Nums, coverage: (c4Nums.length / 37) * 100, payout: Math.round(36 / c4Nums.length),
+            numbers: c4Nums, coverage: (c4Nums.length / 37) * 100, payout: 36 - c4Nums.length,
             score: c4Score + c4Bt * 20 + 8,
             probability: Math.min(98, Math.round(40 + c4Score * 1.8 + c4Bt * 25)),
             justification: `C4: Dúzia ${domDz + 1} domina (${dzCount[domDz]}x/15). Terminais cruzados: ${c4Nums.length} alvos dentro da dúzia.`,
@@ -5205,7 +5205,7 @@ serve(async (req) => {
       const goldBt = backtestSet(goldNums);
       strategies.push({
         type: 'combo_ouro', label: `👑 Combo OURO (F5+C1+S3)`, emoji: '👑',
-        numbers: goldNums, coverage: (goldNums.length / 37) * 100, payout: Math.round(36 / goldNums.length),
+        numbers: goldNums, coverage: (goldNums.length / 37) * 100, payout: 36 - goldNums.length,
         score: goldScore + goldBt * 30 + 25,
         probability: Math.min(99, Math.round(60 + goldScore * 1.5 + goldBt * 30)),
         justification: `OURO: Terminal T${goldTerminal} dominante (${daniGreen.mod1.count}x) + Puxados confirmados + Sequência ativa. Confiança MÁXIMA. ${goldNums.length} números.`,
@@ -5226,7 +5226,7 @@ serve(async (req) => {
         const silverBt = backtestSet(silverNums);
         strategies.push({
           type: 'combo_prata', label: `🥈 Combo PRATA (F1+C2+G4) → ${last}`, emoji: '🥈',
-          numbers: silverNums, coverage: (silverNums.length / 37) * 100, payout: Math.round(36 / silverNums.length),
+          numbers: silverNums, coverage: (silverNums.length / 37) * 100, payout: 36 - silverNums.length,
           score: silverScore + silverBt * 25 + 18,
           probability: Math.min(98, Math.round(55 + silverScore * 1.5 + silverBt * 28)),
           justification: `PRATA: ${last} hiper-quente (${hotCheck}x/10) + Terminal T${lastTerminal} + Vizinhos 3 na roda. ${silverNums.length} números.`,
@@ -5243,7 +5243,7 @@ serve(async (req) => {
         const jzBt = backtestSet(JEU_ZERO);
         strategies.push({
           type: 'jeu_zero', label: `🟢 Jeu Zero (${zeroDelay}r ausente)`, emoji: '🟢',
-          numbers: [...JEU_ZERO], coverage: (7 / 37) * 100, payout: Math.round(36 / 7),
+          numbers: [...JEU_ZERO], coverage: (7 / 37) * 100, payout: 36 - 7,
           score: jzScore + jzBt * 25 + (zeroDelay >= 30 ? 15 : 8),
           probability: Math.min(98, Math.round(38 + jzScore * 1.5 + jzBt * 25 + zeroDelay * 0.6)),
           justification: `P3: Zero ausente há ${zeroDelay} giros. Jeu Zero: 7 números próximos ao zero. Paga 5:1. ${zeroDelay >= 30 ? 'PRIORIDADE ALTA!' : ''}`,
@@ -5281,7 +5281,7 @@ serve(async (req) => {
         const mfBt = backtestSet(matrixNums);
         strategies.push({
           type: 'matrix_fusion', label: `🔮 Convergência Matricial`, emoji: '🔮',
-          numbers: matrixNums, coverage: (matrixNums.length / 37) * 100, payout: Math.round(36 / matrixNums.length),
+          numbers: matrixNums, coverage: (matrixNums.length / 37) * 100, payout: 36 - matrixNums.length,
           score: mfScore + mfBt * 25 + tripleNums.length * 10,
           probability: Math.min(98, Math.round(55 + mfScore * 2 + mfBt * 30 + tripleNums.length * 8)),
           justification: `Convergência tripla: Setor ${transitionMatrix.predictedSector} + Dúzia ${transitionMatrix.predictedDozen} + Terminal ${transitionMatrix.predictedTerminal}. ${tripleNums.length} na interseção total.`,
@@ -5960,7 +5960,7 @@ serve(async (req) => {
       numbers: combinedSorted.map(c => c.num),
       highlighted: combinedSorted.filter(c => c.count >= 2).map(c => c.num),
       coverage: +((combinedSorted.length / 37) * 100).toFixed(1),
-      payout: Math.round(36 / combinedSorted.length),
+      payout: 36 - combinedSorted.length,
       avgProbability: Math.round(diverseAlts.reduce((s, a) => s + a.probability, 0) / (diverseAlts.length || 1)),
       strategiesUsed: diverseAlts.map(s => ({ emoji: s.emoji, label: s.label, type: s.type })),
     };
