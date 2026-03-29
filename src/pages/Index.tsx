@@ -547,99 +547,110 @@ const Index = () => {
             </div>
           </motion.div>
 
-          {/* DEALER + TERMINAIS + SETOR — compact row */}
-          {sniperData && (
+          {/* DEALER + CAVALOS + SETOR — always real data */}
+          {allNumbers.length >= 10 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* DEALER */}
               <div className="bg-card rounded-xl border border-border p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Activity className="w-3.5 h-3.5 text-purple-400" />
                   <span className="font-display text-[9px] tracking-[0.15em] font-bold text-purple-400">DEALER</span>
-                  {sniperData.dealerSignature?.dealerChanged && (
+                  {(sniperData?.dealerSignature?.dealerChanged || computedDealer?.dealerChanged) && (
                     <span className="text-[7px] px-1 py-0.5 rounded bg-destructive/20 text-destructive font-bold animate-pulse ml-auto">NOVO</span>
                   )}
                 </div>
-                {sniperData.dealerSignature ? (
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-muted-foreground">Arco</span>
-                      <span className="font-mono font-bold text-foreground">{sniperData.dealerSignature.arcMean}</span>
-                    </div>
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-muted-foreground">Desvio</span>
-                      <span className="font-mono font-bold text-foreground">±{sniperData.dealerSignature.arcStdDev}</span>
-                    </div>
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-muted-foreground">Consistência</span>
-                      <span className={`font-bold text-[8px] px-1.5 py-0.5 rounded ${
-                        sniperData.dealerSignature.consistency === 'alta' ? 'bg-green-500/20 text-green-400' :
-                        sniperData.dealerSignature.consistency === 'média' ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-destructive/20 text-destructive'
-                      }`}>{sniperData.dealerSignature.consistency}</span>
-                    </div>
-                    {sniperData.dealerSignature.maoViciada && (
-                      <div className="bg-primary/10 border border-primary/30 rounded p-1.5 text-center mt-1">
-                        <span className="text-[9px] font-bold text-primary">🎯 MÃO VICIADA</span>
+                {(() => {
+                  const d = sniperData?.dealerSignature || computedDealer;
+                  if (!d) return <p className="text-[10px] text-muted-foreground">Calibrando...</p>;
+                  return (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-muted-foreground">Arco</span>
+                        <span className="font-mono font-bold text-foreground">{d.arcMean}</span>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-[10px] text-muted-foreground">Calibrando...</p>
-                )}
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-muted-foreground">Desvio</span>
+                        <span className="font-mono font-bold text-foreground">±{d.arcStdDev}</span>
+                      </div>
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-muted-foreground">Consistência</span>
+                        <span className={`font-bold text-[8px] px-1.5 py-0.5 rounded ${
+                          d.consistency === 'alta' ? 'bg-green-500/20 text-green-400' :
+                          d.consistency === 'média' ? 'bg-yellow-500/20 text-yellow-400' :
+                          'bg-destructive/20 text-destructive'
+                        }`}>{d.consistency}</span>
+                      </div>
+                      {d.maoViciada && (
+                        <div className="bg-primary/10 border border-primary/30 rounded p-1.5 text-center mt-1">
+                          <span className="text-[9px] font-bold text-primary">🎯 MÃO VICIADA</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* CAVALOS DO MOMENTO */}
+              {/* CAVALOS QUENTES */}
               <div className="bg-card rounded-xl border border-border p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Flame className="w-3.5 h-3.5 text-orange-400" />
                   <span className="font-display text-[9px] tracking-[0.15em] font-bold text-orange-400">CAVALOS QUENTES</span>
                 </div>
-                {sniperData.hotTerminals ? (
-                  <div className="space-y-1">
-                    {sniperData.hotTerminals.cavalos?.slice(0, 4).map(([group, count]: [string, number], i: number) => {
-                      const max = sniperData.hotTerminals.cavalos[0]?.[1] || 1;
-                      const pct = (count / max) * 100;
-                      return (
-                        <div key={group} className="space-y-0.5">
-                          <div className="flex justify-between text-[10px]">
-                            <span className={`font-bold ${i === 0 ? 'text-orange-400' : 'text-muted-foreground'}`}>C {group}</span>
-                            <span className="font-mono font-bold text-foreground">{count}x</span>
+                {(() => {
+                  const cavalos = sniperData?.hotTerminals?.cavalos || computedCavalos;
+                  if (!cavalos || cavalos.length === 0) return <p className="text-[10px] text-muted-foreground">Coletando...</p>;
+                  const maxCount = cavalos[0]?.[1] || 1;
+                  return (
+                    <div className="space-y-1">
+                      {cavalos.slice(0, 4).map(([group, count]: [string, number], i: number) => {
+                        const pct = (count / maxCount) * 100;
+                        return (
+                          <div key={group} className="space-y-0.5">
+                            <div className="flex justify-between text-[10px]">
+                              <span className={`font-bold ${i === 0 ? 'text-orange-400' : 'text-muted-foreground'}`}>C {group}</span>
+                              <span className="font-mono font-bold text-foreground">{count}x</span>
+                            </div>
+                            <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full ${i === 0 ? 'bg-orange-400' : 'bg-muted-foreground/30'}`} style={{ width: `${pct}%` }} />
+                            </div>
                           </div>
-                          <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${i === 0 ? 'bg-orange-400' : 'bg-muted-foreground/30'}`} style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : <p className="text-[10px] text-muted-foreground">Coletando...</p>}
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* SETOR */}
+              {/* SETORES */}
               <div className="bg-card rounded-xl border border-border p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Target className="w-3.5 h-3.5 text-cyan-400" />
                   <span className="font-display text-[9px] tracking-[0.15em] font-bold text-cyan-400">SETORES</span>
                 </div>
-                {sniperData.sectorFreq ? (
-                  <div className="space-y-1">
-                    {Object.entries(sniperData.sectorFreq as Record<string, number>).sort(([,a],[,b]) => (b as number) - (a as number)).slice(0, 4).map(([sector, count], i) => {
-                      const total = Object.values(sniperData.sectorFreq as Record<string, number>).reduce((a: number, b: number) => a + b, 0);
-                      const pct = total > 0 ? ((count as number) / total) * 100 : 0;
-                      return (
-                        <div key={sector} className="space-y-0.5">
-                          <div className="flex justify-between text-[10px]">
-                            <span className={`font-bold truncate ${i === 0 ? 'text-cyan-400' : 'text-muted-foreground'}`}>{sector}</span>
-                            <span className="font-mono text-foreground">{pct.toFixed(0)}%</span>
+                {(() => {
+                  const sectors = sniperData?.sectorFreq || computedSectors;
+                  const entries = Object.entries(sectors as Record<string, number>);
+                  if (entries.length === 0) return <p className="text-[10px] text-muted-foreground">Analisando...</p>;
+                  const total = entries.reduce((a, [, b]) => a + (b as number), 0);
+                  return (
+                    <div className="space-y-1">
+                      {entries.sort(([, a], [, b]) => (b as number) - (a as number)).slice(0, 4).map(([sector, count], i) => {
+                        const pct = total > 0 ? ((count as number) / total) * 100 : 0;
+                        return (
+                          <div key={sector} className="space-y-0.5">
+                            <div className="flex justify-between text-[10px]">
+                              <span className={`font-bold truncate ${i === 0 ? 'text-cyan-400' : 'text-muted-foreground'}`}>{sector}</span>
+                              <span className="font-mono text-foreground">{pct.toFixed(0)}%</span>
+                            </div>
+                            <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full ${i === 0 ? 'bg-cyan-400' : 'bg-muted-foreground/30'}`} style={{ width: `${pct}%` }} />
+                            </div>
                           </div>
-                          <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${i === 0 ? 'bg-cyan-400' : 'bg-muted-foreground/30'}`} style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : <p className="text-[10px] text-muted-foreground">Analisando...</p>}
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
