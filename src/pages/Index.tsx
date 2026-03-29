@@ -316,26 +316,33 @@ const Index = () => {
 
   useEffect(() => { loadPredStats(); }, [loadPredStats]);
 
-  // === Auto Learning ===
+  // === Auto Learning — Autonomous 24/7 ===
   const autoLearnRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cycleRef = useRef(0);
   const autoLearnErrorCount = useRef(0);
   const autoLearnDisabled = useRef(false);
+  const consecutiveSuccessRef = useRef(0);
+  const currentIntervalRef = useRef(120_000);
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     const runContinuousLearn = async () => {
-      if (!aiEnabled || autoLearnDisabled.current || autoLearnErrorCount.current >= 2) {
-        autoLearnDisabled.current = true;
+      if (!aiEnabled || autoLearnDisabled.current) {
         setAutoLearnStatus('idle');
+        scheduleNext();
         return;
       }
       const cycle = cycleRef.current++;
       try {
-        if (cycle % 3 === 0) {
+        // 6-phase cycle: double-pass learning for deeper memory
+        const phase = cycle % 6;
+        
+        if (phase === 0 || phase === 3) {
           setAutoLearnStatus('learning');
           const res = await supabase.functions.invoke('ai-learn');
           if (res?.error || res?.data?.error) throw new Error(res?.data?.error || res?.error?.message || 'ai-learn failed');
-        } else if (cycle % 3 === 1) {
+        } else if (phase === 1 || phase === 4) {
           setAutoLearnStatus('analyzing');
           const res = await supabase.functions.invoke('auto-analyze-patterns');
           if (res?.error || res?.data?.error) throw new Error(res?.data?.error || res?.error?.message || 'auto-analyze failed');
@@ -343,22 +350,43 @@ const Index = () => {
           setAutoLearnStatus('backtesting');
           await supabase.functions.invoke('sniper-predict');
         }
+        
         autoLearnErrorCount.current = 0;
+        consecutiveSuccessRef.current++;
+        
+        // Speed up when productive (min 60s)
+        if (consecutiveSuccessRef.current >= 3) {
+          currentIntervalRef.current = Math.max(60_000, currentIntervalRef.current * 0.8);
+        }
       } catch (err: any) {
         autoLearnErrorCount.current++;
+        consecutiveSuccessRef.current = 0;
         const msg = err?.message || String(err);
+        
         if (/402|429|[Cc]redit|[Rr]ate|exhausted|payment/i.test(msg)) {
-          autoLearnDisabled.current = true;
-          console.warn('Créditos de IA esgotados.');
+          currentIntervalRef.current = Math.min(600_000, currentIntervalRef.current * 3);
+          console.warn(`[AutoLearn] Rate limited — interval: ${(currentIntervalRef.current/1000).toFixed(0)}s`);
+          if (autoLearnErrorCount.current >= 5) {
+            autoLearnDisabled.current = true;
+            console.warn('[AutoLearn] Disabled after 5 consecutive credit errors.');
+          }
+        } else {
+          currentIntervalRef.current = Math.min(300_000, currentIntervalRef.current * 1.5);
         }
       } finally {
         setAutoLearnStatus('idle');
+        scheduleNext();
       }
     };
-    const t = setTimeout(runContinuousLearn, 20_000);
-    autoLearnRef.current = setInterval(runContinuousLearn, 300_000);
-    return () => { clearTimeout(t); if (autoLearnRef.current) clearInterval(autoLearnRef.current); };
-  }, []);
+
+    const scheduleNext = () => {
+      if (autoLearnDisabled.current) return;
+      timeoutId = setTimeout(runContinuousLearn, currentIntervalRef.current);
+    };
+
+    timeoutId = setTimeout(runContinuousLearn, 15_000);
+    return () => { if (timeoutId) clearTimeout(timeoutId); };
+  }, [aiEnabled]);
 
   // === Realtime ===
   useEffect(() => {
@@ -387,15 +415,22 @@ const Index = () => {
   const triggerLearn = async () => {
     setIsAnalyzing(true);
     try {
-      const res = await supabase.functions.invoke('ai-learn');
-      if (res.error || res.data?.error) {
-        const status = res.error?.context?.status;
-        const message = res.data?.error || res.error?.message || '';
-        if (status === 402 || message.includes('Credits')) { console.warn('Créditos de IA esgotados.'); return; }
-        if (status === 429 || message.includes('Rate')) { console.warn('Muitas tentativas.'); return; }
+      setAutoLearnStatus('learning');
+      const r1 = await supabase.functions.invoke('ai-learn');
+      if (!r1.error && !r1.data?.error) {
+        setAutoLearnStatus('analyzing');
+        const r2 = await supabase.functions.invoke('auto-analyze-patterns');
+        if (!r2.error && !r2.data?.error) {
+          setAutoLearnStatus('backtesting');
+          await supabase.functions.invoke('sniper-predict');
+        }
       }
+      const status = r1.error?.context?.status;
+      const message = r1.data?.error || r1.error?.message || '';
+      if (status === 402 || message.includes('Credits')) { console.warn('Créditos esgotados.'); }
+      if (status === 429 || message.includes('Rate')) { console.warn('Rate limit.'); }
     } catch (err) { console.error(err); }
-    finally { setIsAnalyzing(false); }
+    finally { setIsAnalyzing(false); setAutoLearnStatus('idle'); }
   };
 
   // === Computed (memoized) ===
