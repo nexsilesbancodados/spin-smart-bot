@@ -89,6 +89,7 @@ const Index = () => {
   const [autoLearnStatus, setAutoLearnStatus] = useState<'idle' | 'learning' | 'analyzing' | 'backtesting'>('idle');
   const [lastAutoLearnTime, setLastAutoLearnTime] = useState<Date | null>(null);
   const [showCasino, setShowCasino] = useState(false);
+  const [predStats, setPredStats] = useState<{ hits: number; misses: number; exact: number; total: number }>({ hits: 0, misses: 0, exact: 0, total: 0 });
 
   // Fetch from API
   const fetchNumbers = useCallback(async () => {
