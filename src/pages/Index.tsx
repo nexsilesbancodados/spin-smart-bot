@@ -60,6 +60,9 @@ const Index = () => {
   const prevNumbersRef = useRef<string>('');
   const [sniperData, setSniperData] = useState<any>(null);
   const [sniperCountdown, setSniperCountdown] = useState(13);
+  const [autoLearnCycle, setAutoLearnCycle] = useState(0);
+  const [autoLearnStatus, setAutoLearnStatus] = useState<'idle' | 'learning' | 'analyzing' | 'backtesting'>('idle');
+  const [lastAutoLearnTime, setLastAutoLearnTime] = useState<Date | null>(null);
 
   // Fetch from API
   const fetchNumbers = useCallback(async () => {
@@ -139,22 +142,47 @@ const Index = () => {
 
   useEffect(() => { loadInsights(); loadLearned(); }, [loadInsights, loadLearned]);
 
-  // Auto-learn continuously every 2 minutes (silent, no user action needed)
+  // CONTINUOUS AUTO-LEARNING ENGINE — runs non-stop cycling through different learning tasks
   const autoLearnRef = useRef<NodeJS.Timeout | null>(null);
+  const cycleRef = useRef(0);
   useEffect(() => {
-    const runAutoLearn = async () => {
+    const runContinuousLearn = async () => {
+      const cycle = cycleRef.current;
+      cycleRef.current++;
+      setAutoLearnCycle(cycle);
+
       try {
-        console.log('[AutoLearn] 🧠 Aprendizado automático silencioso...');
-        await supabase.functions.invoke('ai-learn');
+        if (cycle % 3 === 0) {
+          // Cycle 0,3,6,9... → Full AI Learn (deep learning + prediction accuracy analysis)
+          setAutoLearnStatus('learning');
+          console.log(`[AutoLearn] 🧠 Ciclo ${cycle}: Aprendizado profundo...`);
+          await supabase.functions.invoke('ai-learn');
+        } else if (cycle % 3 === 1) {
+          // Cycle 1,4,7,10... → Pattern Analysis (detect new patterns)
+          setAutoLearnStatus('analyzing');
+          console.log(`[AutoLearn] 🔍 Ciclo ${cycle}: Análise de padrões...`);
+          await supabase.functions.invoke('auto-analyze-patterns');
+        } else {
+          // Cycle 2,5,8,11... → Sniper backtesting (test predictions against reality)
+          setAutoLearnStatus('backtesting');
+          console.log(`[AutoLearn] 🎯 Ciclo ${cycle}: Backtesting sniper...`);
+          await supabase.functions.invoke('sniper-predict');
+        }
+
         await Promise.all([loadInsights(), loadLearned()]);
-        console.log('[AutoLearn] ✅ Concluído.');
-      } catch (err) { console.error('[AutoLearn] Erro:', err); }
+        setLastAutoLearnTime(new Date());
+        console.log(`[AutoLearn] ✅ Ciclo ${cycle} concluído.`);
+      } catch (err) {
+        console.error(`[AutoLearn] ❌ Ciclo ${cycle} erro:`, err);
+      } finally {
+        setAutoLearnStatus('idle');
+      }
     };
 
-    // First learn after 15s
-    const initialTimeout = setTimeout(runAutoLearn, 15_000);
-    // Then every 2 minutes (continuous learning)
-    autoLearnRef.current = setInterval(runAutoLearn, 2 * 60 * 1000);
+    // First run after 10s
+    const initialTimeout = setTimeout(runContinuousLearn, 10_000);
+    // Then every 45 seconds (continuous non-stop learning)
+    autoLearnRef.current = setInterval(runContinuousLearn, 45_000);
 
     return () => {
       clearTimeout(initialTimeout);
@@ -202,6 +230,21 @@ const Index = () => {
             <CircleDot className="w-5 h-5 text-primary animate-spin-slow" />
             <span className="font-display text-sm tracking-[0.15em] text-primary font-bold hidden sm:inline">ROULETTE PRO</span>
             <span className="text-[7px] px-1.5 py-0.5 bg-primary/20 rounded-full text-primary font-bold border border-primary/30">AI 24H</span>
+            {autoLearnStatus !== 'idle' && (
+              <motion.span
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={`text-[7px] px-1.5 py-0.5 rounded-full font-bold border flex items-center gap-1 ${
+                  autoLearnStatus === 'learning' ? 'bg-primary/20 text-primary border-primary/30' :
+                  autoLearnStatus === 'analyzing' ? 'bg-accent/20 text-accent border-accent/30' :
+                  'bg-accent/20 text-accent border-accent/30'
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                {autoLearnStatus === 'learning' ? '🧠' : autoLearnStatus === 'analyzing' ? '🔍' : '🎯'}
+                {autoLearnStatus === 'learning' ? 'APRENDENDO' : autoLearnStatus === 'analyzing' ? 'ANALISANDO' : 'TESTANDO'}
+              </motion.span>
+            )}
           </div>
 
           <div className="relative shrink-0">
@@ -255,6 +298,35 @@ const Index = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto p-3 space-y-3">
 
+          {/* 🧠 CONTINUOUS LEARNING STATUS BAR */}
+          <div className="flex items-center justify-between bg-card/80 rounded-lg border border-border px-3 py-1.5 text-[9px]">
+            <div className="flex items-center gap-2">
+              <Brain className={`w-3 h-3 text-primary ${autoLearnStatus !== 'idle' ? 'animate-spin' : ''}`} />
+              <span className="text-muted-foreground font-medium">Motor IA Contínuo</span>
+              <span className="text-primary font-bold">Ciclo #{autoLearnCycle}</span>
+              <span className="text-muted-foreground">•</span>
+              <span className={`font-bold ${autoLearnStatus !== 'idle' ? 'text-primary' : 'text-muted-foreground'}`}>
+                {autoLearnStatus === 'idle' ? '⏳ Aguardando próximo ciclo' :
+                 autoLearnStatus === 'learning' ? '🧠 Aprendendo com histórico + erros...' :
+                 autoLearnStatus === 'analyzing' ? '🔍 Analisando padrões na mesa...' :
+                 '🎯 Backtesting previsões...'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {lastAutoLearnTime && (
+                <span className="text-muted-foreground font-mono">
+                  Último: {lastAutoLearnTime.toLocaleTimeString('pt-BR')}
+                </span>
+              )}
+              <div className="flex gap-0.5">
+                {[0,1,2].map(i => (
+                  <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${
+                    autoLearnStatus !== 'idle' && autoLearnCycle % 3 === i ? 'bg-primary scale-125' : 'bg-muted-foreground/30'
+                  }`} />
+                ))}
+              </div>
+            </div>
+          </div>
           {/* 🔬 SCANNER 500 */}
           <Scanner500 layerResults={sniperData?.layerResults || null} isScanning={!!sniperData} />
 
