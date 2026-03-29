@@ -977,6 +977,7 @@ const Index = () => {
             </motion.div>
           )}
 
+          {sniperData?.memoryWindows && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* MICRO */}
               <div className="bg-card rounded-xl border border-border p-3">
