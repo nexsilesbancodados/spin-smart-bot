@@ -87,6 +87,44 @@ const PATTERN_ICONS: Record<string, typeof Brain> = {
   streak_behavior: TrendingUp, sector_concentration: Target,
 };
 
+// Memoized history grid — avoids hundreds of motion.div re-renders
+const HistoryGrid = memo(({ historySlice, selectedNum, setSelectedNum, setDnaNumber, setDnaOpen }: {
+  historySlice: number[];
+  selectedNum: number | null;
+  setSelectedNum: (n: number | null) => void;
+  setDnaNumber: (n: number) => void;
+  setDnaOpen: (b: boolean) => void;
+}) => {
+  const rows = useMemo(() => {
+    const r: number[][] = [];
+    for (let i = 0; i < historySlice.length; i += 20) r.push(historySlice.slice(i, i + 20));
+    return r;
+  }, [historySlice]);
+
+  return (
+    <div className="space-y-1.5">
+      {rows.map((row, rowIdx) => (
+        <div key={rowIdx} className="flex gap-1 flex-wrap">
+          {row.map((n, i) => {
+            const isSelected = selectedNum === n;
+            const isDimmed = selectedNum !== null && selectedNum !== n;
+            return (
+              <div key={`${rowIdx}-${i}-${n}`}
+                onClick={() => setSelectedNum(selectedNum === n ? null : n)}
+                onDoubleClick={() => { setDnaNumber(n); setDnaOpen(true); }}
+                style={{ opacity: isDimmed ? 0.25 : 1 }}
+                className={`w-[32px] h-[32px] rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm cursor-pointer border transition-transform duration-100
+                  ${isSelected ? 'ring-2 ring-primary scale-110 bg-primary text-primary-foreground border-primary' : `${colorClass(n)} border-white/10 hover:scale-110`}`}>
+                {n}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+});
+
 const Index = () => {
   const [selectedTable] = useState(ROULETTE_TABLES[0]);
   const [apiNumbers, setApiNumbers] = useState<number[]>([]);
