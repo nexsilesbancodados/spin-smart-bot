@@ -349,23 +349,6 @@ serve(async (req) => {
       mod6: detectAscendingTerminals(numbers),
     };
 
-    // Mod 1 AI learning
-    if (daniGreen.mod1.count >= 4) {
-      aiLearnings.push(`🎰 MÓD1 Duplo Terminal: T${daniGreen.mod1.terminal}+T${daniGreen.mod1.pair} quente (${daniGreen.mod1.count}x em 15)`);
-    }
-    if (daniGreen.mod2) {
-      aiLearnings.push(`📊 MÓD2 Terminais ${daniGreen.mod2 === 'high' ? 'ALTOS' : 'BAIXOS'}: mesa puxando ${daniGreen.mod2 === 'high' ? 'acima de 18' : 'abaixo de 18'}`);
-    }
-    if (daniGreen.mod4.active) {
-      aiLearnings.push(`🟢 MÓD4 Pressão Zero: ${daniGreen.mod4.delay} giros sem zero, ${daniGreen.mod4.neighborsActive} vizinhos ativos`);
-    }
-    if (daniGreen.mod5Pull.length > 0) {
-      aiLearnings.push(`🧲 MÓD5 Puxada: ${daniGreen.mod5LastNum} puxa ${daniGreen.mod5Pull.slice(0,5).join(',')}`);
-    }
-    if (daniGreen.mod6.active) {
-      aiLearnings.push(`📈 MÓD6 Crescente: T${daniGreen.mod6.sequence.join('→T')}${daniGreen.mod6.nextTerminal !== null ? ` → próximo T${daniGreen.mod6.nextTerminal}` : ' → D1 retorno'}`);
-    }
-
     // ========================================================
     // NOISE FILTER — Remove outlier spins (ball bouncing off diamonds)
     // ========================================================
@@ -568,6 +551,22 @@ serve(async (req) => {
     const aiLearnings: string[] = [];
     // Add error deep scan learnings first
     aiLearnings.push(...errorLearnings.slice(0, 4));
+    // Dani Green module learnings
+    if (daniGreen.mod1.count >= 4) {
+      aiLearnings.push(`🎰 MÓD1 Duplo Terminal: T${daniGreen.mod1.terminal}+T${daniGreen.mod1.pair} quente (${daniGreen.mod1.count}x em 15)`);
+    }
+    if (daniGreen.mod2) {
+      aiLearnings.push(`📊 MÓD2 Terminais ${daniGreen.mod2 === 'high' ? 'ALTOS' : 'BAIXOS'}: mesa puxando ${daniGreen.mod2 === 'high' ? 'acima de 18' : 'abaixo de 18'}`);
+    }
+    if (daniGreen.mod4.active) {
+      aiLearnings.push(`🟢 MÓD4 Pressão Zero: ${daniGreen.mod4.delay} giros sem zero, ${daniGreen.mod4.neighborsActive} vizinhos ativos`);
+    }
+    if (daniGreen.mod5Pull.length > 0) {
+      aiLearnings.push(`🧲 MÓD5 Puxada: ${daniGreen.mod5LastNum} puxa ${daniGreen.mod5Pull.slice(0,5).join(',')}`);
+    }
+    if (daniGreen.mod6.active) {
+      aiLearnings.push(`📈 MÓD6 Crescente: T${daniGreen.mod6.sequence.join('→T')}${daniGreen.mod6.nextTerminal !== null ? ` → próximo T${daniGreen.mod6.nextTerminal}` : ' → D1 retorno'}`);
+    }
     // Time awareness
     aiLearnings.push(`🕐 Turno ${timeAwareness.shift}: ${isNightShift ? 'Dealers mecânicos — prioridade física' : isDayShift ? 'Volume alto — prioridade matemática' : 'Turno misto'}`);
     if (microArcStd < 2) aiLearnings.push(`🎯 Dealer com mão viciada: arco ±${microArcStd.toFixed(1)} casas`);
