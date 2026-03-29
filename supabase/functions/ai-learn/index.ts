@@ -1,24 +1,95 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Robust JSON extraction from LLM responses
+// Robust JSON extraction from LLM responses — multi-layer repair
 function safeParseJson(raw: string): any {
+  // Step 1: Strip markdown fences
   let cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+
+  // Step 2: Find JSON boundaries
   const jsonStart = cleaned.search(/[\{\[]/);
   const isArray = jsonStart !== -1 && cleaned[jsonStart] === '[';
-  const jsonEnd = cleaned.lastIndexOf(isArray ? ']' : '}');
+  const closer = isArray ? ']' : '}';
+  const jsonEnd = cleaned.lastIndexOf(closer);
   if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON found in response");
   cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
-  try { return JSON.parse(cleaned); } catch (_) {
-    cleaned = cleaned
-      .replace(/,\s*}/g, "}")
-      .replace(/,\s*]/g, "]")
-      .replace(/[\x00-\x1F\x7F]/g, "")
-      .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":') // unquoted keys
-      .replace(/:\s*'([^']*)'/g, ': "$1"'); // single-quoted values
-    try { return JSON.parse(cleaned); } catch (e2) {
-      throw new Error(`JSON repair failed: ${(e2 as Error).message}`);
+
+  // Step 3: Try direct parse
+  try { return JSON.parse(cleaned); } catch (_) { /* continue to repair */ }
+
+  // Step 4: Basic repairs
+  cleaned = cleaned
+    .replace(/,\s*}/g, "}")
+    .replace(/,\s*]/g, "]")
+    .replace(/[\x00-\x1F\x7F]/g, " ")  // control chars → space
+    .replace(/\\\n/g, "\\n")            // literal newlines in strings
+    .replace(/\n/g, " ");               // remaining newlines
+
+  try { return JSON.parse(cleaned); } catch (_) { /* continue */ }
+
+  // Step 5: Fix unquoted keys and single-quoted values
+  cleaned = cleaned
+    .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":')
+    .replace(/:\s*'([^']*)'/g, ': "$1"');
+
+  try { return JSON.parse(cleaned); } catch (_) { /* continue */ }
+
+  // Step 6: Fix unescaped double quotes inside string values
+  // Strategy: walk char-by-char and escape quotes that aren't structural
+  try {
+    let result = '';
+    let inString = false;
+    let prevChar = '';
+    for (let i = 0; i < cleaned.length; i++) {
+      const ch = cleaned[i];
+      if (ch === '"' && prevChar !== '\\') {
+        if (!inString) {
+          inString = true;
+          result += ch;
+        } else {
+          // Check if this quote ends the string (next non-space char is : , } ])
+          const rest = cleaned.substring(i + 1).trimStart();
+          if (rest.length === 0 || ':,}]'.includes(rest[0])) {
+            inString = false;
+            result += ch;
+          } else {
+            result += '\\"'; // escape it
+          }
+        }
+      } else {
+        result += ch;
+      }
+      prevChar = ch;
     }
+    return JSON.parse(result);
+  } catch (_) { /* continue */ }
+
+  // Step 7: Truncation repair — close open structures
+  try {
+    let repaired = cleaned;
+    // Remove trailing incomplete key-value pair
+    repaired = repaired.replace(/,\s*"[^"]*"\s*:\s*"?[^"}\]]*$/, '');
+    repaired = repaired.replace(/,\s*"[^"]*"\s*:?\s*$/, '');
+    // Count and close open braces/brackets
+    let openBraces = 0, openBrackets = 0;
+    let inStr = false, prev = '';
+    for (const ch of repaired) {
+      if (ch === '"' && prev !== '\\') inStr = !inStr;
+      if (!inStr) {
+        if (ch === '{') openBraces++;
+        else if (ch === '}') openBraces--;
+        else if (ch === '[') openBrackets++;
+        else if (ch === ']') openBrackets--;
+      }
+      prev = ch;
+    }
+    for (let i = 0; i < openBrackets; i++) repaired += ']';
+    for (let i = 0; i < openBraces; i++) repaired += '}';
+    return JSON.parse(repaired);
+  } catch (e) {
+    // Final fallback: return a safe default instead of crashing
+    console.error("JSON repair completely failed, returning empty object. Raw length:", raw.length, "Error:", (e as Error).message);
+    return isArray ? [] : {};
   }
 }
 
