@@ -10,6 +10,8 @@ import {
 import Scanner500 from '@/components/Scanner500';
 import PredictionHistory from '@/components/PredictionHistory';
 import BetPanel from '@/components/BetPanel';
+import AILearningLog from '@/components/AILearningLog';
+import NumberDNADialog from '@/components/NumberDNADialog';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
@@ -95,6 +97,8 @@ const Index = () => {
   // === HISTORY INTERACTIVE STATES ===
   const [historyLimit, setHistoryLimit] = useState(100);
   const [selectedNum, setSelectedNum] = useState<number | null>(null);
+  const [dnaNumber, setDnaNumber] = useState<number | null>(null);
+  const [dnaOpen, setDnaOpen] = useState(false);
 
   // Fetch from API
   const fetchNumbers = useCallback(async () => {
@@ -977,6 +981,9 @@ const Index = () => {
             </motion.div>
           )}
 
+          {/* LOG DE APRENDIZADO IA */}
+          <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} />
+
           {sniperData?.memoryWindows && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* MICRO */}
@@ -1220,7 +1227,8 @@ const Index = () => {
                             <motion.div key={`${rowIdx}-${i}-${n}`}
                               initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: isDimmed ? 0.25 : 1 }}
                               transition={{ duration: 0.12, delay: i * 0.005 }}
-                              onClick={() => setSelectedNum(selectedNum === n ? null : n)}
+                              onClick={() => { setSelectedNum(selectedNum === n ? null : n); }}
+                              onDoubleClick={() => { setDnaNumber(n); setDnaOpen(true); }}
                               className={`w-[32px] h-[32px] rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm transition-all cursor-pointer border
                                 ${isSelected ? 'ring-2 ring-primary scale-110 bg-primary text-primary-foreground border-primary' : isDimmed ? `${colorClass(n)} border-white/5` : `${colorClass(n)} border-white/10 hover:scale-110`}`}>
                               {n}
@@ -1404,7 +1412,7 @@ const Index = () => {
                     <span className="text-[8px] text-muted-foreground">{l.label}</span>
                   </div>
                 ))}
-                <span className="text-[7px] text-muted-foreground/60 ml-auto">Clique em um número para analisar</span>
+                <span className="text-[7px] text-muted-foreground/60 ml-auto">Clique para filtrar • Duplo-clique para DNA completo</span>
               </div>
             </div>
 
@@ -1436,6 +1444,7 @@ const Index = () => {
           </div>
 
 
+
           {/* CASSINO AO VIVO - collapsible */}
           <div className="bg-card rounded-xl border border-border overflow-hidden">
             <button onClick={() => setShowCasino(!showCasino)}
@@ -1456,6 +1465,9 @@ const Index = () => {
 
         </div>
       </div>
+
+      {/* DNA Dialog */}
+      <NumberDNADialog number={dnaNumber} allNumbers={allNumbers} open={dnaOpen} onClose={() => setDnaOpen(false)} />
     </div>
   );
 };
