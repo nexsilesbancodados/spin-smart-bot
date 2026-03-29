@@ -1,16 +1,31 @@
 {
   "manifest_version": 3,
-  "name": "Roulette Tracker - Onabet",
-  "version": "1.0.0",
-  "description": "Captura automática de números da roleta da Onabet",
-  "permissions": ["activeTab", "storage"],
+  "name": "Roulette Pro Tracker",
+  "version": "2.0.0",
+  "description": "Captura automática de números da roleta + Auto-Bet inteligente com IA Sniper",
+  "permissions": ["activeTab", "storage", "alarms"],
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "icon.png"
+    "default_icon": {
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["*://onabet.com/*", "*://*.onabet.com/*", "*://ona.bet.br/*", "*://*.ona.bet.br/*", "*://*.onabet.com.br/*"],
+      "matches": [
+        "*://onabet.com/*",
+        "*://*.onabet.com/*",
+        "*://ona.bet.br/*",
+        "*://*.ona.bet.br/*",
+        "*://*.onabet.com.br/*",
+        "*://*.betano.com/*",
+        "*://*.bet365.com/*",
+        "*://*.sportingbet.com/*"
+      ],
       "js": ["content.js", "autobet.js"],
       "run_at": "document_idle",
       "all_frames": true

@@ -5,227 +5,280 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 380px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0a0a0a;
+      width: 400px;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0a0a0f;
       color: #e0e0e0;
     }
+
+    /* Header */
     .header {
-      background: linear-gradient(135deg, #1a1a2e, #16213e);
-      padding: 16px;
-      text-align: center;
-      border-bottom: 1px solid #333;
+      background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid #00e5ff15;
+      position: relative;
+      overflow: hidden;
     }
-    .header h1 { font-size: 16px; color: #00ff88; margin-bottom: 4px; }
-    .header p { font-size: 11px; color: #888; }
-    .tabs {
-      display: flex;
-      border-bottom: 1px solid #333;
+    .header::before {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #00e5ff, #ff00e5, #00e5ff);
+      opacity: 0.6;
     }
+    .header-row { display: flex; align-items: center; gap: 10px; }
+    .header h1 {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      background: linear-gradient(135deg, #00e5ff, #ff00e5);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .version {
+      font-size: 9px;
+      padding: 2px 6px;
+      background: #00e5ff15;
+      color: #00e5ff;
+      border: 1px solid #00e5ff30;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+    .header p { font-size: 11px; color: #555; margin-top: 4px; }
+
+    /* Tabs */
+    .tabs { display: flex; border-bottom: 1px solid #1a1a2e; }
     .tab {
-      flex: 1;
-      padding: 10px;
-      text-align: center;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      background: #111;
-      color: #666;
-      transition: all 0.2s;
+      flex: 1; padding: 10px 0; text-align: center;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+      cursor: pointer; border: none;
+      background: transparent; color: #444;
+      transition: all 0.25s; position: relative;
     }
-    .tab.active { color: #00ff88; border-bottom: 2px solid #00ff88; background: #1a1a1a; }
-    .tab:hover { color: #ccc; }
+    .tab.active {
+      color: #00e5ff;
+    }
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 20%; right: 20%;
+      height: 2px;
+      background: #00e5ff;
+      border-radius: 2px;
+    }
+    .tab:hover { color: #888; }
+
+    /* Tab content */
     .tab-content { display: none; }
     .tab-content.active { display: block; }
-    .status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 16px;
-      border-bottom: 1px solid #222;
+
+    /* Status bar */
+    .status-bar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px;
+      background: #0d0d15;
+      border-bottom: 1px solid #1a1a2e;
     }
-    .status-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-    .status-dot.active { background: #00ff88; }
-    .status-dot.inactive { background: #ff4444; animation: none; }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-    .section {
-      padding: 12px 16px;
-      border-bottom: 1px solid #222;
-    }
-    .section label {
-      font-size: 11px;
-      color: #888;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      display: block;
-      margin-bottom: 6px;
-    }
-    input[type="text"], input[type="number"] {
-      width: 100%;
-      padding: 8px 10px;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #fff;
-      font-size: 12px;
-      outline: none;
-      margin-bottom: 6px;
-    }
-    input:focus { border-color: #00ff88; }
-    .btn {
-      width: 100%;
-      padding: 10px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      margin-top: 8px;
-      transition: opacity 0.2s;
-    }
-    .btn:hover { opacity: 0.85; }
-    .btn-primary { background: #00ff88; color: #000; }
-    .btn-danger { background: #ff4444; color: #fff; }
-    .btn-secondary { background: #333; color: #ccc; }
-    .btn-warning { background: #f59e0b; color: #000; }
-    .log {
-      max-height: 140px;
-      overflow-y: auto;
-      font-size: 11px;
-    }
-    .log-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 4px 0;
-      border-bottom: 1px solid #1a1a1a;
-      gap: 4px;
-    }
-    .log-num {
-      font-weight: bold;
-      width: 24px; height: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-      font-size: 11px;
-      flex-shrink: 0;
-    }
-    .log-num.red { background: #dc2626; color: #fff; }
-    .log-num.black { background: #1a1a1a; color: #fff; border: 1px solid #444; }
-    .log-num.green { background: #16a34a; color: #fff; }
-    .log-time { color: #666; }
-    .empty { color: #555; text-align: center; padding: 16px; font-size: 12px; }
-    .count { font-size: 20px; color: #00ff88; font-weight: bold; }
-    .stats-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-    .stat-box {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 10px;
-      text-align: center;
-    }
-    .stat-box .label { font-size: 10px; color: #666; text-transform: uppercase; }
-    .stat-box .value { font-size: 18px; font-weight: bold; margin-top: 2px; }
-    .row { display: flex; gap: 8px; }
-    .row > * { flex: 1; }
-    .toggle-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px 0;
-    }
-    .toggle-row label { margin: 0; }
-    .switch {
+    .pulse-dot {
+      width: 10px; height: 10px; border-radius: 50%;
       position: relative;
-      width: 40px; height: 20px;
     }
+    .pulse-dot.on { background: #00e5ff; box-shadow: 0 0 8px #00e5ff80; }
+    .pulse-dot.on::after {
+      content: ''; position: absolute; inset: -3px;
+      border-radius: 50%; border: 2px solid #00e5ff40;
+      animation: ripple 2s infinite;
+    }
+    .pulse-dot.off { background: #ff4455; }
+    .pulse-dot.paused { background: #f59e0b; }
+    @keyframes ripple {
+      0% { transform: scale(1); opacity: 0.6; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+    .status-text { font-size: 12px; font-weight: 600; }
+
+    /* Sections */
+    .section { padding: 14px 16px; border-bottom: 1px solid #12121e; }
+    .section-title {
+      font-size: 9px; font-weight: 800; letter-spacing: 1.5px;
+      text-transform: uppercase; color: #555; margin-bottom: 8px;
+    }
+
+    /* Inputs */
+    input[type="text"], input[type="number"] {
+      width: 100%; padding: 9px 12px;
+      background: #12121e; border: 1px solid #222240;
+      border-radius: 8px; color: #fff; font-size: 12px;
+      outline: none; transition: border 0.2s;
+      margin-bottom: 6px;
+    }
+    input:focus { border-color: #00e5ff; box-shadow: 0 0 0 2px #00e5ff15; }
+
+    /* Buttons */
+    .btn {
+      width: 100%; padding: 10px; border: none; border-radius: 8px;
+      cursor: pointer; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.5px; margin-top: 6px; transition: all 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-neon {
+      background: linear-gradient(135deg, #00e5ff, #00b4d8);
+      color: #000; box-shadow: 0 4px 15px #00e5ff30;
+    }
+    .btn-neon:hover { box-shadow: 0 4px 20px #00e5ff50; }
+    .btn-pink {
+      background: linear-gradient(135deg, #ff00e5, #d400aa);
+      color: #fff; box-shadow: 0 4px 15px #ff00e530;
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #ff4455, #cc2233);
+      color: #fff; box-shadow: 0 4px 12px #ff445530;
+    }
+    .btn-ghost {
+      background: #1a1a2e; color: #888; border: 1px solid #222240;
+    }
+    .btn-ghost:hover { color: #ccc; border-color: #333; }
+    .btn-success {
+      background: linear-gradient(135deg, #00ff88, #00cc6a);
+      color: #000; box-shadow: 0 4px 15px #00ff8830;
+    }
+
+    /* Stats grid */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .stat-card {
+      background: #12121e; border: 1px solid #1a1a30;
+      border-radius: 10px; padding: 12px; text-align: center;
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: #00e5ff30; }
+    .stat-label { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+    .stat-value { font-size: 22px; font-weight: 900; font-family: 'Courier New', monospace; margin-top: 2px; }
+    .stat-value.cyan { color: #00e5ff; }
+    .stat-value.green { color: #00ff88; }
+    .stat-value.red { color: #ff4455; }
+    .stat-value.pink { color: #ff00e5; }
+
+    /* Number log */
+    .log-scroll { max-height: 160px; overflow-y: auto; }
+    .log-scroll::-webkit-scrollbar { width: 4px; }
+    .log-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+    .log-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 5px 0; border-bottom: 1px solid #12121e;
+    }
+    .num-ball {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .num-ball.red { background: linear-gradient(135deg, #dc2626, #991b1b); color: #fff; }
+    .num-ball.black { background: linear-gradient(135deg, #1a1a2e, #0d0d15); color: #fff; border: 1px solid #333; }
+    .num-ball.green { background: linear-gradient(135deg, #16a34a, #0d7a36); color: #fff; }
+    .log-time { color: #444; font-size: 10px; font-family: monospace; }
+    .log-status { font-size: 9px; }
+    .log-status.ok { color: #00ff88; }
+    .log-status.err { color: #ff4455; }
+    .empty-state { color: #333; text-align: center; padding: 20px; font-size: 12px; }
+
+    /* Toggle switch */
+    .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+    .toggle-row .label-text { font-size: 11px; font-weight: 600; }
+    .toggle-row .label-sub { font-size: 9px; color: #444; }
+    .switch { position: relative; width: 42px; height: 22px; flex-shrink: 0; }
     .switch input { opacity: 0; width: 0; height: 0; }
     .slider {
-      position: absolute;
-      cursor: pointer;
+      position: absolute; cursor: pointer;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: #333;
-      border-radius: 20px;
+      background: #222240; border-radius: 22px;
       transition: 0.3s;
     }
     .slider:before {
-      content: '';
-      position: absolute;
-      height: 16px; width: 16px;
+      content: ''; position: absolute;
+      height: 18px; width: 18px;
       left: 2px; bottom: 2px;
-      background: white;
-      border-radius: 50%;
+      background: white; border-radius: 50%;
       transition: 0.3s;
     }
-    .switch input:checked + .slider { background: #00ff88; }
+    .switch input:checked + .slider { background: #00e5ff; }
     .switch input:checked + .slider:before { transform: translateX(20px); }
+
+    /* Row layout */
+    .row { display: flex; gap: 8px; }
+    .row > * { flex: 1; }
+
+    /* Stop alert */
     .stop-alert {
-      background: #ff444420;
-      border: 1px solid #ff4444;
-      border-radius: 6px;
-      padding: 8px 12px;
-      font-size: 12px;
-      color: #ff6666;
-      margin-bottom: 8px;
-      display: none;
+      background: #ff445515; border: 1px solid #ff445540;
+      border-radius: 8px; padding: 10px 14px;
+      font-size: 12px; color: #ff6666;
+      margin-bottom: 10px; display: none;
+      font-weight: 600;
     }
+
+    /* Count display */
+    .count-display {
+      text-align: center; margin-bottom: 10px;
+    }
+    .count-num {
+      font-size: 32px; font-weight: 900;
+      font-family: 'Courier New', monospace;
+      background: linear-gradient(135deg, #00e5ff, #ff00e5);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .count-label { font-size: 9px; color: #444; letter-spacing: 1px; }
   </style>
 </head>
 <body>
+  <!-- Header -->
   <div class="header">
-    <h1>🎰 Roulette Tracker</h1>
-    <p>Captura automática + Bot — Onabet</p>
+    <div class="header-row">
+      <h1>ROULETTE PRO</h1>
+      <span class="version">v2.0</span>
+    </div>
+    <p>Tracker + Auto-Bet com IA Sniper</p>
   </div>
 
+  <!-- Tabs -->
   <div class="tabs">
-    <button class="tab active" data-tab="tracker">📡 Tracker</button>
-    <button class="tab" data-tab="autobet">🤖 Auto-Bet</button>
+    <button class="tab active" data-tab="tracker">📡 TRACKER</button>
+    <button class="tab" data-tab="autobet">🤖 AUTO-BET</button>
   </div>
 
   <!-- TAB: TRACKER -->
   <div class="tab-content active" id="tab-tracker">
-    <div class="status">
-      <div class="status-dot" id="statusDot"></div>
-      <span id="statusText" style="font-size:12px;">Verificando...</span>
+    <div class="status-bar">
+      <div class="pulse-dot" id="statusDot"></div>
+      <span class="status-text" id="statusText">Verificando...</span>
     </div>
 
     <div class="section">
-      <label>Webhook URL</label>
+      <div class="section-title">Webhook URL</div>
       <input type="text" id="webhookInput" placeholder="https://...supabase.co/functions/v1/webhook-roulette" />
-      <button class="btn btn-primary" id="saveBtn">Salvar</button>
+      <button class="btn btn-neon" id="saveBtn">💾 Salvar</button>
     </div>
 
     <div class="section">
-      <label>Números Capturados</label>
-      <div style="text-align:center;margin-bottom:8px;">
-        <span class="count" id="totalCount">0</span>
+      <div class="section-title">Números Capturados</div>
+      <div class="count-display">
+        <div class="count-num" id="totalCount">0</div>
+        <div class="count-label">CAPTURADOS</div>
       </div>
-      <div class="log" id="logContainer">
-        <div class="empty">Nenhum número capturado ainda</div>
+      <div class="log-scroll" id="logContainer">
+        <div class="empty-state">Nenhum número capturado ainda</div>
       </div>
-      <button class="btn btn-secondary" id="clearBtn" style="margin-top:8px;">Limpar Log</button>
+      <button class="btn btn-ghost" id="clearBtn" style="margin-top:8px;">🗑️ Limpar Log</button>
     </div>
 
     <div class="section">
-      <button class="btn btn-warning" id="pauseBtn">⏸️ Pausar Captura</button>
-    </div>
-
-    <div class="section" style="border:none;">
-      <button class="btn btn-danger" id="testBtn">🧪 Enviar Número Teste</button>
+      <div class="row">
+        <button class="btn btn-pink" id="pauseBtn">⏸️ Pausar</button>
+        <button class="btn btn-danger" id="testBtn">🧪 Teste</button>
+      </div>
     </div>
   </div>
 
@@ -235,81 +288,85 @@
       <div class="stop-alert" id="ab-stop-reason"></div>
 
       <div class="stats-grid">
-        <div class="stat-box">
-          <div class="label">Apostas</div>
-          <div class="value" id="ab-stat-bets">0</div>
+        <div class="stat-card">
+          <div class="stat-label">Apostas</div>
+          <div class="stat-value cyan" id="ab-stat-bets">0</div>
         </div>
-        <div class="stat-box">
-          <div class="label">Lucro</div>
-          <div class="value" id="ab-stat-profit" style="color:#00ff88">R$ 0.00</div>
+        <div class="stat-card">
+          <div class="stat-label">Lucro</div>
+          <div class="stat-value green" id="ab-stat-profit">R$ 0.00</div>
         </div>
-        <div class="stat-box">
-          <div class="label">Wins</div>
-          <div class="value" id="ab-stat-wins" style="color:#00ff88">0</div>
+        <div class="stat-card">
+          <div class="stat-label">Wins</div>
+          <div class="stat-value green" id="ab-stat-wins">0</div>
         </div>
-        <div class="stat-box">
-          <div class="label">Losses</div>
-          <div class="value" id="ab-stat-losses" style="color:#ff4444">0</div>
+        <div class="stat-card">
+          <div class="stat-label">Losses</div>
+          <div class="stat-value red" id="ab-stat-losses">0</div>
         </div>
       </div>
 
-      <button class="btn btn-primary" id="ab-toggle">🤖 Ativar Bot</button>
+      <button class="btn btn-success" id="ab-toggle">🤖 Ativar Bot</button>
     </div>
 
     <div class="section">
-      <label>API Sniper URL</label>
+      <div class="section-title">Configuração</div>
+      <label style="font-size:10px;color:#555;display:block;margin-bottom:4px;">API Sniper URL</label>
       <input type="text" id="ab-apiUrl" placeholder="https://...supabase.co/functions/v1/sniper-predict" />
 
       <div class="row">
         <div>
-          <label>Valor Aposta (R$)</label>
+          <label style="font-size:10px;color:#555;display:block;margin-bottom:4px;">Aposta (R$)</label>
           <input type="number" id="ab-betValue" value="1" min="0.1" step="0.5" />
         </div>
         <div>
-          <label>Prob. Mínima (%)</label>
+          <label style="font-size:10px;color:#555;display:block;margin-bottom:4px;">Prob. Min (%)</label>
           <input type="number" id="ab-minProb" value="85" min="50" max="100" />
         </div>
       </div>
 
       <div class="row">
         <div>
-          <label>Stop Loss (R$)</label>
+          <label style="font-size:10px;color:#555;display:block;margin-bottom:4px;">Stop Loss (R$)</label>
           <input type="number" id="ab-stopLoss" value="-50" max="0" />
         </div>
         <div>
-          <label>Stop Win (R$)</label>
+          <label style="font-size:10px;color:#555;display:block;margin-bottom:4px;">Stop Win (R$)</label>
           <input type="number" id="ab-stopWin" value="100" min="1" />
         </div>
       </div>
 
       <div class="toggle-row">
-        <label>Gale Inteligente</label>
+        <div>
+          <div class="label-text">Martingale (Gale)</div>
+          <div class="label-sub">Dobra aposta após perda</div>
+        </div>
         <label class="switch">
           <input type="checkbox" id="ab-gale" />
           <span class="slider"></span>
         </label>
       </div>
 
-      <div class="row">
+      <div class="row" id="gale-options" style="display:none;">
         <div>
-          <label>Max Gale Steps</label>
+          <label style="font-size:10px;color:#555;display:block;margin-bottom:4px;">Max Steps</label>
           <input type="number" id="ab-maxGale" value="3" min="1" max="5" />
         </div>
         <div>
-          <label>Fator Gale (x)</label>
+          <label style="font-size:10px;color:#555;display:block;margin-bottom:4px;">Fator (x)</label>
           <input type="number" id="ab-galeFactor" value="2" min="1.5" max="3" step="0.1" />
         </div>
       </div>
 
-      <button class="btn btn-primary" id="ab-save">Salvar Config</button>
+      <button class="btn btn-neon" id="ab-save">💾 Salvar Config</button>
     </div>
 
-    <div class="section">
-      <label>Log de Apostas</label>
-      <div class="log" id="ab-log">
-        <div class="empty">Nenhuma aposta automática</div>
+    <div class="section" style="border:none;">
+      <div class="section-title">Log de Apostas</div>
+      <div class="log-scroll" id="ab-log">
+        <div class="empty-state">Nenhuma aposta automática</div>
       </div>
-      <button class="btn btn-secondary" id="ab-reset" style="margin-top:8px;">🗑️ Resetar Stats</button>
+      <button class="btn btn-ghost" id="ab-reset" style="margin-top:8px;">🗑️ Resetar Tudo</button>
     </div>
   </div>
 
@@ -326,7 +383,12 @@
         if (tab.dataset.tab === 'autobet') loadAutobetUI();
       });
     });
-    // Init autobet UI
+
+    // Gale toggle visibility
+    document.getElementById('ab-gale').addEventListener('change', function() {
+      document.getElementById('gale-options').style.display = this.checked ? 'flex' : 'none';
+    });
+
     setupAutobetEvents();
     loadAutobetUI();
   </script>
