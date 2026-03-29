@@ -9,241 +9,194 @@ import PremiumTable from '@/components/PremiumTable';
 import QuickNumberPad from '@/components/QuickNumberPad';
 import AIAnalysis from '@/components/AIAnalysis';
 import DebugModal from '@/components/DebugModal';
-import { CircleDot, ChevronDown, MonitorPlay, BarChart3, Flame, Snowflake, Play, Square, Zap, Timer } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { CircleDot, ChevronDown, MonitorPlay, Flame, Snowflake, Play, Square, Zap, Timer, ExternalLink, Maximize2, Minimize2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-const PROVIDERS: Record<string, { label: string; tables: { name: string; iframeUrl?: string }[] }> = {
+const PROVIDERS: Record<string, { label: string; tables: { name: string; defaultUrl?: string }[] }> = {
   Playtech: {
     label: 'Playtech',
     tables: [
-      { name: 'Roleta Brasileira', iframeUrl: '' },
-      { name: 'Mega Fire Blaze Roulette Live', iframeUrl: '' },
-      { name: 'Roulette', iframeUrl: '' },
+      { name: 'Roleta Brasileira', defaultUrl: '' },
+      { name: 'Mega Fire Blaze Roulette Live', defaultUrl: '' },
+      { name: 'Roulette', defaultUrl: '' },
     ],
   },
   Evolution: {
     label: 'Evolution',
     tables: [
-      { name: 'Roleta Immersiva', iframeUrl: '' },
-      { name: 'Roulette Evo', iframeUrl: '' },
-      { name: 'Roleta Relâmpago XXXtreme', iframeUrl: '' },
-      { name: 'Roleta ao Vivo', iframeUrl: '' },
+      { name: 'Roleta Immersiva', defaultUrl: '' },
+      { name: 'Roulette Evo', defaultUrl: '' },
+      { name: 'Roleta Relâmpago XXXtreme', defaultUrl: '' },
+      { name: 'Roleta ao Vivo', defaultUrl: '' },
     ],
   },
   Pragmatic: {
     label: 'Pragmatic',
     tables: [
-      { name: 'PowerUP Roulette', iframeUrl: '' },
-      { name: 'Roulette Macao', iframeUrl: '' },
-      { name: 'Brasileira Roleta', iframeUrl: '' },
+      { name: 'PowerUP Roulette', defaultUrl: '' },
+      { name: 'Roulette Macao', defaultUrl: '' },
+      { name: 'Brasileira Roleta', defaultUrl: '' },
     ],
   },
 };
 
 const Index = () => {
   const { history, provider, table, setProvider, setTable, addNumber, autoMode, autoSpeed, toggleAutoMode, setAutoSpeed } = useRoulette();
-  const [showIframe, setShowIframe] = useState(false);
   const [iframeUrl, setIframeUrl] = useState('');
+  const [urlInput, setUrlInput] = useState('');
   const [activeTab, setActiveTab] = useState<'roleta' | 'aulas' | 'bacbo'>('roleta');
+  const [iframeExpanded, setIframeExpanded] = useState(false);
+  const [showPremium, setShowPremium] = useState(false);
 
   const hotNumbers = getHotNumbers(history, 8);
   const coldNumbers = getColdNumbers(history, 8);
 
-  // Color stats
   const redCount = history.filter(h => h.color === 'red').length;
   const blackCount = history.filter(h => h.color === 'black').length;
   const greenCount = history.filter(h => h.color === 'green').length;
   const total = history.length || 1;
 
+  const handleLoadUrl = () => {
+    if (urlInput.trim()) {
+      setIframeUrl(urlInput.trim());
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-casino flex flex-col">
-      {/* Navbar */}
-      <nav className="bg-secondary/80 backdrop-blur-md border-b border-border px-3 py-2 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <div className="h-screen bg-gradient-casino flex flex-col overflow-hidden">
+      {/* Compact Navbar */}
+      <nav className="bg-secondary/90 backdrop-blur-md border-b border-border px-3 py-1.5 z-50 shrink-0">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CircleDot className="w-5 h-5 text-primary animate-spin-slow" />
-            <span className="font-display text-xs tracking-widest text-glow-green">ROULETTE ANALYTICS</span>
+            <CircleDot className="w-4 h-4 text-primary animate-spin-slow" />
+            <span className="font-display text-[10px] tracking-widest text-glow-green">ROULETTE ANALYTICS</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground px-2 py-0.5 bg-accent/20 rounded text-accent font-bold">
-              PRO
-            </span>
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" title="Online" />
+          <div className="flex items-center gap-3">
+            {/* Auto mode toggle inline */}
+            <button
+              onClick={toggleAutoMode}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold transition-all ${
+                autoMode
+                  ? 'bg-destructive text-destructive-foreground'
+                  : 'bg-primary/20 text-primary hover:bg-primary/30'
+              }`}
+            >
+              {autoMode ? <Square className="w-2.5 h-2.5" /> : <Play className="w-2.5 h-2.5" />}
+              {autoMode ? 'PARAR' : 'AUTO'}
+            </button>
+            {autoMode && (
+              <div className="flex gap-0.5">
+                {[3, 5, 8].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => setAutoSpeed(s)}
+                    className={`px-1.5 py-0.5 rounded text-[8px] font-semibold ${
+                      autoSpeed === s ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+                    }`}
+                  >
+                    {s}s
+                  </button>
+                ))}
+              </div>
+            )}
+            <span className="text-[9px] px-1.5 py-0.5 bg-accent/20 rounded text-accent font-bold">PRO</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
           </div>
         </div>
       </nav>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full p-2 pb-14">
-        <div className="flex flex-col lg:flex-row gap-2">
-          {/* LEFT: Iframe / Video Area */}
-          <div className="lg:w-[55%] space-y-2">
-            {/* Provider/Table */}
-            <div className="bg-card rounded-lg border border-border overflow-hidden">
-              <div className="flex">
-                <div className="flex-1 relative border-r border-border">
-                  <select
-                    value={provider}
-                    onChange={e => {
-                      setProvider(e.target.value);
-                      setTable(PROVIDERS[e.target.value].tables[0].name);
-                    }}
-                    className="w-full bg-card text-foreground text-xs font-semibold px-3 py-2 appearance-none cursor-pointer focus:outline-none"
-                  >
-                    {Object.entries(PROVIDERS).map(([key, p]) => (
-                      <option key={key} value={key}>{p.label}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-                <div className="flex-1 relative">
-                  <select
-                    value={table}
-                    onChange={e => setTable(e.target.value)}
-                    className="w-full bg-card text-foreground text-xs font-semibold px-3 py-2 appearance-none cursor-pointer focus:outline-none"
-                  >
-                    {PROVIDERS[provider]?.tables.map(t => (
-                      <option key={t.name} value={t.name}>{t.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+      {/* Main Split Layout */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* LEFT PANEL - Analysis & Controls */}
+        <div className={`${iframeExpanded ? 'hidden lg:flex' : 'flex'} flex-col ${iframeExpanded ? 'lg:w-[280px]' : 'lg:w-[340px]'} border-r border-border overflow-y-auto transition-all`}>
+          {/* Provider/Table Selectors */}
+          <div className="shrink-0 border-b border-border">
+            <div className="flex">
+              <div className="flex-1 relative border-r border-border">
+                <select
+                  value={provider}
+                  onChange={e => {
+                    setProvider(e.target.value);
+                    setTable(PROVIDERS[e.target.value].tables[0].name);
+                  }}
+                  className="w-full bg-card text-foreground text-[11px] font-semibold px-2 py-1.5 appearance-none cursor-pointer focus:outline-none"
+                >
+                  {Object.entries(PROVIDERS).map(([key, p]) => (
+                    <option key={key} value={key}>{p.label}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
-              <div className="bg-primary/10 border-t border-primary/20 text-center py-1 text-[10px] font-bold text-primary tracking-widest font-display">
+              <div className="flex-1 relative">
+                <select
+                  value={table}
+                  onChange={e => setTable(e.target.value)}
+                  className="w-full bg-card text-foreground text-[11px] font-semibold px-2 py-1.5 appearance-none cursor-pointer focus:outline-none"
+                >
+                  {PROVIDERS[provider]?.tables.map(t => (
+                    <option key={t.name} value={t.name}>{t.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+            {/* Premium toggle */}
+            <div className="flex items-center justify-between px-2 py-1 bg-primary/5 border-t border-primary/10">
+              <span className="text-[9px] font-bold text-primary tracking-wider font-display">
                 ⚡ {PROVIDERS[provider]?.label} • {table}
-              </div>
+              </span>
+              <label className="flex items-center gap-1 cursor-pointer">
+                <span className="text-[8px] text-muted-foreground">Tabela Premium</span>
+                <input
+                  type="checkbox"
+                  checked={showPremium}
+                  onChange={e => setShowPremium(e.target.checked)}
+                  className="w-3 h-3 accent-primary"
+                />
+              </label>
             </div>
+          </div>
 
-            {/* Iframe Area */}
-            <div className="bg-card rounded-lg border border-border overflow-hidden">
-              {iframeUrl ? (
-                <iframe src={iframeUrl} className="w-full aspect-video" allowFullScreen />
-              ) : (
-                <div className="aspect-video flex flex-col items-center justify-center bg-secondary/30 space-y-3">
-                  <MonitorPlay className="w-12 h-12 text-muted-foreground/30" />
-                  <p className="text-xs text-muted-foreground text-center px-4">
-                    Cole a URL do iframe da mesa aqui para visualizar ao vivo
-                  </p>
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      placeholder="https://..."
-                      value={iframeUrl}
-                      onChange={e => setIframeUrl(e.target.value)}
-                      className="bg-card border border-border rounded px-3 py-1.5 text-xs text-foreground w-64 focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto p-2 space-y-2">
             {/* Alerts */}
             <AlertBanner />
 
-            {/* Auto Mode Controls */}
-            <div className="bg-card rounded-lg border border-border p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Zap className={`w-4 h-4 ${autoMode ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
-                  <span className="font-display text-xs tracking-widest text-foreground uppercase">Modo Automático</span>
-                </div>
-                <button
-                  onClick={toggleAutoMode}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-                    autoMode
-                      ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                      : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon-green'
-                  }`}
-                >
-                  {autoMode ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-                  {autoMode ? 'PARAR' : 'INICIAR'}
-                </button>
-              </div>
-              {autoMode && (
-                <div className="flex items-center gap-2">
-                  <Timer className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-[10px] text-muted-foreground">Intervalo:</span>
-                  <div className="flex gap-1">
-                    {[3, 5, 8, 12, 20].map(s => (
-                      <button
-                        key={s}
-                        onClick={() => setAutoSpeed(s)}
-                        className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-all ${
-                          autoSpeed === s
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-secondary text-muted-foreground hover:bg-muted'
-                        }`}
-                      >
-                        {s}s
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {autoMode && (
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                  <span className="text-[10px] text-primary font-mono">
-                    Gerando números a cada {autoSpeed}s • {history.length} resultados
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Paste / Number Pad */}
-            <PasteHistory />
-            <QuickNumberPad onAddNumber={addNumber} />
-          </div>
-
-          {/* RIGHT: Analytics Panel */}
-          <div className="lg:w-[45%] space-y-2">
-            {/* Animated History */}
+            {/* History */}
             <AnimatedHistory />
 
-            {/* Color Distribution Mini Bar */}
+            {/* Color Bar */}
             {history.length > 0 && (
-              <div className="bg-card rounded-lg border border-border p-2.5">
-                <div className="flex gap-0.5 h-3 rounded overflow-hidden">
-                  <motion.div
-                    animate={{ width: `${(redCount / total) * 100}%` }}
-                    className="bg-roulette-red rounded-l"
-                    transition={{ duration: 0.5 }}
-                  />
-                  <motion.div
-                    animate={{ width: `${(blackCount / total) * 100}%` }}
-                    className="bg-roulette-black"
-                    transition={{ duration: 0.5 }}
-                  />
-                  <motion.div
-                    animate={{ width: `${(greenCount / total) * 100}%` }}
-                    className="bg-roulette-green rounded-r"
-                    transition={{ duration: 0.5 }}
-                  />
+              <div className="bg-card rounded-lg border border-border p-2">
+                <div className="flex gap-0.5 h-2.5 rounded overflow-hidden">
+                  <motion.div animate={{ width: `${(redCount / total) * 100}%` }} className="bg-roulette-red rounded-l" transition={{ duration: 0.5 }} />
+                  <motion.div animate={{ width: `${(blackCount / total) * 100}%` }} className="bg-roulette-black" transition={{ duration: 0.5 }} />
+                  <motion.div animate={{ width: `${(greenCount / total) * 100}%` }} className="bg-roulette-green rounded-r" transition={{ duration: 0.5 }} />
                 </div>
-                <div className="flex justify-between mt-1.5 text-[9px] font-mono text-muted-foreground">
-                  <span className="text-red-400">🔴 {((redCount / total) * 100).toFixed(0)}%</span>
+                <div className="flex justify-between mt-1 text-[8px] font-mono text-muted-foreground">
+                  <span className="text-roulette-red">🔴 {((redCount / total) * 100).toFixed(0)}%</span>
                   <span>⚫ {((blackCount / total) * 100).toFixed(0)}%</span>
-                  <span className="text-green-400">🟢 {((greenCount / total) * 100).toFixed(0)}%</span>
+                  <span className="text-roulette-green">🟢 {((greenCount / total) * 100).toFixed(0)}%</span>
                 </div>
               </div>
             )}
 
-            {/* Hot & Cold Numbers */}
+            {/* Hot & Cold */}
             {history.length > 0 && (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-card rounded-lg border border-border p-2.5">
-                  <div className="flex items-center gap-1 mb-2">
+              <div className="grid grid-cols-2 gap-1.5">
+                <div className="bg-card rounded-lg border border-border p-2">
+                  <div className="flex items-center gap-1 mb-1.5">
                     <Flame className="w-3 h-3 text-destructive" />
-                    <span className="font-display text-[9px] text-destructive tracking-widest">QUENTES</span>
+                    <span className="font-display text-[8px] text-destructive tracking-widest">QUENTES</span>
                   </div>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-0.5">
                     {hotNumbers.map(h => {
                       const color = getNumberColor(h.number);
                       const cls = color === 'red' ? 'bg-roulette-red' : color === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
                       return (
-                        <div key={h.number} className={`${cls} w-7 h-7 rounded flex items-center justify-center text-[10px] font-bold text-white relative`}>
+                        <div key={h.number} className={`${cls} w-6 h-6 rounded flex items-center justify-center text-[9px] font-bold text-white relative`}>
                           {h.number}
-                          <span className="absolute -top-1 -right-1 bg-destructive text-white text-[7px] rounded-full w-3 h-3 flex items-center justify-center">
+                          <span className="absolute -top-0.5 -right-0.5 bg-destructive text-white text-[6px] rounded-full w-2.5 h-2.5 flex items-center justify-center">
                             {h.freq}
                           </span>
                         </div>
@@ -251,17 +204,17 @@ const Index = () => {
                     })}
                   </div>
                 </div>
-                <div className="bg-card rounded-lg border border-border p-2.5">
-                  <div className="flex items-center gap-1 mb-2">
+                <div className="bg-card rounded-lg border border-border p-2">
+                  <div className="flex items-center gap-1 mb-1.5">
                     <Snowflake className="w-3 h-3 text-blue-400" />
-                    <span className="font-display text-[9px] text-blue-400 tracking-widest">FRIOS</span>
+                    <span className="font-display text-[8px] text-blue-400 tracking-widest">FRIOS</span>
                   </div>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-0.5">
                     {coldNumbers.map(h => {
                       const color = getNumberColor(h.number);
                       const cls = color === 'red' ? 'bg-roulette-red' : color === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
                       return (
-                        <div key={h.number} className={`${cls} w-7 h-7 rounded flex items-center justify-center text-[10px] font-bold text-white opacity-60`}>
+                        <div key={h.number} className={`${cls} w-6 h-6 rounded flex items-center justify-center text-[9px] font-bold text-white opacity-60`}>
                           {h.number}
                         </div>
                       );
@@ -271,21 +224,86 @@ const Index = () => {
               </div>
             )}
 
+            {/* Números Puxados (Quick Pad) */}
+            <QuickNumberPad onAddNumber={addNumber} />
+
             {/* Live Stats */}
             <LiveStats />
 
-            {/* AI Analysis Panel */}
+            {/* AI Analysis */}
             <AIAnalysis />
 
-            {/* Premium Table */}
-            <PremiumTable history={history} />
+            {/* Premium Table (toggled) */}
+            {showPremium && <PremiumTable history={history} />}
+
+            {/* Paste History */}
+            <PasteHistory />
           </div>
         </div>
-      </main>
+
+        {/* RIGHT PANEL - Casino Iframe */}
+        <div className="flex-1 flex flex-col bg-secondary/20 min-h-0">
+          {/* Iframe toolbar */}
+          <div className="shrink-0 flex items-center gap-2 px-2 py-1 bg-card border-b border-border">
+            <input
+              type="text"
+              value={urlInput}
+              onChange={e => setUrlInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleLoadUrl()}
+              placeholder="Cole a URL do cassino aqui..."
+              className="flex-1 bg-secondary border border-border rounded px-2 py-1 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <button
+              onClick={handleLoadUrl}
+              className="px-2 py-1 bg-primary text-primary-foreground rounded text-[9px] font-bold hover:bg-primary/90 flex items-center gap-1"
+            >
+              <ExternalLink className="w-3 h-3" />
+              ABRIR
+            </button>
+            <button
+              onClick={() => setIframeExpanded(!iframeExpanded)}
+              className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+              title={iframeExpanded ? 'Reduzir' : 'Expandir'}
+            >
+              {iframeExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+
+          {/* Iframe */}
+          <div className="flex-1 relative min-h-0">
+            {iframeUrl ? (
+              <iframe
+                src={iframeUrl}
+                className="absolute inset-0 w-full h-full border-0"
+                allowFullScreen
+                allow="autoplay; fullscreen; microphone; camera"
+                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation"
+              />
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4">
+                <MonitorPlay className="w-16 h-16 text-muted-foreground/20" />
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-muted-foreground font-semibold">Cassino ao Vivo</p>
+                  <p className="text-[10px] text-muted-foreground/60 max-w-xs">
+                    Cole a URL do cassino na barra acima para jogar aqui dentro enquanto acompanha as estatísticas ao lado
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 justify-center mt-4">
+                  {['🎰 Roleta Brasileira', '⚡ Immersiva', '🔥 XXXtreme'].map(name => (
+                    <div key={name} className="px-3 py-1.5 bg-card border border-border rounded-lg text-[10px] text-muted-foreground">
+                      {name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Footer Navigation */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-secondary/90 backdrop-blur border-t border-border z-50">
-        <div className="max-w-7xl mx-auto flex justify-around">
+      <footer className="shrink-0 bg-secondary/90 backdrop-blur border-t border-border z-50">
+        <div className="flex justify-around">
           {[
             { id: 'aulas' as const, icon: '📚', label: 'Aulas' },
             { id: 'roleta' as const, icon: '🎰', label: 'Roleta' },
@@ -294,18 +312,17 @@ const Index = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex flex-col items-center py-1.5 text-[10px] transition-colors ${
+              className={`flex-1 flex flex-col items-center py-1 text-[9px] transition-colors ${
                 activeTab === tab.id ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
-              <span className="text-base">{tab.icon}</span>
+              <span className="text-sm">{tab.icon}</span>
               <span className="font-medium">{tab.label}</span>
             </button>
           ))}
         </div>
       </footer>
 
-      {/* Debug Modal */}
       <DebugModal />
     </div>
   );
