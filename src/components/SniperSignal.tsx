@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 import {
-  Crosshair, AlertTriangle, Eye, Clock, Shield, Zap, ShieldCheck, Sparkles, Target, TrendingUp, ChevronDown
+  Crosshair, AlertTriangle, Eye, Clock, Shield, Zap, ShieldCheck, Sparkles, Target, TrendingUp
 } from 'lucide-react';
-import { useState } from 'react';
+
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
 const PROTECTION_NUMBERS = [0, 26, 32];
