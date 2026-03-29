@@ -498,6 +498,25 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                     </div>
                   )}
 
+                  {/* Alerta de Auto-Repetição */}
+                  {sniperData?.signal?.reasons?.some((r: string) => r.includes('AUTO-REP') || r.includes('TRIPLE')) && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="mx-4 mb-2 p-2.5 rounded-xl bg-orange-500/15 border border-orange-500/40"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🔁</span>
+                        <div>
+                          <p className="text-[9px] font-black text-orange-400">AUTO-REPETIÇÃO DETECTADA</p>
+                          <p className="text-[7px] text-orange-300/80">
+                            Padrão confirmado: {sniperData.signal.number} se repetindo — apostar forte
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
                   {/* ENSEMBLE SUPREMO */}
                   {sniperData?.ensemble?.top1 !== null && sniperData?.ensemble?.top1 !== undefined && (
                     <div className="px-4 py-2.5 border-t border-yellow-500/20 bg-yellow-500/5">
@@ -684,7 +703,7 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                 {/* Proteção */}
                 <div className="flex items-center gap-1.5">
                   <span className="text-[8px]">🛡️</span>
-                  <span className="text-[8px] text-yellow-400/80 font-semibold">Proteção em TODAS jogadas: 0, 26, 32</span>
+                  <span className="text-[8px] text-yellow-400/80 font-semibold">Proteção em TODAS jogadas: 24, 29, 35, 11</span>
                 </div>
 
                 {/* TOP CANDIDATES */}
