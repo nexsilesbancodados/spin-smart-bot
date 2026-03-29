@@ -63,6 +63,15 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
   const prevNumberRef = useRef<number | null>(null);
   const autoBetRef = useRef(false);
 
+  // Auto-reset waitingResult after 60s to prevent stuck state
+  useEffect(() => {
+    if (!stats.waitingResult) return;
+    const timeout = setTimeout(() => {
+      setStats(prev => prev.waitingResult ? { ...prev, waitingResult: false } : prev);
+    }, 60000);
+    return () => clearTimeout(timeout);
+  }, [stats.waitingResult]);
+
   // Resolve the last bet when a new number comes in
   useEffect(() => {
     if (allNumbers.length === 0) return;
@@ -161,7 +170,9 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
   useEffect(() => {
     if (!autoBetRef.current || stats.stopped || stats.waitingResult) return;
-    if (!sniperData?.signal || sniperData.mode !== 'sniper') return;
+    if (!sniperData?.signal || !sniperData?.strategy?.numbers?.length) return;
+    // Accept both 'sniper' and 'alert' modes
+    if (sniperData.mode !== 'sniper' && sniperData.mode !== 'alert') return;
     if (sniperData.signal.probability < config.minProbability) return;
 
     // Auto place
@@ -169,7 +180,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
       if (autoBetRef.current && !stats.waitingResult && !stats.stopped) {
         placeBet();
       }
-    }, 1500); // Small delay before auto-betting
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, [sniperData, stats.waitingResult, stats.stopped, config.minProbability, placeBet]);
