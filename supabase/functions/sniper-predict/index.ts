@@ -2419,6 +2419,10 @@ serve(async (req) => {
       noiseFiltered: noiseCount,
       dealerChaos: chaoticDealer,
       selfCorrection: strategyWeightAdjust,
+      randomnessIndex,
+      diamondDeflection: diamondDeflection.slice(0, 4),
+      kellyBetting,
+      dealerBiometrics,
       deepMemory: {
         ancestralPatterns: ancestralPatterns.slice(0, 3),
         mesaDNA,
