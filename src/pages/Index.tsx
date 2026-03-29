@@ -732,6 +732,30 @@ const Index = () => {
             </div>
           </div>
 
+          {/* === ANÁLISE AVANÇADA (COLAPSÁVEL) === */}
+          {sniperData && (
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <button onClick={() => setShowAdvanced(!showAdvanced)}
+                className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-secondary/50 transition-colors">
+                <Brain className="w-4 h-4 text-purple-400" />
+                <span className="font-display text-[10px] tracking-[0.15em] font-bold text-purple-400">ANÁLISE AVANÇADA</span>
+                {sniperData?.aiLearnings?.length > 0 && (
+                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 font-bold">
+                    {sniperData.aiLearnings.length} insights
+                  </span>
+                )}
+                {sniperData?.deepMemory && (
+                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold">
+                    1700+ CAMADAS
+                  </span>
+                )}
+                <ChevronDown className={`w-4 h-4 text-muted-foreground ml-auto transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+              </button>
+              <AnimatePresence>
+                {showAdvanced && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                    <div className="p-3 space-y-3 border-t border-border">
+
           {/* O QUE A IA APRENDEU AGORA */}
           {sniperData?.aiLearnings && sniperData.aiLearnings.length > 0 && (
             <motion.div
@@ -770,7 +794,7 @@ const Index = () => {
             </motion.div>
           )}
 
-          {/* DEEP MEMORY — Memória Profunda + Genética + Física */}
+          {/* DEEP MEMORY */}
           {sniperData?.deepMemory && (
             <motion.div
               initial={{ opacity: 0, y: -5 }}
@@ -780,9 +804,6 @@ const Index = () => {
               <div className="flex items-center gap-2 mb-2">
                 <Eye className="w-4 h-4 text-blue-400" />
                 <span className="font-display text-[10px] tracking-[0.15em] font-bold text-blue-400">MEMÓRIA PROFUNDA & FÍSICA AVANÇADA</span>
-                <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold ml-auto">
-                  1500 CAMADAS
-                </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
                 {/* Ancestral Patterns */}
@@ -897,7 +918,6 @@ const Index = () => {
 
               {/* New Analysis Cards Row */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-                {/* Noise Filter */}
                 {sniperData?.randomnessIndex && (
                   <div className="bg-secondary/40 rounded-lg p-2 border border-border">
                     <span className="text-[8px] font-bold text-rose-400 block mb-1">🛡️ FILTRO RUÍDO</span>
@@ -914,14 +934,9 @@ const Index = () => {
                           {sniperData.randomnessIndex.stable ? '✅ Sim' : '❌ Não'}
                         </span>
                       </div>
-                      {sniperData.randomnessIndex.message && (
-                        <div className="text-[7px] mt-1 text-muted-foreground">{sniperData.randomnessIndex.message}</div>
-                      )}
                     </div>
                   </div>
                 )}
-
-                {/* Diamond Deflectors */}
                 {sniperData?.diamondDeflection?.length > 0 && (
                   <div className="bg-secondary/40 rounded-lg p-2 border border-border">
                     <span className="text-[8px] font-bold text-sky-400 block mb-1">💎 DEFLETORES</span>
@@ -935,43 +950,30 @@ const Index = () => {
                     </div>
                   </div>
                 )}
-
-                {/* Kelly Criterion */}
                 {sniperData?.kellyBetting && (
                   <div className="bg-secondary/40 rounded-lg p-2 border border-border">
                     <span className="text-[8px] font-bold text-emerald-400 block mb-1">💰 KELLY CRITERION</span>
                     <div className="text-[8px] text-foreground/80 space-y-0.5">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Unidade</span>
-                        <span className={`font-bold ${sniperData.kellyBetting.unitMultiplier >= 3 ? 'text-primary' : sniperData.kellyBetting.unitMultiplier >= 2 ? 'text-yellow-400' : 'text-foreground'}`}>
+                        <span className={`font-bold ${sniperData.kellyBetting.unitMultiplier >= 3 ? 'text-primary' : 'text-foreground'}`}>
                           {sniperData.kellyBetting.unitMultiplier}x
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Risco</span>
-                        <span className={`font-bold ${sniperData.kellyBetting.riskLevel === 'maximo' ? 'text-primary' : sniperData.kellyBetting.riskLevel === 'minimo' ? 'text-destructive' : 'text-foreground'}`}>
-                          {sniperData.kellyBetting.riskLevel}
-                        </span>
+                        <span className="font-bold">{sniperData.kellyBetting.riskLevel}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Erro</span>
-                        <span className="font-mono font-bold">{sniperData.kellyBetting.residualError}%</span>
-                      </div>
-                      {sniperData.kellyBetting.recommendation && (
-                        <div className="text-[7px] mt-1 text-muted-foreground">{sniperData.kellyBetting.recommendation}</div>
-                      )}
                     </div>
                   </div>
                 )}
-
-                {/* Dealer Biometrics */}
                 {sniperData?.dealerBiometrics && (
                   <div className="bg-secondary/40 rounded-lg p-2 border border-border">
                     <span className="text-[8px] font-bold text-violet-400 block mb-1">🎭 BIOMETRIA DEALER</span>
                     <div className="text-[8px] text-foreground/80 space-y-0.5">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Perfil</span>
-                        <span className={`font-bold ${sniperData.dealerBiometrics.profileType === 'mecânico' ? 'text-green-400' : sniperData.dealerBiometrics.profileType === 'caótico' ? 'text-destructive' : 'text-foreground'}`}>
+                        <span className={`font-bold ${sniperData.dealerBiometrics.profileType === 'mecânico' ? 'text-green-400' : 'text-destructive'}`}>
                           {sniperData.dealerBiometrics.profileType}
                         </span>
                       </div>
@@ -979,17 +981,6 @@ const Index = () => {
                         <span className="text-muted-foreground">Consist.</span>
                         <span className="font-mono font-bold">{sniperData.dealerBiometrics.arcConsistency}%</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Setor</span>
-                        <span className="font-bold">{sniperData.dealerBiometrics.sectorPreference?.slice(0, 6)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Força</span>
-                        <span className="font-mono font-bold text-violet-400">{sniperData.dealerBiometrics.strengthIndex}/100</span>
-                      </div>
-                      {sniperData.dealerBiometrics.signature && (
-                        <div className="text-[7px] mt-1 font-mono text-muted-foreground">ID: {sniperData.dealerBiometrics.signature}</div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -997,7 +988,7 @@ const Index = () => {
             </motion.div>
           )}
 
-          {/* 7 ARQUÉTIPOS DE PADRÕES */}
+          {/* ARQUÉTIPOS */}
           {sniperData?.archetypes?.length > 0 && (
             <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
               className="bg-card rounded-xl border border-border p-3">
@@ -1009,21 +1000,14 @@ const Index = () => {
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {sniperData.archetypes.map((arch: any, i: number) => (
-                  <div key={i} className={`rounded-lg p-2 border text-[8px] ${arch.active ? 'bg-amber-500/10 border-amber-500/30' : 'bg-secondary/40 border-border opacity-60'}`}>
+                {sniperData.archetypes.filter((a: any) => a.active).map((arch: any, i: number) => (
+                  <div key={i} className="rounded-lg p-2 border text-[8px] bg-amber-500/10 border-amber-500/30">
                     <div className="flex items-center gap-1 mb-1">
                       <span className="text-sm">{arch.emoji}</span>
-                      <span className={`font-bold ${arch.active ? 'text-amber-400' : 'text-muted-foreground'}`}>{arch.name}</span>
-                      {arch.active && <span className="ml-auto text-[7px] px-1 py-0.5 rounded bg-primary/20 text-primary font-bold">ATIVO</span>}
+                      <span className="font-bold text-amber-400">{arch.name}</span>
+                      <span className="ml-auto font-mono font-bold">{arch.strength}%</span>
                     </div>
                     <div className="text-foreground/70 mb-1">{arch.detail}</div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Força:</span>
-                      <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${arch.strength > 70 ? 'bg-primary' : arch.strength > 40 ? 'bg-amber-400' : 'bg-muted-foreground'}`} style={{ width: `${Math.min(100, arch.strength)}%` }} />
-                      </div>
-                      <span className="font-mono font-bold">{arch.strength}%</span>
-                    </div>
                     {arch.predictedNums?.length > 0 && (
                       <div className="flex flex-wrap gap-0.5 mt-1">
                         {arch.predictedNums.slice(0, 6).map((n: number) => (
@@ -1037,32 +1021,18 @@ const Index = () => {
             </motion.div>
           )}
 
-          {/* PADRÕES IDENTIFICADOS 24H */}
-          {sniperData?.transitionMatrix && (
-            <PatternPanel24h sniperData={sniperData} />
-          )}
-
-          {/* LOG DE APRENDIZADO IA */}
-          <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} />
-
-          {/* PULL RADAR + ERROR ANALYSIS */}
+          {/* PADRÕES 24H + PULL RADAR + ERROR ANALYSIS */}
+          {sniperData?.transitionMatrix && <PatternPanel24h sniperData={sniperData} />}
+          
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {/* RADAR DE PUXADA */}
             {sniperData?.deepMemory?.flowDynamics?.pullPatterns && allNumbers.length > 0 && (
               <PullRadar pullPatterns={sniperData.deepMemory.flowDynamics.pullPatterns} latestNumber={allNumbers[0]} />
             )}
-
-            {/* ERROR ANALYSIS PANEL */}
             {sniperData?.errorAnalysis && (
               <div className="bg-card/90 rounded-xl border border-destructive/20 p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="w-4 h-4 text-destructive" />
-                  <span className="font-display text-[10px] tracking-[0.15em] font-bold text-destructive">ANÁLISE DE ERROS (RL)</span>
-                  {sniperData.timeAwareness && (
-                    <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold ml-auto">
-                      🕐 {sniperData.timeAwareness.shift}
-                    </span>
-                  )}
+                  <span className="font-display text-[10px] tracking-[0.15em] font-bold text-destructive">ANÁLISE DE ERROS</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                   {Object.entries(sniperData.errorAnalysis.categories || {}).map(([cat, cnt]) => {
@@ -1085,19 +1055,19 @@ const Index = () => {
                     );
                   })}
                 </div>
-                {/* Consecutive hit boosts */}
-                {sniperData.errorAnalysis.consecutiveBoosts && Object.keys(sniperData.errorAnalysis.consecutiveBoosts).length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {Object.entries(sniperData.errorAnalysis.consecutiveBoosts).map(([st, boost]) => (
-                      <span key={st} className="text-[8px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 font-bold">
-                        🔥 {st}: +{boost as number} peso ({(boost as number) / 8}x seguidas)
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
           </div>
+
+          {/* LOG APRENDIZADO + SCANNER */}
+          <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} />
+
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
 
           {sniperData?.memoryWindows && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
