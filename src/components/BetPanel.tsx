@@ -97,9 +97,8 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
         let resultProfit = 0;
         
         if (won) {
-          const payout = prev.lastBetAmount * 35;
-          const cost = prev.lastBetAmount * prev.lastBetNumbers.length;
-          resultProfit = payout - cost;
+          const payout = prev.lastBetAmount * (36 - prev.lastBetNumbers.length);
+          resultProfit = payout;
           updated.wins = prev.wins + 1;
           updated.profit = prev.profit + resultProfit;
           updated.currentGaleStep = 0;
