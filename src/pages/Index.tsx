@@ -441,8 +441,7 @@ const Index = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto p-3 space-y-3">
 
-          {/* SCANNER 500 */}
-          <Scanner500 layerResults={sniperData?.layerResults || null} isScanning={!!sniperData} />
+          {/* SCANNER 500 removido */}
 
           {/* SNIPER STRATEGY + BET PANEL side by side on desktop */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
