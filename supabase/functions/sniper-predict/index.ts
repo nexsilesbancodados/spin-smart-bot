@@ -448,12 +448,17 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Parse sampleSize from request body (default 100, range 10-500)
+    // Parse request body — accepts sampleSize and optional clientNumbers for instant reaction
     let sampleSize = 100;
+    let clientNumbers: number[] | null = null;
     try {
       const body = await req.json();
       if (body?.sampleSize && typeof body.sampleSize === 'number') {
         sampleSize = Math.max(10, Math.min(500, Math.round(body.sampleSize)));
+      }
+      // Accept client-side numbers for faster response (before DB sync)
+      if (body?.numbers && Array.isArray(body.numbers)) {
+        clientNumbers = body.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 500);
       }
     } catch { /* no body or invalid JSON — use default */ }
 
@@ -487,8 +492,33 @@ serve(async (req) => {
     });
     allEntries.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
 
-    const entries = allEntries.slice(0, sampleSize);
-    const numbers = entries.map(e => e.number);
+    // MERGE: If client sent numbers, prepend any that aren't in DB yet (instant reaction)
+    let numbers: number[];
+    if (clientNumbers && clientNumbers.length >= 5) {
+      // Client numbers are already in order (newest first) — use them as primary
+      // But merge with DB for deeper history
+      const dbNums = allEntries.slice(0, sampleSize).map(e => e.number);
+      // Find overlap point: first client number that matches start of DB sequence
+      let overlapIdx = -1;
+      for (let ci = 0; ci < Math.min(10, clientNumbers.length); ci++) {
+        if (dbNums.length > 0 && clientNumbers[ci] === dbNums[0]) {
+          overlapIdx = ci;
+          break;
+        }
+      }
+      if (overlapIdx >= 0 && overlapIdx > 0) {
+        // Client has newer numbers not in DB yet
+        numbers = [...clientNumbers.slice(0, overlapIdx), ...dbNums].slice(0, sampleSize);
+      } else {
+        // No overlap found or client is ahead — trust client numbers, pad with DB
+        const clientSlice = clientNumbers.slice(0, sampleSize);
+        const remaining = sampleSize - clientSlice.length;
+        numbers = remaining > 0 ? [...clientSlice, ...dbNums.slice(0, remaining)] : clientSlice;
+      }
+    } else {
+      const entries = allEntries.slice(0, sampleSize);
+      numbers = entries.map(e => e.number);
+    }
     const learned = learnedRes.data || [];
     const unresolved = unresolvedRes.data || [];
     const resolvedHistory = resolvedRes.data || [];
@@ -4661,6 +4691,47 @@ serve(async (req) => {
           }
         }
       }
+
+      // ========================================================
+      // STRATEGY STATS: Update per-strategy performance metrics
+      // ========================================================
+      try {
+        // Get current stats for this strategy
+        const { data: existingStats } = await supabase
+          .from('strategy_stats')
+          .select('*')
+          .eq('strategy_type', winner.type)
+          .maybeSingle();
+
+        const totalPred = (existingStats?.total_predictions || 0) + 1;
+        const totalHits = existingStats?.total_hits || 0;
+        const exactHits = existingStats?.exact_hits || 0;
+        const neighborHits = existingStats?.neighbor_hits || 0;
+        const avgProb = existingStats?.avg_probability || 0;
+        const avgCov = existingStats?.avg_coverage || 0;
+        const avgPay = existingStats?.avg_payout || 0;
+
+        // Running average
+        const newAvgProb = (avgProb * (totalPred - 1) + finalProbability) / totalPred;
+        const newAvgCov = (avgCov * (totalPred - 1) + winner.coverage) / totalPred;
+        const newAvgPay = (avgPay * (totalPred - 1) + winner.payout) / totalPred;
+
+        await supabase.from('strategy_stats').upsert({
+          strategy_type: winner.type,
+          strategy_label: winner.label,
+          total_predictions: totalPred,
+          total_hits: totalHits,
+          exact_hits: exactHits,
+          neighbor_hits: neighborHits,
+          win_rate: totalHits / totalPred,
+          avg_probability: +newAvgProb.toFixed(1),
+          avg_coverage: +newAvgCov.toFixed(1),
+          avg_payout: +newAvgPay.toFixed(1),
+          best_streak: existingStats?.best_streak || 0,
+          current_streak: existingStats?.current_streak || 0,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'strategy_type' }).then(() => {}).catch(() => {});
+      } catch { /* ignore stats errors */ }
     }
 
     // ==========================================

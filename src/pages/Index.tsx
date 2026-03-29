@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   Activity, MonitorPlay, RefreshCw, Brain, Sparkles, TrendingUp,
   Hash, Flame, Snowflake, Target, BarChart3, ChevronDown,
-  Zap, Clock, GraduationCap, Crosshair, Eye, AlertTriangle
+  Zap, Clock, GraduationCap, Crosshair, Eye, AlertTriangle, Power
 } from 'lucide-react';
 import Scanner500 from '@/components/Scanner500';
 import PatternPanel24h from '@/components/PatternPanel24h';
@@ -114,7 +114,7 @@ const Index = () => {
   const [sampleSize, setSampleSize] = useState(100);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showPredHistory, setShowPredHistory] = useState(false);
-
+  const [aiEnabled, setAiEnabled] = useState(true);
   const handleManualNumbers = (nums: number[]) => {
     setApiNumbers(prev => [...nums, ...prev].slice(0, 1000));
   };
@@ -160,10 +160,15 @@ const Index = () => {
     const now = Date.now();
     if (now - lastSniperTriggerRef.current < 1200) return;
     if (sniperFetchingRef.current) return;
+    if (!aiEnabled) return; // AI toggle check
     sniperFetchingRef.current = true;
     lastSniperTriggerRef.current = now;
     try {
-      const res = await supabase.functions.invoke('sniper-predict', { body: { sampleSize } });
+      // Send client-side numbers for instant reaction (before DB sync)
+      const clientNums = apiNumbers.length > 0 ? apiNumbers.slice(0, sampleSize) : undefined;
+      const res = await supabase.functions.invoke('sniper-predict', { 
+        body: { sampleSize, numbers: clientNums } 
+      });
       if (res.data) {
         const key = `${res.data.strategy?.type}-${res.data.signal?.number}-${res.data.mode}`;
         if (key !== sniperPrevKey.current) {
@@ -178,7 +183,7 @@ const Index = () => {
       }
     } catch (err) { console.error('Sniper error:', err); }
     finally { sniperFetchingRef.current = false; }
-  }, [sampleSize]);
+  }, [sampleSize, aiEnabled, apiNumbers]);
 
   // === Data Fetching ===
   const fetchNumbers = useCallback(async () => {
@@ -280,7 +285,7 @@ const Index = () => {
 
   useEffect(() => {
     const runContinuousLearn = async () => {
-      if (autoLearnDisabled.current || autoLearnErrorCount.current >= 2) {
+      if (!aiEnabled || autoLearnDisabled.current || autoLearnErrorCount.current >= 2) {
         autoLearnDisabled.current = true;
         setAutoLearnStatus('idle');
         return;
@@ -394,6 +399,7 @@ const Index = () => {
         lastUpdate={lastUpdate} fetchNumbers={fetchNumbers} fetchStored={fetchStored}
         autoLearnStatus={autoLearnStatus}
         onShowHistory={() => setShowPredHistory(!showPredHistory)}
+        aiEnabled={aiEnabled} setAiEnabled={setAiEnabled}
       />
 
       {/* ═══════ STATS BAR ═══════ */}
@@ -443,13 +449,25 @@ const Index = () => {
               </div>
 
               {/* Sniper Signal */}
-              <SniperSignal
-                sniperData={sniperData}
-                sniperCountdown={sniperCountdown}
-                sniperStale={sniperStale}
-                lastPredResult={lastPredResult}
-                confidenceFilter={confidenceFilter}
-              />
+              {aiEnabled ? (
+                <SniperSignal
+                  sniperData={sniperData}
+                  sniperCountdown={sniperCountdown}
+                  sniperStale={sniperStale}
+                  lastPredResult={lastPredResult}
+                  confidenceFilter={confidenceFilter}
+                />
+              ) : (
+                <div className="bg-card rounded-2xl border border-destructive/30 p-8 h-full flex items-center justify-center">
+                  <div className="text-center space-y-3">
+                    <div className="w-14 h-14 rounded-full bg-destructive/10 border-2 border-destructive/30 flex items-center justify-center mx-auto">
+                      <Power className="w-7 h-7 text-destructive" />
+                    </div>
+                    <p className="text-sm font-bold text-destructive">IA DESLIGADA</p>
+                    <p className="text-xs text-muted-foreground">Clique em "IA ON" na barra superior para reativar as previsões</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Coluna Lateral — Mapa + Bet */}
