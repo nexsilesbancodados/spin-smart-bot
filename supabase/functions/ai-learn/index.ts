@@ -455,7 +455,7 @@ Realize uma ANÁLISE TRANSVERSAL DE HISTÓRICO completa. Gere aprendizados profu
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Você é o sistema de IA mais avançado de análise de roleta do mundo. Possui conhecimento COMPLETO: setores, cavalos, terminais, finais em pleno, oitavos, diamantes, lei do terço, saltos, complementares, dominância de coluna, espelhos visuais, mapeamento cruzado. Responda APENAS via tool call. Gere 10-18 aprendizados profundos e acionáveis." },
+          { role: "system", content: "Você é o sistema de IA mais avançado de análise de roleta do mundo. Possui conhecimento COMPLETO: setores, cavalos, terminais, oitavos, diamantes, lei do terço, saltos, complementares, dominância de coluna, espelhos visuais, mapeamento cruzado. Execute ANÁLISE TRANSVERSAL: detecte vício de setor, tendência vs alternância, dominância de terminal, blocos de dúzia, quebra de atraso, padrões de salto e espelhamento. Responda APENAS via tool call. Gere 12-20 aprendizados profundos e acionáveis." },
           { role: "user", content: prompt },
         ],
         tools: [{
@@ -471,7 +471,7 @@ Realize uma ANÁLISE TRANSVERSAL DE HISTÓRICO completa. Gere aprendizados profu
                   items: {
                     type: "object",
                     properties: {
-                      learning_type: { type: "string", enum: ["frequency_bias","terminal_pattern","color_tendency","dozen_cycle","cavalos_pattern","timing_pattern","streak_behavior","sector_concentration","column_pattern","sixline_pattern","cross_mapping","wheel_neighbors","parity_pattern","final_pleno","column_color_dominance","visual_mirror","octave_pattern","diamond_concentration","third_law","skip_pattern","complementar_pattern"] },
+                      learning_type: { type: "string", enum: ["frequency_bias","terminal_pattern","color_tendency","dozen_cycle","cavalos_pattern","timing_pattern","streak_behavior","sector_concentration","column_pattern","sixline_pattern","cross_mapping","wheel_neighbors","parity_pattern","final_pleno","column_color_dominance","visual_mirror","octave_pattern","diamond_concentration","third_law","skip_pattern","complementar_pattern","sector_bias","tendency_mode","delay_break","mirror_pattern","active_pattern","block_pattern"] },
                       title: { type: "string" },
                       knowledge: { type: "string" },
                       data_points: { type: "integer" },
