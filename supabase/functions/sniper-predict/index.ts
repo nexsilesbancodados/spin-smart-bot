@@ -4102,10 +4102,15 @@ serve(async (req) => {
       } else if (t === 'alto_baixo') {
         const low = nums.every((n: number) => n >= 1 && n <= 18);
         bets.push({ type: 'alto_baixo', label: low ? 'Baixo (1-18)' : 'Alto (19-36)', detail: `Aposte no ${low ? 'Baixo (1-18)' : 'Alto (19-36)'} (1:1)`, emoji: low ? '⬇️' : '⬆️' });
+      } else if (t === 'ultra_sniper') {
+        const mainNum = nums[0];
+        bets.push({ type: 'vizinhos', label: `Ultra Sniper → ${mainNum}`, detail: `CONVERGÊNCIA MÁXIMA: Pleno no ${mainNum} + ${nums.length - 1} vizinhos: ${nums.slice(1, 5).join(', ')}`, emoji: '🔥' });
+      } else if (t === 'fusao_suprema') {
+        const mainNum = nums[0];
+        bets.push({ type: 'fusao', label: `Fusão Suprema`, detail: `${nums.length} números validados por 3+ estratégias: ${nums.slice(0, 8).join(', ')}`, emoji: '⚡' });
       } else if (t === 'sniper' || t === 'voisins' || t === 'setor_oposto') {
         const sector = nums.length > 0 ? getSector(nums[0]) : 'Voisins';
         bets.push({ type: 'setor', label: `Setor ${sector}`, detail: `Cubra o setor ${sector} na roda`, emoji: '🎯' });
-        // Add specific neighbor bets
         const mainNum = nums[0];
         bets.push({ type: 'vizinhos', label: `Vizinhos do ${mainNum}`, detail: `Pleno no ${mainNum} + vizinhos: ${nums.slice(1, 5).join(', ')}`, emoji: '🎯' });
       } else if (t === 'numero_exato') {
