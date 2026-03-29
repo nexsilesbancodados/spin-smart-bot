@@ -293,6 +293,22 @@ const Index = () => {
       {/* Stats Bar - Fixo */}
       <StatsBar predStats={predStats} setPredStats={setPredStats} />
 
+      {/* Prediction History Panel */}
+      <AnimatePresence>
+        {showPredHistory && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden border-b border-border"
+          >
+            <div className="max-w-[1400px] mx-auto p-3">
+              <PredictionHistory />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto p-3 space-y-3">
 
