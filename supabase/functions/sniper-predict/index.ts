@@ -77,6 +77,68 @@ serve(async (req) => {
     const numbers = entries.map(e => e.number);
     const learned = learnedRes.data || [];
     const unresolved = unresolvedRes.data || [];
+    const resolvedHistory = resolvedRes.data || [];
+    const patternInsights = insightsRes.data || [];
+
+    // ========================================================
+    // STRATEGY PERFORMANCE TRACKER — learns from hits/misses
+    // ========================================================
+    const strategyPerformance: Record<string, { hits: number; total: number; winRate: number; avgProb: number; recentTrend: number }> = {};
+    const numberHitFreq: Record<number, number> = {}; // which numbers actually hit when predicted
+    const numberMissFreq: Record<number, number> = {}; // which numbers came INSTEAD of predictions
+    const strategyNumberHits: Record<string, Record<number, number>> = {}; // per-strategy number hit map
+
+    for (const pred of resolvedHistory) {
+      const st = pred.strategy_type || 'unknown';
+      if (!strategyPerformance[st]) strategyPerformance[st] = { hits: 0, total: 0, winRate: 0, avgProb: 0, recentTrend: 0 };
+      strategyPerformance[st].total++;
+      if (pred.hit) {
+        strategyPerformance[st].hits++;
+        // Track which numbers hit for this strategy
+        if (!strategyNumberHits[st]) strategyNumberHits[st] = {};
+        if (pred.actual_number !== null) {
+          strategyNumberHits[st][pred.actual_number] = (strategyNumberHits[st][pred.actual_number] || 0) + 1;
+          numberHitFreq[pred.actual_number] = (numberHitFreq[pred.actual_number] || 0) + 1;
+        }
+      } else {
+        // Track what actually came when we missed
+        if (pred.actual_number !== null) {
+          numberMissFreq[pred.actual_number] = (numberMissFreq[pred.actual_number] || 0) + 1;
+        }
+      }
+    }
+
+    // Calculate win rates and recent trends
+    for (const [st, perf] of Object.entries(strategyPerformance)) {
+      perf.winRate = perf.total > 0 ? perf.hits / perf.total : 0;
+      // Recent trend: last 20 predictions for this strategy
+      const recentPreds = resolvedHistory.filter(p => p.strategy_type === st).slice(0, 20);
+      const recentHits = recentPreds.filter(p => p.hit).length;
+      perf.recentTrend = recentPreds.length > 0 ? recentHits / recentPreds.length : 0;
+      perf.avgProb = recentPreds.length > 0 ? recentPreds.reduce((a, p) => a + (p.probability || 0), 0) / recentPreds.length : 0;
+    }
+
+    // Numbers that frequently appear when we MISS — these are "surprise" numbers to add weight to
+    const surpriseNumbers = Object.entries(numberMissFreq)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 10)
+      .map(([n]) => Number(n));
+
+    // Pattern insights → extract actionable numbers
+    const insightNumbers: Record<number, number> = {};
+    const insightReasons: Record<number, string[]> = {};
+    for (let n = 0; n <= 36; n++) { insightNumbers[n] = 0; insightReasons[n] = []; }
+    for (const insight of patternInsights) {
+      const conf = (insight.confidence || 0) / 100;
+      if (conf < 0.5) continue;
+      const nums = insight.numbers_involved || [];
+      for (const n of nums) {
+        if (n >= 0 && n <= 36) {
+          insightNumbers[n] += conf * 1.2;
+          insightReasons[n].push(`📊 ${insight.pattern_type}`);
+        }
+      }
+    }
 
     // Resolve previous predictions against latest number
     if (numbers.length > 0 && unresolved.length > 0) {
