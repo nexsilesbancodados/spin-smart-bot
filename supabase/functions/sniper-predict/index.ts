@@ -1908,6 +1908,7 @@ serve(async (req) => {
       entropy: entropy.toFixed(3), dealerMode, dealerSignature,
       hotTerminals: { cavalos: sortedCavalos, terminals: sortedTerminals.slice(0, 5) },
       sectorTrend, sectorFreq, convergenceScore: totalLayers, reasons, layerResults,
+      ritmoCalibration,
     };
 
     if (dealerChanged) {
