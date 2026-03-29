@@ -3984,55 +3984,71 @@ serve(async (req) => {
     // SIMPLE BET TYPES — Cor, Par/Ímpar, Alto/Baixo, Coluna, Dúzia, Número Exato
     // ==========================================
 
-    // COR (Red vs Black) — bet on the color that's due based on frequency imbalance
+    // COR (Red vs Black) — INTELLIGENT: follows trend when algorithm is trending, reverses when exhausting
     const redNums30 = last30.filter(n => RED.includes(n)).length;
     const blackNums30 = last30.filter(n => n > 0 && !RED.includes(n)).length;
-    const betOnRed = blackNums30 > redNums30;
+    // TREND ENGINE: if color trend is detected and should follow, bet WITH the trend
+    const betOnRed = trendEngine.colorTrend.shouldFollow
+      ? trendEngine.colorTrend.direction === 'red'
+      : (trendEngine.colorTrend.direction === 'red' ? true : trendEngine.colorTrend.direction === 'black' ? false : blackNums30 > redNums30);
     const colorNums = betOnRed
       ? Array.from({length:36}, (_,i) => i+1).filter(n => RED.includes(n))
       : Array.from({length:36}, (_,i) => i+1).filter(n => !RED.includes(n));
     const colorImbalance = Math.abs(redNums30 - blackNums30);
     const colorBtRate = backtestSet(colorNums);
+    const colorTrendBonus = trendEngine.colorTrend.shouldFollow ? trendEngine.colorTrend.strength * 0.15 : 0;
     strategies.push({
       type: 'cor', label: betOnRed ? '🔴 Vermelho' : '⚫ Preto', emoji: betOnRed ? '🔴' : '⚫',
       numbers: colorNums, coverage: (18/37)*100, payout: 2,
-      score: colorImbalance * 3 + colorBtRate * 25,
-      probability: Math.min(98, Math.round(45 + colorBtRate * 40 + colorImbalance * 2)),
-      justification: `${betOnRed ? 'Vermelho' : 'Preto'} atrasado (${betOnRed ? redNums30 : blackNums30}x vs ${betOnRed ? blackNums30 : redNums30}x em 30). Backtest: ${(colorBtRate*100).toFixed(0)}%.`,
+      score: colorImbalance * 3 + colorBtRate * 25 + colorTrendBonus,
+      probability: Math.min(98, Math.round(45 + colorBtRate * 40 + colorImbalance * 2 + colorTrendBonus)),
+      justification: trendEngine.colorTrend.shouldFollow
+        ? `${betOnRed ? 'Vermelho' : 'Preto'} A FAVOR DO ALGORITMO: tendência acelerando (${trendEngine.colorTrend.strength}% força). Backtest: ${(colorBtRate*100).toFixed(0)}%.`
+        : `${betOnRed ? 'Vermelho' : 'Preto'} ${trendEngine.colorTrend.direction ? 'por reversão' : 'atrasado'} (${betOnRed ? redNums30 : blackNums30}x vs ${betOnRed ? blackNums30 : redNums30}x em 30). Backtest: ${(colorBtRate*100).toFixed(0)}%.`,
     });
 
-    // PAR/ÍMPAR — bet on parity that's due
+    // PAR/ÍMPAR — INTELLIGENT: follows trend when algorithm is trending
     const even30 = last30.filter(n => n > 0 && n % 2 === 0).length;
     const odd30 = last30.filter(n => n > 0 && n % 2 === 1).length;
-    const betOnEven = odd30 > even30;
+    const betOnEven = trendEngine.parityTrend.shouldFollow
+      ? trendEngine.parityTrend.direction === 'par'
+      : (trendEngine.parityTrend.direction === 'par' ? true : trendEngine.parityTrend.direction === 'impar' ? false : odd30 > even30);
     const parityNums = betOnEven
       ? Array.from({length:36}, (_,i) => i+1).filter(n => n % 2 === 0)
       : Array.from({length:36}, (_,i) => i+1).filter(n => n % 2 === 1);
     const parityImbalance = Math.abs(even30 - odd30);
     const parityBtRate = backtestSet(parityNums);
+    const parityTrendBonus = trendEngine.parityTrend.shouldFollow ? trendEngine.parityTrend.strength * 0.15 : 0;
     strategies.push({
       type: 'paridade', label: betOnEven ? '🔵 Par' : '🟠 Ímpar', emoji: betOnEven ? '🔵' : '🟠',
       numbers: parityNums, coverage: (18/37)*100, payout: 2,
-      score: parityImbalance * 3 + parityBtRate * 25,
-      probability: Math.min(98, Math.round(45 + parityBtRate * 40 + parityImbalance * 2)),
-      justification: `${betOnEven ? 'Par' : 'Ímpar'} atrasado (${betOnEven ? even30 : odd30}x vs ${betOnEven ? odd30 : even30}x em 30). Backtest: ${(parityBtRate*100).toFixed(0)}%.`,
+      score: parityImbalance * 3 + parityBtRate * 25 + parityTrendBonus,
+      probability: Math.min(98, Math.round(45 + parityBtRate * 40 + parityImbalance * 2 + parityTrendBonus)),
+      justification: trendEngine.parityTrend.shouldFollow
+        ? `${betOnEven ? 'Par' : 'Ímpar'} A FAVOR DO ALGORITMO: tendência acelerando. Backtest: ${(parityBtRate*100).toFixed(0)}%.`
+        : `${betOnEven ? 'Par' : 'Ímpar'} ${trendEngine.parityTrend.direction ? 'por reversão' : 'atrasado'} (${betOnEven ? even30 : odd30}x vs ${betOnEven ? odd30 : even30}x em 30). Backtest: ${(parityBtRate*100).toFixed(0)}%.`,
     });
 
-    // ALTO/BAIXO — bet on high or low that's due
+    // ALTO/BAIXO — INTELLIGENT: follows trend when algorithm is trending
     const high30 = last30.filter(n => n >= 19 && n <= 36).length;
     const low30 = last30.filter(n => n >= 1 && n <= 18).length;
-    const betOnHigh = low30 > high30;
+    const betOnHigh = trendEngine.highLowTrend.shouldFollow
+      ? trendEngine.highLowTrend.direction === 'alto'
+      : (trendEngine.highLowTrend.direction === 'alto' ? true : trendEngine.highLowTrend.direction === 'baixo' ? false : low30 > high30);
     const hlNums = betOnHigh
       ? Array.from({length:18}, (_,i) => i+19)
       : Array.from({length:18}, (_,i) => i+1);
     const hlImbalance = Math.abs(high30 - low30);
     const hlBtRate = backtestSet(hlNums);
+    const hlTrendBonus = trendEngine.highLowTrend.shouldFollow ? trendEngine.highLowTrend.strength * 0.15 : 0;
     strategies.push({
       type: 'alto_baixo', label: betOnHigh ? '⬆️ Alto (19-36)' : '⬇️ Baixo (1-18)', emoji: betOnHigh ? '⬆️' : '⬇️',
       numbers: hlNums, coverage: (18/37)*100, payout: 2,
-      score: hlImbalance * 3 + hlBtRate * 25,
-      probability: Math.min(98, Math.round(45 + hlBtRate * 40 + hlImbalance * 2)),
-      justification: `${betOnHigh ? 'Alto' : 'Baixo'} atrasado (${betOnHigh ? high30 : low30}x vs ${betOnHigh ? low30 : high30}x em 30). Backtest: ${(hlBtRate*100).toFixed(0)}%.`,
+      score: hlImbalance * 3 + hlBtRate * 25 + hlTrendBonus,
+      probability: Math.min(98, Math.round(45 + hlBtRate * 40 + hlImbalance * 2 + hlTrendBonus)),
+      justification: trendEngine.highLowTrend.shouldFollow
+        ? `${betOnHigh ? 'Alto' : 'Baixo'} A FAVOR DO ALGORITMO: tendência acelerando. Backtest: ${(hlBtRate*100).toFixed(0)}%.`
+        : `${betOnHigh ? 'Alto' : 'Baixo'} ${trendEngine.highLowTrend.direction ? 'por reversão' : 'atrasado'} (${betOnHigh ? high30 : low30}x vs ${betOnHigh ? low30 : high30}x em 30). Backtest: ${(hlBtRate*100).toFixed(0)}%.`,
     });
 
     // COLUNA — best performing column
