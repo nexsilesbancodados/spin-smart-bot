@@ -134,7 +134,6 @@ const Index = () => {
       const res = await supabase.functions.invoke('sniper-predict');
       if (res.data) {
         setSniperData(res.data);
-        setSniperCountdown(13);
       }
     } catch (err) { console.error('Sniper error:', err); }
   }, []);
