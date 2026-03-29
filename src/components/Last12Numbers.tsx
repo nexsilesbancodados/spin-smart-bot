@@ -45,6 +45,33 @@ const Last12Numbers = ({ allNumbers }: Props) => {
         <div className="flex-1 h-px bg-gradient-to-r from-primary/20 to-transparent ml-2" />
       </div>
 
+      {allNumbers.length >= 3 && (() => {
+        const last12 = allNumbers.slice(0, 12);
+        const PULL_Q: Record<number,number[]> = {0:[10,20,30],1:[11,16,4],2:[14,1,13],3:[13,27,6],4:[26,15,18],5:[3,33,16],6:[8,15,31],7:[16,18,17],8:[11,9,10],9:[34,35,36],10:[20,5,18],20:[4,14],27:[28,29,24],30:[4,8,16],36:[3,10,27]};
+        const RED_L = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+        const reds = last12.filter(n => RED_L.has(n)).length;
+        const blacks = last12.filter(n => !RED_L.has(n) && n !== 0).length;
+        const zeros = last12.filter(n => n === 0).length;
+        const cor = reds > blacks + 2 ? '🔴' : blacks > reds + 2 ? '⚫' : '🔀';
+        const distintos = new Set(last12.map(n => n % 10)).size;
+        const puxados = PULL_Q[allNumbers[0]] || [];
+        return (
+          <div className="flex items-center gap-2 mb-2 flex-wrap text-[7px]">
+            <span className="text-muted-foreground">{cor} {reds}V·{blacks}P·{zeros}Z</span>
+            <span className="text-border">|</span>
+            <span className={distintos <= 4 ? 'text-green-400 font-bold' : distintos <= 6 ? 'text-yellow-400' : 'text-muted-foreground'}>
+              T:{distintos} dist.
+            </span>
+            {puxados.length > 0 && (
+              <>
+                <span className="text-border">|</span>
+                <span className="text-cyan-400">🧲 {allNumbers[0]}→[{puxados.slice(0,3).join(',')}]</span>
+              </>
+            )}
+          </div>
+        );
+      })()}
+
       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2">
         {allNumbers.slice(0, 12).map((n, i) => {
           const color = getColor(n);

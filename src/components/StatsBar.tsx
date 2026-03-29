@@ -73,8 +73,26 @@ const StatsBar = ({ predStats, setPredStats }: StatsBarProps) => {
           await supabase.from('prediction_history').delete().not('id', 'is', null);
           setPredStats({ hits: 0, misses: 0, exact: 0, total: 0 });
         }} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[8px] font-bold bg-destructive/8 text-destructive/80 border border-destructive/20 hover:bg-destructive/15 hover:text-destructive transition-all">
-          <RefreshCw className="w-2.5 h-2.5" /> ZERAR
-        </button>
+           <RefreshCw className="w-2.5 h-2.5" /> ZERAR
+         </button>
+
+         {predStats.total >= 5 && (() => {
+           const wr = predStats.hits / predStats.total;
+           const isHot = wr >= 0.5;
+           const isCold = wr < 0.28;
+           return (
+             <>
+               <div className="w-px h-4 bg-border/40" />
+               <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[8px] font-bold border ${
+                 isHot ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                 isCold ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                 'bg-secondary text-muted-foreground border-border'
+               }`}>
+                 {isHot ? '🔥 QUENTE' : isCold ? '❄️ FRIA' : '⚖️ NEUTRO'}
+               </div>
+             </>
+           );
+         })()}
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ import BetPanel from '@/components/BetPanel';
 import AILearningLog from '@/components/AILearningLog';
 import NumberDNADialog from '@/components/NumberDNADialog';
 import PullRadar from '@/components/PullRadar';
+import StrategyLeaderboard from '@/components/StrategyLeaderboard';
 import Navbar from '@/components/Navbar';
 import StatsBar from '@/components/StatsBar';
 import Last12Numbers from '@/components/Last12Numbers';
@@ -855,6 +856,9 @@ const Index = () => {
                           </div>
                         </motion.div>
                       )}
+
+                      {/* Strategy Leaderboard */}
+                      <StrategyLeaderboard />
 
                       {/* Pattern 24h + Pull Radar + Error Analysis */}
                       {sniperData?.transitionMatrix && <PatternPanel24h sniperData={sniperData} />}
