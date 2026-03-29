@@ -1207,10 +1207,20 @@ const Index = () => {
                   const nextFreq: Record<number, number> = {};
                   nextNums.forEach(n => { nextFreq[n] = (nextFreq[n] || 0) + 1; });
                   const topNext = Object.entries(nextFreq).sort(([, a], [, b]) => b - a).slice(0, 5);
+                  // Previous numbers before each occurrence
+                  const prevNums: number[] = [];
+                  positions.forEach(p => { if (p - 1 >= 0) prevNums.push(historySlice[p - 1]); });
+                  const prevFreq: Record<number, number> = {};
+                  prevNums.forEach(n => { prevFreq[n] = (prevFreq[n] || 0) + 1; });
+                  const topPrev = Object.entries(prevFreq).sort(([, a], [, b]) => b - a).slice(0, 5);
                   // Sector distribution of next numbers
                   const nextSectors: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0, Zero: 0 };
                   nextNums.forEach(n => { nextSectors[getSectorName(n)]++; });
                   const totalNextSectors = Object.values(nextSectors).reduce((a, b) => a + b, 0);
+                  // Sector distribution of previous numbers
+                  const prevSectors: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0, Zero: 0 };
+                  prevNums.forEach(n => { prevSectors[getSectorName(n)]++; });
+                  const totalPrevSectors = Object.values(prevSectors).reduce((a, b) => a + b, 0);
                   // Regularity check
                   const isRegular = delays.length >= 3 && delays.every(d => Math.abs(d - delays[0]) <= 2);
 
@@ -1253,9 +1263,26 @@ const Index = () => {
                       )}
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {/* Next numbers */}
+                        {/* Previous numbers (before) */}
                         <div className="bg-secondary/40 rounded-lg p-2 border border-border">
-                          <span className="text-[8px] font-bold text-foreground block mb-1">📍 NÚMEROS QUE SAEM DEPOIS</span>
+                          <span className="text-[8px] font-bold text-foreground block mb-1">⬅️ NÚMEROS QUE SAEM ANTES</span>
+                          {topPrev.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {topPrev.map(([num, freq]) => (
+                                <div key={num} className="flex items-center gap-0.5">
+                                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ${colorClass(Number(num))} border border-white/20`}>{num}</div>
+                                  <span className="text-[7px] font-mono text-muted-foreground">{freq}x</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-[8px] text-muted-foreground">Sem dados suficientes</span>
+                          )}
+                        </div>
+
+                        {/* Next numbers (after) */}
+                        <div className="bg-secondary/40 rounded-lg p-2 border border-border">
+                          <span className="text-[8px] font-bold text-foreground block mb-1">➡️ NÚMEROS QUE SAEM DEPOIS</span>
                           {topNext.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
                               {topNext.map(([num, freq]) => (
@@ -1270,9 +1297,34 @@ const Index = () => {
                           )}
                         </div>
 
-                        {/* Sector heat map after this number */}
+                        {/* Sector heat map BEFORE */}
                         <div className="bg-secondary/40 rounded-lg p-2 border border-border">
-                          <span className="text-[8px] font-bold text-foreground block mb-1">🌡️ MAPA DE CALOR PÓS-GIRO</span>
+                          <span className="text-[8px] font-bold text-foreground block mb-1">🌡️ CALOR PRÉ-GIRO</span>
+                          {totalPrevSectors > 0 ? (
+                            <div className="space-y-1">
+                              {Object.entries(prevSectors).sort(([, a], [, b]) => b - a).map(([sector, cnt]) => {
+                                const pct = totalPrevSectors > 0 ? (cnt / totalPrevSectors) * 100 : 0;
+                                return (
+                                  <div key={sector} className="space-y-0.5">
+                                    <div className="flex justify-between text-[9px]">
+                                      <span className="text-muted-foreground">{sector}</span>
+                                      <span className="font-mono font-bold text-foreground">{pct.toFixed(0)}% ({cnt}/{totalPrevSectors})</span>
+                                    </div>
+                                    <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
+                                      <div className="h-full rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-[8px] text-muted-foreground">Sem dados suficientes</span>
+                          )}
+                        </div>
+
+                        {/* Sector heat map AFTER */}
+                        <div className="bg-secondary/40 rounded-lg p-2 border border-border">
+                          <span className="text-[8px] font-bold text-foreground block mb-1">🌡️ CALOR PÓS-GIRO</span>
                           {totalNextSectors > 0 ? (
                             <div className="space-y-1">
                               {Object.entries(nextSectors).sort(([, a], [, b]) => b - a).map(([sector, cnt]) => {
