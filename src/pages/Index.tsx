@@ -171,7 +171,7 @@ const Index = () => {
       }
     } catch (err) { console.error('Sniper error:', err); }
     finally { sniperFetchingRef.current = false; }
-  }, []);
+  }, [sampleSize]);
 
   // === Data Fetching ===
   const fetchNumbers = useCallback(async () => {
