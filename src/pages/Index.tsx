@@ -42,8 +42,9 @@ const PROVIDERS: Record<string, { label: string; tables: { name: string; default
 
 const Index = () => {
   const { history, provider, table, setProvider, setTable, addNumber, autoMode, autoSpeed, toggleAutoMode, setAutoSpeed } = useRoulette();
-  const [iframeUrl, setIframeUrl] = useState('');
-  const [urlInput, setUrlInput] = useState('');
+  const DEFAULT_IFRAME_URL = 'https://ona.bet.br/live-casino/game/3782786?provider=Playtech&from=%2Flive-casino';
+  const [iframeUrl, setIframeUrl] = useState(DEFAULT_IFRAME_URL);
+  const [urlInput, setUrlInput] = useState(DEFAULT_IFRAME_URL);
   const [activeTab, setActiveTab] = useState<'roleta' | 'aulas' | 'bacbo'>('roleta');
   const [iframeExpanded, setIframeExpanded] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
