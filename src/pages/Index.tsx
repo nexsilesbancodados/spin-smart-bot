@@ -33,6 +33,31 @@ const CAVALOS_GROUPS: Record<string, number[]> = {
   '69': [6,9,16,19,26,29,36],
 };
 
+const DUPLICATE_SPIN_WINDOW_MS = 5000;
+
+const getPrependedNumbers = (next: number[], previous: number[]) => {
+  if (previous.length === 0) return next;
+
+  const maxOffset = Math.min(12, next.length);
+
+  for (let offset = 0; offset <= maxOffset; offset++) {
+    const compareCount = Math.min(10, previous.length, next.length - offset);
+    if (compareCount <= 0) continue;
+
+    let matches = true;
+    for (let i = 0; i < compareCount; i++) {
+      if (next[offset + i] !== previous[i]) {
+        matches = false;
+        break;
+      }
+    }
+
+    if (matches) return next.slice(0, offset);
+  }
+
+  return [];
+};
+
 const wheelIdx = (n: number) => WHEEL.indexOf(n);
 const wheelDist = (a: number, b: number) => {
   const ia = wheelIdx(a), ib = wheelIdx(b);
@@ -90,6 +115,17 @@ const Index = () => {
   const sniperFetchingRef = useRef(false);
   const lastSniperTriggerRef = useRef(0);
   const lastSpinSignatureRef = useRef('');
+  const apiSnapshotRef = useRef<number[]>([]);
+  const lastAcceptedSpinRef = useRef<{ number: number | null; timestamp: number }>({ number: null, timestamp: 0 });
+
+  const isBurstDuplicate = useCallback((number: number) => {
+    const { number: lastNumber, timestamp } = lastAcceptedSpinRef.current;
+    return lastNumber === number && Date.now() - timestamp < DUPLICATE_SPIN_WINDOW_MS;
+  }, []);
+
+  const markAcceptedSpin = useCallback((number: number) => {
+    lastAcceptedSpinRef.current = { number, timestamp: Date.now() };
+  }, []);
 
   const handleNewSpin = useCallback((signature: string, latestNumber?: number) => {
     if (!signature || signature === lastSpinSignatureRef.current) return;
@@ -97,9 +133,6 @@ const Index = () => {
     sniperSameCount.current = 0;
     setSniperStale(false);
     setSniperCountdown(13);
-    if (typeof latestNumber === 'number') {
-      setStoredNumbers(prev => prev[0] === latestNumber ? prev : [latestNumber, ...prev].slice(0, 1000));
-    }
   }, []);
 
   const fetchSniper = useCallback(async () => {
@@ -134,20 +167,34 @@ const Index = () => {
       const data = res.data;
       if (data?.results && Array.isArray(data.results)) {
         const nums = data.results.map((n: unknown) => Number(n)).filter((n: number) => !isNaN(n) && n >= 0 && n <= 36);
+        const previousSnapshot = apiSnapshotRef.current;
+        const newNumbers = getPrependedNumbers(nums, previousSnapshot);
         const key = nums.slice(0, 20).join(',');
-        if (key !== prevNumbersRef.current) {
-          prevNumbersRef.current = key;
+
+        if (previousSnapshot.length === 0) {
+          apiSnapshotRef.current = nums;
           setApiNumbers(nums);
           setLastUpdate(new Date());
-          handleNewSpin(nums.slice(0, 3).join(','), nums[0]);
-          fetchSniper();
+          prevNumbersRef.current = key;
+        } else if (newNumbers.length > 0) {
+          apiSnapshotRef.current = nums;
+          setApiNumbers(prev => [...newNumbers, ...prev].slice(0, 1000));
+          setLastUpdate(new Date());
+
+          if (!isBurstDuplicate(newNumbers[0])) {
+            markAcceptedSpin(newNumbers[0]);
+            handleNewSpin(nums.slice(0, 3).join(','), newNumbers[0]);
+            fetchSniper();
+          }
+
+          prevNumbersRef.current = key;
         }
         setError(null);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro');
     }
-  }, [fetchSniper, handleNewSpin]);
+  }, [fetchSniper, handleNewSpin, isBurstDuplicate, markAcceptedSpin]);
 
   const fetchStored = useCallback(async () => {
     const { data } = await supabase
@@ -172,7 +219,10 @@ const Index = () => {
     const ch = supabase.channel('sniper_trigger_rt')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'roulette_numbers' }, (payload: any) => {
         const row = payload?.new;
-        if (typeof row?.number === 'number') {
+        if (typeof row?.number === 'number' && !isBurstDuplicate(row.number)) {
+          markAcceptedSpin(row.number);
+          apiSnapshotRef.current = [row.number, ...apiSnapshotRef.current].slice(0, 1000);
+          setApiNumbers(prev => prev[0] === row.number ? prev : [row.number, ...prev].slice(0, 1000));
           handleNewSpin(`${row.number}-${row.fetched_at ?? ''}`, row.number);
           setLastUpdate(new Date());
           fetchSniper();
@@ -180,7 +230,7 @@ const Index = () => {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [fetchSniper, handleNewSpin]);
+  }, [fetchSniper, handleNewSpin, isBurstDuplicate, markAcceptedSpin]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -286,7 +336,7 @@ const Index = () => {
   };
 
   // === Computed ===
-  const allNumbers = storedNumbers.length > apiNumbers.length ? storedNumbers : apiNumbers;
+  const allNumbers = apiNumbers.length > 0 ? apiNumbers : storedNumbers;
   const historySlice = allNumbers.slice(0, historyLimit);
 
   const terminalFreq = allNumbers.slice(0, 200).reduce<Record<number, number>>((acc, n) => {
@@ -725,9 +775,12 @@ const Index = () => {
                   <button onClick={async () => {
                     if (!confirm('Limpar todo o histórico?')) return;
                     await supabase.from('roulette_numbers').delete().not('id', 'is', null);
+                    apiSnapshotRef.current = apiNumbers.length > 0 ? [...apiNumbers] : [...storedNumbers];
+                    lastAcceptedSpinRef.current = { number: null, timestamp: 0 };
+                    lastSpinSignatureRef.current = '';
                     setStoredNumbers([]);
                     setApiNumbers([]);
-                    prevNumbersRef.current = '';
+                    prevNumbersRef.current = apiSnapshotRef.current.slice(0, 20).join(',');
                     toast.success('Histórico limpo!');
                   }} className="text-[9px] px-2 py-1 rounded-lg font-bold bg-destructive/20 text-destructive border border-destructive/30 hover:bg-destructive/30 transition-all ml-1">
                     🗑️ Limpar
