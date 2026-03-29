@@ -942,6 +942,190 @@ serve(async (req) => {
     
     // Multi-dimension convergence will be calculated after transitionMatrix is ready
 
+    // ========================================================
+    // TREND vs REVERSAL ENGINE — "Jogar a favor do algoritmo"
+    // Detects if mesa is in CONTINUATION mode (trend) or REVERSAL mode
+    // The AI should FOLLOW the algorithm, not fight it
+    // ========================================================
+    const trendEngine: {
+      mode: 'TENDENCIA' | 'REVERSAO' | 'NEUTRO';
+      confidence: number;
+      colorTrend: { direction: 'red' | 'black' | null; strength: number; shouldFollow: boolean };
+      parityTrend: { direction: 'par' | 'impar' | null; strength: number; shouldFollow: boolean };
+      highLowTrend: { direction: 'alto' | 'baixo' | null; strength: number; shouldFollow: boolean };
+      dozenTrend: { direction: number | null; strength: number; shouldFollow: boolean };
+      columnTrend: { direction: number | null; strength: number; shouldFollow: boolean };
+      sectorTrend: { direction: string | null; strength: number; shouldFollow: boolean };
+      reasoning: string[];
+    } = {
+      mode: 'NEUTRO', confidence: 50,
+      colorTrend: { direction: null, strength: 0, shouldFollow: false },
+      parityTrend: { direction: null, strength: 0, shouldFollow: false },
+      highLowTrend: { direction: null, strength: 0, shouldFollow: false },
+      dozenTrend: { direction: null, strength: 0, shouldFollow: false },
+      columnTrend: { direction: null, strength: 0, shouldFollow: false },
+      sectorTrend: { direction: null, strength: 0, shouldFollow: false },
+      reasoning: [],
+    };
+
+    if (numbers.length >= 20) {
+      // === CORE: Analyze continuation vs reversal from last 30 numbers ===
+      const an30 = numbers.slice(0, 30);
+      const an10 = numbers.slice(0, 10);
+      const an5 = numbers.slice(0, 5);
+      
+      // --- COLOR TREND ---
+      const red5 = an5.filter(n => RED.includes(n)).length;
+      const red10 = an10.filter(n => RED.includes(n)).length;
+      const red30 = an30.filter(n => RED.includes(n)).length;
+      // Check if recent trend ACCELERATES or DECELERATES
+      const red5Rate = red5 / 5;
+      const red10Rate = red10 / 10;
+      const red30Rate = red30 / 30;
+      // Acceleration = recent rate > medium rate > long rate (trend strengthening)
+      const redAccelerating = red5Rate > red10Rate && red10Rate > red30Rate && red5Rate > 0.55;
+      const blackAccelerating = (1 - red5Rate) > (1 - red10Rate) && (1 - red10Rate) > (1 - red30Rate) && red5Rate < 0.45;
+      // Bayesian confirmation
+      const bayesConfirmsRed = bayesColor.predicted === 'red' && bayesColor.probability >= 45;
+      const bayesConfirmsBlack = bayesColor.predicted === 'black' && bayesColor.probability >= 45;
+      // Momentum confirmation
+      const momConfirmsRed = colorMomentum['red']?.trend === 'rising';
+      const momConfirmsBlack = colorMomentum['black']?.trend === 'rising';
+      
+      if ((redAccelerating && (bayesConfirmsRed || momConfirmsRed)) || (redAccelerating && red5 >= 4)) {
+        trendEngine.colorTrend = { direction: 'red', strength: Math.min(95, 50 + red5 * 10 + (bayesConfirmsRed ? 15 : 0)), shouldFollow: true };
+        trendEngine.reasoning.push(`🔴 Vermelho ACELERANDO: ${red5}/5 recentes, Bayes ${bayesColor.probability}%, momentum ${momConfirmsRed ? 'SUBINDO' : 'estável'}`);
+      } else if ((blackAccelerating && (bayesConfirmsBlack || momConfirmsBlack)) || (blackAccelerating && red5 <= 1)) {
+        trendEngine.colorTrend = { direction: 'black', strength: Math.min(95, 50 + (5 - red5) * 10 + (bayesConfirmsBlack ? 15 : 0)), shouldFollow: true };
+        trendEngine.reasoning.push(`⚫ Preto ACELERANDO: ${5 - red5}/5 recentes, Bayes ${bayesColor.probability}%, momentum ${momConfirmsBlack ? 'SUBINDO' : 'estável'}`);
+      }
+      // If there's a streak but it's DECELERATING, THEN reverse
+      if (red5 >= 4 && red10Rate < red5Rate * 0.8 && !redAccelerating) {
+        trendEngine.colorTrend = { direction: 'black', strength: 65, shouldFollow: false };
+        trendEngine.reasoning.push(`🔄 Vermelho desacelerando (${red5}/5 mas ${red10}/10) — reversão para Preto`);
+      }
+      if (red5 <= 1 && (1 - red10Rate) < (1 - red5Rate) * 0.8 && !blackAccelerating) {
+        trendEngine.colorTrend = { direction: 'red', strength: 65, shouldFollow: false };
+        trendEngine.reasoning.push(`🔄 Preto desacelerando — reversão para Vermelho`);
+      }
+
+      // --- PARITY TREND ---
+      const par5 = an5.filter(n => n > 0 && n % 2 === 0).length;
+      const par10 = an10.filter(n => n > 0 && n % 2 === 0).length;
+      const par30 = an30.filter(n => n > 0 && n % 2 === 0).length;
+      const par5Rate = par5 / Math.max(1, an5.filter(n => n > 0).length);
+      const par10Rate = par10 / Math.max(1, an10.filter(n => n > 0).length);
+      const par30Rate = par30 / Math.max(1, an30.filter(n => n > 0).length);
+      const parAccelerating = par5Rate > par10Rate && par10Rate > par30Rate && par5Rate > 0.6;
+      const imparAccelerating = (1 - par5Rate) > (1 - par10Rate) && (1 - par10Rate) > (1 - par30Rate) && par5Rate < 0.4;
+      const bayesConfirmsPar = bayesParity.predicted === 'Par' && bayesParity.probability >= 45;
+      const bayesConfirmsImpar = bayesParity.predicted === 'Ímpar' && bayesParity.probability >= 45;
+      const momConfirmsPar = parityMomentum['Par']?.trend === 'rising';
+      const momConfirmsImpar = parityMomentum['Ímpar']?.trend === 'rising';
+
+      if ((parAccelerating && (bayesConfirmsPar || momConfirmsPar)) || (parAccelerating && par5 >= 4)) {
+        trendEngine.parityTrend = { direction: 'par', strength: Math.min(90, 50 + par5 * 10), shouldFollow: true };
+        trendEngine.reasoning.push(`2️⃣ Par ACELERANDO: ${par5}/5 recentes`);
+      } else if ((imparAccelerating && (bayesConfirmsImpar || momConfirmsImpar)) || (imparAccelerating && par5 <= 1)) {
+        trendEngine.parityTrend = { direction: 'impar', strength: Math.min(90, 50 + (5 - par5) * 10), shouldFollow: true };
+        trendEngine.reasoning.push(`1️⃣ Ímpar ACELERANDO: ${5 - par5}/5 recentes`);
+      }
+
+      // --- HIGH/LOW TREND ---
+      const hi5 = an5.filter(n => n >= 19).length;
+      const hi10 = an10.filter(n => n >= 19).length;
+      const hi30 = an30.filter(n => n >= 19).length;
+      const hi5Rate = hi5 / Math.max(1, an5.filter(n => n > 0).length);
+      const hi10Rate = hi10 / Math.max(1, an10.filter(n => n > 0).length);
+      const hi30Rate = hi30 / Math.max(1, an30.filter(n => n > 0).length);
+      const hiAccelerating = hi5Rate > hi10Rate && hi10Rate > hi30Rate && hi5Rate > 0.6;
+      const loAccelerating = (1 - hi5Rate) > (1 - hi10Rate) && (1 - hi10Rate) > (1 - hi30Rate) && hi5Rate < 0.4;
+      const bayesConfirmsHi = bayesHighLow.predicted === 'Alto' && bayesHighLow.probability >= 45;
+      const bayesConfirmsLo = bayesHighLow.predicted === 'Baixo' && bayesHighLow.probability >= 45;
+      const momConfirmsHi = highLowMomentum['Alto']?.trend === 'rising';
+      const momConfirmsLo = highLowMomentum['Baixo']?.trend === 'rising';
+
+      if ((hiAccelerating && (bayesConfirmsHi || momConfirmsHi)) || (hiAccelerating && hi5 >= 4)) {
+        trendEngine.highLowTrend = { direction: 'alto', strength: Math.min(90, 50 + hi5 * 10), shouldFollow: true };
+        trendEngine.reasoning.push(`⬆️ Alto ACELERANDO: ${hi5}/5 recentes`);
+      } else if ((loAccelerating && (bayesConfirmsLo || momConfirmsLo)) || (loAccelerating && hi5 <= 1)) {
+        trendEngine.highLowTrend = { direction: 'baixo', strength: Math.min(90, 50 + (5 - hi5) * 10), shouldFollow: true };
+        trendEngine.reasoning.push(`⬇️ Baixo ACELERANDO: ${5 - hi5}/5 recentes`);
+      }
+
+      // --- DOZEN TREND ---
+      const dz5 = an5.filter(n => n > 0).map(n => getDozen(n));
+      const dzMode5 = [0, 0, 0]; dz5.forEach(d => { if (d > 0) dzMode5[d - 1]++; });
+      const topDz5 = dzMode5.indexOf(Math.max(...dzMode5)) + 1;
+      const dz10 = an10.filter(n => n > 0).map(n => getDozen(n));
+      const dzMode10 = [0, 0, 0]; dz10.forEach(d => { if (d > 0) dzMode10[d - 1]++; });
+      const topDz10 = dzMode10.indexOf(Math.max(...dzMode10)) + 1;
+      // Same dozen dominating in 5 AND 10 = trend
+      if (topDz5 === topDz10 && dzMode5[topDz5 - 1] >= 3 && dzMode10[topDz10 - 1] >= 5) {
+        const dzMom = dozenMomentum[`D${topDz5}`];
+        if (dzMom?.trend === 'rising' || dzMode5[topDz5 - 1] >= 4) {
+          trendEngine.dozenTrend = { direction: topDz5, strength: Math.min(90, 50 + dzMode5[topDz5 - 1] * 10), shouldFollow: true };
+          trendEngine.reasoning.push(`🎲 Dúzia ${topDz5} em TENDÊNCIA: ${dzMode5[topDz5 - 1]}/5 + ${dzMode10[topDz10 - 1]}/10`);
+        }
+      }
+
+      // --- SECTOR TREND ---
+      const sec5 = an5.map(n => getSector(n));
+      const secMode5: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0 };
+      sec5.forEach(s => { if (secMode5[s] !== undefined) secMode5[s]++; });
+      const topSec5 = Object.entries(secMode5).sort(([,a],[,b]) => b - a)[0];
+      if (topSec5 && topSec5[1] >= 3) {
+        const secMom = sectorMomentum[topSec5[0]];
+        if (secMom?.trend === 'rising') {
+          trendEngine.sectorTrend = { direction: topSec5[0], strength: Math.min(90, 50 + topSec5[1] * 10), shouldFollow: true };
+          trendEngine.reasoning.push(`🗺️ Setor ${topSec5[0]} em TENDÊNCIA: ${topSec5[1]}/5 + momentum subindo`);
+        }
+      }
+
+      // --- GLOBAL MODE DETECTION ---
+      const trendSignals = [
+        trendEngine.colorTrend.shouldFollow,
+        trendEngine.parityTrend.shouldFollow,
+        trendEngine.highLowTrend.shouldFollow,
+        trendEngine.dozenTrend.shouldFollow,
+        trendEngine.sectorTrend.shouldFollow,
+      ].filter(Boolean).length;
+      
+      if (trendSignals >= 3) {
+        trendEngine.mode = 'TENDENCIA';
+        trendEngine.confidence = Math.min(95, 60 + trendSignals * 8);
+        trendEngine.reasoning.push(`🚀 MODO TENDÊNCIA ATIVO: ${trendSignals}/5 dimensões acelerando — JOGAR A FAVOR DO ALGORITMO`);
+      } else if (trendSignals >= 2) {
+        trendEngine.mode = 'TENDENCIA';
+        trendEngine.confidence = Math.min(85, 55 + trendSignals * 7);
+        trendEngine.reasoning.push(`📈 Tendência detectada em ${trendSignals} dimensões — seguir o fluxo`);
+      } else {
+        // Check for exhaustion signals (high streaks about to break)
+        const colorStreakLen = (() => { let s = 1; const c = getColor(numbers[0]); for (let i = 1; i < 20; i++) { if (numbers[i] === 0) break; if (getColor(numbers[i]) === c) s++; else break; } return s; })();
+        const hiLoStreakLen = (() => { if (numbers[0] === 0) return 0; let s = 1; const h = numbers[0] >= 19; for (let i = 1; i < 20; i++) { if (numbers[i] === 0) break; if ((numbers[i] >= 19) === h) s++; else break; } return s; })();
+        const parStreakLen = (() => { if (numbers[0] === 0) return 0; let s = 1; const p = numbers[0] % 2; for (let i = 1; i < 20; i++) { if (numbers[i] === 0) break; if (numbers[i] % 2 === p) s++; else break; } return s; })();
+        
+        // Very long streaks WITHOUT acceleration = exhaustion → reversal
+        if (colorStreakLen >= 6 || hiLoStreakLen >= 6 || parStreakLen >= 6) {
+          trendEngine.mode = 'REVERSAO';
+          trendEngine.confidence = Math.min(90, 55 + Math.max(colorStreakLen, hiLoStreakLen, parStreakLen) * 4);
+          trendEngine.reasoning.push(`⚡ EXAUSTÃO DETECTADA: sequência de ${Math.max(colorStreakLen, hiLoStreakLen, parStreakLen)} — algoritmo vai reverter`);
+        } else {
+          trendEngine.mode = 'NEUTRO';
+          trendEngine.confidence = 50;
+        }
+      }
+    }
+
+    // Add trend engine learnings
+    if (trendEngine.mode === 'TENDENCIA') {
+      aiLearnings.push(`🚀 MODO TENDÊNCIA: Jogar A FAVOR do algoritmo (${trendEngine.confidence}% confiança)`);
+      trendEngine.reasoning.slice(0, 3).forEach(r => aiLearnings.push(r));
+    } else if (trendEngine.mode === 'REVERSAO') {
+      aiLearnings.push(`⚡ MODO REVERSÃO: Algoritmo vai virar — apostar no oposto`);
+      trendEngine.reasoning.slice(0, 2).forEach(r => aiLearnings.push(r));
+    }
+
 
     // ========================================================
     const rawArcs: number[] = [];
@@ -2664,70 +2848,94 @@ serve(async (req) => {
     // ========================================================
     {
       const recent = numbers.slice(0, 20);
-      // Streak detection: Alta
+      // Streak detection: Alta — INTELLIGENT: follows trend or reverses based on trend engine
       let highStreak = 0;
       for (const n of recent) { if (n >= 19) highStreak++; else break; }
       if (highStreak >= 3) {
+        const followHigh = trendEngine.highLowTrend.shouldFollow && trendEngine.highLowTrend.direction === 'alto';
         transitionMatrix.detectedPatterns.push({
-          name: `Sequência de ${highStreak} ALTOS`,
-          emoji: '🔝', confidence: Math.min(95, 50 + highStreak * 10),
-          description: `${highStreak} números altos (19-36) consecutivos. Probabilidade de reversão para Baixo aumenta.`,
-          category: 'streak', action: 'Aposte em Baixo (1-18) — reversão iminente',
+          name: followHigh ? `🚀 ${highStreak} ALTOS — Tendência Ativa` : `Sequência de ${highStreak} ALTOS`,
+          emoji: followHigh ? '🚀' : '🔝', confidence: Math.min(95, 50 + highStreak * 10),
+          description: followHigh
+            ? `${highStreak} números altos (19-36) consecutivos. ALGORITMO EM TENDÊNCIA — continuar apostando Alto.`
+            : `${highStreak} números altos (19-36) consecutivos. ${highStreak >= 6 ? 'Exaustão provável — reversão.' : 'Possível reversão para Baixo.'}`,
+          category: 'streak',
+          action: followHigh ? 'Aposte em Alto (19-36) — A FAVOR do algoritmo' : 'Aposte em Baixo (1-18) — reversão iminente',
         });
       }
       // Streak: Baixa
       let lowStreak = 0;
       for (const n of recent) { if (n >= 1 && n <= 18) lowStreak++; else break; }
       if (lowStreak >= 3) {
+        const followLow = trendEngine.highLowTrend.shouldFollow && trendEngine.highLowTrend.direction === 'baixo';
         transitionMatrix.detectedPatterns.push({
-          name: `Sequência de ${lowStreak} BAIXOS`,
-          emoji: '⬇️', confidence: Math.min(95, 50 + lowStreak * 10),
-          description: `${lowStreak} números baixos (1-18) consecutivos. Probabilidade de reversão para Alto aumenta.`,
-          category: 'streak', action: 'Aposte em Alto (19-36) — reversão iminente',
+          name: followLow ? `🚀 ${lowStreak} BAIXOS — Tendência Ativa` : `Sequência de ${lowStreak} BAIXOS`,
+          emoji: followLow ? '🚀' : '⬇️', confidence: Math.min(95, 50 + lowStreak * 10),
+          description: followLow
+            ? `${lowStreak} números baixos (1-18) consecutivos. ALGORITMO EM TENDÊNCIA — continuar apostando Baixo.`
+            : `${lowStreak} números baixos (1-18) consecutivos. ${lowStreak >= 6 ? 'Exaustão provável — reversão.' : 'Possível reversão para Alto.'}`,
+          category: 'streak',
+          action: followLow ? 'Aposte em Baixo (1-18) — A FAVOR do algoritmo' : 'Aposte em Alto (19-36) — reversão iminente',
         });
       }
       // Streak: Vermelhos
       let redStreak = 0;
       for (const n of recent) { if (getColor(n) === 'red') redStreak++; else break; }
       if (redStreak >= 3) {
+        const followRed = trendEngine.colorTrend.shouldFollow && trendEngine.colorTrend.direction === 'red';
         transitionMatrix.detectedPatterns.push({
-          name: `${redStreak} Vermelhos Seguidos`,
-          emoji: '🔴', confidence: Math.min(90, 45 + redStreak * 10),
-          description: `${redStreak} números vermelhos consecutivos. Tendência de reversão para Preto.`,
-          category: 'streak', action: 'Aposte em Preto — reversão de cor',
+          name: followRed ? `🚀 ${redStreak} Vermelhos — Tendência` : `${redStreak} Vermelhos Seguidos`,
+          emoji: followRed ? '🚀' : '🔴', confidence: Math.min(90, 45 + redStreak * 10),
+          description: followRed
+            ? `${redStreak} vermelhos consecutivos. Momentum ACELERANDO — continuar no Vermelho.`
+            : `${redStreak} números vermelhos consecutivos. ${redStreak >= 6 ? 'Exaustão — reversão.' : 'Tendência de reversão para Preto.'}`,
+          category: 'streak',
+          action: followRed ? 'Aposte em Vermelho — A FAVOR do algoritmo' : 'Aposte em Preto — reversão de cor',
         });
       }
       // Streak: Pretos
       let blackStreak = 0;
       for (const n of recent) { if (getColor(n) === 'black') blackStreak++; else break; }
       if (blackStreak >= 3) {
+        const followBlack = trendEngine.colorTrend.shouldFollow && trendEngine.colorTrend.direction === 'black';
         transitionMatrix.detectedPatterns.push({
-          name: `${blackStreak} Pretos Seguidos`,
-          emoji: '⚫', confidence: Math.min(90, 45 + blackStreak * 10),
-          description: `${blackStreak} números pretos consecutivos. Tendência de reversão para Vermelho.`,
-          category: 'streak', action: 'Aposte em Vermelho — reversão de cor',
+          name: followBlack ? `🚀 ${blackStreak} Pretos — Tendência` : `${blackStreak} Pretos Seguidos`,
+          emoji: followBlack ? '🚀' : '⚫', confidence: Math.min(90, 45 + blackStreak * 10),
+          description: followBlack
+            ? `${blackStreak} pretos consecutivos. Momentum ACELERANDO — continuar no Preto.`
+            : `${blackStreak} números pretos consecutivos. ${blackStreak >= 6 ? 'Exaustão — reversão.' : 'Tendência de reversão para Vermelho.'}`,
+          category: 'streak',
+          action: followBlack ? 'Aposte em Preto — A FAVOR do algoritmo' : 'Aposte em Vermelho — reversão de cor',
         });
       }
       // Streak: Pares
       let evenStreak = 0;
       for (const n of recent) { if (n > 0 && n % 2 === 0) evenStreak++; else break; }
       if (evenStreak >= 3) {
+        const followPar = trendEngine.parityTrend.shouldFollow && trendEngine.parityTrend.direction === 'par';
         transitionMatrix.detectedPatterns.push({
-          name: `${evenStreak} Pares Seguidos`,
-          emoji: '2️⃣', confidence: Math.min(88, 45 + evenStreak * 9),
-          description: `${evenStreak} números pares consecutivos. Tendência de reversão para Ímpar.`,
-          category: 'streak', action: 'Aposte em Ímpar — reversão',
+          name: followPar ? `🚀 ${evenStreak} Pares — Tendência` : `${evenStreak} Pares Seguidos`,
+          emoji: followPar ? '🚀' : '2️⃣', confidence: Math.min(88, 45 + evenStreak * 9),
+          description: followPar
+            ? `${evenStreak} pares consecutivos. Algoritmo em tendência — continuar Par.`
+            : `${evenStreak} números pares consecutivos. Tendência de reversão para Ímpar.`,
+          category: 'streak',
+          action: followPar ? 'Aposte em Par — A FAVOR do algoritmo' : 'Aposte em Ímpar — reversão',
         });
       }
       // Streak: Ímpares
       let oddStreak = 0;
       for (const n of recent) { if (n > 0 && n % 2 === 1) oddStreak++; else break; }
       if (oddStreak >= 3) {
+        const followImpar = trendEngine.parityTrend.shouldFollow && trendEngine.parityTrend.direction === 'impar';
         transitionMatrix.detectedPatterns.push({
-          name: `${oddStreak} Ímpares Seguidos`,
-          emoji: '1️⃣', confidence: Math.min(88, 45 + oddStreak * 9),
-          description: `${oddStreak} números ímpares consecutivos. Tendência de reversão para Par.`,
-          category: 'streak', action: 'Aposte em Par — reversão',
+          name: followImpar ? `🚀 ${oddStreak} Ímpares — Tendência` : `${oddStreak} Ímpares Seguidos`,
+          emoji: followImpar ? '🚀' : '1️⃣', confidence: Math.min(88, 45 + oddStreak * 9),
+          description: followImpar
+            ? `${oddStreak} ímpares consecutivos. Algoritmo em tendência — continuar Ímpar.`
+            : `${oddStreak} números ímpares consecutivos. Tendência de reversão para Par.`,
+          category: 'streak',
+          action: followImpar ? 'Aposte em Ímpar — A FAVOR do algoritmo' : 'Aposte em Par — reversão',
         });
       }
       // Alternância Alto↕Baixo (gangorra 3+)
@@ -3800,55 +4008,71 @@ serve(async (req) => {
     // SIMPLE BET TYPES — Cor, Par/Ímpar, Alto/Baixo, Coluna, Dúzia, Número Exato
     // ==========================================
 
-    // COR (Red vs Black) — bet on the color that's due based on frequency imbalance
+    // COR (Red vs Black) — INTELLIGENT: follows trend when algorithm is trending, reverses when exhausting
     const redNums30 = last30.filter(n => RED.includes(n)).length;
     const blackNums30 = last30.filter(n => n > 0 && !RED.includes(n)).length;
-    const betOnRed = blackNums30 > redNums30;
+    // TREND ENGINE: if color trend is detected and should follow, bet WITH the trend
+    const betOnRed = trendEngine.colorTrend.shouldFollow
+      ? trendEngine.colorTrend.direction === 'red'
+      : (trendEngine.colorTrend.direction === 'red' ? true : trendEngine.colorTrend.direction === 'black' ? false : blackNums30 > redNums30);
     const colorNums = betOnRed
       ? Array.from({length:36}, (_,i) => i+1).filter(n => RED.includes(n))
       : Array.from({length:36}, (_,i) => i+1).filter(n => !RED.includes(n));
     const colorImbalance = Math.abs(redNums30 - blackNums30);
     const colorBtRate = backtestSet(colorNums);
+    const colorTrendBonus = trendEngine.colorTrend.shouldFollow ? trendEngine.colorTrend.strength * 0.15 : 0;
     strategies.push({
       type: 'cor', label: betOnRed ? '🔴 Vermelho' : '⚫ Preto', emoji: betOnRed ? '🔴' : '⚫',
       numbers: colorNums, coverage: (18/37)*100, payout: 2,
-      score: colorImbalance * 3 + colorBtRate * 25,
-      probability: Math.min(98, Math.round(45 + colorBtRate * 40 + colorImbalance * 2)),
-      justification: `${betOnRed ? 'Vermelho' : 'Preto'} atrasado (${betOnRed ? redNums30 : blackNums30}x vs ${betOnRed ? blackNums30 : redNums30}x em 30). Backtest: ${(colorBtRate*100).toFixed(0)}%.`,
+      score: colorImbalance * 3 + colorBtRate * 25 + colorTrendBonus,
+      probability: Math.min(98, Math.round(45 + colorBtRate * 40 + colorImbalance * 2 + colorTrendBonus)),
+      justification: trendEngine.colorTrend.shouldFollow
+        ? `${betOnRed ? 'Vermelho' : 'Preto'} A FAVOR DO ALGORITMO: tendência acelerando (${trendEngine.colorTrend.strength}% força). Backtest: ${(colorBtRate*100).toFixed(0)}%.`
+        : `${betOnRed ? 'Vermelho' : 'Preto'} ${trendEngine.colorTrend.direction ? 'por reversão' : 'atrasado'} (${betOnRed ? redNums30 : blackNums30}x vs ${betOnRed ? blackNums30 : redNums30}x em 30). Backtest: ${(colorBtRate*100).toFixed(0)}%.`,
     });
 
-    // PAR/ÍMPAR — bet on parity that's due
+    // PAR/ÍMPAR — INTELLIGENT: follows trend when algorithm is trending
     const even30 = last30.filter(n => n > 0 && n % 2 === 0).length;
     const odd30 = last30.filter(n => n > 0 && n % 2 === 1).length;
-    const betOnEven = odd30 > even30;
+    const betOnEven = trendEngine.parityTrend.shouldFollow
+      ? trendEngine.parityTrend.direction === 'par'
+      : (trendEngine.parityTrend.direction === 'par' ? true : trendEngine.parityTrend.direction === 'impar' ? false : odd30 > even30);
     const parityNums = betOnEven
       ? Array.from({length:36}, (_,i) => i+1).filter(n => n % 2 === 0)
       : Array.from({length:36}, (_,i) => i+1).filter(n => n % 2 === 1);
     const parityImbalance = Math.abs(even30 - odd30);
     const parityBtRate = backtestSet(parityNums);
+    const parityTrendBonus = trendEngine.parityTrend.shouldFollow ? trendEngine.parityTrend.strength * 0.15 : 0;
     strategies.push({
       type: 'paridade', label: betOnEven ? '🔵 Par' : '🟠 Ímpar', emoji: betOnEven ? '🔵' : '🟠',
       numbers: parityNums, coverage: (18/37)*100, payout: 2,
-      score: parityImbalance * 3 + parityBtRate * 25,
-      probability: Math.min(98, Math.round(45 + parityBtRate * 40 + parityImbalance * 2)),
-      justification: `${betOnEven ? 'Par' : 'Ímpar'} atrasado (${betOnEven ? even30 : odd30}x vs ${betOnEven ? odd30 : even30}x em 30). Backtest: ${(parityBtRate*100).toFixed(0)}%.`,
+      score: parityImbalance * 3 + parityBtRate * 25 + parityTrendBonus,
+      probability: Math.min(98, Math.round(45 + parityBtRate * 40 + parityImbalance * 2 + parityTrendBonus)),
+      justification: trendEngine.parityTrend.shouldFollow
+        ? `${betOnEven ? 'Par' : 'Ímpar'} A FAVOR DO ALGORITMO: tendência acelerando. Backtest: ${(parityBtRate*100).toFixed(0)}%.`
+        : `${betOnEven ? 'Par' : 'Ímpar'} ${trendEngine.parityTrend.direction ? 'por reversão' : 'atrasado'} (${betOnEven ? even30 : odd30}x vs ${betOnEven ? odd30 : even30}x em 30). Backtest: ${(parityBtRate*100).toFixed(0)}%.`,
     });
 
-    // ALTO/BAIXO — bet on high or low that's due
+    // ALTO/BAIXO — INTELLIGENT: follows trend when algorithm is trending
     const high30 = last30.filter(n => n >= 19 && n <= 36).length;
     const low30 = last30.filter(n => n >= 1 && n <= 18).length;
-    const betOnHigh = low30 > high30;
+    const betOnHigh = trendEngine.highLowTrend.shouldFollow
+      ? trendEngine.highLowTrend.direction === 'alto'
+      : (trendEngine.highLowTrend.direction === 'alto' ? true : trendEngine.highLowTrend.direction === 'baixo' ? false : low30 > high30);
     const hlNums = betOnHigh
       ? Array.from({length:18}, (_,i) => i+19)
       : Array.from({length:18}, (_,i) => i+1);
     const hlImbalance = Math.abs(high30 - low30);
     const hlBtRate = backtestSet(hlNums);
+    const hlTrendBonus = trendEngine.highLowTrend.shouldFollow ? trendEngine.highLowTrend.strength * 0.15 : 0;
     strategies.push({
       type: 'alto_baixo', label: betOnHigh ? '⬆️ Alto (19-36)' : '⬇️ Baixo (1-18)', emoji: betOnHigh ? '⬆️' : '⬇️',
       numbers: hlNums, coverage: (18/37)*100, payout: 2,
-      score: hlImbalance * 3 + hlBtRate * 25,
-      probability: Math.min(98, Math.round(45 + hlBtRate * 40 + hlImbalance * 2)),
-      justification: `${betOnHigh ? 'Alto' : 'Baixo'} atrasado (${betOnHigh ? high30 : low30}x vs ${betOnHigh ? low30 : high30}x em 30). Backtest: ${(hlBtRate*100).toFixed(0)}%.`,
+      score: hlImbalance * 3 + hlBtRate * 25 + hlTrendBonus,
+      probability: Math.min(98, Math.round(45 + hlBtRate * 40 + hlImbalance * 2 + hlTrendBonus)),
+      justification: trendEngine.highLowTrend.shouldFollow
+        ? `${betOnHigh ? 'Alto' : 'Baixo'} A FAVOR DO ALGORITMO: tendência acelerando. Backtest: ${(hlBtRate*100).toFixed(0)}%.`
+        : `${betOnHigh ? 'Alto' : 'Baixo'} ${trendEngine.highLowTrend.direction ? 'por reversão' : 'atrasado'} (${betOnHigh ? high30 : low30}x vs ${betOnHigh ? low30 : high30}x em 30). Backtest: ${(hlBtRate*100).toFixed(0)}%.`,
     });
 
     // COLUNA — best performing column
@@ -5666,6 +5890,16 @@ serve(async (req) => {
       diamondDeflection: diamondDeflection.slice(0, 4),
       kellyBetting,
       dealerBiometrics,
+      trendEngine: {
+        mode: trendEngine.mode,
+        confidence: trendEngine.confidence,
+        colorTrend: trendEngine.colorTrend,
+        parityTrend: trendEngine.parityTrend,
+        highLowTrend: trendEngine.highLowTrend,
+        dozenTrend: trendEngine.dozenTrend,
+        sectorTrend: trendEngine.sectorTrend,
+        reasoning: trendEngine.reasoning.slice(0, 5),
+      },
       archetypes: archetypes.map(a => ({ name: a.name, emoji: a.emoji, active: a.active, strength: a.strength, detail: a.detail, predictedNums: a.predictedNums.slice(0, 6) })),
       deepMemory: {
         ancestralPatterns: ancestralPatterns.slice(0, 3),
