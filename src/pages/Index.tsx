@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { toast } from 'sonner';
+
 import { supabase } from '@/integrations/supabase/client';
 import {
   Activity, MonitorPlay, RefreshCw, Brain, Sparkles, TrendingUp,
@@ -321,15 +321,9 @@ const Index = () => {
         setLastPredResult({ hit: isHit, hitType, predicted: row.predicted_main, actual: row.actual_number, label });
 
         if (isHit) {
-          toast.success(
-            `${hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO VIZINHO!'} ${label} — Previsto: ${row.predicted_main}, Saiu: ${row.actual_number}`,
-            { duration: 8000, style: { background: '#0a2e1a', border: '1px solid #22c55e', color: '#4ade80' } }
-          );
+          console.log(`${hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO VIZINHO!'} ${label} — Previsto: ${row.predicted_main}, Saiu: ${row.actual_number}`);
         } else {
-          toast.error(
-            `❌ ERRO — ${label} — Previsto: ${row.predicted_main}, Saiu: ${row.actual_number}`,
-            { duration: 6000, style: { background: '#2e0a0a', border: '1px solid #ef4444', color: '#f87171' } }
-          );
+          console.log(`❌ ERRO — ${label} — Previsto: ${row.predicted_main}, Saiu: ${row.actual_number}`);
         }
 
         loadPredStats();
@@ -345,8 +339,8 @@ const Index = () => {
       if (res.error || res.data?.error) {
         const status = res.error?.context?.status;
         const message = res.data?.error || res.error?.message || '';
-        if (status === 402 || message.includes('Credits')) { toast.error('Créditos de IA esgotados.'); return; }
-        if (status === 429 || message.includes('Rate')) { toast.error('Muitas tentativas. Tente novamente em instantes.'); return; }
+        if (status === 402 || message.includes('Credits')) { console.warn('Créditos de IA esgotados.'); return; }
+        if (status === 429 || message.includes('Rate')) { console.warn('Muitas tentativas.'); return; }
       }
     } catch (err) { console.error(err); }
     finally { setIsAnalyzing(false); }
@@ -798,7 +792,7 @@ const Index = () => {
                     setStoredNumbers([]);
                     setApiNumbers([]);
                     prevNumbersRef.current = apiSnapshotRef.current.slice(0, 20).join(',');
-                    toast.success('Histórico limpo!');
+                    console.log('Histórico limpo!');
                   }} className="text-[9px] px-2 py-1 rounded-lg font-bold bg-destructive/20 text-destructive border border-destructive/30 hover:bg-destructive/30 transition-all ml-1">
                     🗑️ Limpar
                   </button>
