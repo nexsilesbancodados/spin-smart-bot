@@ -3546,10 +3546,7 @@ serve(async (req) => {
         }
         
         // DIM 10: Fusão Multi-Estratégia (aparece em 3+ estratégias)
-        const multiStrat = numberAppearanceCount[n];
-        if (multiStrat && multiStrat.count >= 3) {
-          dims.push('FUSAO'); weight += multiStrat.count * 3; details.push(`${multiStrat.count}est`);
-        }
+        // numberAppearanceCount is computed after strategies are built, skip here
         
         // DIM 11: AI Learned Patterns
         if (learnedBoosts[n] > 1) { dims.push('IA'); weight += learnedBoosts[n]; details.push(`IA(${learnedBoosts[n].toFixed(1)})`); }
