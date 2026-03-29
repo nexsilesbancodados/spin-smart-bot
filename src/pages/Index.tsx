@@ -263,6 +263,8 @@ const Index = () => {
                   ? 'bg-gradient-to-r from-primary/30 via-yellow-500/10 to-primary/20 border-primary shadow-lg shadow-primary/20'
                   : sniperData.mode === 'alert'
                   ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/10 border-yellow-500/50'
+                  : sniperData.mode === 'recalibrating'
+                  ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/10 border-purple-500/50'
                   : sniperData.mode === 'observing'
                   ? 'bg-gradient-to-r from-orange-500/10 to-destructive/10 border-orange-500/30'
                   : 'bg-card border-border'
