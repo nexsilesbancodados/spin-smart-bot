@@ -1361,7 +1361,7 @@ serve(async (req) => {
     }
 
     // I81-I100: Convergência cruzada entre blocos
-    const blockScores = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH, blocoK / maxK];
+    const blockScores = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH, blocoK / maxK, blocoL / maxL, blocoM / maxM, blocoN / maxN, blocoO / maxO];
     const highBlocks = blockScores.filter(s => s > 0.7).length;
     blocoI += Math.min(20, highBlocks * 4);
 
@@ -1387,7 +1387,7 @@ serve(async (req) => {
     }
 
     // J71-J100: Final confidence — all 10 blocks must agree
-    const allBlockPcts = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH, blocoI / maxI, blocoK / maxK];
+    const allBlockPcts = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH, blocoI / maxI, blocoK / maxK, blocoL / maxL, blocoM / maxM, blocoN / maxN, blocoO / maxO];
     const avgBlockPct = allBlockPcts.reduce((a, b) => a + b, 0) / allBlockPcts.length;
     const minBlockPct = Math.min(...allBlockPcts);
     // High average + high minimum = strong convergence
@@ -1396,9 +1396,9 @@ serve(async (req) => {
     blocoJ = Math.min(maxJ, blocoJ);
 
     // ========================================================
-    // TOTAL DAS 1.100 CAMADAS
+    // TOTAL DAS 1.500 CAMADAS
     // ========================================================
-    const totalLayers = blocoA + blocoB + blocoC + blocoD + blocoE + blocoF + blocoG + blocoH + blocoI + blocoJ + blocoK;
+    const totalLayers = blocoA + blocoB + blocoC + blocoD + blocoE + blocoF + blocoG + blocoH + blocoI + blocoJ + blocoK + blocoL + blocoM + blocoN + blocoO;
     const layerResults = {
       blocoA: { score: blocoA, max: maxA, label: 'Biomecânica & Física' },
       blocoB: { score: blocoB, max: maxB, label: 'Matemática & Terminais' },
@@ -1411,8 +1411,12 @@ serve(async (req) => {
       blocoI: { score: blocoI, max: maxI, label: 'Inteligência Profunda' },
       blocoJ: { score: blocoJ, max: maxJ, label: 'Convergência Final' },
       blocoK: { score: blocoK, max: maxK, label: 'Dinâmica de Fluxo' },
+      blocoL: { score: blocoL, max: maxL, label: 'Filtro de Ruído' },
+      blocoM: { score: blocoM, max: maxM, label: 'Defletores (Diamantes)' },
+      blocoN: { score: blocoN, max: maxN, label: 'Kelly Criterion' },
+      blocoO: { score: blocoO, max: maxO, label: 'Biometria Dealer' },
       total: totalLayers,
-      max: 1100,
+      max: 1500,
     };
 
     // ========================================================
