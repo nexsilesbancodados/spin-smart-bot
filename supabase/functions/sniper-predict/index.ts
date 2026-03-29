@@ -4264,6 +4264,9 @@ serve(async (req) => {
       } else if (t === 'fusao_suprema') {
         const mainNum = nums[0];
         bets.push({ type: 'fusao', label: `Fusão Suprema`, detail: `${nums.length} números validados por 3+ estratégias: ${nums.slice(0, 8).join(', ')}`, emoji: '⚡' });
+      } else if (t === 'convergencia_absoluta') {
+        const mainNum = nums[0];
+        bets.push({ type: 'absoluta', label: `Convergência Absoluta → ${mainNum}`, detail: `MÁXIMA CONFIANÇA: ${nums.length} números validados por 5+ dimensões independentes. Pleno ${mainNum} + vizinhos: ${nums.slice(1, 5).join(', ')}`, emoji: '💠' });
       } else if (t === 'sniper' || t === 'voisins' || t === 'setor_oposto') {
         const sector = nums.length > 0 ? getSector(nums[0]) : 'Voisins';
         bets.push({ type: 'setor', label: `Setor ${sector}`, detail: `Cubra o setor ${sector} na roda`, emoji: '🎯' });
