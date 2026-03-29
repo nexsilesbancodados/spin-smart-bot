@@ -2986,25 +2986,27 @@ serve(async (req) => {
       aiLearnings.push(`🔑 Assinatura terminal: T${mesaDNA.terminalSignature.join(',T')} consistentes`);
     }
 
-    const mode = totalLayers >= 1100 && finalProbability >= 82 ? 'sniper'
-      : totalLayers >= 900 && finalProbability >= 70 ? 'alert'
+    const mode = totalLayers >= 900 && finalProbability >= 75 ? 'sniper'
+      : totalLayers >= 600 && finalProbability >= 60 ? 'alert'
+      : totalLayers >= 400 ? 'observing'
       : 'monitoring';
 
     const message = mode === 'sniper'
       ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/1700`
       : mode === 'alert'
       ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/1700`
-      : `👁️ Analisando... ${totalLayers}/1700 — aguardando convergência`;
+      : mode === 'observing'
+      ? `👁️ Observando: ${winner.emoji} ${winner.label} — ${totalLayers}/1700`
+      : `⏳ Coletando dados... ${totalLayers}/1700`;
 
     const diagnostic = mode === 'sniper'
-      ? `Convergência Suprema (1500 camadas): ${winner.justification}`
+      ? `Convergência Suprema: ${winner.justification}`
       : mode === 'alert'
-      ? `Quase lá: ${winner.justification}`
+      ? `Alerta ativo: ${winner.justification}`
       : `Análise em andamento: ${winner.justification}`;
 
-    // Save prediction to history — ONLY when truly confident (sniper or strong alert)
-    // The AI must be selective: only commit when multiple layers converge strongly
-    const shouldSave = isNewNumber && (mode === 'sniper' || (mode === 'alert' && finalProbability >= 80)) && winner.numbers.length > 0;
+    // Save prediction to history — save in sniper/alert modes
+    const shouldSave = isNewNumber && (mode === 'sniper' || mode === 'alert') && winner.numbers.length > 0;
     if (shouldSave) {
       await supabase.from('prediction_history').insert({
         strategy_type: winner.type,
@@ -3087,9 +3089,15 @@ serve(async (req) => {
       } else if (t === 'pressao_retorno') {
         const dz = nums[0] <= 12 ? 1 : nums[0] <= 24 ? 2 : 3;
         bets.push({ type: 'duzia', label: `Pressão D${dz}`, detail: `Dúzia ${dz} em dívida estatística — Retorno iminente`, emoji: '🔥' });
+      } else if (t === 'genetic_cluster' || t === 'cross_delay' || t === 'insight_pattern' || t === 'cylinder_bias') {
+        // Data-driven patterns
+        const mainNum = nums[0];
+        bets.push({ type: 'setor', label: strat.label, detail: `Cubra: ${nums.slice(0, 8).join(', ')} — Pleno no ${mainNum} + vizinhos`, emoji: strat.emoji });
+        bets.push({ type: 'vizinhos', label: `Vizinhos do ${mainNum}`, detail: `Pleno no ${mainNum} + vizinhos: ${nums.slice(1, 5).join(', ')}`, emoji: '🎯' });
       } else {
         // Generic fallback
-        bets.push({ type: 'generico', label: strat.label, detail: `Cubra: ${nums.slice(0, 8).join(', ')}`, emoji: strat.emoji });
+        const mainNum = nums[0];
+        bets.push({ type: 'generico', label: strat.label, detail: `Cubra: ${nums.slice(0, 8).join(', ')} — Foco no ${mainNum}`, emoji: strat.emoji });
       }
 
       // Add complementary bets based on number groupings
