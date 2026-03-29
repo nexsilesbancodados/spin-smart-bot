@@ -86,45 +86,17 @@ const Index = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showPredHistory, setShowPredHistory] = useState(false);
 
-  // === Data Fetching ===
-  const fetchNumbers = useCallback(async () => {
-    try {
-      const res = await supabase.functions.invoke('proxy-roleta');
-      if (res.error) throw new Error(res.error.message);
-      const data = res.data;
-      if (data?.results && Array.isArray(data.results)) {
-        const nums = data.results.map((n: unknown) => Number(n)).filter((n: number) => !isNaN(n) && n >= 0 && n <= 36);
-        const key = nums.slice(0, 20).join(',');
-        if (key !== prevNumbersRef.current) {
-          prevNumbersRef.current = key;
-          setApiNumbers(nums);
-          setLastUpdate(new Date());
-        }
-        setError(null);
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro');
-    }
-  }, []);
-
-  const fetchStored = useCallback(async () => {
-    const { data } = await supabase
-      .from('roulette_numbers')
-      .select('number')
-      .order('fetched_at', { ascending: false })
-      .limit(1000);
-    if (data) setStoredNumbers(data.map((r: any) => r.number));
-  }, []);
-
-  useEffect(() => {
-    fetchNumbers();
-    fetchStored();
-    if (!isPolling) return;
-    const interval = setInterval(() => { fetchNumbers(); fetchStored(); }, 3000);
-    return () => clearInterval(interval);
-  }, [fetchNumbers, fetchStored, isPolling]);
+  // Track if sniper is already being fetched to avoid double calls
+  const sniperFetchingRef = useRef(false);
+  const lastSniperTriggerRef = useRef(0);
 
   const fetchSniper = useCallback(async () => {
+    // Debounce: don't call sniper more than once per 2s
+    const now = Date.now();
+    if (now - lastSniperTriggerRef.current < 2000) return;
+    if (sniperFetchingRef.current) return;
+    sniperFetchingRef.current = true;
+    lastSniperTriggerRef.current = now;
     try {
       const res = await supabase.functions.invoke('sniper-predict');
       if (res.data) {
@@ -141,14 +113,61 @@ const Index = () => {
         setSniperData(res.data);
       }
     } catch (err) { console.error('Sniper error:', err); }
+    finally { sniperFetchingRef.current = false; }
+  }, []);
+
+  // === Data Fetching ===
+  const fetchNumbers = useCallback(async () => {
+    try {
+      const res = await supabase.functions.invoke('proxy-roleta');
+      if (res.error) throw new Error(res.error.message);
+      const data = res.data;
+      if (data?.results && Array.isArray(data.results)) {
+        const nums = data.results.map((n: unknown) => Number(n)).filter((n: number) => !isNaN(n) && n >= 0 && n <= 36);
+        const key = nums.slice(0, 20).join(',');
+        if (key !== prevNumbersRef.current) {
+          prevNumbersRef.current = key;
+          setApiNumbers(nums);
+          setLastUpdate(new Date());
+          // NEW NUMBER DETECTED — trigger sniper IMMEDIATELY
+          fetchSniper();
+        }
+        setError(null);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro');
+    }
+  }, [fetchSniper]);
+
+  const fetchStored = useCallback(async () => {
+    const { data } = await supabase
+      .from('roulette_numbers')
+      .select('number')
+      .order('fetched_at', { ascending: false })
+      .limit(1000);
+    if (data) setStoredNumbers(data.map((r: any) => r.number));
   }, []);
 
   useEffect(() => {
-    fetchSniper();
+    fetchNumbers();
+    fetchStored();
+    fetchSniper(); // initial load
     if (!isPolling) return;
-    const interval = setInterval(fetchSniper, 3000);
+    // Poll data every 3s, sniper only triggers when new number detected
+    const interval = setInterval(() => { fetchNumbers(); fetchStored(); }, 3000);
     return () => clearInterval(interval);
-  }, [fetchSniper, isPolling]);
+  }, [fetchNumbers, fetchStored, fetchSniper, isPolling]);
+
+  // Also trigger sniper instantly via realtime when a new number is inserted
+  useEffect(() => {
+    const ch = supabase.channel('sniper_trigger_rt')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'roulette_numbers' }, () => {
+        // New number just inserted — fire sniper immediately
+        fetchSniper();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [fetchSniper]);
 
   useEffect(() => {
     const timer = setInterval(() => {
