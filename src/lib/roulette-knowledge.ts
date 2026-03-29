@@ -606,4 +606,18 @@ ${COMPLEMENTARES.map(([a, b]) => `(${a},${b})`).join(' | ')}
 - **MÓD 5 - Números que Puxam**: Correlações empíricas da mesa Playtech BR + vizinhos de cada alvo. REED: max 4 rounds.
 - **MÓD 6 - Crescentes**: Sequência ascendente de terminais (ex: T3→T4→T5→T6) → apostar no próximo terminal.
 - **Pares de Terminais**: ${Object.entries(TERMINAL_PAIRS).map(([a, b]) => `T${a}↔T${b}`).join(', ')}
+
+### 17. 100 Estratégias Completas (Catálogo)
+${ALL_STRATEGIES.map(s => `- **#${s.id} ${s.name}** [${s.category}] (${s.fichas} fichas): ${s.description}`).join('\n')}
+
+### 18. Estratégias Especiais
+- **Eddie (6 Cavalos)**: 5/8, 10/11, 13/16, 23/24, 27/30, 33/36 — 12 números, 6 fichas
+- **Kavouras**: 3 esquinas + 2 linhas = 23 números, 8 fichas
+- **Estrela de Davi**: Triangulação 30/31/33/34/35 + vizinhos
+- **Padrão 4567**: 4 grupos de 5 vizinhos não sobrepostos, probabilidade 54%
+- **Cavalos Vermelhos**: ${CAVALOS_RED.map(c => c.join('/')).join(', ')}
+- **Cavalos Pretos**: ${CAVALOS_BLACK.map(c => c.join('/')).join(', ')}
+- **Espelhos Numéricos**: 12↔21, 13↔31, 23↔32
+- **Pós-Zero**: Terminais T0+T2+T5 tendem a sair após o zero
+- **Ciclo Zero**: 0 → T0 (10,20,30) → Vizinhos do Zero → repete
 `;
