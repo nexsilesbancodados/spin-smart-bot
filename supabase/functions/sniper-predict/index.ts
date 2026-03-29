@@ -4348,8 +4348,38 @@ serve(async (req) => {
 
     const betInstructions = generateBetInstructions(winner);
 
-    // Generate bet instructions for top 3 alternatives too
-    const topAlternatives = strategies.slice(1, 4).map(s => ({
+    // Generate diverse alternatives — pick from DIFFERENT bet categories
+    const getBetCategory = (type: string): string => {
+      if (['sniper', 'voisins', 'setor_oposto', 'ultra_sniper', 'ritmo_calibrado', 'cylinder_bias'].includes(type)) return 'setor';
+      if (['cavalos', 'cavalos_comp'].includes(type)) return 'cavalos';
+      if (['terminal_alternation', 'duplo_terminal', 'terminais_cruzados', 'poucas_fichas', 'terminal_alto_baixo'].includes(type)) return 'terminal';
+      if (['duzia_unica', 'dozen_phase', 'duzias', 'pressao_retorno'].includes(type)) return 'duzia';
+      if (['coluna', 'column_cycle'].includes(type)) return 'coluna';
+      if (['cor'].includes(type)) return 'cor';
+      if (['paridade'].includes(type)) return 'paridade';
+      if (['alto_baixo'].includes(type)) return 'alto_baixo';
+      if (['fusao_suprema', 'convergencia_absoluta', 'matrix_fusion', 'archetype_fusion'].includes(type)) return 'fusao';
+      if (['numeros_puxam'].includes(type)) return 'puxada';
+      if (['pressao_zero'].includes(type)) return 'zero';
+      return type;
+    };
+    const winnerCategory = getBetCategory(winner.type);
+    const seenCategories = new Set([winnerCategory]);
+    const diverseAlts: typeof strategies = [];
+    for (const s of strategies.slice(1)) {
+      if (diverseAlts.length >= 4) break;
+      const cat = getBetCategory(s.type);
+      if (!seenCategories.has(cat)) {
+        seenCategories.add(cat);
+        diverseAlts.push(s);
+      }
+    }
+    // If we don't have enough diverse, fill with top remaining
+    for (const s of strategies.slice(1)) {
+      if (diverseAlts.length >= 4) break;
+      if (!diverseAlts.includes(s)) diverseAlts.push(s);
+    }
+    const topAlternatives = diverseAlts.slice(0, 4).map(s => ({
       type: s.type, label: s.label, emoji: s.emoji,
       numbers: s.numbers.slice(0, 12), coverage: +s.coverage.toFixed(1), payout: s.payout,
       score: +s.score.toFixed(1), probability: s.probability,
