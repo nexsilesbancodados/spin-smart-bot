@@ -258,5 +258,29 @@
   // Expose for autobet module
   window._rtSendNumber = sendNumber;
 
-  console.log('[RoulettePro] 🎰 v2 active on:', window.location.href);
+  // Repassar postMessages do app para o autobet module
+  window.addEventListener('message', function(event) {
+    var d = event.data;
+    if (!d || typeof d !== 'object') return;
+
+    if (d.type === 'SNIPER_BET_SIGNAL') {
+      var frames = document.querySelectorAll('iframe');
+      frames.forEach(function(f) {
+        try { f.contentWindow.postMessage(d, '*'); } catch(e) {}
+      });
+    }
+
+    if (d.type === 'NUMBER_CAPTURED_FROM_APP') {
+      if (window._rtCheckResult) window._rtCheckResult(d.number);
+    }
+  });
+
+  // Quando o content.js captura número, notificar também o frame pai
+  var origSendNumber = window._rtSendNumber;
+  window._rtSendNumber = function(num) {
+    if (origSendNumber) origSendNumber(num);
+    try { window.parent.postMessage({ type: 'NUMBER_FROM_EXTENSION', number: num }, '*'); } catch(e) {}
+  };
+
+  console.log('[RoulettePro] 🎰 v3 active on:', window.location.href);
 })();
