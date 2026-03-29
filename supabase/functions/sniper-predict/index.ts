@@ -4127,28 +4127,6 @@ serve(async (req) => {
       }
     })();
 
-    // ========================================================
-    // ADVANCED ANALYSES — Momentum, Volatility, Bayesian, Breakouts
-    // ========================================================
-    const sectorMomentum = calculateMomentum(numbers, n => getSector(n), 20);
-    const dozenMomentum = calculateMomentum(numbers, n => { const d = getDozen(n); return d > 0 ? `D${d}` : ''; }, 20);
-    const colorMomentum = calculateMomentum(numbers, n => getColor(n), 20);
-    const parityMomentum = calculateMomentum(numbers, n => n > 0 ? (n % 2 === 0 ? 'Par' : 'Ímpar') : '', 20);
-    const highLowMomentum = calculateMomentum(numbers, n => n > 0 ? (n >= 19 ? 'Alto' : 'Baixo') : '', 20);
-    
-    const volatility = calculateVolatility(numbers, 30);
-    const recencyFreq = recencyWeightedFreq(numbers);
-    const breakoutsDetected = detectBreakout(numbers);
-    const wheelZones = wheelZoneMomentum(numbers, 6);
-    const fibGaps = fibonacciGapAnalysis(numbers);
-    
-    // Bayesian predictions
-    const bayesSector = bayesianPredict(numbers, n => getSector(n));
-    const bayesDozen = bayesianPredict(numbers, n => { const d = getDozen(n); return d > 0 ? d : 0; });
-    const bayesColor = bayesianPredict(numbers, n => getColor(n));
-    const bayesHighLow = bayesianPredict(numbers, n => n > 0 ? (n >= 19 ? 'Alto' : 'Baixo') : 'Zero');
-    const bayesParity = bayesianPredict(numbers, n => n > 0 ? (n % 2 === 0 ? 'Par' : 'Ímpar') : 'Zero');
-
 
     // 20. RITMO CALIBRADO — strategy based on directional arc prediction (blocoP)
     if (ritmoCalibration.alvo !== null && ritmoCalibration.confianca >= 70) {
