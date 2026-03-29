@@ -202,6 +202,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
       currentGaleStep: 0, consecutiveLosses: 0,
       lastBetNumbers: [], lastBetAmount: 0,
       waitingResult: false, stopped: false, stopReason: '',
+      history: [],
     });
   };
 
