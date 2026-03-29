@@ -1130,18 +1130,18 @@ serve(async (req) => {
     }
 
     // CHAOS AUTO-CALIBRATION: If dealer is chaotic AND dispersing wildly, pause signals
-    if (chaoticDealer && isDispersingWildly && totalLayers < 250) {
+    if (chaoticDealer && isDispersingWildly && totalLayers < 500) {
       aiLearnings.push('🛑 Mesa sem padrão detectável. Auto-calibração pausou sinais.');
-      return json({ signal: null, mode: 'calibrating', message: '🔄 AUTO-CALIBRAGEM — Dealer caótico, aguardando padrão...', ...baseResponse, memoryWindows, aiLearnings });
+      return json({ signal: null, mode: 'calibrating', message: '🔄 AUTO-CALIBRAGEM — Dealer caótico, aguardando padrão...', ...baseResponse, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights } });
     }
 
-    if (highEntropy && totalLayers < 200) {
-      return json({ signal: null, mode: 'observing', message: '🔍 OBSERVAÇÃO — Alta entropia', ...baseResponse, memoryWindows, aiLearnings });
+    if (highEntropy && totalLayers < 400) {
+      return json({ signal: null, mode: 'observing', message: '🔍 OBSERVAÇÃO — Alta entropia', ...baseResponse, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights } });
     }
 
-    if (totalLayers < 150) {
+    if (totalLayers < 300) {
       return json({ signal: null, mode: 'monitoring', message: '👁️ Monitorando...', ...baseResponse,
-        topCandidates: [], delayedTerminals, cavaloDelays, memoryWindows, aiLearnings });
+        topCandidates: [], delayedTerminals, cavaloDelays, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights } });
     }
 
     // ========================================================
