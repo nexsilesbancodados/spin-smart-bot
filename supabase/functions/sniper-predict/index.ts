@@ -5890,6 +5890,16 @@ serve(async (req) => {
       diamondDeflection: diamondDeflection.slice(0, 4),
       kellyBetting,
       dealerBiometrics,
+      trendEngine: {
+        mode: trendEngine.mode,
+        confidence: trendEngine.confidence,
+        colorTrend: trendEngine.colorTrend,
+        parityTrend: trendEngine.parityTrend,
+        highLowTrend: trendEngine.highLowTrend,
+        dozenTrend: trendEngine.dozenTrend,
+        sectorTrend: trendEngine.sectorTrend,
+        reasoning: trendEngine.reasoning.slice(0, 5),
+      },
       archetypes: archetypes.map(a => ({ name: a.name, emoji: a.emoji, active: a.active, strength: a.strength, detail: a.detail, predictedNums: a.predictedNums.slice(0, 6) })),
       deepMemory: {
         ancestralPatterns: ancestralPatterns.slice(0, 3),
