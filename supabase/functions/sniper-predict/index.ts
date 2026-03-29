@@ -3400,29 +3400,55 @@ serve(async (req) => {
     for (const l of learned) {
       const acc = (l.accuracy || 50) / 100;
       const keyNums: number[] = (l.metadata as any)?.key_numbers || [];
-      if (keyNums.length > 0 && acc > 0.6) {
-        for (const kn of keyNums) {
-          if (kn >= 0 && kn <= 36) { learnedBonus[kn] += acc * 1.5; learnedReasons[kn].push(`IA: ${l.title.slice(0, 30)}`); }
+      const hotNums: number[] = (l.metadata as any)?.hotNumbers || [];
+      const isSessionSpin = l.learning_type === 'session_spin';
+      const isPullConfirmed = l.learning_type === 'pull_confirmed';
+      const recencyBoost = isSessionSpin ? 1.8 : isPullConfirmed ? 2.0 : 1.0;
+      
+      // Use hotNumbers from metadata (strongest signal)
+      if (hotNums.length > 0 && acc > 0.5) {
+        for (const hn of hotNums) {
+          if (hn >= 0 && hn <= 36) { learnedBonus[hn] += acc * 2.0 * recencyBoost; learnedReasons[hn].push(`IA: ${l.learning_type}`); }
         }
       }
-      if (l.learning_type === 'terminal_pattern' && acc > 0.65) {
+      if (keyNums.length > 0 && acc > 0.6) {
+        for (const kn of keyNums) {
+          if (kn >= 0 && kn <= 36) { learnedBonus[kn] += acc * 1.5 * recencyBoost; learnedReasons[kn].push(`IA: ${l.title.slice(0, 30)}`); }
+        }
+      }
+      if (l.learning_type === 'terminal_pattern' && acc > 0.6) {
         const match = l.title.match(/(\d)/);
-        if (match) { const term = parseInt(match[1]); for (let n = 0; n <= 36; n++) { if (n % 10 === term) { learnedBonus[n] += acc * 0.8; learnedReasons[n].push(`IA Terminal ${term}`); } } }
+        if (match) { const term = parseInt(match[1]); for (let n = 0; n <= 36; n++) { if (n % 10 === term) { learnedBonus[n] += acc * 1.2; learnedReasons[n].push(`IA Terminal ${term}`); } } }
       }
-      if (l.learning_type === 'sector_concentration' && acc > 0.65) {
+      if (l.learning_type === 'terminal_dominance' && acc > 0.6) {
+        const bestTerminals: number[] = (l.metadata as any)?.bestTerminals || [];
+        for (const t of bestTerminals) {
+          const tNums = TERMINALS_MAP[t] || [];
+          for (const tn of tNums) { learnedBonus[tn] += acc * 1.5; learnedReasons[tn].push(`IA T${t} dominante`); }
+        }
+      }
+      if (l.learning_type === 'sector_concentration' && acc > 0.6) {
         const octMatch = l.title.match(/O(\d)/);
-        if (octMatch) { const nums = OCTAVES[`O${octMatch[1]}`] || []; for (const n of nums) { learnedBonus[n] += acc * 0.7; learnedReasons[n].push(`IA Oitavo`); } }
+        if (octMatch) { const nums = OCTAVES[`O${octMatch[1]}`] || []; for (const n of nums) { learnedBonus[n] += acc * 1.0; learnedReasons[n].push(`IA Oitavo`); } }
       }
-      if (l.learning_type === 'heat_cluster' && acc > 0.7) {
-        for (const kn of keyNums) { if (kn >= 0 && kn <= 36) { learnedBonus[kn] += acc * 1.2; learnedReasons[kn].push('IA Cluster'); } }
+      if (l.learning_type === 'heat_cluster' && acc > 0.6) {
+        for (const kn of keyNums) { if (kn >= 0 && kn <= 36) { learnedBonus[kn] += acc * 1.8; learnedReasons[kn].push('IA Cluster'); } }
       }
-      if (l.learning_type === 'dealer_signature' && acc > 0.6 && (maoViciada || arcStdDev < 3)) {
+      if (l.learning_type === 'dealer_signature' && acc > 0.5 && (maoViciada || arcStdDev < 3)) {
         const avgArc = Math.round(arcMean);
         const idx0 = wheelIdx(numbers[0]);
         const pCW = WHEEL[(idx0 + avgArc) % WL];
         const pCCW = WHEEL[(idx0 - avgArc + WL) % WL];
-        learnedBonus[pCW] += acc * 1.5; learnedBonus[pCCW] += acc * 1.5;
+        learnedBonus[pCW] += acc * 2.0; learnedBonus[pCCW] += acc * 2.0;
         learnedReasons[pCW].push('IA Dealer Sig'); learnedReasons[pCCW].push('IA Dealer Sig');
+      }
+      if (isPullConfirmed) {
+        const source = (l.metadata as any)?.source;
+        const target = (l.metadata as any)?.target;
+        if (typeof source === 'number' && source === numbers[0] && typeof target === 'number') {
+          learnedBonus[target] += 3.0; // Directly confirmed pull from current number
+          learnedReasons[target].push('IA Pull Confirmado!');
+        }
       }
     }
 
