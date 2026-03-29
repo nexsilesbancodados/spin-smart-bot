@@ -419,7 +419,7 @@ const Index = () => {
           {/* Pressão do Zero */}
           <ZeroPressure allNumbers={allNumbers} />
 
-          {/* SNIPER + BET PANEL */}
+          {/* SNIPER + MAPA DA RODA */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <div className="lg:col-span-2 space-y-2">
               {/* Sample Size Selector */}
@@ -445,17 +445,20 @@ const Index = () => {
               />
             </div>
 
-            {/* MAPA DA RODA — Colapsável */}
-            <details className="bg-card rounded-xl border border-border overflow-hidden group">
-              <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none text-sm font-bold text-foreground hover:bg-secondary/30 transition-colors">
-                <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180" />
-                🎡 MAPA DA RODA
-              </summary>
-              <div className="p-4 border-t border-border/50">
-                <WheelMap allNumbers={allNumbers} sniperData={sniperData} />
-              </div>
-            </details>
-            <div className="lg:col-span-1">
+            {/* COLUNA DIREITA: Mapa + Bet Panel */}
+            <div className="lg:col-span-1 space-y-3">
+              {/* MAPA DA RODA — Colapsável */}
+              <details className="bg-card rounded-xl border border-border overflow-hidden group">
+                <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none text-sm font-bold text-foreground hover:bg-secondary/30 transition-colors">
+                  <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                  🎡 MAPA DA RODA
+                </summary>
+                <div className="p-4 border-t border-border/50">
+                  <WheelMap allNumbers={allNumbers} sniperData={sniperData} />
+                </div>
+              </details>
+
+              {/* BET PANEL */}
               <BetPanel sniperData={sniperData} allNumbers={allNumbers} />
             </div>
           </div>
