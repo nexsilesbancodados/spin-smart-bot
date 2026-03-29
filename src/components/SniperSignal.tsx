@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Crosshair, AlertTriangle, Eye, Clock, Shield, Zap, ShieldCheck, Sparkles, Target, TrendingUp
@@ -76,7 +77,38 @@ const getBetTypeCategory = (type: string): string => {
 };
 
 const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult, confidenceFilter }: Props) => {
-  
+  const [reedCount, setReedCount] = useState(0);
+  const prevSignalRef = useRef<number | null>(null);
+  const prevHitRef = useRef<boolean | null>(null);
+
+  // Track signal changes and hit results for REED
+  useEffect(() => {
+    const currentSignal = sniperData?.signal?.number ?? null;
+    
+    // Reset on new signal
+    if (currentSignal !== null && currentSignal !== prevSignalRef.current) {
+      prevSignalRef.current = currentSignal;
+      setReedCount(0);
+      return;
+    }
+
+    if (!lastPredResult || lastPredResult.hit === null) return;
+    
+    // Only process when hit status changes
+    if (lastPredResult.hit === prevHitRef.current) return;
+    prevHitRef.current = lastPredResult.hit;
+
+    if (lastPredResult.hit === true) {
+      setReedCount(0);
+    } else if (lastPredResult.hit === false) {
+      setReedCount(prev => Math.min(prev + 1, 4));
+    }
+  }, [sniperData?.signal?.number, lastPredResult?.hit]);
+
+  const reedColor = reedCount >= 4 ? 'bg-red-500/20 text-red-400 border-red-500/50' 
+    : reedCount >= 2 ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/40' 
+    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40';
+  const reedStopped = reedCount >= 4;
 
   if (!sniperData) {
     return (
