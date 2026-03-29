@@ -981,6 +981,9 @@ const Index = () => {
             </motion.div>
           )}
 
+          {/* LOG DE APRENDIZADO IA */}
+          <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} />
+
           {sniperData?.memoryWindows && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* MICRO */}
