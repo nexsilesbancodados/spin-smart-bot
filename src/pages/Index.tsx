@@ -402,10 +402,8 @@ const Index = () => {
         onShowHistory={() => setShowPredHistory(!showPredHistory)}
         aiEnabled={aiEnabled} setAiEnabled={setAiEnabled}
         strategyFilter={strategyFilter} setStrategyFilter={setStrategyFilter}
+        predStats={predStats} setPredStats={setPredStats}
       />
-
-      {/* ═══════ STATS BAR ═══════ */}
-      <StatsBar predStats={predStats} setPredStats={setPredStats} />
 
       {/* ═══════ PREDICTION HISTORY (COLLAPSIBLE) ═══════ */}
       <AnimatePresence>
