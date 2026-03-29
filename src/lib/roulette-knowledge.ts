@@ -152,6 +152,47 @@ export const PULL_CAVALOS: Record<number, string[]> = {
   27: ['147'], 30: ['147'], 4: ['69','258'], 6: ['147','258'],
 };
 
+// === Módulos Dani Green ===
+
+// Módulo 1: Duplo de Terminais — pares complementares
+export const TERMINAL_PAIRS: Record<number, number> = { 1:6, 6:1, 2:7, 7:2, 3:8, 8:3, 4:9, 9:4, 0:5, 5:0 };
+
+// Módulo 4: Zero Pressure — vizinhos do zero na roda
+export const ZERO_NEIGHBORS_WHEEL = [32, 15, 26, 3, 35, 12, 28];
+export const ZERO_TERMINAL_NUMS = [0, 10, 20, 30];
+
+// Módulo 5: Pull Map expandido
+export const FULL_PULL_MAP: Record<number, number[]> = {
+  0: [10, 20, 30, 32, 15, 26, 3],
+  1: [11, 35, 16, 4, 18, 28, 27, 29, 33],
+  4: [26, 15, 18, 32, 33, 16, 8],
+  6: [8, 15, 31, 21, 22, 23],
+  7: [16, 18, 17, 30],
+  9: [34, 35, 36, 3, 16, 26, 1, 23, 24, 32, 31],
+  10: [20, 5, 18, 11, 14, 24],
+  14: [24, 21, 18, 22, 33, 2],
+  16: [24, 21, 18, 14],
+  20: [4, 14],
+  27: [28, 29, 24, 22, 26, 33, 31, 34, 35, 36],
+  30: [4, 8, 16, 9, 18, 22, 5, 25, 3],
+};
+
+// REED rule
+export const REED_MAX = 4;
+
+// Módulo 6: Detect ascending/descending terminal sequences
+export const detectTerminalProgression = (nums: number[]): { active: boolean; sequence: number[]; nextTerminal: number | null } => {
+  if (nums.length < 3) return { active: false, sequence: [], nextTerminal: null };
+  const terms = nums.slice(0, 5).map(n => n % 10);
+  if (terms.length >= 3 && terms[2] < terms[1] && terms[1] < terms[0]) {
+    return { active: true, sequence: [terms[2], terms[1], terms[0]], nextTerminal: (terms[0] + 1) % 10 };
+  }
+  if (terms.length >= 3 && terms[2] > terms[1] && terms[1] > terms[0]) {
+    return { active: true, sequence: [terms[2], terms[1], terms[0]], nextTerminal: (terms[0] - 1 + 10) % 10 };
+  }
+  return { active: false, sequence: [], nextTerminal: null };
+};
+
 
 // === 12. Complementares (Soma 37) ===
 export const COMPLEMENTARES: [number, number][] = [
@@ -370,4 +411,13 @@ Em 37 rodadas: ~12 números não saem, ~12 saem 1x, ~12 se repetem (2x+). Rastre
 
 ### 15. Complementares (Soma 37)
 ${COMPLEMENTARES.map(([a, b]) => `(${a},${b})`).join(' | ')}
+
+### 16. Módulos Dani Green (Estratégias Avançadas)
+- **MÓD 1 - Duplo Terminal**: Apostar em 2 terminais complementares (T1+T6, T2+T7, T3+T8, T4+T9, T0+T5). REED: sair após 4 rounds sem acertar.
+- **MÓD 2 - Terminais Altos/Baixos**: 3+ consecutivos acima/abaixo de 18 → foco nos terminais com predominância alta/baixa.
+- **MÓD 3 - Poucas Fichas**: Terminal único, stop loss 3 rounds, meta +12 fichas.
+- **MÓD 4 - Pressão Zero**: Zero ausente 15+ rodadas + vizinhos (32,15,26,3) ativos → apostar no zero e adjacentes.
+- **MÓD 5 - Números que Puxam**: Correlações empíricas da mesa Playtech BR + vizinhos de cada alvo. REED: max 4 rounds.
+- **MÓD 6 - Crescentes**: Sequência ascendente de terminais (ex: T3→T4→T5→T6) → apostar no próximo terminal.
+- **Pares de Terminais**: ${Object.entries(TERMINAL_PAIRS).map(([a, b]) => `T${a}↔T${b}`).join(', ')}
 `;
