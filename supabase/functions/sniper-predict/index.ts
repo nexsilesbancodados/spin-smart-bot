@@ -1153,9 +1153,9 @@ serve(async (req) => {
     blocoJ = Math.min(maxJ, blocoJ);
 
     // ========================================================
-    // TOTAL DAS 1.000 CAMADAS
+    // TOTAL DAS 1.100 CAMADAS
     // ========================================================
-    const totalLayers = blocoA + blocoB + blocoC + blocoD + blocoE + blocoF + blocoG + blocoH + blocoI + blocoJ;
+    const totalLayers = blocoA + blocoB + blocoC + blocoD + blocoE + blocoF + blocoG + blocoH + blocoI + blocoJ + blocoK;
     const layerResults = {
       blocoA: { score: blocoA, max: maxA, label: 'Biomecânica & Física' },
       blocoB: { score: blocoB, max: maxB, label: 'Matemática & Terminais' },
@@ -1167,8 +1167,9 @@ serve(async (req) => {
       blocoH: { score: blocoH, max: maxH, label: 'Micro-Vibração Física' },
       blocoI: { score: blocoI, max: maxI, label: 'Inteligência Profunda' },
       blocoJ: { score: blocoJ, max: maxJ, label: 'Convergência Final' },
+      blocoK: { score: blocoK, max: maxK, label: 'Dinâmica de Fluxo' },
       total: totalLayers,
-      max: 1000,
+      max: 1100,
     };
 
     // ========================================================
