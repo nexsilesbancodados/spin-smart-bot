@@ -247,10 +247,11 @@ const Index = () => {
             { duration: 6000, style: { background: '#2e0a0a', border: '1px solid #ef4444', color: '#f87171' } }
           );
         }
+        loadPredStats();
       }
     }).subscribe();
     return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); supabase.removeChannel(ch3); };
-  }, [loadInsights, loadLearned]);
+  }, [loadInsights, loadLearned, loadPredStats]);
 
   const triggerLearn = async () => {
     setIsAnalyzing(true);
