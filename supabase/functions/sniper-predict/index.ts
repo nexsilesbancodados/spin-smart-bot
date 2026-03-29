@@ -3128,6 +3128,15 @@ serve(async (req) => {
 
     const betInstructions = generateBetInstructions(winner);
 
+    // Generate bet instructions for top 3 alternatives too
+    const topAlternatives = strategies.slice(1, 4).map(s => ({
+      type: s.type, label: s.label, emoji: s.emoji,
+      numbers: s.numbers.slice(0, 12), coverage: +s.coverage.toFixed(1), payout: s.payout,
+      score: +s.score.toFixed(1), probability: s.probability,
+      justification: s.justification,
+      betInstructions: generateBetInstructions(s),
+    }));
+
     return json({
       signal: {
         number: winner.numbers[0],
@@ -3148,6 +3157,7 @@ serve(async (req) => {
         justification: winner.justification,
       },
       betInstructions,
+      topAlternatives,
       allStrategies,
       mesaMode,
       mode, message,
