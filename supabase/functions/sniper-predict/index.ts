@@ -4493,6 +4493,14 @@ serve(async (req) => {
       else if (topReasonCategories.size >= 5) finalProbability += 3;
     }
     
+    // COVERAGE-BASED PROBABILITY CEILING — probabilidade não pode exceder expectativa real ajustada
+    // Random baseline = coverage%. Com análise boa, +15-25% acima do baseline é realista.
+    const coveragePercent = winner.coverage; // e.g. 38% for 14 numbers
+    const maxRealisticProb = Math.min(99, coveragePercent + 25); // 14 nums = 38% + 25 = 63% max
+    if (finalProbability > maxRealisticProb) {
+      finalProbability = maxRealisticProb;
+    }
+    
     // Cap
     finalProbability = Math.min(99, Math.max(20, Math.round(finalProbability)));
     
