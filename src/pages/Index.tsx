@@ -660,8 +660,135 @@ const Index = () => {
             </div>
           </div>
 
+          {/* O QUE A IA APRENDEU AGORA */}
+          {sniperData?.aiLearnings && sniperData.aiLearnings.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-r from-purple-500/10 via-card to-blue-500/10 rounded-xl border border-purple-500/30 p-3"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <GraduationCap className="w-4 h-4 text-purple-400" />
+                <span className="font-display text-[10px] tracking-[0.15em] font-bold text-purple-400">O QUE A IA APRENDEU AGORA</span>
+                {sniperData.noiseFiltered > 0 && (
+                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold ml-auto">
+                    🔇 {sniperData.noiseFiltered} ruídos filtrados
+                  </span>
+                )}
+                {sniperData.dealerChaos && (
+                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-destructive/20 text-destructive border border-destructive/30 font-bold animate-pulse">
+                    ⚠️ DEALER CAÓTICO
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {sniperData.aiLearnings.map((learning: string, i: number) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-secondary/60 border border-border"
+                  >
+                    <Sparkles className="w-3 h-3 text-purple-400 mt-0.5 shrink-0" />
+                    <span className="text-[9px] text-foreground/90 leading-tight">{learning}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
-          {/* DEALER + CAVALOS + SETOR — always real data */}
+          {/* 3-LAYER MEMORY WINDOWS: Micro / Mesa / Macro */}
+          {sniperData?.memoryWindows && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* MICRO */}
+              <div className="bg-card rounded-xl border border-border p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                  <span className="font-display text-[9px] tracking-[0.15em] font-bold text-yellow-400">
+                    {sniperData.memoryWindows.micro.label}
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-muted-foreground">Ritmo Dealer</span>
+                    <span className={`font-bold ${
+                      sniperData.memoryWindows.micro.dealerRhythm === 'VICIADO' ? 'text-primary' :
+                      sniperData.memoryWindows.micro.dealerRhythm === 'Regular' ? 'text-green-400' : 'text-destructive'
+                    }`}>{sniperData.memoryWindows.micro.dealerRhythm}</span>
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-muted-foreground">Arco</span>
+                    <span className="font-mono font-bold text-foreground">{sniperData.memoryWindows.micro.arcMean} ±{sniperData.memoryWindows.micro.arcStd}</span>
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-muted-foreground">Setor Dom.</span>
+                    <span className="font-bold text-foreground">{sniperData.memoryWindows.micro.sectorDominant}</span>
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-muted-foreground">Cor</span>
+                    <span className="font-bold text-foreground">{sniperData.memoryWindows.micro.colorBias}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* MESA */}
+              <div className="bg-card rounded-xl border border-border p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-3.5 h-3.5 text-green-400" />
+                  <span className="font-display text-[9px] tracking-[0.15em] font-bold text-green-400">
+                    {sniperData.memoryWindows.mesa.label}
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-muted-foreground">Melhor Estratégia</span>
+                    <span className="font-bold text-foreground truncate ml-2">{sniperData.memoryWindows.mesa.bestStrategy}</span>
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-muted-foreground">Win Rate</span>
+                    <span className={`font-mono font-bold ${
+                      sniperData.memoryWindows.mesa.winRate >= 50 ? 'text-green-400' : 
+                      sniperData.memoryWindows.mesa.winRate >= 30 ? 'text-yellow-400' : 'text-destructive'
+                    }`}>{sniperData.memoryWindows.mesa.winRate}%</span>
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-muted-foreground">Previsões</span>
+                    <span className="font-mono font-bold text-foreground">{sniperData.memoryWindows.mesa.totalPredictions}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* MACRO */}
+              <div className="bg-card rounded-xl border border-border p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="font-display text-[9px] tracking-[0.15em] font-bold text-blue-400">
+                    {sniperData.memoryWindows.macro.label}
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-muted-foreground">Total Números</span>
+                    <span className="font-mono font-bold text-foreground">{sniperData.memoryWindows.macro.totalNumbers}</span>
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-muted-foreground">Únicos</span>
+                    <span className="font-mono font-bold text-foreground">{sniperData.memoryWindows.macro.uniqueNumbers}/37</span>
+                  </div>
+                  <div className="text-[10px]">
+                    <span className="text-muted-foreground block mb-0.5">Dívida Estatística:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {(sniperData.memoryWindows.macro.topDebt || []).slice(0, 5).map((d: string, i: number) => (
+                        <span key={i} className="text-[8px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/20 font-mono font-bold">{d}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {allNumbers.length >= 10 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* DEALER */}
