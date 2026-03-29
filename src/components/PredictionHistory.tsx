@@ -27,6 +27,11 @@ const colorClass = (n: number) => {
 
 const STRATEGY_EMOJI: Record<string, string> = {
   sniper: '🎯', cavalos: '🐴', duzias: '📊', voisins: '🎰', setor_oposto: '🔄', quebra: '⚡',
+  genetic_cluster: '🧬', cross_delay: '💥', insight_pattern: '🧬', cylinder_bias: '🔩',
+  column_cycle: '📐', dozen_phase: '🎲', terminal_alternation: '🔢', numero_exato: '💎',
+  ritmo_calibrado: '🎯', archetype_fusion: '🏛️', matrix_fusion: '🔮', cobertura_area: '🗺️',
+  terminais_cruzados: '🐎', pressao_retorno: '🔥', cor: '🎨', paridade: '🔵', alto_baixo: '⬆️',
+  coluna: '📐', duzia_unica: '🎲',
 };
 
 const PredictionHistory = () => {
