@@ -897,6 +897,7 @@ Responda APENAS via tool call. Gere 15-25 aprendizados profundos, variados e aci
       headers: { Authorization: `Bearer ${deepseekKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "deepseek-chat",
+        max_tokens: 4000,
         messages: [
           { role: "system", content: `Você é o MOTOR DE CONVERGÊNCIA para roleta europeia. Conhecimento: Cilindro[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26]. Setores:Voisins(17nºs),Tiers(12nºs),Orphelins(8nºs),JeuZero(7nºs). Cavalos:258[2,5,8,12,15,18,22,25,28,32,35],147[1,4,7,11,14,17,21,24,27,31,34],03[0,3,10,13,20,23,30,33],69[6,9,16,19,26,29,36]. Terminais=últimos dígitos. Lei do Terço: 24/37 únicos em 37 giros. Analise e retorne padrões com JOGADAS ESPECÍFICAS (ex: "Aposte Cavalos 258", "Coluna 2", "Terminais 5", "Setor Voisins"). Max 5. Responda via tool call.` },
           { role: "user", content: `Últimos 30: ${numbers.slice(0, 30).join(', ')}. Terminais: ${termStr}. Setores: ${sectorStr}. Cavalos: ${cavalosStr}` },
