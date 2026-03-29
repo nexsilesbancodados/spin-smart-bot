@@ -258,20 +258,40 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [addNumber]);
 
-  // Load recent history from Supabase on mount
+  // Load 500+ recent numbers from ALL tables on mount
   useEffect(() => {
     const loadHistory = async () => {
-      const { data } = await supabase
-        .from('historico_roleta')
-        .select('number, color, created_at')
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const [historicoRes, resultadosRes, rouletteRes] = await Promise.all([
+        supabase.from('historico_roleta').select('number, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('resultados_roleta').select('numero, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('roulette_numbers').select('number, fetched_at').order('fetched_at', { ascending: false }).limit(500),
+      ]);
 
-      if (data && data.length > 0) {
-        const entries: RouletteNumber[] = data.map(row => ({
-          value: row.number,
-          color: getNumberColor(row.number),
-          timestamp: new Date(row.created_at),
+      const all: { value: number; timestamp: Date }[] = [];
+      const seen = new Set<string>();
+
+      const addUnique = (val: number, ts: Date) => {
+        const key = `${val}-${ts.getTime()}`;
+        if (!seen.has(key) && val >= 0 && val <= 36) {
+          seen.add(key);
+          all.push({ value: val, timestamp: ts });
+        }
+      };
+
+      (historicoRes.data || []).forEach(r => addUnique(r.number, new Date(r.created_at)));
+      (resultadosRes.data || []).forEach(r => {
+        const num = parseInt(r.numero, 10);
+        if (!isNaN(num)) addUnique(num, new Date(r.created_at));
+      });
+      (rouletteRes.data || []).forEach(r => addUnique(r.number, new Date(r.fetched_at)));
+
+      all.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+      if (all.length > 0) {
+        const entries: RouletteNumber[] = all.slice(0, 600).map(row => ({
+          value: row.value,
+          color: getNumberColor(row.value),
+          timestamp: row.timestamp,
         }));
         setHistory(entries);
       }
