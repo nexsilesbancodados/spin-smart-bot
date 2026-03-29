@@ -34,10 +34,18 @@ export const useRoulette = () => {
   return ctx;
 };
 
-// Pattern detection
-const detectPatterns = (history: RouletteNumber[]): Alert[] => {
-  const alerts: Alert[] = [];
-  if (history.length < 5) return alerts;
+// Pattern detection — deduplicates by alert type key
+const detectPatterns = (history: RouletteNumber[], existingAlerts: Alert[]): Alert[] => {
+  const newAlerts: Alert[] = [];
+  if (history.length < 5) return newAlerts;
+
+  // Existing alert keys for dedup (strip timestamp-based suffix)
+  const existingKeys = new Set(existingAlerts.map(a => a.id.replace(/-\d+$/, '')));
+  const addIfNew = (key: string, message: string, type: Alert['type']) => {
+    if (!existingKeys.has(key)) {
+      newAlerts.push({ id: `${key}-${Date.now()}`, message, type, timestamp: new Date() });
+    }
+  };
 
   // 1. Same color streak (5+)
   const recentColors = history.slice(0, 8).map(h => h.color);
@@ -48,12 +56,7 @@ const detectPatterns = (history: RouletteNumber[]): Alert[] => {
   }
   if (streak >= 5) {
     const colorName = recentColors[0] === 'red' ? 'VERMELHO' : 'PRETO';
-    alerts.push({
-      id: `streak-${Date.now()}`,
-      message: `🔥 ${streak}x ${colorName} seguidos! Possível reversão.`,
-      type: 'streak',
-      timestamp: new Date(),
-    });
+    addIfNew(`streak-${recentColors[0]}`, `🔥 ${streak}x ${colorName} seguidos! Possível reversão.`, 'streak');
   }
 
   // 2. Dozen absence (8+ rounds)
@@ -61,28 +64,23 @@ const detectPatterns = (history: RouletteNumber[]): Alert[] => {
   const d1 = recent8.some(v => v >= 1 && v <= 12);
   const d2 = recent8.some(v => v >= 13 && v <= 24);
   const d3 = recent8.some(v => v >= 25 && v <= 36);
-  if (!d1) alerts.push({ id: `abs-d1-${Date.now()}`, message: '⚠️ Dúzia 1 ausente há 8+ rodadas!', type: 'absence', timestamp: new Date() });
-  if (!d2) alerts.push({ id: `abs-d2-${Date.now()}`, message: '⚠️ Dúzia 2 ausente há 8+ rodadas!', type: 'absence', timestamp: new Date() });
-  if (!d3) alerts.push({ id: `abs-d3-${Date.now()}`, message: '⚠️ Dúzia 3 ausente há 8+ rodadas!', type: 'absence', timestamp: new Date() });
+  if (!d1) addIfNew('abs-d1', '⚠️ Dúzia 1 ausente há 8+ rodadas!', 'absence');
+  if (!d2) addIfNew('abs-d2', '⚠️ Dúzia 2 ausente há 8+ rodadas!', 'absence');
+  if (!d3) addIfNew('abs-d3', '⚠️ Dúzia 3 ausente há 8+ rodadas!', 'absence');
 
   // 3. Column absence
   const c1 = recent8.some(v => v > 0 && ((v - 1) % 3) === 0);
   const c2 = recent8.some(v => v > 0 && ((v - 1) % 3) === 1);
   const c3 = recent8.some(v => v > 0 && ((v - 1) % 3) === 2);
-  if (!c1) alerts.push({ id: `abs-c1-${Date.now()}`, message: '⚠️ Coluna 1 ausente há 8+ rodadas!', type: 'absence', timestamp: new Date() });
-  if (!c2) alerts.push({ id: `abs-c2-${Date.now()}`, message: '⚠️ Coluna 2 ausente há 8+ rodadas!', type: 'absence', timestamp: new Date() });
-  if (!c3) alerts.push({ id: `abs-c3-${Date.now()}`, message: '⚠️ Coluna 3 ausente há 8+ rodadas!', type: 'absence', timestamp: new Date() });
+  if (!c1) addIfNew('abs-c1', '⚠️ Coluna 1 ausente há 8+ rodadas!', 'absence');
+  if (!c2) addIfNew('abs-c2', '⚠️ Coluna 2 ausente há 8+ rodadas!', 'absence');
+  if (!c3) addIfNew('abs-c3', '⚠️ Coluna 3 ausente há 8+ rodadas!', 'absence');
 
   // 4. Same terminal repeating (3+)
   if (history.length >= 3) {
     const terminals = history.slice(0, 4).map(h => h.value % 10);
     if (terminals[0] === terminals[1] && terminals[1] === terminals[2]) {
-      alerts.push({
-        id: `term-${Date.now()}`,
-        message: `🎯 Terminal ${terminals[0]} saiu 3x seguidas!`,
-        type: 'pattern',
-        timestamp: new Date(),
-      });
+      addIfNew(`term-${terminals[0]}`, `🎯 Terminal ${terminals[0]} saiu 3x seguidas!`, 'pattern');
     }
   }
 
@@ -95,16 +93,11 @@ const detectPatterns = (history: RouletteNumber[]): Alert[] => {
       else break;
     }
     if (parStreak >= 6) {
-      alerts.push({
-        id: `parity-${Date.now()}`,
-        message: `🔄 ${parStreak}x ${parities[0] === 0 ? 'PAR' : 'ÍMPAR'} seguidos!`,
-        type: 'streak',
-        timestamp: new Date(),
-      });
+      addIfNew(`parity-${parities[0]}`, `🔄 ${parStreak}x ${parities[0] === 0 ? 'PAR' : 'ÍMPAR'} seguidos!`, 'streak');
     }
   }
 
-  return alerts;
+  return newAlerts;
 };
 
 export const RouletteProvider = ({ children }: { children: ReactNode }) => {
@@ -120,10 +113,14 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
     const entry: RouletteNumber = { value: n, color: getNumberColor(n), timestamp: new Date() };
     setHistory(prev => {
       const updated = [entry, ...prev];
-      const newAlerts = detectPatterns(updated);
-      if (newAlerts.length > 0) {
-        setAlerts(prev => [...newAlerts, ...prev].slice(0, 10));
-      }
+      // Defer alert detection to avoid needing alerts state inside setHistory
+      setTimeout(() => {
+        setAlerts(currentAlerts => {
+          const newAlerts = detectPatterns(updated, currentAlerts);
+          if (newAlerts.length > 0) return [...newAlerts, ...currentAlerts].slice(0, 10);
+          return currentAlerts;
+        });
+      }, 0);
       return updated;
     });
   }, []);
@@ -136,10 +133,13 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
     } as RouletteNumber));
     setHistory(prev => {
       const updated = [...entries.reverse(), ...prev];
-      const newAlerts = detectPatterns(updated);
-      if (newAlerts.length > 0) {
-        setAlerts(prev => [...newAlerts, ...prev].slice(0, 10));
-      }
+      setTimeout(() => {
+        setAlerts(currentAlerts => {
+          const newAlerts = detectPatterns(updated, currentAlerts);
+          if (newAlerts.length > 0) return [...newAlerts, ...currentAlerts].slice(0, 10);
+          return currentAlerts;
+        });
+      }, 0);
       return updated;
     });
   }, []);
