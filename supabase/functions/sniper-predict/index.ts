@@ -168,6 +168,8 @@ serve(async (req) => {
     const last50 = numbers.slice(0, 50);
     const last100 = numbers.slice(0, 100);
     const last200 = numbers.slice(0, 200);
+    const last500 = numbers.slice(0, 500);
+    const last1000 = numbers.slice(0, 1000);
 
     // ========================================================
     // BLOCO A: DINÂMICA BIOMECÂNICA E FÍSICA (100 CAMADAS)
