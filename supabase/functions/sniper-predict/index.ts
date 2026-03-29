@@ -769,6 +769,26 @@ serve(async (req) => {
           }
         }
       }
+      // ERROR PATTERN: números que saem quando erramos merecem atenção
+      if (lp.learning_type === 'error_pattern') {
+        const keyNums = (meta as any)?.key_numbers || [];
+        for (const kn of keyNums) {
+          if (typeof kn === 'number' && kn >= 0 && kn <= 36) {
+            learnedBoosts[kn] += 1.5;
+            // learnedReasons tracked separately below
+          }
+        }
+      }
+      // HIT PATTERN: acertos recentes têm muito peso (positive reinforcement)
+      if (lp.learning_type === 'hit_pattern') {
+        const recencyBoostHit = 2.5;
+        const keyNums: number[] = (meta as any)?.key_numbers || [];
+        for (const kn of keyNums) {
+          if (typeof kn === 'number' && kn >= 0 && kn <= 36) {
+            learnedBoosts[kn] += (lp.accuracy || 50) / 100 * recencyBoostHit;
+          }
+        }
+      }
     }
     
     // Build confirmed pull chain from validated patterns
@@ -835,7 +855,53 @@ serve(async (req) => {
     // Pattern insights → extract actionable numbers
     const insightNumbers: Record<number, number> = {};
     const insightReasons: Record<number, string[]> = {};
-    for (let n = 0; n <= 36; n++) { insightNumbers[n] = 0; insightReasons[n] = []; }
+    const learnedBonus: Record<number, number> = {};
+    const learnedReasons: Record<number, string[]> = {};
+    for (let n = 0; n <= 36; n++) { insightNumbers[n] = 0; insightReasons[n] = []; learnedBonus[n] = 0; learnedReasons[n] = []; }
+
+    // Process learned patterns for learnedBonus/learnedReasons
+    for (const lp of learned) {
+      const meta = lp.metadata as any;
+      if (lp.learning_type === 'error_pattern') {
+        const keyNums = (meta as any)?.key_numbers || [];
+        for (const kn of keyNums) {
+          if (typeof kn === 'number' && kn >= 0 && kn <= 36) {
+            learnedBonus[kn] += 1.5;
+            learnedReasons[kn].push('error_pattern');
+          }
+        }
+      }
+      if (lp.learning_type === 'hit_pattern') {
+        const recencyBoostHit = 2.5;
+        const keyNums: number[] = (meta as any)?.key_numbers || [];
+        for (const kn of keyNums) {
+          if (typeof kn === 'number' && kn >= 0 && kn <= 36) {
+            learnedBonus[kn] += (lp.accuracy || 50) / 100 * recencyBoostHit;
+            learnedReasons[kn].push('✅ hit_pattern');
+          }
+        }
+      }
+    }
+
+    // ── BOOST DOS PADRÕES DO AUTO-ANALYZE ──
+    const insights = patternInsights || [];
+    for (const ins of insights) {
+      if (!ins.confidence || (ins.confidence as number) < 45) continue;
+      const insNums: number[] = (ins.numbers_involved as number[]) || [];
+      const boostMult = ins.pattern_type === 'combo_ouro' ? 3.0
+        : ins.pattern_type === 'dupla_dani_green' ? 2.0
+        : ins.pattern_type === 'entropia_baixa' ? 1.5
+        : ins.pattern_type === 'pressao_zero' ? 1.2
+        : 1.0;
+      for (const n of insNums) {
+        if (n >= 0 && n <= 36) {
+          learnedBonus[n] = (learnedBonus[n] || 0) + ((ins.confidence as number) / 100) * boostMult;
+          learnedReasons[n] = learnedReasons[n] || [];
+          learnedReasons[n].push(`Padrão:${ins.pattern_type}(${ins.confidence}%)`);
+        }
+      }
+    }
+
     for (const insight of patternInsights) {
       const conf = (insight.confidence || 0) / 100;
       if (conf < 0.5) continue;
@@ -1193,6 +1259,24 @@ serve(async (req) => {
     const rawArcs: number[] = [];
     for (let i = 0; i < Math.min(100, numbers.length - 1); i++) rawArcs.push(wheelDist(numbers[i], numbers[i + 1]));
     const rawArcMean = rawArcs.length > 0 ? rawArcs.reduce((a, b) => a + b, 0) / rawArcs.length : 10;
+
+    // Detectar MUDANÇA DE DEALER: se os últimos 5 arcos divergem muito dos 20 anteriores
+    const recentArcs5 = rawArcs.slice(0, 5);
+    const olderArcs20 = rawArcs.slice(5, 25);
+    const recentMean5 = recentArcs5.length > 0
+      ? recentArcs5.reduce((a,b)=>a+b,0) / recentArcs5.length : rawArcMean;
+    const olderMean20 = olderArcs20.length > 0
+      ? olderArcs20.reduce((a,b)=>a+b,0) / olderArcs20.length : rawArcMean;
+    const dealerShiftDetected = Math.abs(recentMean5 - olderMean20) > 5;
+    const isNewDealer = dealerShiftDetected && recentArcs5.length >= 3;
+
+    if (isNewDealer) {
+      aiLearnings.push(`🎭 DEALER SHIFT DETECTADO: arco mudou de ${olderMean20.toFixed(1)} para ${recentMean5.toFixed(1)} — recalibrando. Ignorar padrões antigos por 5 giros.`);
+      strategyWeightAdjust['sniper'] = (strategyWeightAdjust['sniper'] || 0) - 15;
+      strategyWeightAdjust['ritmo_calibrado'] = (strategyWeightAdjust['ritmo_calibrado'] || 0) - 15;
+      strategyWeightAdjust['duplo_terminal'] = (strategyWeightAdjust['duplo_terminal'] || 0) + 8;
+      strategyWeightAdjust['terminal_alternation'] = (strategyWeightAdjust['terminal_alternation'] || 0) + 8;
+    }
     const rawArcStd = Math.sqrt(rawArcs.length > 0 ? rawArcs.reduce((a, b) => a + Math.pow(b - rawArcMean, 2), 0) / rawArcs.length : 25);
     const noiseThreshold = rawArcMean + rawArcStd * 2.5; // Outlier = 2.5 std devs above mean
     const noiseIndices = new Set<number>();
@@ -1206,6 +1290,20 @@ serve(async (req) => {
     // ========================================================
     const recentResolved = resolvedHistory.slice(0, 5);
     const strategyWeightAdjust: Record<string, number> = {};
+
+    // Taxa de acerto recente (últimas 10)
+    const recent10 = resolvedHistory.slice(0, 10);
+    const recent10WR = recent10.length > 0
+      ? recent10.filter((p: any) => p.hit).length / recent10.length : 0.5;
+    const ultraConservador = recent10WR < 0.25 && recent10.length >= 6;
+
+    if (ultraConservador) {
+      aiLearnings.push(`🛡️ MODO ULTRA-CONSERVADOR: ${(recent10WR*100).toFixed(0)}% nas últimas ${recent10.length} jogadas. Preferindo apostas externas e cobertura ampla.`);
+      strategyWeightAdjust['cor'] = (strategyWeightAdjust['cor'] || 0) + 15;
+      strategyWeightAdjust['paridade'] = (strategyWeightAdjust['paridade'] || 0) + 10;
+      strategyWeightAdjust['duzias'] = (strategyWeightAdjust['duzias'] || 0) + 15;
+      strategyWeightAdjust['convergencia_absoluta'] = (strategyWeightAdjust['convergencia_absoluta'] || 0) - 20;
+    }
 
     // ERROR DEEP SCAN: categorize WHY each miss happened
     const errorCategories: Record<string, number> = { dealer_change: 0, wrong_sector: 0, wrong_terminal: 0, deflector_bounce: 0, entropy_break: 0 };
@@ -3685,6 +3783,10 @@ serve(async (req) => {
       if (insightNumbers[n] > 0) { s += insightNumbers[n]; r.push(...insightReasons[n].slice(0, 2)); }
       // SURPRISE NUMBERS bonus — numbers that frequently appear when we miss
       if (surpriseNumbers.includes(n)) { s += 2; r.push('🎲 Surpresa freq.'); }
+      // ERRO PADRÃO: números que costumam sair quando erramos merecem boost
+      if (learnedReasons[n]?.some((lr: string) => lr.includes('error_pattern'))) {
+        s += 3; r.push('⚠️ Anti-padrão');
+      }
       // HISTORICAL HIT bonus — numbers that hit when predicted before
       if (numberHitFreq[n] && numberHitFreq[n] >= 2) { s += numberHitFreq[n] * 0.8; r.push(`✅ Acertou ${numberHitFreq[n]}x`); }
       // DEEP MEMORY: cylinder inertia bias
@@ -5456,15 +5558,25 @@ serve(async (req) => {
     // Base: winner probability × convergence ratio (normalized to 1700 layers)
     let finalProbability = winner.probability * Math.min(1.2, totalLayers / 1100);
     
-    // HISTORICAL PERFORMANCE CALIBRATION — 50% weight on actual win rate (stronger than before)
+    // CALIBRAÇÃO BAYESIANA — win rate real tem peso crescente com dados
     const winnerPerfCal = strategyPerformance[winner.type];
-    if (winnerPerfCal && winnerPerfCal.total >= 5) {
-      const histWeight = Math.min(0.5, winnerPerfCal.total / 40); // more data = more weight on history
-      finalProbability = finalProbability * (1 - histWeight) + (winnerPerfCal.winRate * 100) * histWeight;
-      // Penalize strategies that claim high prob but rarely hit (calibration check)
-      if (winnerPerfCal.winRate < 0.15 && winner.probability > 70) {
-        finalProbability -= 15; // overconfident strategy
-        aiLearnings.push(`⚠️ Calibração: ${winner.label} prometia ${winner.probability}% mas só acerta ${(winnerPerfCal.winRate * 100).toFixed(0)}%`);
+    if (winnerPerfCal && winnerPerfCal.total >= 3) {
+      const dataWeight = Math.min(0.65, winnerPerfCal.total / 30);
+      // Média ponderada: modelo × (1-w) + histórico × w
+      const modelProb = finalProbability;
+      const historicalProb = winnerPerfCal.winRate * 100;
+      finalProbability = modelProb * (1 - dataWeight) + historicalProb * dataWeight;
+
+      // Se estratégia está em sequência de acertos, boost extra
+      if (winnerPerfCal.recentTrend > 0.5 && winnerPerfCal.winRate > 0.4) {
+        finalProbability += 8;
+        aiLearnings.push(`🔥 ${winner.label} em SEQUÊNCIA: trend ${(winnerPerfCal.recentTrend*100).toFixed(0)}%, WR ${(winnerPerfCal.winRate*100).toFixed(0)}%`);
+      }
+
+      // Se estratégia erra muito mas continua sendo escolhida, penalizar mais
+      if (winnerPerfCal.winRate < 0.20 && winnerPerfCal.total >= 8) {
+        finalProbability -= 20;
+        aiLearnings.push(`⚠️ Calibração: ${winner.label} WR ${(winnerPerfCal.winRate*100).toFixed(0)}% — confiança reduzida`);
       }
     }
     
@@ -5968,6 +6080,45 @@ serve(async (req) => {
     // Merge protection numbers into winner
     const winnerNumbersWithProtection = [...new Set([...winner.numbers, ...PROTECTION_NUMBERS])];
 
+    // ── ANTI-PADRÃO: salvar números que saem QUANDO erramos ──
+    if (isNewNumber && Object.keys(numberMissFreq).length >= 3) {
+      const topMisses = Object.entries(numberMissFreq)
+        .sort(([,a],[,b]) => b - a)
+        .slice(0, 6)
+        .map(([n]) => Number(n));
+
+      if (topMisses.length >= 3) {
+        const titulo = `Anti-padrão: erros recentes`;
+        const { data: exA } = await supabase
+          .from('ai_learned_patterns')
+          .select('id')
+          .eq('learning_type', 'error_pattern')
+          .eq('title', titulo)
+          .maybeSingle();
+
+        const rowA = {
+          knowledge: `Quando erramos, saíram: [${topMisses.join(',')}]. Incluir esses números na próxima jogada ou evitar a estratégia que os errou.`,
+          data_points: Object.values(numberMissFreq).reduce((a: number,b: number)=>a+b,0),
+          accuracy: 80,
+          metadata: {
+            hotNumbers: topMisses,
+            key_numbers: topMisses,
+            missFreq: numberMissFreq,
+            lastSeen: new Date().toISOString(),
+          },
+          updated_at: new Date().toISOString(),
+        };
+
+        if (exA?.id) {
+          await supabase.from('ai_learned_patterns').update(rowA).eq('id', exA.id).catch(()=>{});
+        } else {
+          await supabase.from('ai_learned_patterns').insert({
+            learning_type: 'error_pattern', title: titulo, ...rowA
+          }).catch(()=>{});
+        }
+      }
+    }
+
     return json({
       signal: {
         number: winner.numbers[0],
@@ -6027,6 +6178,9 @@ serve(async (req) => {
       },
       ...baseResponse, recoveryMode,
       topCandidates: numScores.slice(0, 8).map(s => ({ num: s.num, score: +s.score.toFixed(1), reasons: s.reasons })),
+      dealerShift: { detected: isNewDealer, oldArc: +olderMean20.toFixed(1), newArc: +recentMean5.toFixed(1) },
+      ultraConservadorMode: ultraConservador,
+      recentWinRate: +recent10WR.toFixed(2),
     });
 
   } catch (e) {
