@@ -4671,6 +4671,37 @@ serve(async (req) => {
         const mainNum = nums[0];
         bets.push({ type: 'setor', label: strat.label, detail: `Cubra: ${nums.slice(0, 8).join(', ')} — Pleno no ${mainNum} + vizinhos`, emoji: strat.emoji });
         bets.push({ type: 'vizinhos', label: `Vizinhos do ${mainNum}`, detail: `Pleno no ${mainNum} + vizinhos: ${nums.slice(1, 5).join(', ')}`, emoji: '🎯' });
+      } else if (t === 'rua') {
+        bets.push({ type: 'rua', label: `Rua ${nums[0]}-${nums[nums.length-1]}`, detail: `Aposte na Rua ${nums.join('-')} — paga 11:1`, emoji: '🛣️' });
+      } else if (t === 'cavalo_split') {
+        bets.push({ type: 'cavalo_split', label: `Cavalo ${nums[0]}/${nums[1]}`, detail: `Aposte Cavalo (Split) ${nums[0]}/${nums[1]} — paga 17:1`, emoji: '🐎' });
+      } else if (t === 'cor_alternancia' || t === 'cor_reversa') {
+        const isRed = nums.some((n: number) => RED.includes(n)) && nums.filter((n: number) => RED.includes(n)).length > nums.length / 2;
+        bets.push({ type: 'cor', label: isRed ? 'Vermelho' : 'Preto', detail: `Aposte no ${isRed ? 'Vermelho' : 'Preto'} (1:1)`, emoji: isRed ? '🔴' : '⚫' });
+      } else if (t === 'paridade_reversa') {
+        const even = nums.every((n: number) => n > 0 && n % 2 === 0);
+        bets.push({ type: 'paridade', label: even ? 'Par' : 'Ímpar', detail: `Aposte no ${even ? 'Par' : 'Ímpar'} (1:1)`, emoji: even ? '2️⃣' : '1️⃣' });
+      } else if (t === 'alto_baixo_reversa') {
+        const low = nums.every((n: number) => n >= 1 && n <= 18);
+        bets.push({ type: 'alto_baixo', label: low ? 'Baixo (1-18)' : 'Alto (19-36)', detail: `Aposte no ${low ? 'Baixo (1-18)' : 'Alto (19-36)'} (1:1)`, emoji: low ? '⬇️' : '⬆️' });
+      } else if (t === 'coluna_fria') {
+        const col = COL1.every(n => nums.includes(n)) ? 1 : COL2.every(n => nums.includes(n)) ? 2 : 3;
+        bets.push({ type: 'coluna', label: `Coluna ${col} (Fria)`, detail: `Aposte na Coluna ${col} — em dívida estatística. Paga 2:1`, emoji: '📐' });
+      } else if (t === 'duzia_progressiva') {
+        const dz = nums[0] <= 12 ? 1 : nums[0] <= 24 ? 2 : 3;
+        bets.push({ type: 'duzia', label: `Dúzia ${dz} (Progressiva)`, detail: `${dz}ª Dúzia por sequência D1→D2→D3. Paga 2:1`, emoji: '🎲' });
+      } else if (t === 'combo_ouro') {
+        bets.push({ type: 'absoluta', label: `👑 Combo OURO`, detail: `CONFIANÇA MÁXIMA: Terminal dominante + Puxados + Sequência. ${nums.length} números: ${nums.slice(0, 8).join(', ')}`, emoji: '👑' });
+      } else if (t === 'combo_prata') {
+        bets.push({ type: 'fusao', label: `🥈 Combo PRATA → ${nums[0]}`, detail: `Número quente + Terminal + Vizinhos combinados: ${nums.slice(0, 8).join(', ')}`, emoji: '🥈' });
+      } else if (t === 'jeu_zero') {
+        bets.push({ type: 'setor', label: `Jeu Zero`, detail: `Cubra os 7 números do Jeu Zero: ${nums.join(', ')}. Paga 5:1`, emoji: '🟢' });
+      } else if (t === 'hiper_quente') {
+        bets.push({ type: 'vizinhos', label: `Hiper-Quente ${nums[0]}`, detail: `Número ${nums[0]} repetindo! Terminal + Vizinhos: ${nums.slice(0, 6).join(', ')}`, emoji: '🔥' });
+      } else if (t === 'cluster_regional') {
+        bets.push({ type: 'setor', label: strat.label, detail: `Setor concentrado: ${nums.slice(0, 8).join(', ')}`, emoji: '🗺️' });
+      } else if (t === 'multiplos_seq' || t === 'diferenca_const') {
+        bets.push({ type: 'vizinhos', label: strat.label, detail: `Sequência detectada → Alvo ${nums[0]} + vizinhos: ${nums.slice(1, 5).join(', ')}`, emoji: strat.emoji });
       } else {
         // Generic fallback
         const mainNum = nums[0];
