@@ -3745,11 +3745,13 @@ serve(async (req) => {
       const fusionScore = sumScores(fusionFinalNums) + fusionCandidates.length * 5 + fusionCandidates.reduce((a, n) => a + (numberAppearanceCount[n]?.count || 0) * 3, 0);
       const fusionBt = backtestSet(fusionFinalNums);
       const topFusionInfo = fusionCandidates.slice(0, 3).map(n => `${n}(${numberAppearanceCount[n]?.count}est)`).join(', ');
+      // SCORE NORMALIZADO: fusão não deve ter vantagem artificial sobre estratégias focadas
+      const fusionNormScore = fusionScore * 0.6 + fusionBt * 18 + fusionCandidates.length * 2;
       strategies.push({
         type: 'fusao_suprema', label: `⚡ Fusão Suprema`, emoji: '⚡',
         numbers: fusionFinalNums, coverage: (fusionFinalNums.length / 37) * 100, payout: Math.round(36 / fusionFinalNums.length),
-        score: fusionScore + fusionBt * 28 + fusionCandidates.length * 3,
-        probability: Math.min(98, Math.round(55 + fusionScore * 1.8 + fusionBt * 30 + fusionCandidates.length * 4)),
+        score: fusionNormScore,
+        probability: Math.min(98, Math.round(35 + fusionNormScore * 1.2 + fusionBt * 20 + fusionCandidates.length * 3)),
         justification: `${fusionCandidates.length} números aparecem em 3+ estratégias simultâneas. Convergência máxima: ${topFusionInfo}. Interseção validada por backtest.`,
       });
     }
