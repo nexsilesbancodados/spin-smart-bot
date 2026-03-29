@@ -67,7 +67,50 @@ export const RED_ODD = [1, 3, 5, 7, 9, 19, 21, 23, 25, 27];
 export const BLACK_EVEN = [2, 4, 6, 8, 10, 20, 22, 24, 26, 28];
 export const BLACK_ODD = [11, 13, 15, 17, 29, 31, 33, 35];
 
-// === 7. Utility Functions ===
+// === 7. Finais em Pleno (Finales en Plein) ===
+// Finais 0-6: 4 números cada (33% mais prováveis que finais 7-9)
+// Finais 7-9: 3 números cada
+export const FINAIS_PLENO: Record<number, { numbers: number[]; count: 4 | 3 }> = {
+  0: { numbers: [0, 10, 20, 30], count: 4 },
+  1: { numbers: [1, 11, 21, 31], count: 4 },
+  2: { numbers: [2, 12, 22, 32], count: 4 },
+  3: { numbers: [3, 13, 23, 33], count: 4 },
+  4: { numbers: [4, 14, 24, 34], count: 4 },
+  5: { numbers: [5, 15, 25, 35], count: 4 },
+  6: { numbers: [6, 16, 26, 36], count: 4 },
+  7: { numbers: [7, 17, 27], count: 3 },
+  8: { numbers: [8, 18, 28], count: 3 },
+  9: { numbers: [9, 19, 29], count: 3 },
+};
+
+// === 8. Dominância de Coluna por Cor ===
+export const COLUMN_COLOR_DOMINANCE = {
+  col1: { red: 6, black: 6, label: 'Equilibrada' },
+  col2: { red: 4, black: 8, label: 'Dominante Preta' },
+  col3: { red: 8, black: 4, label: 'Dominante Vermelha' },
+};
+
+// === 9. Espelhos Visuais (mesma posição em dúzias diferentes) ===
+export const VISUAL_MIRRORS = [
+  [1, 13, 25],  // 1º de cada dúzia
+  [2, 14, 26],
+  [3, 15, 27],
+  [4, 16, 28],
+  [5, 17, 29],
+  [6, 18, 30],
+  [7, 19, 31],
+  [8, 20, 32],
+  [9, 21, 33],
+  [10, 22, 34],
+  [11, 23, 35],
+  [12, 24, 36],  // último de cada dúzia
+];
+export const RED_EVEN = [12, 14, 16, 18, 30, 32, 34, 36];
+export const RED_ODD = [1, 3, 5, 7, 9, 19, 21, 23, 25, 27];
+export const BLACK_EVEN = [2, 4, 6, 8, 10, 20, 22, 24, 26, 28];
+export const BLACK_ODD = [11, 13, 15, 17, 29, 31, 33, 35];
+
+// === 10. Utility Functions ===
 
 export const getNumberColor = (n: number): 'red' | 'black' | 'green' => {
   if (n === 0) return 'green';
@@ -128,6 +171,23 @@ export const getCrossMapping = (n: number): string => {
   return 'Desconhecido';
 };
 
+export const getVisualMirror = (n: number): number[] | null => {
+  if (n === 0) return null;
+  return VISUAL_MIRRORS.find(group => group.includes(n)) || null;
+};
+
+export const getFinalPleno = (n: number): { final: number; count: 4 | 3; numbers: number[] } => {
+  const f = n % 10;
+  return { final: f, ...FINAIS_PLENO[f] };
+};
+
+export const getColumnColorDominance = (n: number): string | null => {
+  const col = getColumn(n);
+  if (!col) return null;
+  const key = `col${col}` as keyof typeof COLUMN_COLOR_DOMINANCE;
+  return COLUMN_COLOR_DOMINANCE[key].label;
+};
+
 // Full analysis of a single number
 export const analyzeNumber = (n: number) => ({
   value: n,
@@ -142,6 +202,9 @@ export const analyzeNumber = (n: number) => ({
   isEven: n > 0 && n % 2 === 0,
   isLow: n >= 1 && n <= 18,
   neighbors: getWheelNeighbors(n),
+  finalPleno: getFinalPleno(n),
+  visualMirror: getVisualMirror(n),
+  columnDominance: getColumnColorDominance(n),
 });
 
 // Generate the complete knowledge prompt for AI
