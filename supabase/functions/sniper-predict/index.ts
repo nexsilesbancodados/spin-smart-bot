@@ -3553,10 +3553,12 @@ serve(async (req) => {
         : 999;
 
       if (!latestPrediction || (latestPrediction.hit !== null && secondsSinceLatestPrediction > 18)) {
+        // Always merge protection numbers into predicted numbers
+        const predictedWithProtection = [...new Set([...winner.numbers, ...PROTECTION_NUMBERS])];
         await supabase.from('prediction_history').insert({
           strategy_type: winner.type,
           strategy_label: winner.label,
-          predicted_numbers: winner.numbers,
+          predicted_numbers: predictedWithProtection,
           predicted_main: winner.numbers[0],
           probability: finalProbability,
           convergence_score: totalLayers,
@@ -3675,6 +3677,9 @@ serve(async (req) => {
           bets.push({ type: 'cavalos_comp', label: `+ Cavalos ${topCav[0]}`, detail: `Reforço: cubra Cavalos ${topCav[0]}`, emoji: '🐎' });
         }
       }
+
+      // ALWAYS add protection numbers (0, 26, 32) to every play
+      bets.push({ type: 'protecao', label: 'Proteção 0-26-32', detail: 'Sempre marque: 0, 26 e 32 como proteção fixa em toda jogada (3 fichas extras)', emoji: '🛡️' });
 
       const summary = bets.map(b => `${b.emoji} ${b.label}`).join(' • ');
       return { bets, summary };
