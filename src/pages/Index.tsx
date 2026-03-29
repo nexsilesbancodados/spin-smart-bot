@@ -85,6 +85,7 @@ const Index = () => {
   const prevNumbersRef = useRef<string>('');
   const [sniperData, setSniperData] = useState<any>(null);
   const [sniperCountdown, setSniperCountdown] = useState(13);
+  const sniperPrevKey = useRef<string>('');
   const [autoLearnCycle, setAutoLearnCycle] = useState(0);
   const [autoLearnStatus, setAutoLearnStatus] = useState<'idle' | 'learning' | 'analyzing' | 'backtesting'>('idle');
   const [lastAutoLearnTime, setLastAutoLearnTime] = useState<Date | null>(null);
@@ -133,8 +134,13 @@ const Index = () => {
     try {
       const res = await supabase.functions.invoke('sniper-predict');
       if (res.data) {
+        // Only reset countdown if the prediction actually changed
+        const key = `${res.data.strategy?.type}-${res.data.signal?.number}-${res.data.mode}`;
+        if (key !== sniperPrevKey.current) {
+          sniperPrevKey.current = key;
+          setSniperCountdown(13);
+        }
         setSniperData(res.data);
-        setSniperCountdown(13);
       }
     } catch (err) { console.error('Sniper error:', err); }
   }, []);
@@ -476,12 +482,19 @@ const Index = () => {
                       </span>
                     )}
                     <div className="ml-auto flex items-center gap-2">
-                      <div className={`flex items-center gap-1 px-2 py-1 rounded-lg font-mono text-xs font-bold ${
-                        sniperCountdown <= 3 ? 'bg-destructive/20 text-destructive animate-pulse' : sniperCountdown <= 7 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-secondary text-muted-foreground'
-                      }`}>
-                        <Clock className="w-3 h-3" />
-                        {sniperCountdown}s
-                      </div>
+                      {sniperCountdown > 0 ? (
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded-lg font-mono text-xs font-bold ${
+                          sniperCountdown <= 3 ? 'bg-destructive/20 text-destructive animate-pulse' : sniperCountdown <= 7 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-secondary text-muted-foreground'
+                        }`}>
+                          <Clock className="w-3 h-3" />
+                          {sniperCountdown}s
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-lg font-mono text-[9px] font-bold bg-secondary text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          Aguardando giro...
+                        </div>
+                      )}
                     </div>
                   </div>
 
