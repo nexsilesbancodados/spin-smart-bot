@@ -441,7 +441,48 @@ const Index = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto p-3 space-y-3">
 
-          {/* SCANNER 500 removido */}
+          {/* ÚLTIMOS 12 NÚMEROS COM INFO DETALHADA */}
+          {allNumbers.length > 0 && (
+            <div className="bg-card/90 border border-border rounded-xl p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="w-4 h-4 text-primary" />
+                <span className="text-[10px] font-bold tracking-[0.15em] text-primary">ÚLTIMOS 12 NÚMEROS</span>
+              </div>
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5">
+                {allNumbers.slice(0, 12).map((n, i) => {
+                  const color = getColor(n);
+                  const dozen = n === 0 ? '-' : n <= 12 ? '1ª' : n <= 24 ? '2ª' : '3ª';
+                  const col = n === 0 ? '-' : `C${((n - 1) % 3) + 1}`;
+                  const terminal = n % 10;
+                  const sector = getSectorName(n);
+                  const cavalo = getCavaloGroup(n);
+                  const freqIn100 = allNumbers.slice(0, 100).filter(x => x === n).length;
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-0.5">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
+                        color === 'red' ? 'bg-roulette-red text-white border-red-400/50' :
+                        color === 'black' ? 'bg-roulette-black text-white border-gray-500/50' :
+                        'bg-roulette-green text-white border-green-400/50'
+                      } ${i === 0 ? 'ring-2 ring-primary/50 scale-110' : ''}`}>
+                        {n}
+                      </div>
+                      <span className={`text-[7px] font-bold ${color === 'red' ? 'text-red-400' : color === 'black' ? 'text-gray-400' : 'text-green-400'}`}>
+                        {color === 'red' ? 'VRM' : color === 'black' ? 'PRT' : 'VRD'}
+                      </span>
+                      <span className="text-[7px] text-muted-foreground">{dozen} Dz</span>
+                      <span className="text-[7px] text-muted-foreground">{col}</span>
+                      <span className="text-[7px] text-muted-foreground">T{terminal}</span>
+                      {cavalo && <span className="text-[7px] text-orange-400 font-bold">🐎{cavalo}</span>}
+                      <span className="text-[7px] text-muted-foreground">{sector.slice(0, 4)}</span>
+                      <span className={`text-[7px] font-mono font-bold ${freqIn100 >= 5 ? 'text-red-400' : freqIn100 >= 3 ? 'text-yellow-400' : 'text-muted-foreground'}`}>
+                        {freqIn100}x/100
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* SNIPER STRATEGY + BET PANEL side by side on desktop */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
