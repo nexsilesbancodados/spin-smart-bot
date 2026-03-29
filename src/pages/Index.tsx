@@ -410,6 +410,9 @@ const Index = () => {
           {/* Últimos 12 */}
           <Last12Numbers allNumbers={allNumbers} />
 
+          {/* Pressão do Zero */}
+          <ZeroPressure allNumbers={allNumbers} />
+
           {/* SNIPER + BET PANEL */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <div className="lg:col-span-2 space-y-2">
