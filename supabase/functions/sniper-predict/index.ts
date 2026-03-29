@@ -733,22 +733,57 @@ serve(async (req) => {
       learnedMap[lp.learning_type + ':' + lp.title] = { knowledge: lp.knowledge, accuracy: lp.accuracy || 0, metadata: lp.metadata || {} };
     }
 
-    // Use learned patterns to boost scoring
+    // Use learned patterns to boost scoring — REFORÇADO
     const learnedBoosts: Record<number, number> = {};
     for (let n = 0; n <= 36; n++) learnedBoosts[n] = 0;
+    
+    // Separate recent session patterns (last hour) from older ones
+    const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+    const recentLearned = learned.filter(lp => (lp as any).updated_at > oneHourAgo || lp.learning_type === 'session_spin');
+    const confirmedPulls = learned.filter(lp => lp.learning_type === 'pull_confirmed');
+    
     for (const lp of learned) {
       const meta = lp.metadata as any;
+      const isRecent = recentLearned.includes(lp);
+      const recencyMultiplier = isRecent ? 2.5 : 1.0; // Recent patterns get 2.5x weight
+      const accuracyScale = (lp.accuracy || 50) / 50;
+      
       if (meta?.hotNumbers && Array.isArray(meta.hotNumbers)) {
         for (const hn of meta.hotNumbers) {
           if (typeof hn === 'number' && hn >= 0 && hn <= 36) {
-            learnedBoosts[hn] += (lp.accuracy || 50) / 50; // scale by accuracy
+            learnedBoosts[hn] += accuracyScale * recencyMultiplier;
           }
         }
       }
       if (meta?.bestTerminals && Array.isArray(meta.bestTerminals)) {
         for (const t of meta.bestTerminals) {
           const tNums = TERMINALS_MAP[t] || [];
-          tNums.forEach(tn => { learnedBoosts[tn] += (lp.accuracy || 50) / 100; });
+          tNums.forEach(tn => { learnedBoosts[tn] += (accuracyScale * 0.6) * recencyMultiplier; });
+        }
+      }
+      // Pull confirmed patterns get extra weight
+      if (lp.learning_type === 'pull_confirmed' && meta?.hotNumbers) {
+        for (const hn of meta.hotNumbers) {
+          if (typeof hn === 'number' && hn >= 0 && hn <= 36) {
+            learnedBoosts[hn] += accuracyScale * 1.5; // Validated pulls are very reliable
+          }
+        }
+      }
+    }
+    
+    // Build confirmed pull chain from validated patterns
+    const confirmedPullNumbers: number[] = [];
+    for (const cp of confirmedPulls) {
+      const meta = cp.metadata as any;
+      if (meta?.hotNumbers) confirmedPullNumbers.push(...meta.hotNumbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36));
+    }
+    // If the last number has confirmed pull targets, boost them heavily
+    if (numbers.length > 0) {
+      const lastNum = numbers[0];
+      const pullTargets = FULL_PULL_MAP[lastNum] || [];
+      for (const pt of pullTargets) {
+        if (confirmedPullNumbers.includes(pt)) {
+          learnedBoosts[pt] += 3.0; // Confirmed pull = very strong signal
         }
       }
     }
@@ -5235,9 +5270,9 @@ serve(async (req) => {
       if (errorCategories.wrong_terminal >= 2 && ['cavalos', 'terminal_alternation'].includes(st.type)) st.score -= 10;
       if (errorCategories.deflector_bounce >= 2) st.score -= 5;
 
-      // LEARNED KNOWLEDGE BOOST: apply AI-learned weights — DOBRADO
+      // LEARNED KNOWLEDGE BOOST: apply AI-learned weights — TRIPLICADO
       const learnedBoost = learnedStrategyBoosts[st.type] || 0;
-      st.score += learnedBoost * 5;
+      st.score += learnedBoost * 8;
 
       // ====== SELF-CORRECTION: 5-round weight adjustment ======
       const selfCorrectionWeight = strategyWeightAdjust[st.type] || 0;
