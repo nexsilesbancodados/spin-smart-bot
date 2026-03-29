@@ -89,6 +89,9 @@ const Index = () => {
   const [sniperData, setSniperData] = useState<any>(null);
   const [sniperCountdown, setSniperCountdown] = useState(13);
   const sniperPrevKey = useRef<string>('');
+  const sniperSameCount = useRef(0);
+  const [sniperStale, setSniperStale] = useState(false);
+  const [lastPredResult, setLastPredResult] = useState<{ hit: boolean | null; hitType: string | null; predicted: number | null; actual: number | null; label: string } | null>(null);
   const [autoLearnCycle, setAutoLearnCycle] = useState(0);
   const [autoLearnStatus, setAutoLearnStatus] = useState<'idle' | 'learning' | 'analyzing' | 'backtesting'>('idle');
   const [lastAutoLearnTime, setLastAutoLearnTime] = useState<Date | null>(null);
@@ -144,11 +147,17 @@ const Index = () => {
     try {
       const res = await supabase.functions.invoke('sniper-predict');
       if (res.data) {
-        // Only reset countdown if the prediction actually changed
         const key = `${res.data.strategy?.type}-${res.data.signal?.number}-${res.data.mode}`;
         if (key !== sniperPrevKey.current) {
           sniperPrevKey.current = key;
+          sniperSameCount.current = 0;
+          setSniperStale(false);
           setSniperCountdown(13);
+        } else {
+          sniperSameCount.current++;
+          if (sniperSameCount.current >= 3) {
+            setSniperStale(true);
+          }
         }
         setSniperData(res.data);
       }
@@ -264,6 +273,7 @@ const Index = () => {
         const label = row.strategy_label || row.strategy_type || 'Previsão';
         const predicted = row.predicted_main;
         const actual = row.actual_number;
+        setLastPredResult({ hit: isHit, hitType, predicted, actual, label });
         if (isHit) {
           toast.success(
             `${hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO VIZINHO!'} ${label} — Previsto: ${predicted}, Saiu: ${actual}`,
@@ -561,7 +571,35 @@ const Index = () => {
                     </div>
                   </div>
 
-                  {sniperData.signal && sniperData.strategy ? (
+                  {/* STALE: show last result instead of repeating same prediction */}
+                  {sniperStale && lastPredResult ? (
+                    <div className="flex flex-col items-center gap-3 py-6">
+                      {lastPredResult.hit === true ? (
+                        <>
+                          <div className="w-14 h-14 rounded-full bg-green-500/20 border-2 border-green-500/50 flex items-center justify-center">
+                            <ShieldCheck className="w-7 h-7 text-green-400" />
+                          </div>
+                          <span className="text-sm font-bold text-green-400">
+                            {lastPredResult.hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO VIZINHO!'}
+                          </span>
+                        </>
+                      ) : lastPredResult.hit === false ? (
+                        <>
+                          <div className="w-14 h-14 rounded-full bg-destructive/20 border-2 border-destructive/50 flex items-center justify-center">
+                            <AlertTriangle className="w-7 h-7 text-destructive" />
+                          </div>
+                          <span className="text-sm font-bold text-destructive">❌ ERRO NA ÚLTIMA PREVISÃO</span>
+                        </>
+                      ) : null}
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>Previsto: <strong className="text-foreground">{lastPredResult.predicted}</strong></span>
+                        <span>•</span>
+                        <span>Saiu: <strong className="text-foreground">{lastPredResult.actual}</strong></span>
+                      </div>
+                      <span className="text-[9px] text-muted-foreground italic">{lastPredResult.label}</span>
+                      <span className="text-[8px] text-muted-foreground/60 mt-1">Aguardando nova jogada...</span>
+                    </div>
+                  ) : sniperData.signal && sniperData.strategy ? (
                     <div className="space-y-3">
                       {/* CONFIDENCE FILTER */}
                       {confidenceFilter && sniperData.signal.probability < 85 && (
