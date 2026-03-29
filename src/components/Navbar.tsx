@@ -85,6 +85,13 @@ const Navbar = ({
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
 
+        {/* Histórico */}
+        <button onClick={onShowHistory}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15 transition-all">
+          <History className="w-3 h-3" />
+          <span className="hidden sm:inline">Histórico</span>
+        </button>
+
         {/* Extensão */}
         <button
           onClick={() => {
