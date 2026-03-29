@@ -942,6 +942,190 @@ serve(async (req) => {
     
     // Multi-dimension convergence will be calculated after transitionMatrix is ready
 
+    // ========================================================
+    // TREND vs REVERSAL ENGINE — "Jogar a favor do algoritmo"
+    // Detects if mesa is in CONTINUATION mode (trend) or REVERSAL mode
+    // The AI should FOLLOW the algorithm, not fight it
+    // ========================================================
+    const trendEngine: {
+      mode: 'TENDENCIA' | 'REVERSAO' | 'NEUTRO';
+      confidence: number;
+      colorTrend: { direction: 'red' | 'black' | null; strength: number; shouldFollow: boolean };
+      parityTrend: { direction: 'par' | 'impar' | null; strength: number; shouldFollow: boolean };
+      highLowTrend: { direction: 'alto' | 'baixo' | null; strength: number; shouldFollow: boolean };
+      dozenTrend: { direction: number | null; strength: number; shouldFollow: boolean };
+      columnTrend: { direction: number | null; strength: number; shouldFollow: boolean };
+      sectorTrend: { direction: string | null; strength: number; shouldFollow: boolean };
+      reasoning: string[];
+    } = {
+      mode: 'NEUTRO', confidence: 50,
+      colorTrend: { direction: null, strength: 0, shouldFollow: false },
+      parityTrend: { direction: null, strength: 0, shouldFollow: false },
+      highLowTrend: { direction: null, strength: 0, shouldFollow: false },
+      dozenTrend: { direction: null, strength: 0, shouldFollow: false },
+      columnTrend: { direction: null, strength: 0, shouldFollow: false },
+      sectorTrend: { direction: null, strength: 0, shouldFollow: false },
+      reasoning: [],
+    };
+
+    if (numbers.length >= 20) {
+      // === CORE: Analyze continuation vs reversal from last 30 numbers ===
+      const an30 = numbers.slice(0, 30);
+      const an10 = numbers.slice(0, 10);
+      const an5 = numbers.slice(0, 5);
+      
+      // --- COLOR TREND ---
+      const red5 = an5.filter(n => RED.includes(n)).length;
+      const red10 = an10.filter(n => RED.includes(n)).length;
+      const red30 = an30.filter(n => RED.includes(n)).length;
+      // Check if recent trend ACCELERATES or DECELERATES
+      const red5Rate = red5 / 5;
+      const red10Rate = red10 / 10;
+      const red30Rate = red30 / 30;
+      // Acceleration = recent rate > medium rate > long rate (trend strengthening)
+      const redAccelerating = red5Rate > red10Rate && red10Rate > red30Rate && red5Rate > 0.55;
+      const blackAccelerating = (1 - red5Rate) > (1 - red10Rate) && (1 - red10Rate) > (1 - red30Rate) && red5Rate < 0.45;
+      // Bayesian confirmation
+      const bayesConfirmsRed = bayesColor.predicted === 'red' && bayesColor.probability >= 45;
+      const bayesConfirmsBlack = bayesColor.predicted === 'black' && bayesColor.probability >= 45;
+      // Momentum confirmation
+      const momConfirmsRed = colorMomentum['red']?.trend === 'rising';
+      const momConfirmsBlack = colorMomentum['black']?.trend === 'rising';
+      
+      if ((redAccelerating && (bayesConfirmsRed || momConfirmsRed)) || (redAccelerating && red5 >= 4)) {
+        trendEngine.colorTrend = { direction: 'red', strength: Math.min(95, 50 + red5 * 10 + (bayesConfirmsRed ? 15 : 0)), shouldFollow: true };
+        trendEngine.reasoning.push(`🔴 Vermelho ACELERANDO: ${red5}/5 recentes, Bayes ${bayesColor.probability}%, momentum ${momConfirmsRed ? 'SUBINDO' : 'estável'}`);
+      } else if ((blackAccelerating && (bayesConfirmsBlack || momConfirmsBlack)) || (blackAccelerating && red5 <= 1)) {
+        trendEngine.colorTrend = { direction: 'black', strength: Math.min(95, 50 + (5 - red5) * 10 + (bayesConfirmsBlack ? 15 : 0)), shouldFollow: true };
+        trendEngine.reasoning.push(`⚫ Preto ACELERANDO: ${5 - red5}/5 recentes, Bayes ${bayesColor.probability}%, momentum ${momConfirmsBlack ? 'SUBINDO' : 'estável'}`);
+      }
+      // If there's a streak but it's DECELERATING, THEN reverse
+      if (red5 >= 4 && red10Rate < red5Rate * 0.8 && !redAccelerating) {
+        trendEngine.colorTrend = { direction: 'black', strength: 65, shouldFollow: false };
+        trendEngine.reasoning.push(`🔄 Vermelho desacelerando (${red5}/5 mas ${red10}/10) — reversão para Preto`);
+      }
+      if (red5 <= 1 && (1 - red10Rate) < (1 - red5Rate) * 0.8 && !blackAccelerating) {
+        trendEngine.colorTrend = { direction: 'red', strength: 65, shouldFollow: false };
+        trendEngine.reasoning.push(`🔄 Preto desacelerando — reversão para Vermelho`);
+      }
+
+      // --- PARITY TREND ---
+      const par5 = an5.filter(n => n > 0 && n % 2 === 0).length;
+      const par10 = an10.filter(n => n > 0 && n % 2 === 0).length;
+      const par30 = an30.filter(n => n > 0 && n % 2 === 0).length;
+      const par5Rate = par5 / Math.max(1, an5.filter(n => n > 0).length);
+      const par10Rate = par10 / Math.max(1, an10.filter(n => n > 0).length);
+      const par30Rate = par30 / Math.max(1, an30.filter(n => n > 0).length);
+      const parAccelerating = par5Rate > par10Rate && par10Rate > par30Rate && par5Rate > 0.6;
+      const imparAccelerating = (1 - par5Rate) > (1 - par10Rate) && (1 - par10Rate) > (1 - par30Rate) && par5Rate < 0.4;
+      const bayesConfirmsPar = bayesParity.predicted === 'Par' && bayesParity.probability >= 45;
+      const bayesConfirmsImpar = bayesParity.predicted === 'Ímpar' && bayesParity.probability >= 45;
+      const momConfirmsPar = parityMomentum['Par']?.trend === 'rising';
+      const momConfirmsImpar = parityMomentum['Ímpar']?.trend === 'rising';
+
+      if ((parAccelerating && (bayesConfirmsPar || momConfirmsPar)) || (parAccelerating && par5 >= 4)) {
+        trendEngine.parityTrend = { direction: 'par', strength: Math.min(90, 50 + par5 * 10), shouldFollow: true };
+        trendEngine.reasoning.push(`2️⃣ Par ACELERANDO: ${par5}/5 recentes`);
+      } else if ((imparAccelerating && (bayesConfirmsImpar || momConfirmsImpar)) || (imparAccelerating && par5 <= 1)) {
+        trendEngine.parityTrend = { direction: 'impar', strength: Math.min(90, 50 + (5 - par5) * 10), shouldFollow: true };
+        trendEngine.reasoning.push(`1️⃣ Ímpar ACELERANDO: ${5 - par5}/5 recentes`);
+      }
+
+      // --- HIGH/LOW TREND ---
+      const hi5 = an5.filter(n => n >= 19).length;
+      const hi10 = an10.filter(n => n >= 19).length;
+      const hi30 = an30.filter(n => n >= 19).length;
+      const hi5Rate = hi5 / Math.max(1, an5.filter(n => n > 0).length);
+      const hi10Rate = hi10 / Math.max(1, an10.filter(n => n > 0).length);
+      const hi30Rate = hi30 / Math.max(1, an30.filter(n => n > 0).length);
+      const hiAccelerating = hi5Rate > hi10Rate && hi10Rate > hi30Rate && hi5Rate > 0.6;
+      const loAccelerating = (1 - hi5Rate) > (1 - hi10Rate) && (1 - hi10Rate) > (1 - hi30Rate) && hi5Rate < 0.4;
+      const bayesConfirmsHi = bayesHighLow.predicted === 'Alto' && bayesHighLow.probability >= 45;
+      const bayesConfirmsLo = bayesHighLow.predicted === 'Baixo' && bayesHighLow.probability >= 45;
+      const momConfirmsHi = highLowMomentum['Alto']?.trend === 'rising';
+      const momConfirmsLo = highLowMomentum['Baixo']?.trend === 'rising';
+
+      if ((hiAccelerating && (bayesConfirmsHi || momConfirmsHi)) || (hiAccelerating && hi5 >= 4)) {
+        trendEngine.highLowTrend = { direction: 'alto', strength: Math.min(90, 50 + hi5 * 10), shouldFollow: true };
+        trendEngine.reasoning.push(`⬆️ Alto ACELERANDO: ${hi5}/5 recentes`);
+      } else if ((loAccelerating && (bayesConfirmsLo || momConfirmsLo)) || (loAccelerating && hi5 <= 1)) {
+        trendEngine.highLowTrend = { direction: 'baixo', strength: Math.min(90, 50 + (5 - hi5) * 10), shouldFollow: true };
+        trendEngine.reasoning.push(`⬇️ Baixo ACELERANDO: ${5 - hi5}/5 recentes`);
+      }
+
+      // --- DOZEN TREND ---
+      const dz5 = an5.filter(n => n > 0).map(n => getDozen(n));
+      const dzMode5 = [0, 0, 0]; dz5.forEach(d => { if (d > 0) dzMode5[d - 1]++; });
+      const topDz5 = dzMode5.indexOf(Math.max(...dzMode5)) + 1;
+      const dz10 = an10.filter(n => n > 0).map(n => getDozen(n));
+      const dzMode10 = [0, 0, 0]; dz10.forEach(d => { if (d > 0) dzMode10[d - 1]++; });
+      const topDz10 = dzMode10.indexOf(Math.max(...dzMode10)) + 1;
+      // Same dozen dominating in 5 AND 10 = trend
+      if (topDz5 === topDz10 && dzMode5[topDz5 - 1] >= 3 && dzMode10[topDz10 - 1] >= 5) {
+        const dzMom = dozenMomentum[`D${topDz5}`];
+        if (dzMom?.trend === 'rising' || dzMode5[topDz5 - 1] >= 4) {
+          trendEngine.dozenTrend = { direction: topDz5, strength: Math.min(90, 50 + dzMode5[topDz5 - 1] * 10), shouldFollow: true };
+          trendEngine.reasoning.push(`🎲 Dúzia ${topDz5} em TENDÊNCIA: ${dzMode5[topDz5 - 1]}/5 + ${dzMode10[topDz10 - 1]}/10`);
+        }
+      }
+
+      // --- SECTOR TREND ---
+      const sec5 = an5.map(n => getSector(n));
+      const secMode5: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0 };
+      sec5.forEach(s => { if (secMode5[s] !== undefined) secMode5[s]++; });
+      const topSec5 = Object.entries(secMode5).sort(([,a],[,b]) => b - a)[0];
+      if (topSec5 && topSec5[1] >= 3) {
+        const secMom = sectorMomentum[topSec5[0]];
+        if (secMom?.trend === 'rising') {
+          trendEngine.sectorTrend = { direction: topSec5[0], strength: Math.min(90, 50 + topSec5[1] * 10), shouldFollow: true };
+          trendEngine.reasoning.push(`🗺️ Setor ${topSec5[0]} em TENDÊNCIA: ${topSec5[1]}/5 + momentum subindo`);
+        }
+      }
+
+      // --- GLOBAL MODE DETECTION ---
+      const trendSignals = [
+        trendEngine.colorTrend.shouldFollow,
+        trendEngine.parityTrend.shouldFollow,
+        trendEngine.highLowTrend.shouldFollow,
+        trendEngine.dozenTrend.shouldFollow,
+        trendEngine.sectorTrend.shouldFollow,
+      ].filter(Boolean).length;
+      
+      if (trendSignals >= 3) {
+        trendEngine.mode = 'TENDENCIA';
+        trendEngine.confidence = Math.min(95, 60 + trendSignals * 8);
+        trendEngine.reasoning.push(`🚀 MODO TENDÊNCIA ATIVO: ${trendSignals}/5 dimensões acelerando — JOGAR A FAVOR DO ALGORITMO`);
+      } else if (trendSignals >= 2) {
+        trendEngine.mode = 'TENDENCIA';
+        trendEngine.confidence = Math.min(85, 55 + trendSignals * 7);
+        trendEngine.reasoning.push(`📈 Tendência detectada em ${trendSignals} dimensões — seguir o fluxo`);
+      } else {
+        // Check for exhaustion signals (high streaks about to break)
+        const colorStreakLen = (() => { let s = 1; const c = getColor(numbers[0]); for (let i = 1; i < 20; i++) { if (numbers[i] === 0) break; if (getColor(numbers[i]) === c) s++; else break; } return s; })();
+        const hiLoStreakLen = (() => { if (numbers[0] === 0) return 0; let s = 1; const h = numbers[0] >= 19; for (let i = 1; i < 20; i++) { if (numbers[i] === 0) break; if ((numbers[i] >= 19) === h) s++; else break; } return s; })();
+        const parStreakLen = (() => { if (numbers[0] === 0) return 0; let s = 1; const p = numbers[0] % 2; for (let i = 1; i < 20; i++) { if (numbers[i] === 0) break; if (numbers[i] % 2 === p) s++; else break; } return s; })();
+        
+        // Very long streaks WITHOUT acceleration = exhaustion → reversal
+        if (colorStreakLen >= 6 || hiLoStreakLen >= 6 || parStreakLen >= 6) {
+          trendEngine.mode = 'REVERSAO';
+          trendEngine.confidence = Math.min(90, 55 + Math.max(colorStreakLen, hiLoStreakLen, parStreakLen) * 4);
+          trendEngine.reasoning.push(`⚡ EXAUSTÃO DETECTADA: sequência de ${Math.max(colorStreakLen, hiLoStreakLen, parStreakLen)} — algoritmo vai reverter`);
+        } else {
+          trendEngine.mode = 'NEUTRO';
+          trendEngine.confidence = 50;
+        }
+      }
+    }
+
+    // Add trend engine learnings
+    if (trendEngine.mode === 'TENDENCIA') {
+      aiLearnings.push(`🚀 MODO TENDÊNCIA: Jogar A FAVOR do algoritmo (${trendEngine.confidence}% confiança)`);
+      trendEngine.reasoning.slice(0, 3).forEach(r => aiLearnings.push(r));
+    } else if (trendEngine.mode === 'REVERSAO') {
+      aiLearnings.push(`⚡ MODO REVERSÃO: Algoritmo vai virar — apostar no oposto`);
+      trendEngine.reasoning.slice(0, 2).forEach(r => aiLearnings.push(r));
+    }
+
 
     // ========================================================
     const rawArcs: number[] = [];
