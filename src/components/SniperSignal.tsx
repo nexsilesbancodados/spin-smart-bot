@@ -119,7 +119,7 @@ const getBetTypeCategory = (type: string): string => {
   if (['paridade', 'paridade_reversa'].includes(type)) return 'paridade';
   if (['alto_baixo', 'alto_baixo_reversa'].includes(type)) return 'alto_baixo';
   if (['fusao_suprema', 'convergencia_absoluta', 'matrix_fusion', 'archetype_fusion', 'combo_ouro', 'combo_prata', 'ensemble_supremo'].includes(type)) return 'fusao';
-  if (['matriz_numerica'].includes(type)) return 'outro';
+  if (['matriz_numerica', 'auto_repeticao'].includes(type)) return 'outro';
   if (['numeros_puxam'].includes(type)) return 'puxada';
   if (['pressao_zero'].includes(type)) return 'zero';
   if (['rua'].includes(type)) return 'rua';
