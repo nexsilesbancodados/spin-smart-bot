@@ -3651,6 +3651,14 @@ serve(async (req) => {
       const selfCorrectionWeight = strategyWeightAdjust[st.type] || 0;
       st.score += selfCorrectionWeight;
 
+      // ====== REED PENALTY: suppress strategies that failed 4+ consecutive times ======
+      const reed = reedPenalty[st.type];
+      if (reed) st.score -= reed * 8; // massive penalty for REED violations
+
+      // ====== ENTROPY GATING: reduce confidence when session is dispersed ======
+      if (sessionEntropy > 0.8) st.score -= 8;
+      else if (sessionEntropy < 0.5) st.score += 5; // concentrated session = bonus
+
       // ====== NOISE PENALTY: reduce confidence when too many noisy spins ======
       if (noiseCount > 5) st.score -= 5;
       if (noiseCount > 10) st.score -= 10;
