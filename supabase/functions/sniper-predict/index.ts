@@ -1757,6 +1757,34 @@ serve(async (req) => {
           return ([2, 5, 8].includes(t1) && [1, 4, 7].includes(t2)) || ([1, 4, 7].includes(t1) && [2, 5, 8].includes(t2));
         }},
         { name: 'Espelho Terminal', emoji: '🪞', check: (nums, i) => i >= 2 && nums[i] % 10 === nums[i - 2] % 10 },
+        // NEW PATTERNS
+        { name: 'Terminal Crescente', emoji: '📈', check: (nums, i) => i >= 2 && nums[i] % 10 > nums[i-1] % 10 && nums[i-1] % 10 > nums[i-2] % 10 },
+        { name: 'Terminal Decrescente', emoji: '📉', check: (nums, i) => i >= 2 && nums[i] % 10 < nums[i-1] % 10 && nums[i-1] % 10 < nums[i-2] % 10 },
+        { name: 'Cor Alternando', emoji: '🎨', check: (nums, i) => {
+          if (i === 0 || nums[i] === 0 || nums[i-1] === 0) return false;
+          return getColor(nums[i]) !== getColor(nums[i-1]);
+        }},
+        { name: 'Cor Repetindo', emoji: '🔴', check: (nums, i) => {
+          if (i === 0 || nums[i] === 0 || nums[i-1] === 0) return false;
+          return getColor(nums[i]) === getColor(nums[i-1]);
+        }},
+        { name: 'Alto→Baixo', emoji: '⬆️', check: (nums, i) => i > 0 && nums[i] > 0 && nums[i-1] > 0 && (nums[i] >= 19) !== (nums[i-1] >= 19) },
+        { name: 'Par→Ímpar', emoji: '🔢', check: (nums, i) => i > 0 && nums[i] > 0 && nums[i-1] > 0 && (nums[i] % 2) !== (nums[i-1] % 2) },
+        { name: 'Mesma Coluna', emoji: '📐', check: (nums, i) => i > 0 && getColumn(nums[i]) > 0 && getColumn(nums[i]) === getColumn(nums[i-1]) },
+        { name: 'Mesmo Cavalo', emoji: '🐴', check: (nums, i) => {
+          if (i === 0) return false;
+          const c1 = getCavalo(nums[i]), c2 = getCavalo(nums[i-1]);
+          return c1 !== null && c1 === c2;
+        }},
+        { name: 'Puxada (dist≤4)', emoji: '🧲', check: (nums, i) => i > 0 && wheelDist(nums[i], nums[i-1]) <= 4 },
+        { name: 'Salto Grande (>12)', emoji: '🦘', check: (nums, i) => i > 0 && wheelDist(nums[i], nums[i-1]) > 12 },
+        { name: 'Repetição Exata', emoji: '🎯', check: (nums, i) => i > 0 && nums[i] === nums[i-1] },
+        { name: 'Número Espelho', emoji: '🪞', check: (nums, i) => {
+          if (i === 0 || nums[i] < 10) return false;
+          const m = parseInt(String(nums[i]).split('').reverse().join(''));
+          return m >= 0 && m <= 36 && m !== nums[i] && nums[i-1] === m;
+        }},
+        { name: 'Complementar (=37)', emoji: '♻️', check: (nums, i) => i > 0 && nums[i] > 0 && nums[i-1] > 0 && nums[i] + nums[i-1] === 37 },
       ];
       const check50 = numbers.slice(0, 50);
       for (const fc of fidelityChecks) {
