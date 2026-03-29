@@ -195,6 +195,16 @@ const Index = () => {
     setSniperCountdown(13);
   }, []);
 
+  // Track spins for micro-learning trigger
+  const spinCountSinceMicroLearnRef = useRef(0);
+
+  const triggerMicroLearn = useCallback(async () => {
+    if (!aiEnabled) return;
+    try {
+      await supabase.functions.invoke('auto-analyze-patterns');
+    } catch { /* silent */ }
+  }, [aiEnabled]);
+
   const fetchSniper = useCallback(async () => {
     const now = Date.now();
     if (now - lastSniperTriggerRef.current < 1200) return;
