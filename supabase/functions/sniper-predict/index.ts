@@ -3495,6 +3495,56 @@ serve(async (req) => {
       }
       // AI LEARNED PATTERNS BOOST — knowledge accumulated from history
       if (learnedBoosts[n] > 0) { s += learnedBoosts[n]; r.push(`🧠 IA Aprendeu(+${learnedBoosts[n].toFixed(1)})`); }
+      // ====== ADVANCED: Recency-Weighted Frequency ======
+      const rFreq = recencyFreq[n] || 0;
+      if (rFreq > 2.5) { s += Math.min(4, rFreq * 0.8); r.push(`⏳ Recência(${rFreq.toFixed(1)})`); }
+      // ====== ADVANCED: Sector Momentum ======
+      const nSec = getSector(n);
+      if (nSec !== 'Zero' && sectorMomentum[nSec]?.trend === 'rising' && sectorMomentum[nSec].momentum > 0.2) {
+        s += 3; r.push(`📈 Momentum ${nSec.slice(0,4)}`);
+      }
+      // ====== ADVANCED: Dozen Momentum ======
+      const nDz = getDozen(n);
+      if (nDz > 0 && dozenMomentum[`D${nDz}`]?.trend === 'rising') {
+        s += 2; r.push(`📈 Momentum D${nDz}`);
+      }
+      // ====== ADVANCED: Bayesian Prediction Boost ======
+      if (bayesSector.predicted && bayesSector.probability >= 40 && getSector(n) === bayesSector.predicted) {
+        s += 2.5; r.push(`🎯 Bayes→${String(bayesSector.predicted).slice(0,4)}(${bayesSector.probability}%)`);
+      }
+      if (bayesDozen.predicted && bayesDozen.probability >= 40 && getDozen(n) === Number(bayesDozen.predicted)) {
+        s += 2; r.push(`🎯 Bayes→D${bayesDozen.predicted}(${bayesDozen.probability}%)`);
+      }
+      // ====== ADVANCED: Wheel Zone Momentum ======
+      if (wheelZones.length > 0) {
+        const topZone = wheelZones[0];
+        if (topZone.momentum > 3 && topZone.numbers.includes(n)) {
+          s += 2.5; r.push(`🎰 ZonaQuente(${topZone.label.slice(0,10)})`);
+        }
+      }
+      // ====== ADVANCED: Fibonacci Gap ======
+      const fibMatch = fibGaps.find(f => f.number === n);
+      if (fibMatch) { s += 2; r.push(`🔢 Fib(${fibMatch.fibonacci}r)`); }
+      // ====== ADVANCED: Breakout Detection ======
+      for (const bo of breakoutsDetected) {
+        if (bo.type === 'sector_breakout' && bo.description.includes('parou') && getSector(n) !== nSec) { s += 1.5; }
+        if (bo.type === 'color_breakout' && bo.description.includes('Vermelho assumindo') && RED.includes(n)) { s += 1.5; r.push('🔀 Breakout→Verm'); break; }
+        if (bo.type === 'color_breakout' && bo.description.includes('Preto assumindo') && !RED.includes(n) && n > 0) { s += 1.5; r.push('🔀 Breakout→Preto'); break; }
+        if (bo.type === 'highlow_breakout' && bo.description.includes('Altos assumindo') && n >= 19) { s += 1.5; r.push('🔀 Breakout→Alto'); break; }
+        if (bo.type === 'highlow_breakout' && bo.description.includes('Baixos assumindo') && n >= 1 && n <= 18) { s += 1.5; r.push('🔀 Breakout→Baixo'); break; }
+      }
+      // ====== ADVANCED: Color Momentum ======
+      if (colorMomentum['red']?.trend === 'rising' && RED.includes(n)) { s += 1; r.push('🔴 Mom.Verm'); }
+      else if (colorMomentum['black']?.trend === 'rising' && !RED.includes(n) && n > 0) { s += 1; r.push('⚫ Mom.Preto'); }
+      // ====== ADVANCED: Parity Momentum ======
+      if (parityMomentum['Par']?.trend === 'rising' && n > 0 && n % 2 === 0) { s += 0.8; }
+      else if (parityMomentum['Ímpar']?.trend === 'rising' && n > 0 && n % 2 === 1) { s += 0.8; }
+      // ====== ADVANCED: High/Low Momentum ======
+      if (highLowMomentum['Alto']?.trend === 'rising' && n >= 19) { s += 1; r.push('⬆️ Mom.Alto'); }
+      else if (highLowMomentum['Baixo']?.trend === 'rising' && n >= 1 && n <= 18) { s += 1; r.push('⬇️ Mom.Baixo'); }
+      // ====== ADVANCED: Volatility Adjustment ======
+      if (volatility.level === 'baixa') { s *= 1.1; } // low volatility = patterns more reliable
+      else if (volatility.level === 'extrema') { s *= 0.85; } // extreme volatility = less trustworthy
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
