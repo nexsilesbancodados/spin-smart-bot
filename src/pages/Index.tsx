@@ -263,6 +263,8 @@ const Index = () => {
                   ? 'bg-gradient-to-r from-primary/30 via-yellow-500/10 to-primary/20 border-primary shadow-lg shadow-primary/20'
                   : sniperData.mode === 'alert'
                   ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/10 border-yellow-500/50'
+                  : sniperData.mode === 'recalibrating'
+                  ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/10 border-purple-500/50'
                   : sniperData.mode === 'observing'
                   ? 'bg-gradient-to-r from-orange-500/10 to-destructive/10 border-orange-500/30'
                   : 'bg-card border-border'
@@ -354,6 +356,150 @@ const Index = () => {
                 </div>
               )}
             </motion.div>
+          )}
+
+          {/* 🎯 DEALER + TERMINALS + SECTOR ROW */}
+          {sniperData && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* DEALER SIGNATURE */}
+              <div className="bg-card rounded-xl border border-border p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="w-4 h-4 text-purple-400" />
+                  <span className="font-display text-[9px] tracking-[0.15em] font-bold text-purple-400">ASSINATURA DEALER</span>
+                  {sniperData.dealerSignature?.dealerChanged && (
+                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-destructive/20 text-destructive font-bold animate-pulse ml-auto">NOVO DEALER</span>
+                  )}
+                  {sniperData.dealerSignature?.possibleRotation && !sniperData.dealerSignature?.dealerChanged && (
+                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 font-bold ml-auto">~30min</span>
+                  )}
+                </div>
+                {sniperData.dealerSignature ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-muted-foreground">Arco Médio</span>
+                      <span className="font-mono font-bold text-foreground">{sniperData.dealerSignature.arcMean} casas</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-muted-foreground">Desvio</span>
+                      <span className="font-mono font-bold text-foreground">±{sniperData.dealerSignature.arcStdDev}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-muted-foreground">Consistência</span>
+                      <span className={`font-bold text-[9px] px-1.5 py-0.5 rounded ${
+                        sniperData.dealerSignature.consistency === 'alta' ? 'bg-green-500/20 text-green-400' :
+                        sniperData.dealerSignature.consistency === 'média' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-destructive/20 text-destructive'
+                      }`}>{sniperData.dealerSignature.consistency}</span>
+                    </div>
+                    {sniperData.dealerSignature.maoViciada && (
+                      <div className="bg-primary/10 border border-primary/30 rounded-lg p-2 text-center mt-1">
+                        <span className="text-[10px] font-bold text-primary">🎯 MÃO VICIADA DETECTADA</span>
+                        <p className="text-[8px] text-muted-foreground mt-0.5">Arcos: {sniperData.dealerSignature.last3Arcs?.join(' → ')}</p>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className="text-[8px] text-muted-foreground">Últ. 3 arcos:</span>
+                      {sniperData.dealerSignature.last3Arcs?.map((a: number, i: number) => (
+                        <span key={i} className="text-[9px] px-1.5 py-0.5 rounded bg-secondary font-mono font-bold text-foreground">{a}</span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-muted-foreground">Calibrando...</p>
+                )}
+              </div>
+
+              {/* HOT TERMINALS (CAVALOS DO MOMENTO) */}
+              <div className="bg-card rounded-xl border border-border p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Flame className="w-4 h-4 text-orange-400" />
+                  <span className="font-display text-[9px] tracking-[0.15em] font-bold text-orange-400">CAVALOS DO MOMENTO</span>
+                </div>
+                {sniperData.hotTerminals ? (
+                  <div className="space-y-1.5">
+                    {sniperData.hotTerminals.cavalos?.map(([group, count]: [string, number], i: number) => {
+                      const max = sniperData.hotTerminals.cavalos[0]?.[1] || 1;
+                      const pct = (count / max) * 100;
+                      return (
+                        <div key={group} className="space-y-0.5">
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className={`font-bold ${i === 0 ? 'text-orange-400' : 'text-muted-foreground'}`}>C {group}</span>
+                            <span className="font-mono font-bold text-foreground">{count}x</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${i === 0 ? 'bg-orange-400' : 'bg-muted-foreground/30'}`}
+                              style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className="border-t border-border pt-1.5 mt-1.5">
+                      <span className="text-[8px] text-muted-foreground">Terminais quentes:</span>
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {sniperData.hotTerminals.terminals?.slice(0, 5).map(([t, c]: [string, number]) => (
+                          <span key={t} className="text-[8px] px-1.5 py-0.5 rounded bg-secondary font-mono font-bold text-foreground">
+                            T{t}: {c}x
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-muted-foreground">Coletando dados...</p>
+                )}
+              </div>
+
+              {/* SECTOR TREND */}
+              <div className="bg-card rounded-xl border border-border p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-4 h-4 text-cyan-400" />
+                  <span className="font-display text-[9px] tracking-[0.15em] font-bold text-cyan-400">TENDÊNCIA DE SETOR</span>
+                </div>
+                {sniperData.sectorFreq ? (
+                  <div className="space-y-1.5">
+                    {Object.entries(sniperData.sectorFreq as Record<string, number>).sort(([,a],[,b]) => (b as number) - (a as number)).map(([sector, count], i) => {
+                      const total = Object.values(sniperData.sectorFreq as Record<string, number>).reduce((a: number, b: number) => a + b, 0);
+                      const pct = total > 0 ? ((count as number) / total) * 100 : 0;
+                      return (
+                        <div key={sector} className="space-y-0.5">
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className={`font-bold ${i === 0 ? 'text-cyan-400' : 'text-muted-foreground'}`}>{sector}</span>
+                            <span className="font-mono text-foreground">{count} ({pct.toFixed(0)}%)</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${i === 0 ? 'bg-cyan-400' : 'bg-muted-foreground/30'}`}
+                              style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {sniperData.sectorTrend && (
+                      <div className="border-t border-border pt-1.5 mt-1.5">
+                        <span className="text-[8px] text-muted-foreground">Tendência (recente → antigo):</span>
+                        <div className="flex flex-col gap-0.5 mt-0.5">
+                          {Object.entries(sniperData.sectorTrend as Record<string, number[]>).map(([sector, values]) => (
+                            <div key={sector} className="flex items-center gap-1 text-[8px]">
+                              <span className="text-muted-foreground w-14 truncate">{sector}</span>
+                              {(values as number[]).map((v, i) => (
+                                <span key={i} className={`px-1 rounded font-mono font-bold ${v >= 4 ? 'bg-cyan-400/20 text-cyan-400' : 'text-muted-foreground'}`}>{v}</span>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {sniperData.recoveryMode && (
+                      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2 text-center mt-1">
+                        <span className="text-[9px] font-bold text-yellow-400">♻️ MODO RECUPERAÇÃO BRASILEIRA</span>
+                        <p className="text-[8px] text-muted-foreground">Aguardando ciclo de terminais</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-muted-foreground">Analisando setores...</p>
+                )}
+              </div>
+            </div>
           )}
           {/* MONITORAMENTO */}
           <motion.div className={`rounded-xl border p-4 transition-all ${
