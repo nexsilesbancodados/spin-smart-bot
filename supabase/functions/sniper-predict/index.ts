@@ -1134,13 +1134,46 @@ serve(async (req) => {
     }
 
     // ==========================================
-    // DUEL: Pick the best strategy with performance-based weighting + diversity
+    // DUEL: Pick the best strategy with performance + diversity + learned knowledge
     // ==========================================
     
-    // DIVERSITY: penalize strategies that were recently used (last 5 predictions)
-    const recentStratTypes = resolvedHistory.slice(0, 5).map(p => p.strategy_type);
+    // DIVERSITY: check last 15 predictions (not just 5) for stronger anti-repetition
+    const recentPreds = resolvedHistory.slice(0, 15);
+    const recentStratTypes = recentPreds.map(p => p.strategy_type);
+    const recentNumbers = recentPreds.flatMap(p => p.predicted_numbers?.slice(0, 3) || []);
     const stratTypeCount: Record<string, number> = {};
     recentStratTypes.forEach(t => { stratTypeCount[t] = (stratTypeCount[t] || 0) + 1; });
+
+    // LEARNED KNOWLEDGE BOOST: weight strategies based on AI-learned patterns
+    const learnedStrategyBoosts: Record<string, number> = {};
+    for (const lp of learned) {
+      const knowledge = (lp.knowledge || '').toLowerCase();
+      const accuracy = lp.accuracy || 0;
+      if (accuracy < 40) continue; // ignore low-accuracy learnings
+      const boost = accuracy / 50; // 0-2 range
+      // Map learning types to strategy types
+      if (knowledge.includes('cavalos') || lp.learning_type === 'cavalos_pattern') {
+        learnedStrategyBoosts['cavalos'] = (learnedStrategyBoosts['cavalos'] || 0) + boost;
+      }
+      if (knowledge.includes('setor') || knowledge.includes('vizinho') || lp.learning_type === 'sector_concentration') {
+        learnedStrategyBoosts['sniper'] = (learnedStrategyBoosts['sniper'] || 0) + boost;
+        learnedStrategyBoosts['voisins'] = (learnedStrategyBoosts['voisins'] || 0) + boost;
+      }
+      if (knowledge.includes('terminal') || lp.learning_type === 'terminal_pattern') {
+        learnedStrategyBoosts['terminal_alternation'] = (learnedStrategyBoosts['terminal_alternation'] || 0) + boost;
+      }
+      if (knowledge.includes('dúzia') || knowledge.includes('duzia') || lp.learning_type === 'dozen_cycle') {
+        learnedStrategyBoosts['duzias'] = (learnedStrategyBoosts['duzias'] || 0) + boost;
+        learnedStrategyBoosts['dozen_phase'] = (learnedStrategyBoosts['dozen_phase'] || 0) + boost;
+      }
+      if (knowledge.includes('cor') || knowledge.includes('vermelho') || knowledge.includes('preto') || lp.learning_type === 'color_tendency') {
+        learnedStrategyBoosts['cor'] = (learnedStrategyBoosts['cor'] || 0) + boost;
+      }
+      if (knowledge.includes('streak') || lp.learning_type === 'streak_behavior') {
+        learnedStrategyBoosts['hot_phase'] = (learnedStrategyBoosts['hot_phase'] || 0) + boost;
+        learnedStrategyBoosts['cold_phase'] = (learnedStrategyBoosts['cold_phase'] || 0) + boost;
+      }
+    }
 
     strategies.forEach(st => {
       // Bonus for high payout low coverage (more profitable if hits)
@@ -1150,6 +1183,10 @@ serve(async (req) => {
       // Mathematical mode bonus for terminal-based strategies
       if (mesaMode === 'matematico' && ['cavalos', 'duzias', 'terminal_alternation'].includes(st.type)) st.score += 5;
 
+      // LEARNED KNOWLEDGE BOOST: apply AI-learned weights
+      const learnedBoost = learnedStrategyBoosts[st.type] || 0;
+      st.score += learnedBoost * 3;
+
       // PERFORMANCE-BASED WEIGHT: boost strategies that historically perform well
       const perf = strategyPerformance[st.type];
       if (perf && perf.total >= 5) {
@@ -1157,14 +1194,26 @@ serve(async (req) => {
         st.score += winBonus;
         const trendBonus = (perf.recentTrend - 0.3) * 20;
         st.score += trendBonus;
-        if (perf.avgProb > 80 && perf.winRate < 0.25) st.score -= 10;
+        // Penalize strategies that claim high prob but rarely hit
+        if (perf.avgProb > 80 && perf.winRate < 0.25) st.score -= 15;
+        // Strongly penalize strategies with very low win rates
+        if (perf.total >= 10 && perf.winRate < 0.15) st.score -= 20;
       }
 
-      // DIVERSITY PENALTY: reduce score for strategies used too often recently
+      // AGGRESSIVE DIVERSITY PENALTY: much stronger anti-repetition
       const recentUseCount = stratTypeCount[st.type] || 0;
-      if (recentUseCount >= 3) st.score -= 8; // heavily penalize if used 3+ of last 5
-      else if (recentUseCount >= 2) st.score -= 4;
+      if (recentUseCount >= 4) st.score -= 25; // almost never repeat 4+ times
+      else if (recentUseCount >= 3) st.score -= 15;
+      else if (recentUseCount >= 2) st.score -= 8;
+      else if (recentUseCount >= 1) st.score -= 3;
       
+      // NUMBER OVERLAP PENALTY: penalize if predicted numbers overlap heavily with recent predictions
+      const numberOverlap = st.numbers.filter(n => recentNumbers.includes(n)).length;
+      const overlapRatio = st.numbers.length > 0 ? numberOverlap / st.numbers.length : 0;
+      if (overlapRatio > 0.7) st.score -= 15; // >70% same numbers as recent = heavy penalty
+      else if (overlapRatio > 0.5) st.score -= 8;
+      else if (overlapRatio > 0.3) st.score -= 3;
+
       // CATEGORY DIVERSITY: group types into categories, penalize if same category repeated
       const category = ['cor', 'paridade', 'alto_baixo'].includes(st.type) ? 'simple_bet'
         : ['coluna', 'duzia_unica', 'duzias', 'column_cycle', 'dozen_phase'].includes(st.type) ? 'group_bet'
@@ -1177,7 +1226,11 @@ serve(async (req) => {
           : 'special_bet';
         return cat === category;
       }).length;
-      if (categoryUsed >= 3) st.score -= 5;
+      if (categoryUsed >= 5) st.score -= 12;
+      else if (categoryUsed >= 3) st.score -= 6;
+
+      // BACKTEST VALIDATION: only trust strategies with decent backtest
+      if (st.probability < 60) st.score -= 5; // low-confidence penalty
     });
 
     // If two strategies tie, prefer higher payout
