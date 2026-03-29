@@ -235,251 +235,247 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-xl border p-4 transition-all ${
+      className={`rounded-2xl border-2 transition-all overflow-hidden ${
         betFlash
-          ? 'bg-gradient-to-r from-primary/40 to-yellow-500/20 border-primary shadow-lg shadow-primary/30'
+          ? 'border-primary shadow-lg shadow-primary/30'
           : config.enabled
-          ? 'bg-gradient-to-r from-green-500/10 to-primary/10 border-green-500/50'
-          : 'bg-card border-border'
+          ? 'border-green-500/50'
+          : 'border-border'
       }`}
+      style={{
+        background: betFlash
+          ? 'linear-gradient(145deg, hsl(var(--primary) / 0.15), hsl(var(--card)))'
+          : config.enabled
+          ? 'linear-gradient(145deg, rgba(34,197,94,0.06), hsl(var(--card)))'
+          : 'hsl(var(--card))',
+      }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
         <div className="flex items-center gap-2">
           <Zap className={`w-5 h-5 ${config.enabled ? 'text-green-400 animate-pulse' : 'text-primary'}`} />
-          <span className="font-display text-xs tracking-[0.15em] font-bold text-primary">CENTRAL DE APOSTAS</span>
+          <span className="font-bold text-xs tracking-[0.15em] text-primary">CENTRAL DE APOSTAS</span>
           {config.enabled && (
-            <span className="text-[7px] px-1.5 py-0.5 bg-green-500/20 rounded-full text-green-400 font-bold border border-green-500/30 animate-pulse">
-              AUTO-BET ATIVO
+            <span className="text-[8px] px-2 py-0.5 bg-green-500/15 rounded-md text-green-400 font-bold border border-green-500/30 animate-pulse">
+              AUTO
             </span>
           )}
           {stats.waitingResult && (
-            <span className="text-[7px] px-1.5 py-0.5 bg-yellow-500/20 rounded-full text-yellow-400 font-bold border border-yellow-500/30">
-              AGUARDANDO...
+            <span className="text-[8px] px-2 py-0.5 bg-yellow-500/15 rounded-md text-yellow-400 font-bold border border-yellow-500/30">
+              ⏳
             </span>
           )}
         </div>
         <div className="flex items-center gap-1.5">
           <button onClick={() => setShowSettings(!showSettings)}
             className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
-            <Settings className="w-3.5 h-3.5" />
+            <Settings className="w-4 h-4" />
           </button>
           <button onClick={resetStats}
             className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Stop alert */}
-      {stats.stopped && (
-        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-2.5 mb-3 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-          <div>
-            <p className="text-[10px] font-bold text-destructive">{stats.stopReason}</p>
-            <p className="text-[8px] text-muted-foreground">Clique em "Reset" ou ligue o Auto-Bet novamente para continuar.</p>
+      <div className="p-4 space-y-3">
+        {/* Stop alert */}
+        {stats.stopped && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 flex items-center gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+            <div>
+              <p className="text-[10px] font-bold text-destructive">{stats.stopReason}</p>
+              <p className="text-[8px] text-muted-foreground">Reset ou ligue Auto-Bet para continuar.</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Settings panel */}
-      <AnimatePresence>
-        {showSettings && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden mb-3"
-          >
-            <div className="bg-secondary/50 rounded-lg border border-border p-3 space-y-3">
-              {/* Bet value */}
-              <div>
-                <label className="text-[9px] text-muted-foreground mb-1 block font-bold">VALOR DA APOSTA (R$)</label>
-                <div className="flex gap-1.5">
-                  {[0.5, 1, 2, 5, 10, 25].map(v => (
-                    <button key={v} onClick={() => setConfig(prev => ({ ...prev, betValue: v }))}
-                      className={`flex-1 py-1.5 rounded-md text-[10px] font-bold transition-all ${
-                        config.betValue === v
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'bg-secondary text-muted-foreground hover:bg-muted'
-                      }`}>
-                      {v}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Min probability */}
-              <div>
-                <label className="text-[9px] text-muted-foreground mb-1 block font-bold">PROBABILIDADE MÍNIMA (%)</label>
-                <div className="flex gap-1.5">
-                  {[70, 75, 80, 85, 90].map(v => (
-                    <button key={v} onClick={() => setConfig(prev => ({ ...prev, minProbability: v }))}
-                      className={`flex-1 py-1.5 rounded-md text-[10px] font-bold transition-all ${
-                        config.minProbability === v
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'bg-secondary text-muted-foreground hover:bg-muted'
-                      }`}>
-                      {v}%
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Gale toggle */}
-              <div className="flex items-center justify-between">
+        {/* Settings panel */}
+        <AnimatePresence>
+          {showSettings && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="bg-secondary/40 rounded-xl border border-border/50 p-3.5 space-y-3">
                 <div>
-                  <span className="text-[9px] font-bold text-foreground">MARTINGALE (GALE)</span>
-                  <p className="text-[8px] text-muted-foreground">Dobra aposta após perda</p>
+                  <label className="text-[9px] text-muted-foreground mb-1.5 block font-bold tracking-wide">VALOR DA APOSTA (R$)</label>
+                  <div className="flex gap-1.5">
+                    {[0.5, 1, 2, 5, 10, 25].map(v => (
+                      <button key={v} onClick={() => setConfig(prev => ({ ...prev, betValue: v }))}
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all ${
+                          config.betValue === v
+                            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                            : 'bg-secondary text-muted-foreground hover:bg-muted'
+                        }`}>
+                        {v}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <button onClick={() => setConfig(prev => ({ ...prev, useGale: !prev.useGale }))}
-                  className={`w-10 h-5 rounded-full transition-all relative ${
-                    config.useGale ? 'bg-primary' : 'bg-secondary border border-border'
-                  }`}>
-                  <div className={`w-4 h-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-all ${
-                    config.useGale ? 'left-5.5' : 'left-0.5'
-                  }`} style={{ left: config.useGale ? '22px' : '2px' }} />
-                </button>
-              </div>
 
-              {config.useGale && (
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="text-[8px] text-muted-foreground block mb-0.5">Max Gale Steps</label>
+                <div>
+                  <label className="text-[9px] text-muted-foreground mb-1.5 block font-bold tracking-wide">PROBABILIDADE MÍNIMA (%)</label>
+                  <div className="flex gap-1.5">
+                    {[70, 75, 80, 85, 90].map(v => (
+                      <button key={v} onClick={() => setConfig(prev => ({ ...prev, minProbability: v }))}
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all ${
+                          config.minProbability === v
+                            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                            : 'bg-secondary text-muted-foreground hover:bg-muted'
+                        }`}>
+                        {v}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between py-1">
+                  <div>
+                    <span className="text-[9px] font-bold text-foreground">MARTINGALE (GALE)</span>
+                    <p className="text-[8px] text-muted-foreground">Dobra aposta após perda</p>
+                  </div>
+                  <button onClick={() => setConfig(prev => ({ ...prev, useGale: !prev.useGale }))}
+                    className={`w-11 h-6 rounded-full transition-all relative ${
+                      config.useGale ? 'bg-primary' : 'bg-secondary border border-border'
+                    }`}>
+                    <div className="w-4.5 h-4.5 rounded-full bg-white shadow-sm absolute top-[3px] transition-all"
+                      style={{ left: config.useGale ? '22px' : '3px', width: '18px', height: '18px' }} />
+                  </button>
+                </div>
+
+                {config.useGale && (
+                  <div>
+                    <label className="text-[8px] text-muted-foreground block mb-1">Max Gale Steps</label>
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map(v => (
                         <button key={v} onClick={() => setConfig(prev => ({ ...prev, maxGaleSteps: v }))}
-                          className={`flex-1 py-1 rounded text-[9px] font-bold ${
+                          className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold ${
                             config.maxGaleSteps === v ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
                           }`}>{v}</button>
                       ))}
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Stop Loss / Win */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[8px] text-muted-foreground block mb-0.5">STOP LOSS (R$)</label>
-                  <div className="flex gap-1">
-                    {[-20, -50, -100, -200].map(v => (
-                      <button key={v} onClick={() => setConfig(prev => ({ ...prev, stopLoss: v }))}
-                        className={`flex-1 py-1 rounded text-[8px] font-bold ${
-                          config.stopLoss === v ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-muted-foreground'
-                        }`}>{v}</button>
-                    ))}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[8px] text-muted-foreground block mb-1">STOP LOSS (R$)</label>
+                    <div className="flex gap-1">
+                      {[-20, -50, -100, -200].map(v => (
+                        <button key={v} onClick={() => setConfig(prev => ({ ...prev, stopLoss: v }))}
+                          className={`flex-1 py-1.5 rounded-lg text-[8px] font-bold ${
+                            config.stopLoss === v ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-muted-foreground'
+                          }`}>{v}</button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="text-[8px] text-muted-foreground block mb-0.5">STOP WIN (R$)</label>
-                  <div className="flex gap-1">
-                    {[50, 100, 200, 500].map(v => (
-                      <button key={v} onClick={() => setConfig(prev => ({ ...prev, stopWin: v }))}
-                        className={`flex-1 py-1 rounded text-[8px] font-bold ${
-                          config.stopWin === v ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
-                        }`}>+{v}</button>
-                    ))}
+                  <div>
+                    <label className="text-[8px] text-muted-foreground block mb-1">STOP WIN (R$)</label>
+                    <div className="flex gap-1">
+                      {[50, 100, 200, 500].map(v => (
+                        <button key={v} onClick={() => setConfig(prev => ({ ...prev, stopWin: v }))}
+                          className={`flex-1 py-1.5 rounded-lg text-[8px] font-bold ${
+                            config.stopWin === v ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+                          }`}>+{v}</button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Stats grid — with gradient borders */}
+        <div className="grid grid-cols-4 gap-2">
+          <div className="bg-secondary/40 rounded-xl p-2.5 text-center border border-border/30">
+            <DollarSign className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
+            <p className={`font-bold text-base font-mono ${stats.profit >= 0 ? 'text-green-400' : 'text-destructive'}`}>
+              R${stats.profit.toFixed(2)}
+            </p>
+            <span className="text-[8px] text-muted-foreground">Lucro</span>
+          </div>
+          <div className="bg-secondary/40 rounded-xl p-2.5 text-center border border-border/30">
+            <Target className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
+            <p className="font-bold text-base font-mono text-foreground">{winRate}%</p>
+            <span className="text-[8px] text-muted-foreground">Acerto</span>
+          </div>
+          <div className="bg-secondary/40 rounded-xl p-2.5 text-center border border-border/30">
+            <TrendingUp className="w-3.5 h-3.5 text-green-400 mx-auto mb-1" />
+            <p className="font-bold text-base font-mono text-green-400">{stats.wins}</p>
+            <span className="text-[8px] text-muted-foreground">Wins</span>
+          </div>
+          <div className="bg-secondary/40 rounded-xl p-2.5 text-center border border-border/30">
+            <TrendingDown className="w-3.5 h-3.5 text-destructive mx-auto mb-1" />
+            <p className="font-bold text-base font-mono text-destructive">{stats.losses}</p>
+            <span className="text-[8px] text-muted-foreground">Losses</span>
+          </div>
+        </div>
+
+        {/* Current bet info */}
+        <div className="flex items-center gap-2 text-[10px] px-1">
+          <span className="text-muted-foreground">Aposta atual:</span>
+          <span className="font-bold text-primary font-mono">R${getCurrentBetAmount().toFixed(2)}</span>
+          {config.useGale && stats.currentGaleStep > 0 && (
+            <span className="text-[8px] px-2 py-0.5 bg-yellow-500/15 text-yellow-400 rounded-md font-bold border border-yellow-500/30">
+              GALE {stats.currentGaleStep}/{config.maxGaleSteps}
+            </span>
+          )}
+          <span className="text-muted-foreground ml-auto">Total: {stats.totalBets} apostas</span>
+        </div>
+
+        {/* Waiting result */}
+        {stats.waitingResult && stats.lastBetNumbers.length > 0 && (
+          <div className="bg-yellow-500/8 border border-yellow-500/25 rounded-xl p-3">
+            <span className="text-[9px] text-yellow-400 font-bold block mb-1.5">⏳ APOSTA ATIVA — Aguardando resultado...</span>
+            <div className="flex flex-wrap gap-1.5">
+              {stats.lastBetNumbers.map((n, i) => (
+                <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold ring-1 ${
+                  getColor(n) === 'red' ? 'bg-red-600 text-white ring-red-400/30' :
+                  getColor(n) === 'black' ? 'bg-zinc-800 text-white ring-zinc-500/30' :
+                  'bg-green-600 text-white ring-green-400/30'
+                }`}>{n}</div>
+              ))}
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-4 gap-2 mb-3">
-        <div className="bg-secondary/50 rounded-lg p-2 text-center">
-          <DollarSign className="w-3 h-3 text-muted-foreground mx-auto mb-0.5" />
-          <p className={`font-display text-sm font-bold ${stats.profit >= 0 ? 'text-green-400' : 'text-destructive'}`}>
-            R${stats.profit.toFixed(2)}
-          </p>
-          <span className="text-[7px] text-muted-foreground">Lucro</span>
-        </div>
-        <div className="bg-secondary/50 rounded-lg p-2 text-center">
-          <Target className="w-3 h-3 text-muted-foreground mx-auto mb-0.5" />
-          <p className="font-display text-sm font-bold text-foreground">{winRate}%</p>
-          <span className="text-[7px] text-muted-foreground">Acerto</span>
-        </div>
-        <div className="bg-secondary/50 rounded-lg p-2 text-center">
-          <TrendingUp className="w-3 h-3 text-green-400 mx-auto mb-0.5" />
-          <p className="font-display text-sm font-bold text-green-400">{stats.wins}</p>
-          <span className="text-[7px] text-muted-foreground">Wins</span>
-        </div>
-        <div className="bg-secondary/50 rounded-lg p-2 text-center">
-          <TrendingDown className="w-3 h-3 text-destructive mx-auto mb-0.5" />
-          <p className="font-display text-sm font-bold text-destructive">{stats.losses}</p>
-          <span className="text-[7px] text-muted-foreground">Losses</span>
-        </div>
-      </div>
-
-      {/* Current bet info */}
-      <div className="flex items-center gap-2 mb-3 text-[9px]">
-        <span className="text-muted-foreground">Aposta atual:</span>
-        <span className="font-bold text-accent">R${getCurrentBetAmount().toFixed(2)}</span>
-        {config.useGale && stats.currentGaleStep > 0 && (
-          <span className="text-[7px] px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded font-bold">
-            GALE {stats.currentGaleStep}/{config.maxGaleSteps}
-          </span>
-        )}
-        <span className="text-muted-foreground ml-auto">Total: {stats.totalBets} apostas</span>
-      </div>
-
-      {/* Waiting result indicator */}
-      {stats.waitingResult && stats.lastBetNumbers.length > 0 && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2 mb-3">
-          <span className="text-[8px] text-yellow-400 font-bold block mb-1">⏳ APOSTA ATIVA — Aguardando resultado...</span>
-          <div className="flex flex-wrap gap-1">
-            {stats.lastBetNumbers.map((n, i) => (
-              <div key={i} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold border ${
-                getColor(n) === 'red' ? 'bg-red-600 text-white border-red-500/50' :
-                getColor(n) === 'black' ? 'bg-gray-800 text-white border-gray-600/50' :
-                'bg-green-600 text-white border-green-500/50'
-              }`}>{n}</div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Scoreboard - Placar de Acertos e Erros */}
-      {stats.history.length > 0 && (
-        <div className="bg-secondary/30 border border-border rounded-lg p-2.5 mb-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-bold text-primary tracking-wider">📊 PLACAR DE RESULTADOS</span>
-            <span className="text-[8px] text-muted-foreground">{stats.history.length} resultado{stats.history.length > 1 ? 's' : ''}</span>
-          </div>
-          
-          {/* Visual dots row */}
-          <div className="flex flex-wrap gap-1 mb-2">
-            {stats.history.slice(0, 15).map((r, i) => (
-              <motion.div
-                key={r.timestamp}
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold border ${
-                  r.won
-                    ? 'bg-green-500/20 border-green-500/50 text-green-400'
-                    : 'bg-destructive/20 border-destructive/50 text-destructive'
-                }`}
-                title={r.won ? `✅ Acertou! Nº ${r.actual}` : `❌ Errou. Nº ${r.actual}`}
-              >
-                {r.won ? '✓' : '✗'}
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Last result detail */}
-          {stats.history.length > 0 && (
-            <div className={`rounded-md p-2 text-[9px] flex items-center gap-2 ${
+        {/* Scoreboard */}
+        {stats.history.length > 0 && (
+          <div className="bg-secondary/30 border border-border/40 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[9px] font-bold text-primary tracking-wider">📊 PLACAR</span>
+              <span className="text-[8px] text-muted-foreground">{stats.history.length} resultado{stats.history.length > 1 ? 's' : ''}</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mb-2.5">
+              {stats.history.slice(0, 15).map((r) => (
+                <motion.div
+                  key={r.timestamp}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold ring-1 ${
+                    r.won
+                      ? 'bg-green-500/15 ring-green-500/40 text-green-400'
+                      : 'bg-destructive/15 ring-destructive/40 text-destructive'
+                  }`}
+                  title={r.won ? `✅ Nº ${r.actual}` : `❌ Nº ${r.actual}`}
+                >
+                  {r.won ? '✓' : '✗'}
+                </motion.div>
+              ))}
+            </div>
+            <div className={`rounded-lg p-2.5 text-[9px] flex items-center gap-2.5 ${
               stats.history[0].won
-                ? 'bg-green-500/10 border border-green-500/30'
-                : 'bg-destructive/10 border border-destructive/30'
+                ? 'bg-green-500/8 border border-green-500/25'
+                : 'bg-destructive/8 border border-destructive/25'
             }`}>
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border ${
-                getColor(stats.history[0].actual) === 'red' ? 'bg-red-600 text-white border-red-500/50' :
-                getColor(stats.history[0].actual) === 'black' ? 'bg-gray-800 text-white border-gray-600/50' :
-                'bg-green-600 text-white border-green-500/50'
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ring-1 ${
+                getColor(stats.history[0].actual) === 'red' ? 'bg-red-600 text-white ring-red-400/30' :
+                getColor(stats.history[0].actual) === 'black' ? 'bg-zinc-800 text-white ring-zinc-500/30' :
+                'bg-green-600 text-white ring-green-400/30'
               }`}>
                 {stats.history[0].actual}
               </div>
@@ -487,41 +483,41 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                 <span className={`font-bold ${stats.history[0].won ? 'text-green-400' : 'text-destructive'}`}>
                   {stats.history[0].won ? '✅ ACERTOU!' : '❌ ERROU'}
                 </span>
-                <span className="text-muted-foreground ml-2">
+                <span className="text-muted-foreground ml-2 font-mono">
                   {stats.history[0].profit >= 0 ? '+' : ''}R${stats.history[0].profit.toFixed(2)}
                 </span>
               </div>
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Action buttons — bold gradient style */}
+        <div className="flex gap-2.5 pt-1">
+          <Button
+            onClick={placeBet}
+            disabled={!canBet}
+            className={`flex-1 h-12 font-bold tracking-wider text-sm rounded-xl transition-all ${
+              canBet
+                ? 'bg-gradient-to-r from-primary via-pink-500 to-primary hover:opacity-90 text-primary-foreground shadow-lg shadow-primary/30'
+                : 'bg-secondary text-muted-foreground'
+            }`}
+          >
+            <Zap className="w-4 h-4 mr-1.5" />
+            {stats.waitingResult ? 'AGUARDANDO...' : !hasSignal ? 'SEM SINAL' : 'APOSTAR AGORA'}
+          </Button>
+
+          <Button
+            onClick={toggleAutoBet}
+            className={`px-5 h-12 font-bold tracking-wider text-sm rounded-xl transition-all ${
+              config.enabled
+                ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
+                : 'bg-gradient-to-r from-green-600 to-emerald-500 hover:opacity-90 text-white shadow-lg shadow-green-600/30'
+            }`}
+          >
+            {config.enabled ? <Square className="w-4 h-4 mr-1.5" /> : <Play className="w-4 h-4 mr-1.5" />}
+            {config.enabled ? 'PARAR' : 'AUTO'}
+          </Button>
         </div>
-      )}
-
-
-      <div className="flex gap-2">
-        <Button
-          onClick={placeBet}
-          disabled={!canBet}
-          className={`flex-1 font-display tracking-wider text-sm ${
-            canBet
-              ? 'bg-gradient-to-r from-primary to-green-500 hover:from-primary/90 hover:to-green-500/90 text-primary-foreground shadow-lg shadow-primary/30'
-              : 'bg-secondary text-muted-foreground'
-          }`}
-        >
-          <Zap className="w-4 h-4 mr-1" />
-          {stats.waitingResult ? 'AGUARDANDO...' : !hasSignal ? 'SEM SINAL' : 'APOSTAR AGORA'}
-        </Button>
-
-        <Button
-          onClick={toggleAutoBet}
-          className={`px-4 font-display tracking-wider text-sm ${
-            config.enabled
-              ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
-              : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/30'
-          }`}
-        >
-          {config.enabled ? <Square className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
-          {config.enabled ? 'PARAR' : 'AUTO'}
-        </Button>
       </div>
     </motion.div>
   );
