@@ -443,6 +443,203 @@ const detectGatilhoPerfeito = (nums: number[], hotTerminal: number, pullNums: nu
 
 const REED_MAX = 4;
 
+// ========================================================
+// ADVANCED ANALYSIS ENGINES
+// ========================================================
+
+// MOMENTUM INDEX — measures directional momentum of categories
+const calculateMomentum = (nums: number[], getCat: (n: number) => string, window = 20): Record<string, { momentum: number; trend: 'rising' | 'falling' | 'stable'; streak: number }> => {
+  const result: Record<string, { momentum: number; trend: 'rising' | 'falling' | 'stable'; streak: number }> = {};
+  if (nums.length < window) return result;
+  // Split into 4 micro-windows
+  const wSize = Math.floor(window / 4);
+  const windows: Record<string, number[]> = {};
+  for (let w = 0; w < 4; w++) {
+    const slice = nums.slice(w * wSize, (w + 1) * wSize);
+    const catCount: Record<string, number> = {};
+    slice.forEach(n => { const c = getCat(n); if (c) catCount[c] = (catCount[c] || 0) + 1; });
+    for (const [cat, count] of Object.entries(catCount)) {
+      if (!windows[cat]) windows[cat] = [];
+      windows[cat].push(count);
+    }
+  }
+  for (const [cat, counts] of Object.entries(windows)) {
+    while (counts.length < 4) counts.push(0);
+    // Momentum = weighted slope (recent windows matter more)
+    const momentum = (counts[0] * 4 + counts[1] * 2 - counts[2] * 1 - counts[3] * 2) / (4 * wSize);
+    // Streak: consecutive windows with increasing count
+    let streak = 0;
+    for (let i = 0; i < counts.length - 1; i++) {
+      if (counts[i] >= counts[i + 1]) streak++;
+      else break;
+    }
+    const trend = momentum > 0.15 ? 'rising' : momentum < -0.15 ? 'falling' : 'stable';
+    result[cat] = { momentum: +momentum.toFixed(3), trend, streak };
+  }
+  return result;
+};
+
+// VOLATILITY INDEX — measures how unpredictable the session is
+const calculateVolatility = (nums: number[], window = 30): { score: number; level: 'baixa' | 'média' | 'alta' | 'extrema'; arcVolatility: number; categoryVolatility: number } => {
+  if (nums.length < 10) return { score: 0, level: 'média', arcVolatility: 0, categoryVolatility: 0 };
+  const slice = nums.slice(0, Math.min(window, nums.length));
+  // Arc volatility: std deviation of wheel distances
+  const arcs: number[] = [];
+  for (let i = 0; i < slice.length - 1; i++) arcs.push(wheelDist(slice[i], slice[i + 1]));
+  const arcMean = arcs.reduce((a, b) => a + b, 0) / (arcs.length || 1);
+  const arcVar = arcs.reduce((a, b) => a + Math.pow(b - arcMean, 2), 0) / (arcs.length || 1);
+  const arcVolatility = Math.sqrt(arcVar);
+  // Category volatility: how often sector/dozen/column changes
+  let sectorChanges = 0, dozenChanges = 0, colorChanges = 0;
+  for (let i = 0; i < slice.length - 1; i++) {
+    if (getSector(slice[i]) !== getSector(slice[i + 1])) sectorChanges++;
+    if (getDozen(slice[i]) !== getDozen(slice[i + 1])) dozenChanges++;
+    if (getColor(slice[i]) !== getColor(slice[i + 1])) colorChanges++;
+  }
+  const totalTransitions = slice.length - 1 || 1;
+  const categoryVolatility = ((sectorChanges + dozenChanges + colorChanges) / (totalTransitions * 3)) * 100;
+  // Combined score
+  const score = Math.round(arcVolatility * 3 + categoryVolatility * 0.7);
+  const level = score > 80 ? 'extrema' : score > 55 ? 'alta' : score > 30 ? 'média' : 'baixa';
+  return { score, level, arcVolatility: +arcVolatility.toFixed(1), categoryVolatility: +categoryVolatility.toFixed(1) };
+};
+
+// RECENCY-WEIGHTED FREQUENCY — exponential decay weight for recent numbers
+const recencyWeightedFreq = (nums: number[], decay = 0.92): Record<number, number> => {
+  const freq: Record<number, number> = {};
+  for (let n = 0; n <= 36; n++) freq[n] = 0;
+  nums.forEach((n, i) => { freq[n] += Math.pow(decay, i); });
+  return freq;
+};
+
+// PATTERN BREAKOUT DETECTION — identifies when a stable pattern suddenly breaks
+const detectBreakout = (nums: number[]): { active: boolean; type: string; description: string; confidence: number }[] => {
+  const breakouts: { active: boolean; type: string; description: string; confidence: number }[] = [];
+  if (nums.length < 20) return breakouts;
+  // Check if recent 5 numbers break the pattern of the previous 15
+  const recent5 = nums.slice(0, 5);
+  const prev15 = nums.slice(5, 20);
+  // Sector breakout
+  const prevSectorDom: Record<string, number> = {};
+  prev15.forEach(n => { const s = getSector(n); prevSectorDom[s] = (prevSectorDom[s] || 0) + 1; });
+  const topPrevSector = Object.entries(prevSectorDom).sort(([,a],[,b]) => b - a)[0];
+  if (topPrevSector && topPrevSector[1] >= 8) {
+    const recentInSector = recent5.filter(n => getSector(n) === topPrevSector[0]).length;
+    if (recentInSector <= 1) {
+      breakouts.push({
+        active: true, type: 'sector_breakout',
+        description: `Setor ${topPrevSector[0]} dominava (${topPrevSector[1]}/15) mas parou nos últimos 5 giros`,
+        confidence: Math.min(85, 50 + (topPrevSector[1] - recentInSector) * 5),
+      });
+    }
+  }
+  // Color breakout
+  const prevRedCount = prev15.filter(n => getColor(n) === 'red').length;
+  const prevBlackCount = prev15.filter(n => getColor(n) === 'black').length;
+  const recentRedCount = recent5.filter(n => getColor(n) === 'red').length;
+  if (prevRedCount >= 10 && recentRedCount <= 1) {
+    breakouts.push({ active: true, type: 'color_breakout', description: `Vermelho dominava (${prevRedCount}/15) — Preto assumindo`, confidence: 78 });
+  } else if (prevBlackCount >= 10 && recent5.filter(n => getColor(n) === 'black').length <= 1) {
+    breakouts.push({ active: true, type: 'color_breakout', description: `Preto dominava (${prevBlackCount}/15) — Vermelho assumindo`, confidence: 78 });
+  }
+  // Dozen breakout
+  const prevDzCount = [0, 0, 0];
+  prev15.forEach(n => { const d = getDozen(n); if (d > 0) prevDzCount[d - 1]++; });
+  const hotDzIdx = prevDzCount.indexOf(Math.max(...prevDzCount));
+  if (prevDzCount[hotDzIdx] >= 8) {
+    const recentInDz = recent5.filter(n => getDozen(n) === hotDzIdx + 1).length;
+    if (recentInDz <= 0) {
+      breakouts.push({ active: true, type: 'dozen_breakout', description: `Dúzia ${hotDzIdx + 1} dominava (${prevDzCount[hotDzIdx]}/15) — saiu de cena`, confidence: 75 });
+    }
+  }
+  // High/Low breakout
+  const prevHighCount = prev15.filter(n => n >= 19).length;
+  const recentHighCount = recent5.filter(n => n >= 19).length;
+  if (prevHighCount >= 10 && recentHighCount <= 1) {
+    breakouts.push({ active: true, type: 'highlow_breakout', description: `Altos dominavam (${prevHighCount}/15) — Baixos assumindo`, confidence: 75 });
+  } else if (prevHighCount <= 5 && recentHighCount >= 4) {
+    breakouts.push({ active: true, type: 'highlow_breakout', description: `Baixos dominavam — Altos assumindo (${recentHighCount}/5)`, confidence: 72 });
+  }
+  return breakouts;
+};
+
+// BAYESIAN CONDITIONAL PROBABILITY — P(next=X | last=Y)
+const bayesianPredict = (nums: number[], getCat: (n: number) => string | number): { predicted: string | number | null; probability: number; matrix: Record<string, Record<string, number>> } => {
+  const matrix: Record<string, Record<string, number>> = {};
+  for (let i = 0; i < nums.length - 1; i++) {
+    const from = String(getCat(nums[i + 1]));
+    const to = String(getCat(nums[i]));
+    if (!matrix[from]) matrix[from] = {};
+    matrix[from][to] = (matrix[from][to] || 0) + 1;
+  }
+  // Predict from last number
+  const lastCat = String(getCat(nums[0]));
+  const row = matrix[lastCat];
+  if (!row) return { predicted: null, probability: 0, matrix };
+  const total = Object.values(row).reduce((a, b) => a + b, 0);
+  const best = Object.entries(row).sort(([,a],[,b]) => b - a)[0];
+  if (!best || total < 5) return { predicted: null, probability: 0, matrix };
+  return { predicted: best[0], probability: Math.round((best[1] / total) * 100), matrix };
+};
+
+// WHEEL ZONE MOMENTUM — which physical zone on wheel has highest recent activity
+const wheelZoneMomentum = (nums: number[], zones = 6): { zone: number; momentum: number; numbers: number[]; label: string }[] => {
+  const zoneSize = Math.floor(WL / zones);
+  const results: { zone: number; momentum: number; numbers: number[]; label: string }[] = [];
+  for (let z = 0; z < zones; z++) {
+    const zoneNums = WHEEL.slice(z * zoneSize, (z + 1) * zoneSize);
+    // Recency-weighted count
+    let momentum = 0;
+    nums.slice(0, 30).forEach((n, i) => {
+      if (zoneNums.includes(n)) momentum += Math.pow(0.9, i);
+    });
+    const centerNum = zoneNums[Math.floor(zoneNums.length / 2)];
+    results.push({ zone: z + 1, momentum: +momentum.toFixed(2), numbers: zoneNums, label: `Zona ${z + 1} (perto do ${centerNum})` });
+  }
+  return results.sort((a, b) => b.momentum - a.momentum);
+};
+
+// FIBONACCI GAP ANALYSIS — numbers due based on Fibonacci intervals
+const fibonacciGapAnalysis = (nums: number[]): { number: number; lastSeen: number; fibonacci: number; due: boolean }[] => {
+  const FIB = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
+  const results: { number: number; lastSeen: number; fibonacci: number; due: boolean }[] = [];
+  for (let n = 0; n <= 36; n++) {
+    let lastSeen = -1;
+    for (let i = 0; i < nums.length; i++) { if (nums[i] === n) { lastSeen = i; break; } }
+    if (lastSeen < 0) lastSeen = nums.length;
+    // Check if lastSeen matches a Fibonacci number (±1 tolerance)
+    const matchedFib = FIB.find(f => Math.abs(lastSeen - f) <= 1);
+    if (matchedFib && lastSeen > 5) {
+      results.push({ number: n, lastSeen, fibonacci: matchedFib, due: true });
+    }
+  }
+  return results.sort((a, b) => b.lastSeen - a.lastSeen);
+};
+
+// MULTI-DIMENSION CONVERGENCE — finds numbers where multiple independent dimensions agree
+const multiDimensionConvergence = (
+  nums: number[],
+  sectorPred: string | null,
+  dozenPred: number | null,
+  terminalPred: number | null,
+  colorBias: string | null,
+  highLowBias: 'high' | 'low' | null
+): { number: number; dimensions: number; reasons: string[] }[] => {
+  const results: { number: number; dimensions: number; reasons: string[] }[] = [];
+  for (let n = 0; n <= 36; n++) {
+    let dims = 0;
+    const reasons: string[] = [];
+    if (sectorPred && getSector(n) === sectorPred) { dims++; reasons.push(`Setor ${sectorPred}`); }
+    if (dozenPred && getDozen(n) === dozenPred) { dims++; reasons.push(`D${dozenPred}`); }
+    if (terminalPred !== null && n % 10 === terminalPred) { dims++; reasons.push(`T${terminalPred}`); }
+    if (colorBias === 'red' && RED.includes(n)) { dims++; reasons.push('Vermelho'); }
+    else if (colorBias === 'black' && !RED.includes(n) && n > 0) { dims++; reasons.push('Preto'); }
+    if (highLowBias === 'high' && n >= 19) { dims++; reasons.push('Alto'); }
+    else if (highLowBias === 'low' && n >= 1 && n <= 18) { dims++; reasons.push('Baixo'); }
+    if (dims >= 3) results.push({ number: n, dimensions: dims, reasons });
+  }
+  return results.sort((a, b) => b.dimensions - a.dimensions);
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
