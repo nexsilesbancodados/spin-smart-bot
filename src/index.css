@@ -6,46 +6,46 @@
 
 @layer base {
   :root {
-    --background: 0 0% 7%;
+    --background: 220 40% 8%;
     --foreground: 0 0% 95%;
 
-    --card: 0 0% 10%;
+    --card: 220 35% 12%;
     --card-foreground: 0 0% 95%;
 
-    --popover: 0 0% 10%;
+    --popover: 220 35% 12%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 187 100% 45%;
-    --primary-foreground: 0 0% 5%;
+    --primary: 330 100% 55%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 14%;
+    --secondary: 220 30% 16%;
     --secondary-foreground: 0 0% 85%;
 
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 50%;
+    --muted: 220 25% 14%;
+    --muted-foreground: 220 15% 55%;
 
-    --accent: 300 100% 45%;
+    --accent: 330 100% 55%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 16%;
-    --input: 0 0% 16%;
-    --ring: 187 100% 45%;
+    --border: 220 25% 18%;
+    --input: 220 25% 18%;
+    --ring: 330 100% 55%;
 
     --radius: 0.75rem;
 
-    --neon-cyan: 187 100% 50%;
-    --neon-cyan-glow: 187 100% 60%;
-    --neon-pink: 300 100% 50%;
-    --neon-pink-glow: 300 100% 60%;
+    --neon-cyan: 200 100% 50%;
+    --neon-cyan-glow: 200 100% 60%;
+    --neon-pink: 330 100% 55%;
+    --neon-pink-glow: 330 100% 65%;
     --neon-green: 145 80% 42%;
     --neon-green-glow: 145 80% 52%;
-    --gold: 43 96% 56%;
-    --gold-glow: 43 96% 66%;
+    --gold: 50 100% 50%;
+    --gold-glow: 50 100% 60%;
     --roulette-red: 0 72% 51%;
-    --roulette-black: 0 0% 10%;
+    --roulette-black: 220 20% 12%;
     --roulette-green-number: 145 80% 35%;
 
     --sidebar-background: 0 0% 8%;
