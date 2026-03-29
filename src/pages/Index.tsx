@@ -1200,6 +1200,16 @@ const Index = () => {
                     </button>
                   ))}
                   <span className="text-[8px] text-muted-foreground font-mono ml-1">{Math.min(historyLimit, allNumbers.length)} giros</span>
+                  <button onClick={async () => {
+                    if (!confirm('Limpar todo o histórico de números armazenados?')) return;
+                    await supabase.from('roulette_numbers').delete().not('id', 'is', null);
+                    setStoredNumbers([]);
+                    setApiNumbers([]);
+                    prevNumbersRef.current = '';
+                    toast.success('Histórico limpo!');
+                  }} className="text-[9px] px-2 py-1 rounded-lg font-bold bg-destructive/20 text-destructive border border-destructive/30 hover:bg-destructive/30 transition-all ml-1">
+                    🗑️ Limpar
+                  </button>
                 </div>
               </div>
 
