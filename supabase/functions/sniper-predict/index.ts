@@ -2280,6 +2280,31 @@ serve(async (req) => {
           if (getSector(n) === pp.dominantSector) { s += 1; r.push(`🧲 Setor puxado`); }
         }
       }
+      // COMMUNITY PULL MAP: static documented correlations from Playtech BR community
+      const lastNum = numbers[0];
+      const pullTargets = PULL_MAP[lastNum];
+      if (pullTargets && pullTargets.includes(n)) {
+        s += 4; r.push(`📚 Puxa(${lastNum}→${n})`);
+      }
+      // COMMUNITY PULL TERMINALS: boost all numbers of pulled terminal
+      const pullTerms = PULL_TERMINALS[lastNum];
+      if (pullTerms) {
+        const nTerm = n % 10;
+        if (pullTerms.includes(nTerm)) {
+          s += 2.5; r.push(`📚 PuxaT${nTerm}`);
+        }
+      }
+      // COMMUNITY PULL CAVALOS: boost cavalos groups pulled by last number
+      const pullCav = PULL_CAVALOS[lastNum];
+      if (pullCav) {
+        const nCav = getCavalo(n);
+        if (nCav && pullCav.includes(nCav)) {
+          s += 2; r.push(`📚 PuxaC${nCav}`);
+        }
+      }
+      // FINALES WEIGHT: terminals 0-6 have 4 numbers (higher probability) vs 7-9 with 3
+      const nFinal = n % 10;
+      if (FINALES_WEIGHT[nFinal] === 4) { s += 0.5; } // slight boost for more probable finals
       // TERMINAL PROGRESSION: predicted next terminal from escalation
       if (terminalProgression.predictedNext !== null && n % 10 === terminalProgression.predictedNext) { s += 2.5; r.push(`🐎 Escada T${terminalProgression.predictedNext}`); }
       // DIAMOND DEFLECTORS: if current diamond zone predicts a sector, boost numbers in that sector
