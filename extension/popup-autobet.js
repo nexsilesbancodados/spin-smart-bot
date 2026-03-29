@@ -11,7 +11,7 @@ function loadAutobetUI() {
 
     // Fill config fields
     const el = (id) => document.getElementById(id);
-    if (el('ab-apiUrl')) el('ab-apiUrl').value = config.apiUrl || '';
+    if (el('ab-apiUrl')) el('ab-apiUrl').value = config.apiUrl || 'https://wyhvrblozyblbqogikoz.supabase.co/functions/v1/sniper-predict';
     if (el('ab-betValue')) el('ab-betValue').value = config.betValue || 1;
     if (el('ab-stopLoss')) el('ab-stopLoss').value = config.stopLoss || -50;
     if (el('ab-stopWin')) el('ab-stopWin').value = config.stopWin || 100;
