@@ -1,6 +1,27 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Robust JSON extraction from LLM responses
+function safeParseJson(raw: string): any {
+  let cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  const jsonStart = cleaned.search(/[\{\[]/);
+  const isArray = jsonStart !== -1 && cleaned[jsonStart] === '[';
+  const jsonEnd = cleaned.lastIndexOf(isArray ? ']' : '}');
+  if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON found in response");
+  cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+  try { return JSON.parse(cleaned); } catch (_) {
+    cleaned = cleaned
+      .replace(/,\s*}/g, "}")
+      .replace(/,\s*]/g, "]")
+      .replace(/[\x00-\x1F\x7F]/g, "")
+      .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":') // unquoted keys
+      .replace(/:\s*'([^']*)'/g, ': "$1"'); // single-quoted values
+    try { return JSON.parse(cleaned); } catch (e2) {
+      throw new Error(`JSON repair failed: ${(e2 as Error).message}`);
+    }
+  }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -724,7 +745,7 @@ Responda APENAS via tool call. Gere 15-25 aprendizados profundos, variados e aci
     let learnings: any[] = [];
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall?.function?.arguments) {
-      const parsed = JSON.parse(toolCall.function.arguments);
+      const parsed = safeParseJson(toolCall.function.arguments);
       learnings = parsed.learnings || [];
     }
 
@@ -807,7 +828,7 @@ Responda APENAS via tool call. Gere 15-25 aprendizados profundos, variados e aci
       const pData = await patternRes.json();
       const pTC = pData.choices?.[0]?.message?.tool_calls?.[0];
       if (pTC?.function?.arguments) {
-        const parsed = JSON.parse(pTC.function.arguments);
+        const parsed = safeParseJson(pTC.function.arguments);
         const patterns = (parsed.patterns || []).map((p: any) => ({
           pattern_type: p.pattern_type,
           description: p.description,
