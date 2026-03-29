@@ -7,6 +7,7 @@ import PasteHistory from '@/components/PasteHistory';
 import LiveStats from '@/components/LiveStats';
 import PremiumTable from '@/components/PremiumTable';
 import QuickNumberPad from '@/components/QuickNumberPad';
+import AIAnalysis from '@/components/AIAnalysis';
 import { CircleDot, ChevronDown, MonitorPlay, BarChart3, Flame, Snowflake, Play, Square, Zap, Timer } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
