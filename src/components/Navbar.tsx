@@ -41,6 +41,9 @@ interface NavbarProps {
   setStrategyFilter: (v: string) => void;
   predStats: { hits: number; misses: number; exact: number; total: number };
   setPredStats: (stats: { hits: number; misses: number; exact: number; total: number }) => void;
+  activePatternCount?: number;
+  soundEnabled?: boolean;
+  setSoundEnabled?: (v: boolean) => void;
 }
 
 const Navbar = ({
@@ -48,7 +51,7 @@ const Navbar = ({
   confidenceFilter, setConfidenceFilter, lastUpdate,
   fetchNumbers, fetchStored, autoLearnStatus, onShowHistory,
   aiEnabled, setAiEnabled, strategyFilter, setStrategyFilter,
-  predStats, setPredStats,
+  predStats, setPredStats, activePatternCount, soundEnabled, setSoundEnabled,
 }: NavbarProps) => {
   const winPct = predStats.total > 0 ? ((predStats.hits / predStats.total) * 100).toFixed(1) : '0.0';
   const isWinning = predStats.total > 0 && (predStats.hits / predStats.total) >= 0.5;
@@ -81,6 +84,27 @@ const Navbar = ({
           <span className="text-[7px] px-1.5 py-0.5 rounded font-bold border bg-primary/10 text-primary border-primary/30 font-display tracking-widest hidden md:inline-block">
             AI 24H
           </span>
+
+          {activePatternCount != null && activePatternCount > 0 && (
+            <div className="hidden md:flex items-center gap-1 text-[7px] px-1.5 py-0.5 rounded-md bg-secondary border border-border">
+              <span className="text-green-400 font-bold">{activePatternCount}</span>
+              <span className="text-muted-foreground">padrões</span>
+            </div>
+          )}
+
+          {setSoundEnabled && (
+            <button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[8px] font-bold border transition-all ${
+                soundEnabled
+                  ? 'bg-primary/10 text-primary border-primary/25'
+                  : 'bg-secondary/40 text-muted-foreground border-border/40'
+              }`}
+              title={soundEnabled ? 'Som ligado' : 'Som desligado'}
+            >
+              {soundEnabled ? '🔊' : '🔇'}
+            </button>
+          )}
 
           <Select value={strategyFilter} onValueChange={setStrategyFilter}>
             <SelectTrigger className="h-7 w-[130px] sm:w-[160px] text-[9px] font-bold border-primary/25 bg-primary/5 text-primary rounded-md px-2 py-0 gap-1 focus:ring-1 focus:ring-primary/30">
