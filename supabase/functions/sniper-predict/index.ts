@@ -3004,7 +3004,7 @@ serve(async (req) => {
 
     // Save prediction to history — ONLY when truly confident (sniper or strong alert)
     // The AI must be selective: only commit when multiple layers converge strongly
-    const shouldSave = isNewNumber && mode === 'sniper' && winner.numbers.length > 0 && finalProbability >= 85;
+    const shouldSave = isNewNumber && (mode === 'sniper' || (mode === 'alert' && finalProbability >= 80)) && winner.numbers.length > 0;
     if (shouldSave) {
       await supabase.from('prediction_history').insert({
         strategy_type: winner.type,
