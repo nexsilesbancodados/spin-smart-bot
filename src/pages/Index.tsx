@@ -582,7 +582,7 @@ const Index = () => {
                             {sniperData.layerResults && (
                               <>
                                 <span>•</span>
-                                <span>{sniperData.layerResults.total}/500 camadas</span>
+                                <span>{sniperData.layerResults.total}/{sniperData.layerResults.max || 1000} camadas</span>
                               </>
                             )}
                           </div>
@@ -638,7 +638,7 @@ const Index = () => {
                         {sniperData.message}
                       </p>
                       {sniperData.convergenceScore !== undefined && (
-                        <span className="text-[8px] font-mono text-muted-foreground ml-auto">Camadas: {sniperData.convergenceScore}/500</span>
+                        <span className="text-[8px] font-mono text-muted-foreground ml-auto">Camadas: {sniperData.convergenceScore}/{sniperData.layerResults?.max || 1000}</span>
                       )}
                     </div>
                   )}
@@ -698,7 +698,91 @@ const Index = () => {
             </motion.div>
           )}
 
-          {/* 3-LAYER MEMORY WINDOWS: Micro / Mesa / Macro */}
+          {/* DEEP MEMORY — Memória Profunda + Genética + Física */}
+          {sniperData?.deepMemory && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-r from-blue-500/10 via-card to-emerald-500/10 rounded-xl border border-blue-500/30 p-3"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Eye className="w-4 h-4 text-blue-400" />
+                <span className="font-display text-[10px] tracking-[0.15em] font-bold text-blue-400">MEMÓRIA PROFUNDA & FÍSICA AVANÇADA</span>
+                <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold ml-auto">
+                  1000 CAMADAS
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                {/* Ancestral Patterns */}
+                <div className="bg-secondary/40 rounded-lg p-2 border border-border">
+                  <span className="text-[8px] font-bold text-purple-400 block mb-1">👻 SEQUÊNCIAS ANCESTRAIS</span>
+                  {sniperData.deepMemory.ancestralPatterns?.length > 0 ? (
+                    sniperData.deepMemory.ancestralPatterns.map((p: any, i: number) => (
+                      <div key={i} className="text-[8px] text-foreground/80 mb-0.5">
+                        <span className="font-mono">{p.pattern?.slice(0, 5).join(',')}</span>
+                        <span className="text-muted-foreground ml-1">({p.occurrences}x visto)</span>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-[8px] text-muted-foreground">Coletando dados...</span>
+                  )}
+                </div>
+                {/* Mesa DNA */}
+                <div className="bg-secondary/40 rounded-lg p-2 border border-border">
+                  <span className="text-[8px] font-bold text-emerald-400 block mb-1">🧬 DNA DE MESA</span>
+                  <div className="text-[8px] text-foreground/80 space-y-0.5">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Equilíbrio</span>
+                      <span className="font-mono font-bold">{((sniperData.deepMemory.mesaDNA?.sectorBalance || 0) * 100).toFixed(0)}%</span>
+                    </div>
+                    {sniperData.deepMemory.mesaDNA?.terminalSignature?.length > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Terminais</span>
+                        <span className="font-mono font-bold">T{sniperData.deepMemory.mesaDNA.terminalSignature.join(',T')}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Vício cilindro</span>
+                      <span className="font-mono font-bold">{sniperData.deepMemory.mesaDNA?.cylinderBias || 0} pos.</span>
+                    </div>
+                  </div>
+                </div>
+                {/* Cylinder Physics */}
+                <div className="bg-secondary/40 rounded-lg p-2 border border-border">
+                  <span className="text-[8px] font-bold text-orange-400 block mb-1">🔩 MICRO-VIBRAÇÃO</span>
+                  <div className="text-[8px] text-foreground/80 space-y-0.5">
+                    {sniperData.deepMemory.cylinderInertia?.biasedNums?.length > 0 && (
+                      <div>
+                        <span className="text-muted-foreground">Viciados: </span>
+                        <span className="font-mono font-bold">{sniperData.deepMemory.cylinderInertia.biasedNums.slice(0, 6).join(',')}</span>
+                      </div>
+                    )}
+                    {sniperData.deepMemory.cylinderInertia?.dominantPin !== null && sniperData.deepMemory.cylinderInertia?.dominantPin !== undefined && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Pino dom.</span>
+                        <span className="font-mono font-bold text-orange-400">#{sniperData.deepMemory.cylinderInertia.dominantPin + 1} (+{sniperData.deepMemory.cylinderInertia.pinStrength}%)</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {/* Genetic Patterns */}
+                <div className="bg-secondary/40 rounded-lg p-2 border border-border">
+                  <span className="text-[8px] font-bold text-cyan-400 block mb-1">🧬 PADRÕES GENÉTICOS</span>
+                  {sniperData.deepMemory.geneticPatterns?.length > 0 ? (
+                    sniperData.deepMemory.geneticPatterns.map((gp: any, i: number) => (
+                      <div key={i} className="text-[8px] text-foreground/80 mb-0.5">
+                        <span className="font-bold">{gp.name}</span>
+                        <span className="text-muted-foreground ml-1">→ {gp.numbers?.slice(0, 5).join(',')}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-[8px] text-muted-foreground">Evoluindo...</span>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {sniperData?.memoryWindows && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* MICRO */}
