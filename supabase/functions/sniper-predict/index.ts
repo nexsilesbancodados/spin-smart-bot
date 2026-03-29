@@ -140,22 +140,48 @@ serve(async (req) => {
       }
     }
 
-    // Resolve previous predictions against latest number
+    // Resolve previous predictions — ONLY if latest number is NEW (not already used to resolve)
+    let isNewNumber = false;
     if (numbers.length > 0 && unresolved.length > 0) {
       const latestNum = numbers[0];
-      for (const pred of unresolved) {
-        const nums: number[] = pred.predicted_numbers || [];
-        const isHit = nums.includes(latestNum);
-        const hitType = isHit
-          ? (pred.predicted_main === latestNum ? 'exact' : 'neighbor')
-          : 'miss';
-        await supabase.from('prediction_history').update({
-          actual_number: latestNum,
-          hit: isHit,
-          hit_type: hitType,
-          resolved_at: new Date().toISOString(),
-        }).eq('id', pred.id);
+      const latestTime = entries[0]?.time;
+      // Check if any unresolved prediction was already resolved with this exact number+time
+      // by checking if the latest roulette number timestamp is NEWER than the prediction
+      const newestPred = unresolved[0];
+      const predTime = new Date(newestPred.id ? 0 : 0); // we'll use a different approach
+      
+      // Better approach: check if any resolved prediction already has this actual_number 
+      // with a resolved_at within the last 30 seconds (meaning we already processed this number)
+      const { data: recentlyResolved } = await supabase
+        .from('prediction_history')
+        .select('actual_number, resolved_at')
+        .not('hit', 'is', null)
+        .order('resolved_at', { ascending: false })
+        .limit(1);
+      
+      const lastResolvedNum = recentlyResolved?.[0]?.actual_number;
+      const lastResolvedTime = recentlyResolved?.[0]?.resolved_at;
+      const timeSinceResolved = lastResolvedTime ? (Date.now() - new Date(lastResolvedTime).getTime()) / 1000 : 999;
+      
+      // Only resolve if: different number OR enough time passed (new spin)
+      if (latestNum !== lastResolvedNum || timeSinceResolved > 60) {
+        isNewNumber = true;
+        for (const pred of unresolved) {
+          const nums: number[] = pred.predicted_numbers || [];
+          const isHit = nums.includes(latestNum);
+          const hitType = isHit
+            ? (pred.predicted_main === latestNum ? 'exact' : 'neighbor')
+            : 'miss';
+          await supabase.from('prediction_history').update({
+            actual_number: latestNum,
+            hit: isHit,
+            hit_type: hitType,
+            resolved_at: new Date().toISOString(),
+          }).eq('id', pred.id);
+        }
       }
+    } else if (unresolved.length === 0) {
+      isNewNumber = true; // no unresolved = safe to create new
     }
 
     if (numbers.length < 15) {
@@ -937,8 +963,8 @@ serve(async (req) => {
       ? `Convergência Pentacentesimal: ${winner.justification}`
       : `Análise: ${winner.justification}`;
 
-    // Save prediction to history (only for alert/sniper modes)
-    if (mode !== 'monitoring' && winner.numbers.length > 0) {
+    // Save prediction to history — ONLY once per new number (not every poll)
+    if (isNewNumber && mode !== 'monitoring' && winner.numbers.length > 0) {
       await supabase.from('prediction_history').insert({
         strategy_type: winner.type,
         strategy_label: winner.label,
