@@ -61,6 +61,8 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<'insights' | 'knowledge'>('insights');
   const [showAllHistory, setShowAllHistory] = useState(false);
   const prevNumbersRef = useRef<string>('');
+  const [sniperData, setSniperData] = useState<any>(null);
+  const [sniperCountdown, setSniperCountdown] = useState(13);
 
   // Fetch from API
   const fetchNumbers = useCallback(async () => {
