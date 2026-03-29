@@ -30,7 +30,6 @@
       isPaused = changes[PAUSED_KEY].newValue || false;
       console.log('[RouletteTracker]', isPaused ? '⏸️ Paused' : '▶️ Resumed');
     }
-    }
   });
 
   function sendNumber(num) {
