@@ -1193,6 +1193,22 @@ serve(async (req) => {
       if (surpriseNumbers.includes(n)) { s += 2; r.push('🎲 Surpresa freq.'); }
       // HISTORICAL HIT bonus — numbers that hit when predicted before
       if (numberHitFreq[n] && numberHitFreq[n] >= 2) { s += numberHitFreq[n] * 0.8; r.push(`✅ Acertou ${numberHitFreq[n]}x`); }
+      // DEEP MEMORY: cylinder inertia bias
+      if (cylinderInertia.biasedNums.includes(n)) { s += 2.5; r.push('🔩 Inércia cilindro'); }
+      // DEEP MEMORY: dominant pin zone
+      if (cylinderInertia.dominantPin !== null) {
+        const pinSize = Math.floor(WL / 8);
+        const nIdx = wheelIdx(n);
+        if (nIdx !== -1 && Math.floor(nIdx / pinSize) === cylinderInertia.dominantPin) { s += 2; r.push('📌 Pino dom.'); }
+      }
+      // DEEP MEMORY: terminal signature consistency
+      if (mesaDNA.terminalSignature.includes(n % 10)) { s += 1.5; r.push('🧬 DNA Terminal'); }
+      // GENETIC PATTERN: cluster numbers
+      for (const gp of geneticPatterns) {
+        if (gp.numbers.includes(n)) { s += Math.min(3, gp.strength * 0.5); r.push(`🧬 ${gp.name}`); break; }
+      }
+      // BACKPROPAGATION: weight by best dimension
+      if (backpropWeights['physical'] > 0.3 && maoViciada) { const idx0 = wheelIdx(numbers[0]); if (idx0 !== -1 && wheelDist(n, WHEEL[(idx0 + Math.round(arcMean)) % WL]) <= 3) { s += 2; r.push('🔄 Backprop Phys'); } }
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
