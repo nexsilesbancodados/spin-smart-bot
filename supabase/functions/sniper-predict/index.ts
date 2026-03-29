@@ -4749,17 +4749,20 @@ serve(async (req) => {
 
     // Generate diverse alternatives — pick from DIFFERENT bet categories
     const getBetCategory = (type: string): string => {
-      if (['sniper', 'voisins', 'setor_oposto', 'ultra_sniper', 'ritmo_calibrado', 'cylinder_bias'].includes(type)) return 'setor';
-      if (['cavalos', 'cavalos_comp'].includes(type)) return 'cavalos';
-      if (['terminal_alternation', 'duplo_terminal', 'terminais_cruzados', 'poucas_fichas', 'terminal_alto_baixo'].includes(type)) return 'terminal';
-      if (['duzia_unica', 'dozen_phase', 'duzias', 'pressao_retorno'].includes(type)) return 'duzia';
-      if (['coluna', 'column_cycle'].includes(type)) return 'coluna';
-      if (['cor'].includes(type)) return 'cor';
-      if (['paridade'].includes(type)) return 'paridade';
-      if (['alto_baixo'].includes(type)) return 'alto_baixo';
-      if (['fusao_suprema', 'convergencia_absoluta', 'matrix_fusion', 'archetype_fusion'].includes(type)) return 'fusao';
+      if (['sniper', 'voisins', 'setor_oposto', 'ultra_sniper', 'ritmo_calibrado', 'cylinder_bias', 'cluster_regional', 'jeu_zero'].includes(type)) return 'setor';
+      if (['cavalos', 'cavalos_comp', 'cavalo_split'].includes(type)) return 'cavalos';
+      if (['terminal_alternation', 'duplo_terminal', 'terminais_cruzados', 'poucas_fichas', 'terminal_alto_baixo', 'duzia_terminal_corr'].includes(type)) return 'terminal';
+      if (['duzia_unica', 'dozen_phase', 'duzias', 'pressao_retorno', 'duzia_progressiva'].includes(type)) return 'duzia';
+      if (['coluna', 'column_cycle', 'coluna_fria'].includes(type)) return 'coluna';
+      if (['cor', 'cor_alternancia', 'cor_reversa'].includes(type)) return 'cor';
+      if (['paridade', 'paridade_reversa'].includes(type)) return 'paridade';
+      if (['alto_baixo', 'alto_baixo_reversa'].includes(type)) return 'alto_baixo';
+      if (['fusao_suprema', 'convergencia_absoluta', 'matrix_fusion', 'archetype_fusion', 'combo_ouro', 'combo_prata'].includes(type)) return 'fusao';
       if (['numeros_puxam'].includes(type)) return 'puxada';
       if (['pressao_zero'].includes(type)) return 'zero';
+      if (['rua'].includes(type)) return 'rua';
+      if (['hiper_quente'].includes(type)) return 'hiper_quente';
+      if (['multiplos_seq', 'diferenca_const'].includes(type)) return 'sequencia';
       return type;
     };
     const winnerCategory = getBetCategory(winner.type);
