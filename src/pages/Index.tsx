@@ -89,6 +89,9 @@ const Index = () => {
   const [sniperData, setSniperData] = useState<any>(null);
   const [sniperCountdown, setSniperCountdown] = useState(13);
   const sniperPrevKey = useRef<string>('');
+  const sniperSameCount = useRef(0);
+  const [sniperStale, setSniperStale] = useState(false);
+  const [lastPredResult, setLastPredResult] = useState<{ hit: boolean | null; hitType: string | null; predicted: number | null; actual: number | null; label: string } | null>(null);
   const [autoLearnCycle, setAutoLearnCycle] = useState(0);
   const [autoLearnStatus, setAutoLearnStatus] = useState<'idle' | 'learning' | 'analyzing' | 'backtesting'>('idle');
   const [lastAutoLearnTime, setLastAutoLearnTime] = useState<Date | null>(null);
@@ -144,11 +147,17 @@ const Index = () => {
     try {
       const res = await supabase.functions.invoke('sniper-predict');
       if (res.data) {
-        // Only reset countdown if the prediction actually changed
         const key = `${res.data.strategy?.type}-${res.data.signal?.number}-${res.data.mode}`;
         if (key !== sniperPrevKey.current) {
           sniperPrevKey.current = key;
+          sniperSameCount.current = 0;
+          setSniperStale(false);
           setSniperCountdown(13);
+        } else {
+          sniperSameCount.current++;
+          if (sniperSameCount.current >= 3) {
+            setSniperStale(true);
+          }
         }
         setSniperData(res.data);
       }
