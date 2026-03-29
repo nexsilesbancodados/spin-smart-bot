@@ -3696,10 +3696,14 @@ serve(async (req) => {
       betInstructions: generateBetInstructions(s),
     }));
 
+    // Merge protection numbers into winner
+    const winnerNumbersWithProtection = [...new Set([...winner.numbers, ...PROTECTION_NUMBERS])];
+
     return json({
       signal: {
         number: winner.numbers[0],
         neighbors: winner.numbers.slice(1),
+        protection: PROTECTION_NUMBERS,
         probability: finalProbability,
         reasons: numScores.slice(0, 3).map(s => s.reasons).flat().slice(0, 5),
         convergenceReasons: reasons,
@@ -3709,7 +3713,8 @@ serve(async (req) => {
         type: winner.type,
         label: winner.label,
         emoji: winner.emoji,
-        numbers: winner.numbers,
+        numbers: winnerNumbersWithProtection,
+        protection: PROTECTION_NUMBERS,
         coverage: +winner.coverage.toFixed(1),
         payout: winner.payout,
         probability: finalProbability,
