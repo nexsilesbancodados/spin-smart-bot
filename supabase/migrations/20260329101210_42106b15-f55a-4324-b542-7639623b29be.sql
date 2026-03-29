@@ -1,0 +1,1 @@
+DELETE FROM roulette_numbers a USING roulette_numbers b WHERE a.id > b.id AND a.number = b.number AND a.fetched_at BETWEEN b.fetched_at - interval '30 seconds' AND b.fetched_at + interval '30 seconds';
