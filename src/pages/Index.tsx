@@ -23,11 +23,6 @@ const colorClass = (n: number) => {
 
 const ROULETTE_TABLES = [
   { id: 'brasileira', name: 'Roleta Brasileira', provider: 'Playtech', iframeUrl: 'https://onabet.com/' },
-  { id: 'immersiva', name: 'Roleta Immersiva', provider: 'Evolution', iframeUrl: 'https://onabet.com/' },
-  { id: 'mega-fire', name: 'Mega Fire Blaze', provider: 'Playtech', iframeUrl: 'https://onabet.com/' },
-  { id: 'xxxtreme', name: 'XXXtreme Roulette', provider: 'Evolution', iframeUrl: 'https://onabet.com/' },
-  { id: 'speed', name: 'Speed Roulette', provider: 'Evolution', iframeUrl: 'https://onabet.com/' },
-  { id: 'powerup', name: 'PowerUP Roulette', provider: 'Pragmatic', iframeUrl: 'https://onabet.com/' },
 ];
 
 interface PatternInsight {
