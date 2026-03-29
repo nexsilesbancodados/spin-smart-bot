@@ -662,29 +662,6 @@ const Index = () => {
             </div>
           </div>
 
-          {/* MONITORAMENTO + ÚLTIMO NÚMERO */}
-          <motion.div className={`rounded-xl border p-3 transition-all ${
-            isCavaloEntry ? 'bg-gradient-to-r from-primary/20 to-yellow-500/10 border-primary/50 shadow-lg shadow-primary/10' : 'bg-card border-border'
-          }`} animate={{ scale: isCavaloEntry ? [1, 1.003, 1] : 1 }} transition={{ duration: 0.4 }}>
-            <div className="flex items-center gap-3">
-              {isCavaloEntry ? <ShieldCheck className="w-6 h-6 text-primary animate-pulse" /> : <Shield className="w-6 h-6 text-muted-foreground" />}
-              <div className="flex-1">
-                <span className="font-display text-[10px] tracking-widest font-bold" style={{ color: isCavaloEntry ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>MONITORAMENTO</span>
-                <span className={`text-sm font-bold block ${isCavaloEntry ? 'text-primary' : 'text-muted-foreground'}`}>
-                  {allNumbers.length === 0 ? 'Aguardando...' : isCavaloEntry ? '🐴 Entrada nos CAVALOS 258!' : '👁️ Monitorando...'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] text-muted-foreground font-mono">{allNumbers.length} nums</span>
-                {latestNumber !== undefined && (
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-lg
-                    ${isCavalo(latestNumber) ? 'bg-yellow-400 text-black ring-2 ring-yellow-300/50' : colorClass(latestNumber)} border border-white/20`}>
-                    {latestNumber}
-                  </div>
-                )}
-              </div>
-            </div>
-          </motion.div>
 
           {/* DEALER + CAVALOS + SETOR — always real data */}
           {allNumbers.length >= 10 && (
