@@ -38,6 +38,8 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
           ? 'bg-gradient-to-r from-primary/30 via-yellow-500/10 to-primary/20 border-primary shadow-lg shadow-primary/20'
           : sniperData.mode === 'alert'
           ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/10 border-yellow-500/50'
+          : sniperData.mode === 'observing'
+          ? 'bg-gradient-to-r from-blue-500/15 to-cyan-500/10 border-blue-500/40'
           : sniperData.mode === 'recalibrating'
           ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/10 border-purple-500/50'
           : 'bg-card border-border'
@@ -110,15 +112,15 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
       ) : sniperData.signal && sniperData.strategy ? (
         <div className="space-y-3">
           {/* CONFIDENCE FILTER */}
-          {confidenceFilter && sniperData.signal.probability < 85 && (
+          {confidenceFilter && sniperData.signal.probability < 70 && (
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-center">
               <Shield className="w-5 h-5 text-amber-400 mx-auto mb-1" />
               <span className="text-[10px] font-bold text-amber-400 block">FILTRO DE SEGURANÇA ATIVO</span>
-              <span className="text-[8px] text-muted-foreground">Convergência {sniperData.signal.probability}% — abaixo do limiar 85%.</span>
+              <span className="text-[8px] text-muted-foreground">Convergência {sniperData.signal.probability}% — abaixo do limiar 70%.</span>
             </div>
           )}
           {/* BET INSTRUCTIONS */}
-          {(!confidenceFilter || sniperData.signal.probability >= 85) && sniperData.betInstructions?.bets?.length > 0 && (
+          {(!confidenceFilter || sniperData.signal.probability >= 70) && sniperData.betInstructions?.bets?.length > 0 && (
             <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-transparent border-2 border-primary/40 rounded-xl p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-primary" />
