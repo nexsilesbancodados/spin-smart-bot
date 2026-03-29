@@ -658,6 +658,12 @@ serve(async (req) => {
       if (highLowRatio > 1.4 && isLow(n)) s += 0.5;
       if (highLowRatio < 0.7 && isHigh(n)) s += 0.5;
       if (learnedBonus[n] > 0) { s += learnedBonus[n]; r.push(...learnedReasons[n].slice(0, 2)); }
+      // INSIGHT PATTERNS bonus
+      if (insightNumbers[n] > 0) { s += insightNumbers[n]; r.push(...insightReasons[n].slice(0, 2)); }
+      // SURPRISE NUMBERS bonus — numbers that frequently appear when we miss
+      if (surpriseNumbers.includes(n)) { s += 2; r.push('🎲 Surpresa freq.'); }
+      // HISTORICAL HIT bonus — numbers that hit when predicted before
+      if (numberHitFreq[n] && numberHitFreq[n] >= 2) { s += numberHitFreq[n] * 0.8; r.push(`✅ Acertou ${numberHitFreq[n]}x`); }
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
