@@ -430,48 +430,46 @@ const Index = () => {
         </div>
       </nav>
 
-      {/* CONTADOR DE ACERTOS/ERROS */}
-      {predStats.total > 0 && (
-        <div className="bg-card/80 border-b border-border px-4 py-1.5 shrink-0">
-          <div className="max-w-[1400px] mx-auto flex items-center justify-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[8px] text-muted-foreground font-bold">PREVISÕES:</span>
-              <span className="text-[10px] font-mono font-bold text-foreground">{predStats.total}</span>
-            </div>
-            <div className="w-px h-3 bg-border" />
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-[10px] font-mono font-bold text-green-400">{predStats.hits}</span>
-              <span className="text-[7px] text-muted-foreground">ACERTOS</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-destructive" />
-              <span className="text-[10px] font-mono font-bold text-destructive">{predStats.misses}</span>
-              <span className="text-[7px] text-muted-foreground">ERROS</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-primary" />
-              <span className="text-[10px] font-mono font-bold text-primary">{predStats.exact}</span>
-              <span className="text-[7px] text-muted-foreground">EXATOS</span>
-            </div>
-            <div className="w-px h-3 bg-border" />
-            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-              predStats.total > 0 && (predStats.hits / predStats.total) >= 0.5
-                ? 'bg-green-500/10 text-green-400 border-green-500/30'
-                : 'bg-destructive/10 text-destructive border-destructive/30'
-            }`}>
-              {predStats.total > 0 ? ((predStats.hits / predStats.total) * 100).toFixed(1) : '0.0'}% WIN
-            </div>
-            <div className="w-px h-3 bg-border" />
-            <button onClick={async () => {
-              await supabase.from('prediction_history').delete().not('id', 'is', null);
-              setPredStats({ hits: 0, misses: 0, exact: 0, total: 0 });
-            }} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive/20 transition-all">
-              <RefreshCw className="w-2.5 h-2.5" /> REINICIAR
-            </button>
+      {/* CONTADOR DE ACERTOS/ERROS - FIXO */}
+      <div className="bg-card/95 backdrop-blur-md border-b border-border px-4 py-1.5 shrink-0 sticky top-0 z-40">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[8px] text-muted-foreground font-bold">PREVISÕES:</span>
+            <span className="text-[10px] font-mono font-bold text-foreground">{predStats.total}</span>
           </div>
+          <div className="w-px h-3 bg-border" />
+          <div className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="text-[10px] font-mono font-bold text-green-400">{predStats.hits}</span>
+            <span className="text-[7px] text-muted-foreground">ACERTOS</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-destructive" />
+            <span className="text-[10px] font-mono font-bold text-destructive">{predStats.misses}</span>
+            <span className="text-[7px] text-muted-foreground">ERROS</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-primary" />
+            <span className="text-[10px] font-mono font-bold text-primary">{predStats.exact}</span>
+            <span className="text-[7px] text-muted-foreground">EXATOS</span>
+          </div>
+          <div className="w-px h-3 bg-border" />
+          <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+            predStats.total > 0 && (predStats.hits / predStats.total) >= 0.5
+              ? 'bg-green-500/10 text-green-400 border-green-500/30'
+              : 'bg-destructive/10 text-destructive border-destructive/30'
+          }`}>
+            {predStats.total > 0 ? ((predStats.hits / predStats.total) * 100).toFixed(1) : '0.0'}% WIN
+          </div>
+          <div className="w-px h-3 bg-border" />
+          <button onClick={async () => {
+            await supabase.from('prediction_history').delete().not('id', 'is', null);
+            setPredStats({ hits: 0, misses: 0, exact: 0, total: 0 });
+          }} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive/20 transition-all">
+            <RefreshCw className="w-2.5 h-2.5" /> REINICIAR
+          </button>
         </div>
-      )}
+      </div>
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto p-3 space-y-3">
