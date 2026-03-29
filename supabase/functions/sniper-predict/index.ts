@@ -1850,6 +1850,15 @@ serve(async (req) => {
       else if (randomnessIndex.overall >= 50) { s -= 1; }
       // DEALER BIOMETRICS: bonus if dealer is mechanical
       if (dealerBiometrics.profileType === 'mecânico') { s += 1; r.push('🎭 Dealer mecânico'); }
+      // ARCHETYPES: boost numbers predicted by active archetypes
+      for (const arch of activeArchetypes) {
+        if (arch.predictedNums.includes(n)) {
+          const bonus = arch.strength > 70 ? 3 : arch.strength > 40 ? 2 : 1;
+          s += bonus;
+          r.push(`${arch.emoji} ${arch.name.split(' ')[0]}`);
+          break; // only count strongest archetype per number
+        }
+      }
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
@@ -2620,6 +2629,7 @@ serve(async (req) => {
       diamondDeflection: diamondDeflection.slice(0, 4),
       kellyBetting,
       dealerBiometrics,
+      archetypes: archetypes.map(a => ({ name: a.name, emoji: a.emoji, active: a.active, strength: a.strength, detail: a.detail, predictedNums: a.predictedNums.slice(0, 6) })),
       deepMemory: {
         ancestralPatterns: ancestralPatterns.slice(0, 3),
         mesaDNA,
