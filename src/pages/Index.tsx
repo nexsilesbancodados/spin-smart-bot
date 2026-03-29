@@ -566,6 +566,8 @@ const Index = () => {
         aiEnabled={aiEnabled} setAiEnabled={setAiEnabled}
         strategyFilter={strategyFilter} setStrategyFilter={setStrategyFilter}
         predStats={predStats} setPredStats={setPredStats}
+        activePatternCount={activePatternCount}
+        soundEnabled={soundEnabled} setSoundEnabled={setSoundEnabled}
       />
 
       {/* ═══════ PREDICTION HISTORY (COLLAPSIBLE) ═══════ */}
