@@ -103,6 +103,32 @@ const Index = () => {
     return () => clearInterval(interval);
   }, [fetchNumbers, fetchStored, isPolling]);
 
+  // Sniper prediction - runs every time new numbers arrive
+  const fetchSniper = useCallback(async () => {
+    try {
+      const res = await supabase.functions.invoke('sniper-predict');
+      if (res.data) {
+        setSniperData(res.data);
+        setSniperCountdown(13);
+      }
+    } catch (err) { console.error('Sniper error:', err); }
+  }, []);
+
+  useEffect(() => {
+    fetchSniper();
+    if (!isPolling) return;
+    const interval = setInterval(fetchSniper, 3000);
+    return () => clearInterval(interval);
+  }, [fetchSniper, isPolling]);
+
+  // Countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSniperCountdown(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Load insights + learned
   const loadInsights = useCallback(async () => {
     const { data } = await supabase.from('pattern_insights').select('*').order('created_at', { ascending: false }).limit(20);
