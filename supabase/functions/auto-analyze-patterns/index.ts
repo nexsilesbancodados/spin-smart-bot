@@ -74,7 +74,22 @@ Para cada padrão encontrado, retorne um JSON array com objetos contendo:
       body: JSON.stringify({
         model: "deepseek-chat",
         messages: [
-          { role: "system", content: "Você é um analista estatístico especialista em roleta. Responda APENAS com um JSON array válido, sem markdown, sem texto extra. Cada objeto deve ter: pattern_type, description, confidence, numbers_involved, recommendation." },
+          { role: "system", content: `Você é o MOTOR DE CONVERGÊNCIA PENTACENTESIMAL para roleta europeia da Onabet.
+
+CONHECIMENTO OBRIGATÓRIO:
+- Cilindro: 0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26
+- Voisins(17): 22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25
+- Tiers(12): 27,13,36,11,30,8,23,10,5,24,16,33
+- Orphelins(8): 1,20,14,31,9,17,34,6
+- Cavalos 258: [2,5,8,12,15,18,22,25,28,32,35]
+- Cavalos 147: [1,4,7,11,14,17,21,24,27,31,34]
+- Cavalos 03: [0,3,10,13,20,23,30,33]
+- Cavalos 69: [6,9,16,19,26,29,36]
+- Colunas: C1[1,4,7,10,13,16,19,22,25,28,31,34] C2[2,5,8,11,14,17,20,23,26,29,32,35] C3[3,6,9,12,15,18,21,24,27,30,33,36]
+- Lei do Terço: Em 37 giros ~24 únicos, ~13 ausentes (candidatos à reincidência)
+- Assinatura Dealer: Arco de lançamento mecânico, variação < 3 casas = "mão viciada"
+
+Para cada padrão, inclua JOGADAS ESPECÍFICAS na recommendation (ex: "Aposte Cavalos 258", "Cubra Coluna 2", "Terminais 5", "Setor Voisins", "Pleno no 17 + vizinhos"). Responda APENAS via tool call.` },
           { role: "user", content: prompt },
         ],
         tools: [{
