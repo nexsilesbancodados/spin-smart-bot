@@ -1,6 +1,27 @@
 import {
   CircleDot, Brain, Shield, Wifi, WifiOff, RefreshCw, Download, History, Sparkles, Power
 } from 'lucide-react';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+
+const STRATEGY_OPTIONS = [
+  { value: 'all', label: 'Todas Estratégias' },
+  { value: 'setor', label: '🎯 Vizinhos/Setor' },
+  { value: 'terminal', label: '🔢 Terminais' },
+  { value: 'cavalos', label: '🐎 Cavalos' },
+  { value: 'duzia', label: '🎲 Dúzias' },
+  { value: 'coluna', label: '📐 Colunas' },
+  { value: 'cor', label: '🎨 Cor' },
+  { value: 'paridade', label: '🔄 Par/Ímpar' },
+  { value: 'alto_baixo', label: '↕️ Alto/Baixo' },
+  { value: 'fusao', label: '⚡ Fusão/Convergência' },
+  { value: 'puxada', label: '🧲 Puxada' },
+  { value: 'zero', label: '🟢 Pressão Zero' },
+  { value: 'rua', label: '🛣️ Ruas' },
+  { value: 'hiper_quente', label: '🔥 Fase Quente' },
+  { value: 'sequencia', label: '🔢 Múltiplos/Sequência' },
+];
 
 interface NavbarProps {
   isPolling: boolean;
@@ -16,13 +37,15 @@ interface NavbarProps {
   onShowHistory: () => void;
   aiEnabled: boolean;
   setAiEnabled: (v: boolean) => void;
+  strategyFilter: string;
+  setStrategyFilter: (v: string) => void;
 }
 
 const Navbar = ({
   isPolling, setIsPolling, isAnalyzing, triggerLearn,
   confidenceFilter, setConfidenceFilter, lastUpdate,
   fetchNumbers, fetchStored, autoLearnStatus, onShowHistory,
-  aiEnabled, setAiEnabled,
+  aiEnabled, setAiEnabled, strategyFilter, setStrategyFilter,
 }: NavbarProps) => (
   <nav className="border-b border-border/60 px-4 py-0 z-50 shrink-0 glass relative overflow-hidden">
     {/* Subtle top accent line */}
@@ -58,6 +81,20 @@ const Navbar = ({
 
       {/* Actions */}
       <div className="flex items-center gap-1.5">
+        {/* Strategy Filter Select */}
+        <Select value={strategyFilter} onValueChange={setStrategyFilter}>
+          <SelectTrigger className="h-7 w-[140px] sm:w-[170px] text-[9px] font-bold border-primary/30 bg-primary/5 text-primary rounded-lg px-2 py-0">
+            <SelectValue placeholder="Estratégia" />
+          </SelectTrigger>
+          <SelectContent className="text-[10px]">
+            {STRATEGY_OPTIONS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value} className="text-[10px]">
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         {/* AI ON/OFF TOGGLE */}
         <button onClick={() => setAiEnabled(!aiEnabled)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-bold transition-all border ${
