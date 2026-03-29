@@ -64,17 +64,81 @@ serve(async (req) => {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Fetch data + AI learned patterns + unresolved predictions in parallel
-    const [numbersRes, learnedRes, unresolvedRes] = await Promise.all([
+    // Fetch data + AI learned patterns + unresolved predictions + resolved history in parallel
+    const [numbersRes, learnedRes, unresolvedRes, resolvedRes, insightsRes] = await Promise.all([
       supabase.from('roulette_numbers').select('number, fetched_at').order('fetched_at', { ascending: false }).limit(200),
       supabase.from('ai_learned_patterns').select('learning_type, title, knowledge, accuracy, metadata').order('updated_at', { ascending: false }).limit(30),
       supabase.from('prediction_history').select('id, predicted_numbers, predicted_main, strategy_type').is('hit', null).order('created_at', { ascending: false }).limit(10),
+      supabase.from('prediction_history').select('strategy_type, strategy_label, predicted_numbers, predicted_main, probability, convergence_score, actual_number, hit, hit_type, mesa_mode, justification').not('hit', 'is', null).order('created_at', { ascending: false }).limit(200),
+      supabase.from('pattern_insights').select('pattern_type, description, confidence, numbers_involved, recommendation').order('created_at', { ascending: false }).limit(50),
     ]);
 
     const entries = (numbersRes.data || []).map((r: any) => ({ number: r.number as number, time: r.fetched_at as string }));
     const numbers = entries.map(e => e.number);
     const learned = learnedRes.data || [];
     const unresolved = unresolvedRes.data || [];
+    const resolvedHistory = resolvedRes.data || [];
+    const patternInsights = insightsRes.data || [];
+
+    // ========================================================
+    // STRATEGY PERFORMANCE TRACKER — learns from hits/misses
+    // ========================================================
+    const strategyPerformance: Record<string, { hits: number; total: number; winRate: number; avgProb: number; recentTrend: number }> = {};
+    const numberHitFreq: Record<number, number> = {}; // which numbers actually hit when predicted
+    const numberMissFreq: Record<number, number> = {}; // which numbers came INSTEAD of predictions
+    const strategyNumberHits: Record<string, Record<number, number>> = {}; // per-strategy number hit map
+
+    for (const pred of resolvedHistory) {
+      const st = pred.strategy_type || 'unknown';
+      if (!strategyPerformance[st]) strategyPerformance[st] = { hits: 0, total: 0, winRate: 0, avgProb: 0, recentTrend: 0 };
+      strategyPerformance[st].total++;
+      if (pred.hit) {
+        strategyPerformance[st].hits++;
+        // Track which numbers hit for this strategy
+        if (!strategyNumberHits[st]) strategyNumberHits[st] = {};
+        if (pred.actual_number !== null) {
+          strategyNumberHits[st][pred.actual_number] = (strategyNumberHits[st][pred.actual_number] || 0) + 1;
+          numberHitFreq[pred.actual_number] = (numberHitFreq[pred.actual_number] || 0) + 1;
+        }
+      } else {
+        // Track what actually came when we missed
+        if (pred.actual_number !== null) {
+          numberMissFreq[pred.actual_number] = (numberMissFreq[pred.actual_number] || 0) + 1;
+        }
+      }
+    }
+
+    // Calculate win rates and recent trends
+    for (const [st, perf] of Object.entries(strategyPerformance)) {
+      perf.winRate = perf.total > 0 ? perf.hits / perf.total : 0;
+      // Recent trend: last 20 predictions for this strategy
+      const recentPreds = resolvedHistory.filter(p => p.strategy_type === st).slice(0, 20);
+      const recentHits = recentPreds.filter(p => p.hit).length;
+      perf.recentTrend = recentPreds.length > 0 ? recentHits / recentPreds.length : 0;
+      perf.avgProb = recentPreds.length > 0 ? recentPreds.reduce((a, p) => a + (p.probability || 0), 0) / recentPreds.length : 0;
+    }
+
+    // Numbers that frequently appear when we MISS — these are "surprise" numbers to add weight to
+    const surpriseNumbers = Object.entries(numberMissFreq)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 10)
+      .map(([n]) => Number(n));
+
+    // Pattern insights → extract actionable numbers
+    const insightNumbers: Record<number, number> = {};
+    const insightReasons: Record<number, string[]> = {};
+    for (let n = 0; n <= 36; n++) { insightNumbers[n] = 0; insightReasons[n] = []; }
+    for (const insight of patternInsights) {
+      const conf = (insight.confidence || 0) / 100;
+      if (conf < 0.5) continue;
+      const nums = insight.numbers_involved || [];
+      for (const n of nums) {
+        if (n >= 0 && n <= 36) {
+          insightNumbers[n] += conf * 1.2;
+          insightReasons[n].push(`📊 ${insight.pattern_type}`);
+        }
+      }
+    }
 
     // Resolve previous predictions against latest number
     if (numbers.length > 0 && unresolved.length > 0) {
@@ -594,6 +658,12 @@ serve(async (req) => {
       if (highLowRatio > 1.4 && isLow(n)) s += 0.5;
       if (highLowRatio < 0.7 && isHigh(n)) s += 0.5;
       if (learnedBonus[n] > 0) { s += learnedBonus[n]; r.push(...learnedReasons[n].slice(0, 2)); }
+      // INSIGHT PATTERNS bonus
+      if (insightNumbers[n] > 0) { s += insightNumbers[n]; r.push(...insightReasons[n].slice(0, 2)); }
+      // SURPRISE NUMBERS bonus — numbers that frequently appear when we miss
+      if (surpriseNumbers.includes(n)) { s += 2; r.push('🎲 Surpresa freq.'); }
+      // HISTORICAL HIT bonus — numbers that hit when predicted before
+      if (numberHitFreq[n] && numberHitFreq[n] >= 2) { s += numberHitFreq[n] * 0.8; r.push(`✅ Acertou ${numberHitFreq[n]}x`); }
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
@@ -724,9 +794,81 @@ serve(async (req) => {
     });
 
     // ==========================================
-    // DUEL: Pick the best strategy
+    // 7. DYNAMIC STRATEGY FROM INSIGHTS — AI-generated pattern-based plays
     // ==========================================
-    // Weight: higher payout strategies get a small bonus (risk/reward)
+    const insightTopNums = Object.entries(insightNumbers)
+      .map(([n, score]) => ({ num: Number(n), score }))
+      .filter(x => x.score > 1)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12)
+      .map(x => x.num);
+    if (insightTopNums.length >= 5) {
+      const insScore = sumScores(insightTopNums) + insightTopNums.length * 1.5;
+      const insBt = backtestSet(insightTopNums);
+      strategies.push({
+        type: 'insight_pattern', label: 'Padrão IA Detectado', emoji: '🧬',
+        numbers: insightTopNums, coverage: (insightTopNums.length / 37) * 100, payout: Math.round(36 / insightTopNums.length),
+        score: insScore + insBt * 20,
+        probability: Math.min(98, Math.round(50 + insScore * 1.5 + insBt * 30)),
+        justification: `Padrões detectados pela IA convergem em ${insightTopNums.length} números. Backtesting: ${(insBt * 100).toFixed(0)}%.`,
+      });
+    }
+
+    // 8. SURPRISE RECOVERY — plays numbers that frequently appear when predictions miss
+    if (surpriseNumbers.length >= 5) {
+      const surpriseNums = surpriseNumbers.slice(0, 10);
+      const srpScore = sumScores(surpriseNums) + surpriseNums.length * 2;
+      const srpBt = backtestSet(surpriseNums);
+      strategies.push({
+        type: 'surprise_recovery', label: 'Recuperação Surpresa', emoji: '🎲',
+        numbers: surpriseNums, coverage: (surpriseNums.length / 37) * 100, payout: Math.round(36 / surpriseNums.length),
+        score: srpScore + srpBt * 18,
+        probability: Math.min(98, Math.round(45 + srpScore * 1.8 + srpBt * 28)),
+        justification: `Números que saem quando erramos: ${surpriseNums.slice(0, 5).join(',')}. Aprendido com ${Object.values(numberMissFreq).reduce((a, b) => a + b, 0)} erros.`,
+      });
+    }
+
+    // 9. CROSS-DELAY ATTACK — numbers with multiple simultaneous delays
+    if (crossDelayTargets.length >= 3) {
+      const crossNums = crossDelayTargets.slice(0, 8).map(t => t.num);
+      const neighbors: number[] = [];
+      crossNums.slice(0, 3).forEach(n => getNeighbors(n, 2).forEach(nb => { if (!crossNums.includes(nb) && !neighbors.includes(nb)) neighbors.push(nb); }));
+      const fullCrossNums = [...crossNums, ...neighbors.slice(0, 4)];
+      const crossScore = sumScores(fullCrossNums) + crossDelayTargets.slice(0, 5).reduce((a, t) => a + t.total * 0.1, 0);
+      const crossBt = backtestSet(fullCrossNums);
+      strategies.push({
+        type: 'cross_delay', label: 'Atraso Cruzado', emoji: '💥',
+        numbers: fullCrossNums, coverage: (fullCrossNums.length / 37) * 100, payout: Math.round(36 / fullCrossNums.length),
+        score: crossScore + crossBt * 22,
+        probability: Math.min(98, Math.round(48 + crossScore * 2 + crossBt * 30)),
+        justification: `${crossDelayTargets.length} números com atraso em múltiplos grupos. Explosão iminente: ${crossNums.slice(0, 4).join(',')}.`,
+      });
+    }
+
+    // 10. HISTORICAL WINNERS — numbers that historically hit when predicted
+    const histWinners = Object.entries(numberHitFreq)
+      .filter(([, c]) => c >= 2)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([n]) => Number(n));
+    if (histWinners.length >= 4) {
+      const hwNeighbors: number[] = [];
+      histWinners.slice(0, 3).forEach(n => getNeighbors(n, 1).forEach(nb => { if (!histWinners.includes(nb) && !hwNeighbors.includes(nb)) hwNeighbors.push(nb); }));
+      const hwNums = [...histWinners, ...hwNeighbors.slice(0, 4)];
+      const hwScore = sumScores(hwNums) + histWinners.reduce((a, n) => a + (numberHitFreq[n] || 0) * 1.5, 0);
+      const hwBt = backtestSet(hwNums);
+      strategies.push({
+        type: 'historical_winners', label: 'Campeões Históricos', emoji: '🏆',
+        numbers: hwNums, coverage: (hwNums.length / 37) * 100, payout: Math.round(36 / hwNums.length),
+        score: hwScore + hwBt * 20,
+        probability: Math.min(98, Math.round(50 + hwScore * 1.5 + hwBt * 30)),
+        justification: `Números com histórico comprovado de acertos: ${histWinners.slice(0, 5).join(',')}. Total: ${histWinners.reduce((a, n) => a + (numberHitFreq[n] || 0), 0)} acertos.`,
+      });
+    }
+
+    // ==========================================
+    // DUEL: Pick the best strategy with performance-based weighting
+    // ==========================================
     strategies.forEach(st => {
       // Bonus for high payout low coverage (more profitable if hits)
       st.score += (st.payout > 10 ? 3 : st.payout > 3 ? 1 : 0);
@@ -734,6 +876,19 @@ serve(async (req) => {
       if (mesaMode === 'fisico' && ['sniper', 'voisins'].includes(st.type)) st.score += 5;
       // Mathematical mode bonus for terminal-based strategies
       if (mesaMode === 'matematico' && ['cavalos', 'duzias'].includes(st.type)) st.score += 5;
+
+      // PERFORMANCE-BASED WEIGHT: boost strategies that historically perform well
+      const perf = strategyPerformance[st.type];
+      if (perf && perf.total >= 5) {
+        // Reward winning strategies, penalize losing ones
+        const winBonus = (perf.winRate - 0.3) * 30; // baseline 30% hit rate
+        st.score += winBonus;
+        // Recent trend matters more than overall
+        const trendBonus = (perf.recentTrend - 0.3) * 20;
+        st.score += trendBonus;
+        // Calibration: if high-prob predictions aren't hitting, lower score
+        if (perf.avgProb > 80 && perf.winRate < 0.25) st.score -= 10;
+      }
     });
 
     // If two strategies tie, prefer higher payout
