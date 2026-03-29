@@ -810,6 +810,246 @@ serve(async (req) => {
     blocoK = Math.min(maxK, blocoK);
 
     // ========================================================
+    // BLOCO L: FILTRO DE RUÍDO BRANCO (100 CAMADAS)
+    // Índice de Aleatoriedade — mede se a mesa está em caos total
+    // ========================================================
+    let blocoL = 0;
+    const maxL = 100;
+
+    const randomnessIndex: { entropy: number; arcChaos: number; sectorSpread: number; overall: number; stable: boolean; message: string } = {
+      entropy: 0, arcChaos: 0, sectorSpread: 0, overall: 0, stable: true, message: ''
+    };
+
+    if (numbers.length >= 20) {
+      // L1-L30: Entropia de Shannon dos últimos 20 números
+      const freq20: Record<number, number> = {};
+      const w20 = numbers.slice(0, 20);
+      w20.forEach(n => freq20[n] = (freq20[n] || 0) + 1);
+      let shannonH = 0;
+      for (const f of Object.values(freq20)) {
+        const p = f / 20;
+        if (p > 0) shannonH -= p * Math.log2(p);
+      }
+      const maxEntropy = Math.log2(37); // ~5.21
+      const entropyRatio = shannonH / maxEntropy;
+      randomnessIndex.entropy = +entropyRatio.toFixed(3);
+      // High entropy = random, Low = patterned. Reward low entropy.
+      if (entropyRatio < 0.7) blocoL += 30;
+      else if (entropyRatio < 0.85) blocoL += 20;
+      else if (entropyRatio < 0.95) blocoL += 10;
+      // Near-max entropy = pure chaos
+      else blocoL += 0;
+
+      // L31-L60: Caos de arco — variância dos últimos 15 arcos
+      const recent15Arcs = rawArcs.slice(0, 15);
+      const arcMean15 = recent15Arcs.length > 0 ? recent15Arcs.reduce((a, b) => a + b, 0) / recent15Arcs.length : 10;
+      const arcVar15 = recent15Arcs.length > 0 ? recent15Arcs.reduce((a, b) => a + Math.pow(b - arcMean15, 2), 0) / recent15Arcs.length : 99;
+      randomnessIndex.arcChaos = +arcVar15.toFixed(1);
+      if (arcVar15 < 15) blocoL += 30;
+      else if (arcVar15 < 30) blocoL += 20;
+      else if (arcVar15 < 50) blocoL += 10;
+
+      // L61-L80: Dispersão de setor — quantos setores nos últimos 10
+      const sec10Set = new Set(numbers.slice(0, 10).map(n => getSector(n)));
+      randomnessIndex.sectorSpread = sec10Set.size;
+      if (sec10Set.size <= 2) blocoL += 20; // concentrated
+      else if (sec10Set.size === 3) blocoL += 10;
+
+      // L81-L100: Consistência de terminais
+      const term10 = numbers.slice(0, 10).map(n => n % 10);
+      const uniqueTerms = new Set(term10).size;
+      if (uniqueTerms <= 5) blocoL += 20;
+      else if (uniqueTerms <= 7) blocoL += 10;
+
+      // Calculate overall randomness index (0-100, higher = more random/unstable)
+      randomnessIndex.overall = Math.round(entropyRatio * 40 + (arcVar15 > 50 ? 30 : arcVar15 > 30 ? 20 : arcVar15 > 15 ? 10 : 0) + (sec10Set.size >= 3 ? 20 : sec10Set.size >= 2 ? 10 : 0) + (uniqueTerms > 7 ? 10 : 0));
+      randomnessIndex.stable = randomnessIndex.overall < 50;
+
+      if (randomnessIndex.overall >= 75) {
+        randomnessIndex.message = '🛑 Mesa INSTÁVEL — próximos giros são ruído. Aguardando calibração.';
+        aiLearnings.push('🛑 RUÍDO BRANCO: Mesa em caos total — índice de aleatoriedade ' + randomnessIndex.overall + '%');
+      } else if (randomnessIndex.overall >= 50) {
+        randomnessIndex.message = '⚠️ Mesa semi-instável — sinais com confiança reduzida.';
+        aiLearnings.push('⚠️ Ruído moderado: aleatoriedade ' + randomnessIndex.overall + '% — cuidado');
+      } else {
+        randomnessIndex.message = '✅ Mesa estável — padrões detectáveis.';
+      }
+    } else {
+      blocoL = 50; // neutral when insufficient data
+    }
+    blocoL = Math.min(maxL, blocoL);
+
+    // ========================================================
+    // BLOCO M: MICRO-MAPEAMENTO DE DEFLETORES (100 CAMADAS)
+    // Taxa de Desvio de Impacto — simula desvio nos diamantes
+    // ========================================================
+    let blocoM = 0;
+    const maxM = 100;
+
+    // Divide o cilindro em 8 zonas de diamante
+    const DIAMOND_ZONES = 8;
+    const diamondZoneSize = Math.floor(WL / DIAMOND_ZONES);
+    const diamondDeflection: { zone: number; frequency: number; targetSector: string; deflectionRate: number }[] = [];
+
+    if (numbers.length >= 50) {
+      // Para cada par consecutivo, calcular qual "zona de diamante" a bola atravessou
+      const zoneHits: Record<number, { total: number; sectors: Record<string, number> }> = {};
+      for (let z = 0; z < DIAMOND_ZONES; z++) zoneHits[z] = { total: 0, sectors: { Voisins: 0, Tiers: 0, Orphelins: 0 } };
+
+      for (let i = 0; i < Math.min(200, numbers.length) - 1; i++) {
+        const fromIdx = wheelIdx(numbers[i]);
+        const toIdx = wheelIdx(numbers[i + 1]);
+        if (fromIdx === -1 || toIdx === -1) continue;
+        // Midpoint between from and to = approximate diamond impact point
+        const midpoint = Math.floor((fromIdx + toIdx) / 2) % WL;
+        const zone = Math.floor(midpoint / diamondZoneSize) % DIAMOND_ZONES;
+        const targetSec = getSector(numbers[i + 1]);
+        zoneHits[zone].total++;
+        if (zoneHits[zone].sectors[targetSec] !== undefined) zoneHits[zone].sectors[targetSec]++;
+      }
+
+      for (let z = 0; z < DIAMOND_ZONES; z++) {
+        const zh = zoneHits[z];
+        if (zh.total < 3) continue;
+        const topSec = Object.entries(zh.sectors).sort(([,a],[,b]) => b - a)[0];
+        const rate = topSec[1] / zh.total;
+        diamondDeflection.push({ zone: z + 1, frequency: zh.total, targetSector: topSec[0], deflectionRate: +rate.toFixed(2) });
+        // Score: strong deflection patterns = high confidence
+        if (rate > 0.6) blocoM += 15;
+        else if (rate > 0.45) blocoM += 8;
+        else blocoM += 3;
+      }
+
+      // Which diamond zone is the ball hitting NOW based on recent arcs?
+      if (numbers.length >= 2) {
+        const currentFromIdx = wheelIdx(numbers[0]);
+        const prevToIdx = wheelIdx(numbers[1]);
+        if (currentFromIdx !== -1 && prevToIdx !== -1) {
+          const currentMid = Math.floor((prevToIdx + currentFromIdx) / 2) % WL;
+          const currentZone = Math.floor(currentMid / diamondZoneSize) % DIAMOND_ZONES;
+          const currentDefl = diamondDeflection.find(d => d.zone === currentZone + 1);
+          if (currentDefl && currentDefl.deflectionRate > 0.55) {
+            aiLearnings.push(`💎 Diamante #${currentDefl.zone}: ${(currentDefl.deflectionRate * 100).toFixed(0)}% → ${currentDefl.targetSector}`);
+          }
+        }
+      }
+    } else {
+      blocoM = 30;
+    }
+    blocoM = Math.min(maxM, blocoM);
+
+    // ========================================================
+    // BLOCO N: KELLY CRITERION ADAPTADO (100 CAMADAS)
+    // Gestão de Aposta Progressiva de Confiança
+    // ========================================================
+    let blocoN = 0;
+    const maxN = 100;
+
+    const kellyBetting: { kellyFraction: number; unitMultiplier: number; riskLevel: string; recommendation: string; residualError: number } = {
+      kellyFraction: 0, unitMultiplier: 1, riskLevel: 'normal', recommendation: '', residualError: 100
+    };
+
+    // Calculate Kelly fraction: f* = (bp - q) / b
+    // b = payout odds, p = estimated win probability, q = 1 - p
+    const recentWins = resolvedHistory.slice(0, 30).filter(p => p.hit).length;
+    const recentTotal = Math.min(30, resolvedHistory.length);
+    const historicalWinRate = recentTotal > 5 ? recentWins / recentTotal : 0.15;
+
+    // Estimate based on average coverage/payout of top strategies
+    const avgPayout = 8; // average payout multiplier across strategies
+    const estimatedP = historicalWinRate;
+    const estimatedQ = 1 - estimatedP;
+    const kellyRaw = (avgPayout * estimatedP - estimatedQ) / avgPayout;
+    kellyBetting.kellyFraction = Math.max(0, Math.min(0.25, kellyRaw)); // cap at 25%
+
+    // Unit multiplier based on Kelly + convergence
+    const convergenceRatio = (blocoA + blocoB + blocoC + blocoD + blocoE + blocoK + blocoL) / (maxA + maxB + maxC + maxD + maxE + maxK + maxL);
+    if (kellyBetting.kellyFraction > 0.15 && convergenceRatio > 0.8) {
+      kellyBetting.unitMultiplier = 3;
+      kellyBetting.riskLevel = 'maximo';
+      kellyBetting.residualError = Math.max(1, Math.round((1 - convergenceRatio) * 100));
+      kellyBetting.recommendation = `🔥 Sinal de Força MÁXIMA: Aumente a unidade em 3x. Risco residual: ${kellyBetting.residualError}%`;
+      blocoN += 100;
+      aiLearnings.push(`💰 Kelly Criterion: f*=${(kellyBetting.kellyFraction * 100).toFixed(0)}% — MULTIPLICAR 3x`);
+    } else if (kellyBetting.kellyFraction > 0.08 && convergenceRatio > 0.65) {
+      kellyBetting.unitMultiplier = 2;
+      kellyBetting.riskLevel = 'elevado';
+      kellyBetting.residualError = Math.max(5, Math.round((1 - convergenceRatio) * 100));
+      kellyBetting.recommendation = `⚡ Sinal Forte: Aumente unidade em 2x. Risco residual: ${kellyBetting.residualError}%`;
+      blocoN += 70;
+    } else if (kellyBetting.kellyFraction > 0.03) {
+      kellyBetting.unitMultiplier = 1;
+      kellyBetting.riskLevel = 'normal';
+      kellyBetting.residualError = Math.max(15, Math.round((1 - convergenceRatio) * 100));
+      kellyBetting.recommendation = '✅ Aposta padrão: 1 unidade. Gestão conservadora.';
+      blocoN += 40;
+    } else {
+      kellyBetting.unitMultiplier = 0.5;
+      kellyBetting.riskLevel = 'minimo';
+      kellyBetting.residualError = Math.max(30, Math.round((1 - convergenceRatio) * 100));
+      kellyBetting.recommendation = '🛡️ Proteja banca: reduzir para 0.5 unidade. Momento desfavorável.';
+      blocoN += 15;
+    }
+    blocoN = Math.min(maxN, blocoN);
+
+    // ========================================================
+    // BLOCO O: BIOMETRIA DO DEALER (100 CAMADAS)
+    // Perfil do dealer baseado em padrões de arco
+    // ========================================================
+    let blocoO = 0;
+    const maxO = 100;
+
+    const dealerBiometrics: { profileType: string; arcConsistency: number; sectorPreference: string; strengthIndex: number; neighborPattern: number; signature: string } = {
+      profileType: 'desconhecido', arcConsistency: 0, sectorPreference: '', strengthIndex: 0, neighborPattern: 0, signature: ''
+    };
+
+    if (arcs.length >= 10) {
+      // O1-O30: Consistência do arco (biometria do lançamento)
+      const arcConsistency = 100 - Math.min(100, arcStdDev * 10);
+      dealerBiometrics.arcConsistency = +arcConsistency.toFixed(0);
+      if (arcConsistency > 80) { blocoO += 30; dealerBiometrics.profileType = 'mecânico'; }
+      else if (arcConsistency > 60) { blocoO += 20; dealerBiometrics.profileType = 'regular'; }
+      else if (arcConsistency > 40) { blocoO += 10; dealerBiometrics.profileType = 'variável'; }
+      else { blocoO += 5; dealerBiometrics.profileType = 'caótico'; }
+
+      // O31-O60: Preferência de setor do dealer
+      const dealerSectorFreq: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0 };
+      numbers.slice(0, 30).forEach(n => { const s = getSector(n); if (dealerSectorFreq[s] !== undefined) dealerSectorFreq[s]++; });
+      const dealerTopSector = Object.entries(dealerSectorFreq).sort(([,a],[,b]) => b - a)[0];
+      dealerBiometrics.sectorPreference = dealerTopSector[0];
+      const sectorDominance = dealerTopSector[1] / 30;
+      if (sectorDominance > 0.5) blocoO += 30;
+      else if (sectorDominance > 0.4) blocoO += 20;
+      else blocoO += 10;
+
+      // O61-O80: Índice de força (quão previsível é este dealer)
+      const strengthIdx = Math.round((arcConsistency * 0.5 + sectorDominance * 100 * 0.3 + (neighborJumpCount > 3 ? 20 : neighborJumpCount > 1 ? 10 : 0)));
+      dealerBiometrics.strengthIndex = Math.min(100, strengthIdx);
+      dealerBiometrics.neighborPattern = neighborJumpCount;
+      if (strengthIdx > 70) blocoO += 20;
+      else if (strengthIdx > 50) blocoO += 12;
+      else blocoO += 5;
+
+      // O81-O100: Assinatura única do dealer
+      const sigParts: string[] = [];
+      sigParts.push(dealerBiometrics.profileType.slice(0, 3).toUpperCase());
+      sigParts.push(`A${Math.round(arcMean)}`);
+      sigParts.push(`S${dealerBiometrics.sectorPreference.slice(0, 3)}`);
+      sigParts.push(`F${dealerBiometrics.strengthIndex}`);
+      dealerBiometrics.signature = sigParts.join('-');
+      blocoO += 20;
+
+      if (dealerBiometrics.profileType === 'mecânico') {
+        aiLearnings.push(`🎭 Dealer MECÂNICO: ${dealerBiometrics.arcConsistency}% consistência, Setor ${dealerBiometrics.sectorPreference} dominante`);
+      } else if (dealerBiometrics.profileType === 'caótico') {
+        aiLearnings.push(`⚠️ Dealer CAÓTICO: apenas ${dealerBiometrics.arcConsistency}% consistência — cuidado`);
+      }
+    } else {
+      blocoO = 30;
+    }
+    blocoO = Math.min(maxO, blocoO);
+
+    // ========================================================
     let blocoF = 0;
     const maxF = 100;
 
@@ -1121,7 +1361,7 @@ serve(async (req) => {
     }
 
     // I81-I100: Convergência cruzada entre blocos
-    const blockScores = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH, blocoK / maxK];
+    const blockScores = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH, blocoK / maxK, blocoL / maxL, blocoM / maxM, blocoN / maxN, blocoO / maxO];
     const highBlocks = blockScores.filter(s => s > 0.7).length;
     blocoI += Math.min(20, highBlocks * 4);
 
@@ -1147,7 +1387,7 @@ serve(async (req) => {
     }
 
     // J71-J100: Final confidence — all 10 blocks must agree
-    const allBlockPcts = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH, blocoI / maxI, blocoK / maxK];
+    const allBlockPcts = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH, blocoI / maxI, blocoK / maxK, blocoL / maxL, blocoM / maxM, blocoN / maxN, blocoO / maxO];
     const avgBlockPct = allBlockPcts.reduce((a, b) => a + b, 0) / allBlockPcts.length;
     const minBlockPct = Math.min(...allBlockPcts);
     // High average + high minimum = strong convergence
@@ -1156,9 +1396,9 @@ serve(async (req) => {
     blocoJ = Math.min(maxJ, blocoJ);
 
     // ========================================================
-    // TOTAL DAS 1.100 CAMADAS
+    // TOTAL DAS 1.500 CAMADAS
     // ========================================================
-    const totalLayers = blocoA + blocoB + blocoC + blocoD + blocoE + blocoF + blocoG + blocoH + blocoI + blocoJ + blocoK;
+    const totalLayers = blocoA + blocoB + blocoC + blocoD + blocoE + blocoF + blocoG + blocoH + blocoI + blocoJ + blocoK + blocoL + blocoM + blocoN + blocoO;
     const layerResults = {
       blocoA: { score: blocoA, max: maxA, label: 'Biomecânica & Física' },
       blocoB: { score: blocoB, max: maxB, label: 'Matemática & Terminais' },
@@ -1171,8 +1411,12 @@ serve(async (req) => {
       blocoI: { score: blocoI, max: maxI, label: 'Inteligência Profunda' },
       blocoJ: { score: blocoJ, max: maxJ, label: 'Convergência Final' },
       blocoK: { score: blocoK, max: maxK, label: 'Dinâmica de Fluxo' },
+      blocoL: { score: blocoL, max: maxL, label: 'Filtro de Ruído' },
+      blocoM: { score: blocoM, max: maxM, label: 'Defletores (Diamantes)' },
+      blocoN: { score: blocoN, max: maxN, label: 'Kelly Criterion' },
+      blocoO: { score: blocoO, max: maxO, label: 'Biometria Dealer' },
       total: totalLayers,
-      max: 1100,
+      max: 1500,
     };
 
     // ========================================================
@@ -1314,22 +1558,22 @@ serve(async (req) => {
     };
 
     if (dealerChanged) {
-      return json({ signal: null, mode: 'recalibrating', message: '🔄 Novo Dealer: Recalibrando...', ...baseResponse, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
+      return json({ signal: null, mode: 'recalibrating', message: '🔄 Novo Dealer: Recalibrando...', ...baseResponse, memoryWindows, aiLearnings, randomnessIndex, kellyBetting, dealerBiometrics, diamondDeflection: diamondDeflection.slice(0, 4), deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
     }
 
     // CHAOS AUTO-CALIBRATION: If dealer is chaotic AND dispersing wildly, pause signals
-    if (chaoticDealer && isDispersingWildly && totalLayers < 500) {
+    if (chaoticDealer && isDispersingWildly && totalLayers < 700) {
       aiLearnings.push('🛑 Mesa sem padrão detectável. Auto-calibração pausou sinais.');
-      return json({ signal: null, mode: 'calibrating', message: '🔄 AUTO-CALIBRAGEM — Dealer caótico, aguardando padrão...', ...baseResponse, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
+      return json({ signal: null, mode: 'calibrating', message: '🔄 AUTO-CALIBRAGEM — Dealer caótico, aguardando padrão...', ...baseResponse, memoryWindows, aiLearnings, randomnessIndex, kellyBetting, dealerBiometrics, diamondDeflection: diamondDeflection.slice(0, 4), deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
     }
 
-    if (highEntropy && totalLayers < 400) {
-      return json({ signal: null, mode: 'observing', message: '🔍 OBSERVAÇÃO — Alta entropia', ...baseResponse, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
+    if (highEntropy && totalLayers < 550) {
+      return json({ signal: null, mode: 'observing', message: '🔍 OBSERVAÇÃO — Alta entropia', ...baseResponse, memoryWindows, aiLearnings, randomnessIndex, kellyBetting, dealerBiometrics, diamondDeflection: diamondDeflection.slice(0, 4), deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
     }
 
-    if (totalLayers < 300) {
+    if (totalLayers < 400) {
       return json({ signal: null, mode: 'monitoring', message: '👁️ Monitorando...', ...baseResponse,
-        topCandidates: [], delayedTerminals, cavaloDelays, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
+        topCandidates: [], delayedTerminals, cavaloDelays, memoryWindows, aiLearnings, randomnessIndex, kellyBetting, dealerBiometrics, diamondDeflection: diamondDeflection.slice(0, 4), deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
     }
 
     // ========================================================
@@ -1415,6 +1659,22 @@ serve(async (req) => {
       }
       // TERMINAL PROGRESSION: predicted next terminal from escalation
       if (terminalProgression.predictedNext !== null && n % 10 === terminalProgression.predictedNext) { s += 2.5; r.push(`🐎 Escada T${terminalProgression.predictedNext}`); }
+      // DIAMOND DEFLECTORS: if current diamond zone predicts a sector, boost numbers in that sector
+      if (numbers.length >= 2) {
+        const dfFromIdx = wheelIdx(numbers[0]);
+        const dfToIdx = wheelIdx(numbers[1]);
+        if (dfFromIdx !== -1 && dfToIdx !== -1) {
+          const dfMid = Math.floor((dfToIdx + dfFromIdx) / 2) % WL;
+          const dfZone = Math.floor(dfMid / Math.floor(WL / 8)) % 8;
+          const df = diamondDeflection.find(d => d.zone === dfZone + 1);
+          if (df && df.deflectionRate > 0.55 && getSector(n) === df.targetSector) { s += 2; r.push(`💎 Diamante→${df.targetSector.slice(0, 4)}`); }
+        }
+      }
+      // NOISE FILTER: penalize if mesa is unstable
+      if (randomnessIndex.overall >= 75) { s -= 2; }
+      else if (randomnessIndex.overall >= 50) { s -= 1; }
+      // DEALER BIOMETRICS: bonus if dealer is mechanical
+      if (dealerBiometrics.profileType === 'mecânico') { s += 1; r.push('🎭 Dealer mecânico'); }
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
@@ -1926,8 +2186,14 @@ serve(async (req) => {
       st.score += selfCorrectionWeight;
 
       // ====== NOISE PENALTY: reduce confidence when too many noisy spins ======
-      if (noiseCount > 5) st.score -= 5; // many outliers = less reliable data
+      if (noiseCount > 5) st.score -= 5;
       if (noiseCount > 10) st.score -= 10;
+      // ====== WHITE NOISE GUARD: strongly penalize all strategies if mesa is chaotic ======
+      if (randomnessIndex.overall >= 75) st.score -= 15;
+      else if (randomnessIndex.overall >= 60) st.score -= 8;
+      // ====== KELLY BOOST: multiply score by confidence when Kelly is strong ======
+      if (kellyBetting.unitMultiplier >= 3) st.score += 5;
+      else if (kellyBetting.unitMultiplier <= 0.5) st.score -= 5;
 
       // ====== CHAOS PENALTY: reduce if dealer is chaotic ======
       if (chaoticDealer && ['sniper', 'voisins', 'setor_oposto'].includes(st.type)) st.score -= 10; // sector strategies unreliable with chaotic dealer
@@ -1990,7 +2256,7 @@ serve(async (req) => {
     }));
 
     // Final probability = winner's probability boosted by layer convergence
-    const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 900)));
+    const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 1200)));
     
     // Add strategy performance learnings
     const winnerPerf = strategyPerformance[winner.type];
@@ -2022,18 +2288,18 @@ serve(async (req) => {
       aiLearnings.push(`🔑 Assinatura terminal: T${mesaDNA.terminalSignature.join(',T')} consistentes`);
     }
 
-    const mode = totalLayers >= 920 && finalProbability >= 88 ? 'sniper'
-      : totalLayers >= 810 && finalProbability >= 80 ? 'alert'
+    const mode = totalLayers >= 1250 && finalProbability >= 88 ? 'sniper'
+      : totalLayers >= 1100 && finalProbability >= 80 ? 'alert'
       : 'monitoring';
 
     const message = mode === 'sniper'
-      ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/1100`
+      ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/1500`
       : mode === 'alert'
-      ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/1100`
-      : `👁️ Analisando... ${totalLayers}/1100 — aguardando convergência`;
+      ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/1500`
+      : `👁️ Analisando... ${totalLayers}/1500 — aguardando convergência`;
 
     const diagnostic = mode === 'sniper'
-      ? `Convergência Milenária (1100 camadas): ${winner.justification}`
+      ? `Convergência Suprema (1500 camadas): ${winner.justification}`
       : mode === 'alert'
       ? `Quase lá: ${winner.justification}`
       : `Análise em andamento: ${winner.justification}`;
@@ -2175,6 +2441,10 @@ serve(async (req) => {
       noiseFiltered: noiseCount,
       dealerChaos: chaoticDealer,
       selfCorrection: strategyWeightAdjust,
+      randomnessIndex,
+      diamondDeflection: diamondDeflection.slice(0, 4),
+      kellyBetting,
+      dealerBiometrics,
       deepMemory: {
         ancestralPatterns: ancestralPatterns.slice(0, 3),
         mesaDNA,

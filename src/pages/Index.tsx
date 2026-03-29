@@ -721,7 +721,7 @@ const Index = () => {
                 <Eye className="w-4 h-4 text-blue-400" />
                 <span className="font-display text-[10px] tracking-[0.15em] font-bold text-blue-400">MEMÓRIA PROFUNDA & FÍSICA AVANÇADA</span>
                 <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold ml-auto">
-                  1100 CAMADAS
+                  1500 CAMADAS
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
@@ -833,6 +833,106 @@ const Index = () => {
                     )}
                   </div>
                 </div>
+              </div>
+
+              {/* New Analysis Cards Row */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                {/* Noise Filter */}
+                {sniperData?.randomnessIndex && (
+                  <div className="bg-secondary/40 rounded-lg p-2 border border-border">
+                    <span className="text-[8px] font-bold text-rose-400 block mb-1">🛡️ FILTRO RUÍDO</span>
+                    <div className="text-[8px] text-foreground/80 space-y-0.5">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Índice</span>
+                        <span className={`font-bold ${sniperData.randomnessIndex.overall >= 75 ? 'text-destructive' : sniperData.randomnessIndex.overall >= 50 ? 'text-yellow-400' : 'text-green-400'}`}>
+                          {sniperData.randomnessIndex.overall}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Estável</span>
+                        <span className={`font-bold ${sniperData.randomnessIndex.stable ? 'text-green-400' : 'text-destructive'}`}>
+                          {sniperData.randomnessIndex.stable ? '✅ Sim' : '❌ Não'}
+                        </span>
+                      </div>
+                      {sniperData.randomnessIndex.message && (
+                        <div className="text-[7px] mt-1 text-muted-foreground">{sniperData.randomnessIndex.message}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Diamond Deflectors */}
+                {sniperData?.diamondDeflection?.length > 0 && (
+                  <div className="bg-secondary/40 rounded-lg p-2 border border-border">
+                    <span className="text-[8px] font-bold text-sky-400 block mb-1">💎 DEFLETORES</span>
+                    <div className="text-[8px] text-foreground/80 space-y-0.5">
+                      {sniperData.diamondDeflection.slice(0, 3).map((d: any, i: number) => (
+                        <div key={i} className="flex justify-between">
+                          <span className="text-muted-foreground">D#{d.zone}</span>
+                          <span className="font-mono font-bold">{(d.deflectionRate * 100).toFixed(0)}% → {d.targetSector.slice(0, 4)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Kelly Criterion */}
+                {sniperData?.kellyBetting && (
+                  <div className="bg-secondary/40 rounded-lg p-2 border border-border">
+                    <span className="text-[8px] font-bold text-emerald-400 block mb-1">💰 KELLY CRITERION</span>
+                    <div className="text-[8px] text-foreground/80 space-y-0.5">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Unidade</span>
+                        <span className={`font-bold ${sniperData.kellyBetting.unitMultiplier >= 3 ? 'text-primary' : sniperData.kellyBetting.unitMultiplier >= 2 ? 'text-yellow-400' : 'text-foreground'}`}>
+                          {sniperData.kellyBetting.unitMultiplier}x
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Risco</span>
+                        <span className={`font-bold ${sniperData.kellyBetting.riskLevel === 'maximo' ? 'text-primary' : sniperData.kellyBetting.riskLevel === 'minimo' ? 'text-destructive' : 'text-foreground'}`}>
+                          {sniperData.kellyBetting.riskLevel}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Erro</span>
+                        <span className="font-mono font-bold">{sniperData.kellyBetting.residualError}%</span>
+                      </div>
+                      {sniperData.kellyBetting.recommendation && (
+                        <div className="text-[7px] mt-1 text-muted-foreground">{sniperData.kellyBetting.recommendation}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Dealer Biometrics */}
+                {sniperData?.dealerBiometrics && (
+                  <div className="bg-secondary/40 rounded-lg p-2 border border-border">
+                    <span className="text-[8px] font-bold text-violet-400 block mb-1">🎭 BIOMETRIA DEALER</span>
+                    <div className="text-[8px] text-foreground/80 space-y-0.5">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Perfil</span>
+                        <span className={`font-bold ${sniperData.dealerBiometrics.profileType === 'mecânico' ? 'text-green-400' : sniperData.dealerBiometrics.profileType === 'caótico' ? 'text-destructive' : 'text-foreground'}`}>
+                          {sniperData.dealerBiometrics.profileType}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Consist.</span>
+                        <span className="font-mono font-bold">{sniperData.dealerBiometrics.arcConsistency}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Setor</span>
+                        <span className="font-bold">{sniperData.dealerBiometrics.sectorPreference?.slice(0, 6)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Força</span>
+                        <span className="font-mono font-bold text-violet-400">{sniperData.dealerBiometrics.strengthIndex}/100</span>
+                      </div>
+                      {sniperData.dealerBiometrics.signature && (
+                        <div className="text-[7px] mt-1 font-mono text-muted-foreground">ID: {sniperData.dealerBiometrics.signature}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
