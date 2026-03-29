@@ -1,5 +1,5 @@
 import {
-  CircleDot, Brain, Shield, Wifi, WifiOff, RefreshCw, Download
+  CircleDot, Brain, Shield, Wifi, WifiOff, RefreshCw, Download, History
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -13,12 +13,13 @@ interface NavbarProps {
   fetchNumbers: () => void;
   fetchStored: () => void;
   autoLearnStatus: 'idle' | 'learning' | 'analyzing' | 'backtesting';
+  onShowHistory: () => void;
 }
 
 const Navbar = ({
   isPolling, setIsPolling, isAnalyzing, triggerLearn,
   confidenceFilter, setConfidenceFilter, lastUpdate,
-  fetchNumbers, fetchStored, autoLearnStatus,
+  fetchNumbers, fetchStored, autoLearnStatus, onShowHistory,
 }: NavbarProps) => (
   <nav className="bg-card/95 backdrop-blur-md border-b border-border px-4 py-2 z-50 shrink-0">
     <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-2">
@@ -34,6 +35,11 @@ const Navbar = ({
       </div>
 
       <div className="flex items-center gap-1.5">
+        <button onClick={onShowHistory}
+          className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all border border-emerald-500/30">
+          <History className="w-3 h-3" />
+          <span className="hidden sm:inline">HISTÓRICO</span>
+        </button>
         <button onClick={triggerLearn} disabled={isAnalyzing}
           className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold bg-primary/20 text-primary hover:bg-primary/30 transition-all border border-primary/30 disabled:opacity-50">
           <Brain className={`w-3 h-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
@@ -44,7 +50,7 @@ const Navbar = ({
             confidenceFilter ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-secondary text-muted-foreground border border-border'
           }`}>
           <Shield className="w-3 h-3" />
-          <span className="hidden sm:inline">{confidenceFilter ? '85%+' : 'TODOS'}</span>
+          <span className="hidden sm:inline">{confidenceFilter ? '70%+' : 'TODOS'}</span>
         </button>
         <button onClick={() => setIsPolling(!isPolling)}
           className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
