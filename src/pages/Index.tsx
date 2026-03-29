@@ -298,6 +298,7 @@ const Index = () => {
   };
 
   const allNumbers = storedNumbers.length > apiNumbers.length ? storedNumbers : apiNumbers;
+  const historySlice = allNumbers.slice(0, historyLimit);
   const displayNumbers = showAllHistory ? allNumbers : allNumbers.slice(0, 100);
   const isCavalo = (n: number) => CAVALOS_258.includes(n);
   const latestNumber = allNumbers[0];
