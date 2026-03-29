@@ -117,6 +117,7 @@ const Index = () => {
   const lastSpinSignatureRef = useRef('');
   const apiSnapshotRef = useRef<number[]>([]);
   const lastAcceptedSpinRef = useRef<{ number: number | null; timestamp: number }>({ number: null, timestamp: 0 });
+  const processedPredictionEventsRef = useRef<Record<string, number>>({});
 
   const isBurstDuplicate = useCallback((number: number) => {
     const { number: lastNumber, timestamp } = lastAcceptedSpinRef.current;
@@ -125,6 +126,18 @@ const Index = () => {
 
   const markAcceptedSpin = useCallback((number: number) => {
     lastAcceptedSpinRef.current = { number, timestamp: Date.now() };
+  }, []);
+
+  const shouldProcessPredictionEvent = useCallback((row: { id: string; hit: boolean | null; hit_type: string | null; actual_number: number | null }) => {
+    const now = Date.now();
+    Object.keys(processedPredictionEventsRef.current).forEach((key) => {
+      if (now - processedPredictionEventsRef.current[key] > 15000) delete processedPredictionEventsRef.current[key];
+    });
+
+    const eventKey = `${row.id}-${row.hit}-${row.hit_type}-${row.actual_number}`;
+    if (processedPredictionEventsRef.current[eventKey]) return false;
+    processedPredictionEventsRef.current[eventKey] = now;
+    return true;
   }, []);
 
   const handleNewSpin = useCallback((signature: string, latestNumber?: number) => {
@@ -300,10 +313,13 @@ const Index = () => {
     const ch = supabase.channel('prediction_result_rt').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'prediction_history' }, (payload: any) => {
       const row = payload.new;
       if (row && row.hit !== null && row.actual_number !== null) {
+        if (!shouldProcessPredictionEvent(row)) return;
+
         const isHit = row.hit === true;
         const hitType = row.hit_type;
         const label = row.strategy_label || row.strategy_type || 'Previsão';
         setLastPredResult({ hit: isHit, hitType, predicted: row.predicted_main, actual: row.actual_number, label });
+
         if (isHit) {
           toast.success(
             `${hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO VIZINHO!'} ${label} — Previsto: ${row.predicted_main}, Saiu: ${row.actual_number}`,
@@ -315,11 +331,12 @@ const Index = () => {
             { duration: 6000, style: { background: '#2e0a0a', border: '1px solid #ef4444', color: '#f87171' } }
           );
         }
+
         loadPredStats();
       }
     }).subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [loadPredStats]);
+  }, [loadPredStats, shouldProcessPredictionEvent]);
 
   const triggerLearn = async () => {
     setIsAnalyzing(true);
