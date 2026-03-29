@@ -839,6 +839,109 @@ serve(async (req) => {
     });
 
     // ==========================================
+    // SIMPLE BET TYPES — Cor, Par/Ímpar, Alto/Baixo, Coluna, Dúzia, Número Exato
+    // ==========================================
+
+    // COR (Red vs Black) — bet on the color that's due based on frequency imbalance
+    const redNums30 = last30.filter(n => RED.includes(n)).length;
+    const blackNums30 = last30.filter(n => n > 0 && !RED.includes(n)).length;
+    const betOnRed = blackNums30 > redNums30;
+    const colorNums = betOnRed
+      ? Array.from({length:36}, (_,i) => i+1).filter(n => RED.includes(n))
+      : Array.from({length:36}, (_,i) => i+1).filter(n => !RED.includes(n));
+    const colorImbalance = Math.abs(redNums30 - blackNums30);
+    const colorBtRate = backtestSet(colorNums);
+    strategies.push({
+      type: 'cor', label: betOnRed ? '🔴 Vermelho' : '⚫ Preto', emoji: betOnRed ? '🔴' : '⚫',
+      numbers: colorNums, coverage: (18/37)*100, payout: 2,
+      score: colorImbalance * 3 + colorBtRate * 25,
+      probability: Math.min(98, Math.round(45 + colorBtRate * 40 + colorImbalance * 2)),
+      justification: `${betOnRed ? 'Vermelho' : 'Preto'} atrasado (${betOnRed ? redNums30 : blackNums30}x vs ${betOnRed ? blackNums30 : redNums30}x em 30). Backtest: ${(colorBtRate*100).toFixed(0)}%.`,
+    });
+
+    // PAR/ÍMPAR — bet on parity that's due
+    const even30 = last30.filter(n => n > 0 && n % 2 === 0).length;
+    const odd30 = last30.filter(n => n > 0 && n % 2 === 1).length;
+    const betOnEven = odd30 > even30;
+    const parityNums = betOnEven
+      ? Array.from({length:36}, (_,i) => i+1).filter(n => n % 2 === 0)
+      : Array.from({length:36}, (_,i) => i+1).filter(n => n % 2 === 1);
+    const parityImbalance = Math.abs(even30 - odd30);
+    const parityBtRate = backtestSet(parityNums);
+    strategies.push({
+      type: 'paridade', label: betOnEven ? '🔵 Par' : '🟠 Ímpar', emoji: betOnEven ? '🔵' : '🟠',
+      numbers: parityNums, coverage: (18/37)*100, payout: 2,
+      score: parityImbalance * 3 + parityBtRate * 25,
+      probability: Math.min(98, Math.round(45 + parityBtRate * 40 + parityImbalance * 2)),
+      justification: `${betOnEven ? 'Par' : 'Ímpar'} atrasado (${betOnEven ? even30 : odd30}x vs ${betOnEven ? odd30 : even30}x em 30). Backtest: ${(parityBtRate*100).toFixed(0)}%.`,
+    });
+
+    // ALTO/BAIXO — bet on high or low that's due
+    const high30 = last30.filter(n => n >= 19 && n <= 36).length;
+    const low30 = last30.filter(n => n >= 1 && n <= 18).length;
+    const betOnHigh = low30 > high30;
+    const hlNums = betOnHigh
+      ? Array.from({length:18}, (_,i) => i+19)
+      : Array.from({length:18}, (_,i) => i+1);
+    const hlImbalance = Math.abs(high30 - low30);
+    const hlBtRate = backtestSet(hlNums);
+    strategies.push({
+      type: 'alto_baixo', label: betOnHigh ? '⬆️ Alto (19-36)' : '⬇️ Baixo (1-18)', emoji: betOnHigh ? '⬆️' : '⬇️',
+      numbers: hlNums, coverage: (18/37)*100, payout: 2,
+      score: hlImbalance * 3 + hlBtRate * 25,
+      probability: Math.min(98, Math.round(45 + hlBtRate * 40 + hlImbalance * 2)),
+      justification: `${betOnHigh ? 'Alto' : 'Baixo'} atrasado (${betOnHigh ? high30 : low30}x vs ${betOnHigh ? low30 : high30}x em 30). Backtest: ${(hlBtRate*100).toFixed(0)}%.`,
+    });
+
+    // COLUNA — best performing column
+    const colCount30 = [0, 0, 0];
+    last30.forEach(n => { const c = getColumn(n); if (c > 0) colCount30[c-1]++; });
+    const coldestCol = colCount30.indexOf(Math.min(...colCount30)) + 1;
+    const colNums = coldestCol === 1 ? COL1 : coldestCol === 2 ? COL2 : COL3;
+    const colDelay = colCount30[coldestCol - 1];
+    const colBtRate = backtestSet(colNums);
+    strategies.push({
+      type: 'coluna', label: `📐 Coluna ${coldestCol}`, emoji: '📐',
+      numbers: [...colNums], coverage: (12/37)*100, payout: 3,
+      score: (10 - colDelay) * 2 + colBtRate * 22,
+      probability: Math.min(98, Math.round(30 + colBtRate * 45 + (10 - colDelay) * 3)),
+      justification: `Coluna ${coldestCol} com apenas ${colDelay}x em 30 (atrasada). Backtest: ${(colBtRate*100).toFixed(0)}%.`,
+    });
+
+    // DÚZIA ÚNICA — coldest single dozen
+    const dozenCount30 = [0, 0, 0];
+    last30.forEach(n => { const d = getDozen(n); if (d > 0) dozenCount30[d-1]++; });
+    const coldestDz = dozenCount30.indexOf(Math.min(...dozenCount30)) + 1;
+    const dzNums = Array.from({length:12}, (_,i) => (coldestDz-1)*12 + i + 1);
+    const dzDelay = dozenCount30[coldestDz - 1];
+    const dzBtSingle = backtestSet(dzNums);
+    strategies.push({
+      type: 'duzia_unica', label: `🎲 Dúzia ${coldestDz}`, emoji: '🎲',
+      numbers: dzNums, coverage: (12/37)*100, payout: 3,
+      score: (10 - dzDelay) * 2 + dzBtSingle * 22,
+      probability: Math.min(98, Math.round(30 + dzBtSingle * 45 + (10 - dzDelay) * 3)),
+      justification: `Dúzia ${coldestDz} (${(coldestDz-1)*12+1}-${coldestDz*12}) com ${dzDelay}x em 30. Backtest: ${(dzBtSingle*100).toFixed(0)}%.`,
+    });
+
+    // NÚMERO EXATO — top scoring single number
+    if (numScores.length > 0) {
+      const topNum = numScores[0];
+      const numBtRate = (() => {
+        let h = 0, t = 0;
+        const mx = Math.min(100, numbers.length - 5);
+        for (let w = 0; w < mx; w++) { t++; if (numbers[w+5] === topNum.num) h++; }
+        return t > 0 ? h / t : 0;
+      })();
+      strategies.push({
+        type: 'numero_exato', label: `💎 Pleno no ${topNum.num}`, emoji: '💎',
+        numbers: [topNum.num], coverage: (1/37)*100, payout: 36,
+        score: topNum.score * 3 + numBtRate * 100,
+        probability: Math.min(98, Math.round(5 + topNum.score * 5 + numBtRate * 80)),
+        justification: `Número ${topNum.num} com convergência máxima: ${topNum.reasons.slice(0,4).join(', ')}. Backtest: ${(numBtRate*100).toFixed(0)}%.`,
+      });
+    }
+
+    // ==========================================
     // 7. DYNAMIC STRATEGY FROM INSIGHTS — AI-generated pattern-based plays
     // ==========================================
     const insightTopNums = Object.entries(insightNumbers)
