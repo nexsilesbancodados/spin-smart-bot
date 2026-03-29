@@ -2185,6 +2185,7 @@ serve(async (req) => {
       predictedSector: string | null;
       predictedDozen: number | null;
       predictedTerminal: number | null;
+      detectedPatterns: { name: string; emoji: string; description: string; confidence: number; category: string; action: string }[];
     } = {
       sectorMatrix: { Voisins: { Voisins: 0, Tiers: 0, Orphelins: 0 }, Tiers: { Voisins: 0, Tiers: 0, Orphelins: 0 }, Orphelins: { Voisins: 0, Tiers: 0, Orphelins: 0 } },
       dozenMatrix: { 1: { 1: 0, 2: 0, 3: 0 }, 2: { 1: 0, 2: 0, 3: 0 }, 3: { 1: 0, 2: 0, 3: 0 } },
@@ -2196,6 +2197,7 @@ serve(async (req) => {
       predictedSector: null,
       predictedDozen: null,
       predictedTerminal: null,
+      detectedPatterns: [],
     };
 
     // Initialize terminal matrix
@@ -2372,6 +2374,57 @@ serve(async (req) => {
           return m >= 0 && m <= 36 && m !== nums[i] && nums[i-1] === m;
         }},
         { name: 'Complementar (=37)', emoji: '♻️', check: (nums, i) => i > 0 && nums[i] > 0 && nums[i-1] > 0 && nums[i] + nums[i-1] === 37 },
+        // === STREAKS & SEQUENCES ===
+        { name: '3+ Altos Seguidos', emoji: '🔝', check: (nums, i) => i >= 2 && nums[i] >= 19 && nums[i-1] >= 19 && nums[i-2] >= 19 },
+        { name: '3+ Baixos Seguidos', emoji: '⬇️', check: (nums, i) => i >= 2 && nums[i] >= 1 && nums[i] <= 18 && nums[i-1] >= 1 && nums[i-1] <= 18 && nums[i-2] >= 1 && nums[i-2] <= 18 },
+        { name: '3+ Vermelhos', emoji: '❤️', check: (nums, i) => i >= 2 && getColor(nums[i]) === 'red' && getColor(nums[i-1]) === 'red' && getColor(nums[i-2]) === 'red' },
+        { name: '3+ Pretos', emoji: '🖤', check: (nums, i) => i >= 2 && getColor(nums[i]) === 'black' && getColor(nums[i-1]) === 'black' && getColor(nums[i-2]) === 'black' },
+        { name: '3+ Pares Seguidos', emoji: '🟦', check: (nums, i) => i >= 2 && nums[i] > 0 && nums[i] % 2 === 0 && nums[i-1] > 0 && nums[i-1] % 2 === 0 && nums[i-2] > 0 && nums[i-2] % 2 === 0 },
+        { name: '3+ Ímpares Seguidos', emoji: '🟧', check: (nums, i) => i >= 2 && nums[i] > 0 && nums[i] % 2 === 1 && nums[i-1] > 0 && nums[i-1] % 2 === 1 && nums[i-2] > 0 && nums[i-2] % 2 === 1 },
+        // === GANGORRA (seesaw) ===
+        { name: 'Gangorra Alto↕Baixo', emoji: '🎢', check: (nums, i) => {
+          if (i < 2 || nums[i] === 0 || nums[i-1] === 0 || nums[i-2] === 0) return false;
+          const h = (n: number) => n >= 19;
+          return h(nums[i]) !== h(nums[i-1]) && h(nums[i-1]) !== h(nums[i-2]);
+        }},
+        { name: 'Gangorra Cor', emoji: '🎡', check: (nums, i) => {
+          if (i < 2 || nums[i] === 0 || nums[i-1] === 0 || nums[i-2] === 0) return false;
+          const c0 = getColor(nums[i]), c1 = getColor(nums[i-1]), c2 = getColor(nums[i-2]);
+          return c0 !== 'green' && c1 !== 'green' && c2 !== 'green' && c0 !== c1 && c1 !== c2;
+        }},
+        { name: 'Gangorra Par↕Ímpar', emoji: '🔃', check: (nums, i) => {
+          if (i < 2 || nums[i] === 0 || nums[i-1] === 0 || nums[i-2] === 0) return false;
+          return (nums[i] % 2) !== (nums[i-1] % 2) && (nums[i-1] % 2) !== (nums[i-2] % 2);
+        }},
+        // === ROTAÇÃO DÚZIAS & COLUNAS ===
+        { name: 'Rotação Dúzias (D1→D2→D3)', emoji: '🔄', check: (nums, i) => {
+          if (i < 2) return false;
+          const d0 = getDozen(nums[i]), d1 = getDozen(nums[i-1]), d2 = getDozen(nums[i-2]);
+          return d0 > 0 && d1 > 0 && d2 > 0 && d0 !== d1 && d1 !== d2 && d0 !== d2;
+        }},
+        { name: 'Mesma Dúzia 3x', emoji: '🎲', check: (nums, i) => {
+          if (i < 2) return false;
+          const d0 = getDozen(nums[i]), d1 = getDozen(nums[i-1]), d2 = getDozen(nums[i-2]);
+          return d0 > 0 && d0 === d1 && d1 === d2;
+        }},
+        { name: 'Rotação Colunas', emoji: '🔁', check: (nums, i) => {
+          if (i < 2) return false;
+          const c0 = getColumn(nums[i]), c1 = getColumn(nums[i-1]), c2 = getColumn(nums[i-2]);
+          return c0 > 0 && c1 > 0 && c2 > 0 && c0 !== c1 && c1 !== c2 && c0 !== c2;
+        }},
+        { name: 'Mesma Coluna 3x', emoji: '📏', check: (nums, i) => {
+          if (i < 2) return false;
+          const c0 = getColumn(nums[i]), c1 = getColumn(nums[i-1]), c2 = getColumn(nums[i-2]);
+          return c0 > 0 && c0 === c1 && c1 === c2;
+        }},
+        // === GAPS & DELAYS ===
+        { name: 'Mesmo Setor 3x', emoji: '🗺️', check: (nums, i) => {
+          if (i < 2) return false;
+          const s0 = getSector(nums[i]), s1 = getSector(nums[i-1]), s2 = getSector(nums[i-2]);
+          return s0 !== 'Zero' && s0 === s1 && s1 === s2;
+        }},
+        { name: 'Vizinho Cilindro 2x', emoji: '🎰', check: (nums, i) => i > 0 && wheelDist(nums[i], nums[i-1]) <= 2 },
+        { name: 'Mesmo Terminal 3x', emoji: '🔟', check: (nums, i) => i >= 2 && nums[i] % 10 === nums[i-1] % 10 && nums[i-1] % 10 === nums[i-2] % 10 },
       ];
       const check50 = numbers.slice(0, 50);
       for (const fc of fidelityChecks) {
@@ -2385,6 +2438,221 @@ serve(async (req) => {
       }
     }
     blocoQ = Math.min(maxQ, blocoQ);
+
+    // ========================================================
+    // DETECTED PATTERNS — Real-time pattern identification
+    // ========================================================
+    {
+      const recent = numbers.slice(0, 20);
+      // Streak detection: Alta
+      let highStreak = 0;
+      for (const n of recent) { if (n >= 19) highStreak++; else break; }
+      if (highStreak >= 3) {
+        transitionMatrix.detectedPatterns.push({
+          name: `Sequência de ${highStreak} ALTOS`,
+          emoji: '🔝', confidence: Math.min(95, 50 + highStreak * 10),
+          description: `${highStreak} números altos (19-36) consecutivos. Probabilidade de reversão para Baixo aumenta.`,
+          category: 'streak', action: 'Aposte em Baixo (1-18) — reversão iminente',
+        });
+      }
+      // Streak: Baixa
+      let lowStreak = 0;
+      for (const n of recent) { if (n >= 1 && n <= 18) lowStreak++; else break; }
+      if (lowStreak >= 3) {
+        transitionMatrix.detectedPatterns.push({
+          name: `Sequência de ${lowStreak} BAIXOS`,
+          emoji: '⬇️', confidence: Math.min(95, 50 + lowStreak * 10),
+          description: `${lowStreak} números baixos (1-18) consecutivos. Probabilidade de reversão para Alto aumenta.`,
+          category: 'streak', action: 'Aposte em Alto (19-36) — reversão iminente',
+        });
+      }
+      // Streak: Vermelhos
+      let redStreak = 0;
+      for (const n of recent) { if (getColor(n) === 'red') redStreak++; else break; }
+      if (redStreak >= 3) {
+        transitionMatrix.detectedPatterns.push({
+          name: `${redStreak} Vermelhos Seguidos`,
+          emoji: '🔴', confidence: Math.min(90, 45 + redStreak * 10),
+          description: `${redStreak} números vermelhos consecutivos. Tendência de reversão para Preto.`,
+          category: 'streak', action: 'Aposte em Preto — reversão de cor',
+        });
+      }
+      // Streak: Pretos
+      let blackStreak = 0;
+      for (const n of recent) { if (getColor(n) === 'black') blackStreak++; else break; }
+      if (blackStreak >= 3) {
+        transitionMatrix.detectedPatterns.push({
+          name: `${blackStreak} Pretos Seguidos`,
+          emoji: '⚫', confidence: Math.min(90, 45 + blackStreak * 10),
+          description: `${blackStreak} números pretos consecutivos. Tendência de reversão para Vermelho.`,
+          category: 'streak', action: 'Aposte em Vermelho — reversão de cor',
+        });
+      }
+      // Streak: Pares
+      let evenStreak = 0;
+      for (const n of recent) { if (n > 0 && n % 2 === 0) evenStreak++; else break; }
+      if (evenStreak >= 3) {
+        transitionMatrix.detectedPatterns.push({
+          name: `${evenStreak} Pares Seguidos`,
+          emoji: '2️⃣', confidence: Math.min(88, 45 + evenStreak * 9),
+          description: `${evenStreak} números pares consecutivos. Tendência de reversão para Ímpar.`,
+          category: 'streak', action: 'Aposte em Ímpar — reversão',
+        });
+      }
+      // Streak: Ímpares
+      let oddStreak = 0;
+      for (const n of recent) { if (n > 0 && n % 2 === 1) oddStreak++; else break; }
+      if (oddStreak >= 3) {
+        transitionMatrix.detectedPatterns.push({
+          name: `${oddStreak} Ímpares Seguidos`,
+          emoji: '1️⃣', confidence: Math.min(88, 45 + oddStreak * 9),
+          description: `${oddStreak} números ímpares consecutivos. Tendência de reversão para Par.`,
+          category: 'streak', action: 'Aposte em Par — reversão',
+        });
+      }
+      // Alternância Alto↕Baixo (gangorra 3+)
+      if (recent.length >= 4) {
+        let altCount = 0;
+        for (let i = 0; i < Math.min(8, recent.length - 1); i++) {
+          if (recent[i] > 0 && recent[i + 1] > 0 && (recent[i] >= 19) !== (recent[i + 1] >= 19)) altCount++;
+          else break;
+        }
+        if (altCount >= 3) {
+          const nextExpected = recent[0] >= 19 ? 'Baixo (1-18)' : 'Alto (19-36)';
+          transitionMatrix.detectedPatterns.push({
+            name: `Gangorra Alto↕Baixo (${altCount}x)`,
+            emoji: '🎢', confidence: Math.min(90, 55 + altCount * 8),
+            description: `Alternância perfeita Alto/Baixo por ${altCount} rodadas consecutivas.`,
+            category: 'alternancia', action: `Aposte em ${nextExpected} — padrão sugere continuação`,
+          });
+        }
+      }
+      // Alternância Cor (gangorra)
+      if (recent.length >= 4) {
+        let altColor = 0;
+        for (let i = 0; i < Math.min(8, recent.length - 1); i++) {
+          const c0 = getColor(recent[i]), c1 = getColor(recent[i + 1]);
+          if (c0 !== 'green' && c1 !== 'green' && c0 !== c1) altColor++;
+          else break;
+        }
+        if (altColor >= 3) {
+          const nextColor = getColor(recent[0]) === 'red' ? 'Preto' : 'Vermelho';
+          transitionMatrix.detectedPatterns.push({
+            name: `Gangorra de Cor (${altColor}x)`,
+            emoji: '🎡', confidence: Math.min(88, 52 + altColor * 8),
+            description: `Alternância perfeita Vermelho/Preto por ${altColor} rodadas.`,
+            category: 'alternancia', action: `Aposte em ${nextColor} — padrão sugere continuação`,
+          });
+        }
+      }
+      // Alternância Par↕Ímpar
+      if (recent.length >= 4) {
+        let altPI = 0;
+        for (let i = 0; i < Math.min(8, recent.length - 1); i++) {
+          if (recent[i] > 0 && recent[i + 1] > 0 && (recent[i] % 2) !== (recent[i + 1] % 2)) altPI++;
+          else break;
+        }
+        if (altPI >= 3) {
+          const nextPI = recent[0] % 2 === 0 ? 'Ímpar' : 'Par';
+          transitionMatrix.detectedPatterns.push({
+            name: `Gangorra Par↕Ímpar (${altPI}x)`,
+            emoji: '🔃', confidence: Math.min(88, 50 + altPI * 8),
+            description: `Alternância perfeita Par/Ímpar por ${altPI} rodadas.`,
+            category: 'alternancia', action: `Aposte em ${nextPI} — padrão sugere continuação`,
+          });
+        }
+      }
+      // Concentração em Dúzia
+      const recent10Nums = recent.slice(0, 10).filter(n => n > 0);
+      const dzCount = [0, 0, 0];
+      recent10Nums.forEach(n => { dzCount[getDozen(n) - 1]++; });
+      const maxDz = Math.max(...dzCount);
+      const maxDzIdx = dzCount.indexOf(maxDz);
+      if (maxDz >= 6) {
+        transitionMatrix.detectedPatterns.push({
+          name: `Concentração D${maxDzIdx + 1} (${maxDz}/10)`,
+          emoji: '🎲', confidence: Math.min(90, 45 + maxDz * 6),
+          description: `Dúzia ${maxDzIdx + 1} apareceu ${maxDz}x nas últimas 10 rodadas. Mesa concentrada.`,
+          category: 'concentracao', action: `Continue em D${maxDzIdx + 1} se em modo Repetição, ou entre nas outras se em Alternância`,
+        });
+      }
+      // Dúzia ausente (delay)
+      const coldDz = dzCount.indexOf(Math.min(...dzCount));
+      if (dzCount[coldDz] <= 1) {
+        transitionMatrix.detectedPatterns.push({
+          name: `Dúzia ${coldDz + 1} Ausente (${dzCount[coldDz]}/10)`,
+          emoji: '❄️', confidence: Math.min(85, 50 + (10 - dzCount[coldDz]) * 4),
+          description: `Dúzia ${coldDz + 1} apareceu apenas ${dzCount[coldDz]}x nas últimas 10. Dívida estatística.`,
+          category: 'gap', action: `Aposte em D${coldDz + 1} — retorno provável`,
+        });
+      }
+      // Concentração em Coluna
+      const colCount = [0, 0, 0];
+      recent10Nums.forEach(n => { const c = getColumn(n); if (c > 0) colCount[c - 1]++; });
+      const maxCol = Math.max(...colCount);
+      const maxColIdx = colCount.indexOf(maxCol);
+      if (maxCol >= 6) {
+        transitionMatrix.detectedPatterns.push({
+          name: `Concentração C${maxColIdx + 1} (${maxCol}/10)`,
+          emoji: '📐', confidence: Math.min(88, 45 + maxCol * 5),
+          description: `Coluna ${maxColIdx + 1} dominou ${maxCol}x nas últimas 10. Possível viés.`,
+          category: 'concentracao', action: `Continue em C${maxColIdx + 1} ou espere reversão`,
+        });
+      }
+      // Coluna fria
+      const coldCol = colCount.indexOf(Math.min(...colCount));
+      if (colCount[coldCol] <= 1) {
+        transitionMatrix.detectedPatterns.push({
+          name: `Coluna ${coldCol + 1} Fria (${colCount[coldCol]}/10)`,
+          emoji: '🧊', confidence: Math.min(82, 48 + (10 - colCount[coldCol]) * 4),
+          description: `Coluna ${coldCol + 1} com apenas ${colCount[coldCol]} hits em 10. Retorno esperado.`,
+          category: 'gap', action: `Aposte em C${coldCol + 1} — dívida estatística`,
+        });
+      }
+      // Setor concentrado
+      const sectorCount: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0 };
+      recent.slice(0, 15).forEach(n => { const s = getSector(n); if (s !== 'Zero') sectorCount[s]++; });
+      const hotSector = Object.entries(sectorCount).sort(([,a], [,b]) => b - a)[0];
+      if (hotSector && Number(hotSector[1]) >= 8) {
+        transitionMatrix.detectedPatterns.push({
+          name: `Setor ${hotSector[0]} Dominante (${hotSector[1]}/15)`,
+          emoji: '🗺️', confidence: Math.min(88, 50 + Number(hotSector[1]) * 3),
+          description: `Setor ${hotSector[0]} concentrou ${hotSector[1]} hits em 15 rodadas.`,
+          category: 'concentracao', action: `Cubra setor ${hotSector[0]}`,
+        });
+      }
+      // Terminal quente
+      if (daniGreen.mod1.count >= 4) {
+        transitionMatrix.detectedPatterns.push({
+          name: `Terminal T${daniGreen.mod1.terminal} Quente (${daniGreen.mod1.count}x/15)`,
+          emoji: '🔥', confidence: Math.min(92, 50 + daniGreen.mod1.count * 7),
+          description: `Terminal ${daniGreen.mod1.terminal} apareceu ${daniGreen.mod1.count}x em 15 rodadas. Dupla: T${daniGreen.mod1.pair}.`,
+          category: 'terminal', action: `Aposte em T${daniGreen.mod1.terminal} + T${daniGreen.mod1.pair}`,
+        });
+      }
+      // Rotação de dúzias (D1→D2→D3→...)
+      if (recent.length >= 4) {
+        const dzSeq = recent.slice(0, 6).filter(n => n > 0).map(n => getDozen(n));
+        let isRotating = true;
+        for (let i = 0; i < dzSeq.length - 1 && i < 3; i++) {
+          if (dzSeq[i] === dzSeq[i + 1]) { isRotating = false; break; }
+        }
+        if (isRotating && dzSeq.length >= 3 && dzSeq[0] !== dzSeq[1] && dzSeq[1] !== dzSeq[2]) {
+          // Predict next dozen based on pattern
+          const usedDzs = new Set(dzSeq.slice(0, 2));
+          const missingDz = [1, 2, 3].find(d => !usedDzs.has(d)) || dzSeq[0];
+          transitionMatrix.detectedPatterns.push({
+            name: `Rotação de Dúzias (${dzSeq.slice(0, 3).map(d => 'D' + d).join('→')})`,
+            emoji: '🔄', confidence: 65,
+            description: `Dúzias estão rotacionando sem repetir. Próxima provável: D${missingDz}.`,
+            category: 'rotacao', action: `Aposte em D${missingDz}`,
+          });
+        }
+      }
+
+      // Sort by confidence
+      transitionMatrix.detectedPatterns.sort((a, b) => b.confidence - a.confidence);
+    }
 
     // ========================================================
     // TOTAL DAS 1.700 CAMADAS
