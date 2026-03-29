@@ -285,7 +285,7 @@ const Index = () => {
 
   useEffect(() => {
     const runContinuousLearn = async () => {
-      if (autoLearnDisabled.current || autoLearnErrorCount.current >= 2) {
+      if (!aiEnabled || autoLearnDisabled.current || autoLearnErrorCount.current >= 2) {
         autoLearnDisabled.current = true;
         setAutoLearnStatus('idle');
         return;
