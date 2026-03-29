@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Crosshair, AlertTriangle, Eye, Clock, Shield, Zap, ShieldCheck, Sparkles, Target, TrendingUp
@@ -76,7 +77,38 @@ const getBetTypeCategory = (type: string): string => {
 };
 
 const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult, confidenceFilter }: Props) => {
-  
+  const [reedCount, setReedCount] = useState(0);
+  const prevSignalRef = useRef<number | null>(null);
+  const prevHitRef = useRef<boolean | null>(null);
+
+  // Track signal changes and hit results for REED
+  useEffect(() => {
+    const currentSignal = sniperData?.signal?.number ?? null;
+    
+    // Reset on new signal
+    if (currentSignal !== null && currentSignal !== prevSignalRef.current) {
+      prevSignalRef.current = currentSignal;
+      setReedCount(0);
+      return;
+    }
+
+    if (!lastPredResult || lastPredResult.hit === null) return;
+    
+    // Only process when hit status changes
+    if (lastPredResult.hit === prevHitRef.current) return;
+    prevHitRef.current = lastPredResult.hit;
+
+    if (lastPredResult.hit === true) {
+      setReedCount(0);
+    } else if (lastPredResult.hit === false) {
+      setReedCount(prev => Math.min(prev + 1, 4));
+    }
+  }, [sniperData?.signal?.number, lastPredResult?.hit]);
+
+  const reedColor = reedCount >= 4 ? 'bg-red-500/20 text-red-400 border-red-500/50' 
+    : reedCount >= 2 ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/40' 
+    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40';
+  const reedStopped = reedCount >= 4;
 
   if (!sniperData) {
     return (
@@ -122,8 +154,22 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
         )}
         <Sparkles className="w-3.5 h-3.5 text-primary/60" />
         <span className="font-bold text-xs tracking-wide text-foreground">
-          ANÁLISE MULTI-JOGADA — TOP OPORTUNIDADES
+          ANÁLISE MULTI-JOGADA
         </span>
+        
+        {/* REED Badge */}
+        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] font-black ${reedColor} ${reedStopped ? 'animate-pulse' : ''}`}>
+          <span>REED: {reedCount}/4</span>
+          {reedStopped && <span>⛔</span>}
+          {reedCount > 0 && (
+            <button 
+              onClick={() => setReedCount(0)} 
+              className="ml-1 text-[9px] opacity-70 hover:opacity-100 transition-opacity"
+              title="Reset REED"
+            >↺</button>
+          )}
+        </div>
+
         <div className="ml-auto">
           {sniperCountdown > 0 ? (
             <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono text-xs font-bold ${
@@ -141,7 +187,14 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
         </div>
       </div>
 
-      <div className="p-4">
+      {/* REED STOP warning */}
+      {reedStopped && (
+        <div className="mx-4 mt-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-center animate-pulse">
+          <span className="text-xs font-black text-red-400">⛔ REED — Pause e reanalise</span>
+        </div>
+      )}
+
+      <div className={`p-4 transition-opacity ${reedStopped ? 'opacity-50 pointer-events-none' : ''}`}>
         {/* STALE RESULT */}
         {sniperStale && lastPredResult ? (
           <div className="flex flex-col items-center gap-3 py-8">
