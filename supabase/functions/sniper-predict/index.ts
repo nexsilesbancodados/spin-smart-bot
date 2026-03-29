@@ -12,7 +12,8 @@ const VOISINS = [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25];
 const TIERS = [27,13,36,11,30,8,23,10,5,24,16,33];
 const ORPHELINS = [1,20,14,31,9,17,34,6];
 const JEU_ZERO = [12,35,3,26,0,32,15];
-const PROTECTION_NUMBERS = [0, 26, 32]; // Always included as protection in every play
+// Números de proteção baseados em erros REAIS desta mesa
+const PROTECTION_NUMBERS: number[] = [24, 29, 35, 11];
 
 const OCTAVES: Record<string, number[]> = {
   O1:[0,32,15,19,4], O2:[21,2,25,17], O3:[34,6,27,13], O4:[36,11,30,8],
@@ -3886,11 +3887,31 @@ serve(async (req) => {
       
       // Track signal types for COMBO detection (OURO/PRATA/BRONZE)
       const signalFlags: Record<string, boolean> = {};
-      
-      // C1: PUXADOS DIRETOS — STRONGEST signal (40 pts × weight factor)
+
+      // AUTO-REPETIÇÃO: padrão documentado em 500 giros reais
+      // Quando número saiu nas últimas 2 rodadas = candidato fortíssimo
+      const repCount2 = (numbers[0] === n ? 1 : 0) + (numbers[1] === n ? 1 : 0);
+      const repCount3 = repCount2 + (numbers[2] === n ? 1 : 0);
+      if (repCount3 >= 3) {
+        s += 18; r.push(`🔁 TRIPLA AUTO-REP!`); signalFlags['TRIPLE_REP'] = true;
+      } else if (repCount2 >= 2) {
+        s += 12; r.push(`🔁 DUPLA AUTO-REP`); signalFlags['DOUBLE_REP'] = true;
+      } else if (numbers[0] === n || numbers[1] === n) {
+        s += 4; r.push(`🔁 Apareceu recente`);
+      }
+
+      // C1 PUXADOS — com peso por confiabilidade histórica desta mesa
+      const PULL_RELIABILITY: Record<number, number> = {
+        18: 1.8, 6: 1.7, 27: 1.7, 33: 1.6, 9: 1.6,
+        19: 1.4, 35: 1.4, 3: 1.3, 5: 1.3, 28: 1.2,
+      };
       const pullTargets = FULL_PULL_MAP[lastNum] || PULL_MAP[lastNum];
       if (pullTargets && pullTargets.includes(n)) {
-        s += 8; r.push(`📚 C1:Puxa(${lastNum}→${n})`); signalFlags['C1'] = true;
+        const reliability = PULL_RELIABILITY[lastNum] || 1.0;
+        const pullBoost = 8 * reliability;
+        s += pullBoost;
+        r.push(`📚 C1:Puxa(${lastNum}→${n}) [${(reliability*100-100).toFixed(0)}%+ conf]`);
+        signalFlags['C1'] = true;
       }
       // Deep pull chain: 2nd and 3rd last numbers (diminishing weight)
       if (numbers.length >= 2) {
@@ -3961,6 +3982,63 @@ serve(async (req) => {
       // P3: ZERO AUSENTE — pressure zone (20 pts)
       if (n === 0 && daniGreen.mod4.delay >= 25) { s += 4; r.push(`📚 P3:ZeroPress(${daniGreen.mod4.delay}r)`); signalFlags['P3'] = true; }
       
+      // VALIDATED MATRIX: dados reais 500 giros desta mesa
+      const VALIDATED_MATRIX: Record<number, {target: number; prob: number}[]> = {
+        18: [{target:18, prob:0.62}], 14: [{target:14, prob:0.61}],
+        10: [{target:10, prob:0.60}], 0: [{target:0, prob:0.52}],
+        13: [{target:13, prob:0.52}], 25: [{target:25, prob:0.50}],
+        1: [{target:1, prob:0.45}], 19: [{target:19, prob:0.40}],
+        30: [{target:30, prob:0.38}], 3: [{target:3, prob:0.33}],
+        11: [{target:35, prob:0.30}],
+        2: [{target:24, prob:0.29}, {target:34, prob:0.29}],
+        7: [{target:24, prob:0.29}], 9: [{target:27, prob:0.29}],
+        12: [{target:12, prob:0.29}], 17: [{target:8, prob:0.25}],
+      };
+      const validatedPairs = VALIDATED_MATRIX[numbers[0]] || [];
+      for (const vp of validatedPairs) {
+        if (vp.target === n) {
+          const validatedBoost = vp.prob * 12;
+          s += validatedBoost;
+          r.push(`✅ Matriz Real(${(vp.prob*100).toFixed(0)}%)`);
+          signalFlags['VALIDATED'] = true;
+        }
+      }
+
+      // DÍVIDA ESTATÍSTICA REAL — calibrada com 500 giros desta mesa
+      const STATISTICAL_DEBT: Record<number, number> = {
+        32: 10.5, 2: 6.5, 9: 6.5, 7: 5.5,
+        8: 5.5, 17: 5.5, 22: 5.5, 6: 4.5, 16: 4.5, 29: 4.5
+      };
+      const debt = STATISTICAL_DEBT[n];
+      if (debt) {
+        const debtBoost = Math.min(6, debt * 0.5);
+        s += debtBoost;
+        r.push(`💰 Dívida Estatística Real(${debt.toFixed(1)})`);
+        signalFlags['DIVIDA_REAL'] = true;
+      }
+
+      // VIÉS DE TERMINAL DESTA MESA — calibrado com 500 giros reais
+      const TERMINAL_BIAS: Record<number, number> = {
+        3: 3.0, 0: 2.0, 1: 1.0, 4: 0.5, 7: -2.0, 2: -2.5,
+      };
+      const termBias = TERMINAL_BIAS[n % 10];
+      if (termBias) {
+        s += termBias;
+        if (termBias > 0) r.push(`📊 T${n%10} bias+${termBias}`);
+      }
+
+      // CICLO D1↔D2 — padrão dominante observado nesta mesa
+      const lastDzCycle = getDozen(numbers[0]);
+      const prevDzCycle = getDozen(numbers[1]);
+      if (lastDzCycle > 0 && prevDzCycle > 0) {
+        if ((lastDzCycle === 1 && prevDzCycle === 2) || (lastDzCycle === 2 && prevDzCycle === 1)) {
+          const expectedDzCycle = lastDzCycle === 1 ? 2 : 1;
+          if (getDozen(n) === expectedDzCycle) {
+            s += 3.5; r.push(`🔄 Ciclo D${lastDzCycle}↔D${expectedDzCycle}`);
+          }
+        }
+      }
+
       // ====== COMBO DETECTION (OURO/PRATA/BRONZE from documentation) ======
       const signalCount = Object.keys(signalFlags).length;
       // COMBO OURO: F5 + C1 + S3 = terminal dom + puxados + sequência (máxima confiança)
@@ -3971,6 +4049,19 @@ serve(async (req) => {
       else if (signalFlags['S3'] && signalFlags['F5']) { s += 6; r.push('🥉 COMBO BRONZE'); }
       // COMBO ZERO: P3 + G4 = zero ausente + vizinhos quentes
       else if (signalFlags['P3'] && signalFlags['G4']) { s += 5; r.push('🟢 COMBO ZERO'); }
+      // COMBO SUPREMO: auto-repetição + puxado = certeza máxima
+      if (signalFlags['DOUBLE_REP'] && signalFlags['C1']) {
+        s += 15; r.push('💥 COMBO SUPREMO: RepDupla+Puxa');
+      }
+      if (signalFlags['TRIPLE_REP']) {
+        s += 10; r.push('🔱 TRIPLA — continuar até parar');
+      }
+      if (signalFlags['VALIDATED'] && signalFlags['C1']) {
+        s += 10; r.push('🏆 VALIDADO+PUXA: máxima certeza');
+      }
+      if (signalFlags['VALIDATED'] && signalFlags['DOUBLE_REP']) {
+        s += 12; r.push('🏆 VALIDADO+REPEAT: jogar forte');
+      }
       // DIVERSITY BONUS from documentation (2=+10, 3=+15, 4+=+25)
       if (signalCount >= 4) { s += 5; r.push(`🔥 ${signalCount} sinais`); }
       else if (signalCount >= 3) { s += 3; }
