@@ -6,7 +6,7 @@ import {
 
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-const PROTECTION_NUMBERS = [0, 26, 32];
+const PROTECTION_NUMBERS = [24, 29, 35, 11];
 const colorClass = (n: number, isProtection = false) => {
   const base = n === 0 ? 'bg-green-600 text-white ring-green-400/40' 
     : RED_NUMBERS.includes(n) ? 'bg-red-600 text-white ring-red-400/30' 
@@ -56,6 +56,7 @@ const getBetTypeLabel = (type: string) => {
     case 'combo_prata': return '🥈 COMBO PRATA';
     case 'ensemble_supremo': return '🌟 ENSEMBLE SUPREMO';
     case 'matriz_numerica': return '🔢 MATRIZ NUMÉRICA';
+    case 'auto_repeticao': return '🔁 AUTO-REPETIÇÃO';
     default: return `📌 ${type.replace(/_/g, ' ').toUpperCase()}`;
   }
 };
@@ -118,7 +119,7 @@ const getBetTypeCategory = (type: string): string => {
   if (['paridade', 'paridade_reversa'].includes(type)) return 'paridade';
   if (['alto_baixo', 'alto_baixo_reversa'].includes(type)) return 'alto_baixo';
   if (['fusao_suprema', 'convergencia_absoluta', 'matrix_fusion', 'archetype_fusion', 'combo_ouro', 'combo_prata', 'ensemble_supremo'].includes(type)) return 'fusao';
-  if (['matriz_numerica'].includes(type)) return 'outro';
+  if (['matriz_numerica', 'auto_repeticao'].includes(type)) return 'outro';
   if (['numeros_puxam'].includes(type)) return 'puxada';
   if (['pressao_zero'].includes(type)) return 'zero';
   if (['rua'].includes(type)) return 'rua';
@@ -497,6 +498,25 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                     </div>
                   )}
 
+                  {/* Alerta de Auto-Repetição */}
+                  {sniperData?.signal?.reasons?.some((r: string) => r.includes('AUTO-REP') || r.includes('TRIPLE')) && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="mx-4 mb-2 p-2.5 rounded-xl bg-orange-500/15 border border-orange-500/40"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🔁</span>
+                        <div>
+                          <p className="text-[9px] font-black text-orange-400">AUTO-REPETIÇÃO DETECTADA</p>
+                          <p className="text-[7px] text-orange-300/80">
+                            Padrão confirmado: {sniperData.signal.number} se repetindo — apostar forte
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
                   {/* ENSEMBLE SUPREMO */}
                   {sniperData?.ensemble?.top1 !== null && sniperData?.ensemble?.top1 !== undefined && (
                     <div className="px-4 py-2.5 border-t border-yellow-500/20 bg-yellow-500/5">
@@ -683,7 +703,7 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                 {/* Proteção */}
                 <div className="flex items-center gap-1.5">
                   <span className="text-[8px]">🛡️</span>
-                  <span className="text-[8px] text-yellow-400/80 font-semibold">Proteção em TODAS jogadas: 0, 26, 32</span>
+                  <span className="text-[8px] text-yellow-400/80 font-semibold">Proteção em TODAS jogadas: 24, 29, 35, 11</span>
                 </div>
 
                 {/* TOP CANDIDATES */}

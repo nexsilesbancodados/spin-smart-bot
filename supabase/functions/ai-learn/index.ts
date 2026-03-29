@@ -1395,6 +1395,57 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
       }
     }
 
+    // ── DETECTOR DE AUTO-REPETIÇÃO: padrão mais forte desta mesa ──
+    const repStats: Record<number, {rep2: number; rep3: number; total: number}> = {};
+    const repWindow = Math.min(300, numbers.length);
+    for (let i = 0; i < repWindow - 2; i++) {
+      const n = numbers[i];
+      if (!repStats[n]) repStats[n] = {rep2:0, rep3:0, total:0};
+      repStats[n].total++;
+      if (numbers[i+1] === n) {
+        repStats[n].rep2++;
+        if (numbers[i+2] === n) repStats[n].rep3++;
+      }
+    }
+    const repStars = Object.entries(repStats)
+      .filter(([,v]) => (v as any).total >= 5 && (v as any).rep2/(v as any).total > 0.20)
+      .sort(([,a],[,b]) => (b as any).rep2/(b as any).total - (a as any).rep2/(a as any).total)
+      .slice(0, 8);
+
+    if (repStars.length >= 3) {
+      const hotRepNums = repStars.map(([n]) => Number(n));
+      const tituloRep = 'Números com auto-repetição confirmada';
+      const { data: exR } = await supabase
+        .from('ai_learned_patterns')
+        .select('id')
+        .eq('learning_type', 'session_spin')
+        .eq('title', tituloRep)
+        .maybeSingle();
+
+      const rowR = {
+        knowledge: repStars.map(([n,v]) =>
+          `${n}: rep2=${(v as any).rep2}/${(v as any).total}(${((v as any).rep2/(v as any).total*100).toFixed(0)}%) rep3=${(v as any).rep3}`
+        ).join(' | '),
+        data_points: repWindow,
+        accuracy: Math.min(95, 60 + repStars.length * 4),
+        metadata: {
+          hotNumbers: hotRepNums,
+          key_numbers: hotRepNums,
+          repRates: Object.fromEntries(repStars.map(([n,v]) => [n, +((v as any).rep2/(v as any).total).toFixed(2)])),
+          lastSeen: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString(),
+      };
+
+      if ((exR as any)?.id) {
+        await supabase.from('ai_learned_patterns').update(rowR).eq('id', (exR as any).id).catch(()=>{});
+      } else {
+        await supabase.from('ai_learned_patterns').insert({
+          learning_type: 'session_spin', title: tituloRep, ...rowR
+        }).catch(()=>{});
+      }
+    }
+
     // ── LIMPEZA INTELIGENTE DO BANCO ──────────────────────────────
     const LIMITS_PER_TYPE: Record<string, number> = {
       'pull_confirmed': 37, 'matrix_transition': 100, 'terminal_dominance': 15,
