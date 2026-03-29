@@ -380,7 +380,12 @@ const Index = () => {
   })();
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-gradient-casino flex flex-col relative">
+      {/* Ambient background glow */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/3 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/3 rounded-full blur-[120px]" />
+      </div>
       {/* ═══════ NAVBAR ═══════ */}
       <Navbar
         isPolling={isPolling} setIsPolling={setIsPolling}
@@ -411,8 +416,8 @@ const Index = () => {
       </AnimatePresence>
 
       {/* ═══════ MAIN CONTENT ═══════ */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-[1400px] mx-auto p-3 space-y-4">
+      <div className="flex-1 overflow-y-auto relative z-10">
+        <div className="max-w-[1400px] mx-auto p-4 space-y-4">
 
           {/* ─── SEÇÃO 1: Últimos 12 + Pressão do Zero ─── */}
           <div className="space-y-3">
@@ -425,15 +430,16 @@ const Index = () => {
             {/* Coluna Principal — Sniper */}
             <div className="lg:col-span-2 space-y-3">
               {/* Sample Size */}
-              <div className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
-                <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">📊 Base de Análise:</span>
+              <div className="bg-gradient-card rounded-xl border border-border/60 p-3 flex items-center gap-3 relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+                <span className="text-xs text-muted-foreground font-medium whitespace-nowrap font-display text-[9px] tracking-wider">📊 BASE DE ANÁLISE</span>
                 <input
                   type="range" min={10} max={500} step={10}
                   value={sampleSize}
                   onChange={e => setSampleSize(Number(e.target.value))}
                   className="flex-1 accent-primary h-2 cursor-pointer"
                 />
-                <span className="text-sm font-bold text-primary min-w-[60px] text-right">{sampleSize} jogadas</span>
+                <span className="text-sm font-bold text-primary font-mono min-w-[70px] text-right">{sampleSize} <span className="text-[8px] text-muted-foreground">jogadas</span></span>
               </div>
 
               {/* Sniper Signal */}
@@ -448,12 +454,13 @@ const Index = () => {
 
             {/* Coluna Lateral — Mapa + Bet */}
             <div className="lg:col-span-1 space-y-3">
-              <details className="bg-card rounded-xl border border-border overflow-hidden group">
-                <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none text-sm font-bold text-foreground hover:bg-secondary/30 transition-colors">
-                  <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180" />
-                  🎡 MAPA DA RODA
+              <details className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden group relative">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+                <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none text-sm font-bold text-foreground hover:bg-primary/5 transition-colors">
+                  <ChevronDown className="w-4 h-4 text-primary/60 transition-transform group-open:rotate-180" />
+                  <span className="font-display text-[10px] tracking-[0.15em] text-primary">🎡 MAPA DA RODA</span>
                 </summary>
-                <div className="p-4 border-t border-border/50">
+                <div className="p-4 border-t border-border/40">
                   <WheelMap allNumbers={allNumbers} sniperData={sniperData} />
                 </div>
               </details>
@@ -463,11 +470,14 @@ const Index = () => {
 
           {/* ─── SEÇÃO 3: JOGADAS ALTERNATIVAS ─── */}
           {sniperData?.topAlternatives?.length > 0 && (
-            <div className="bg-card/90 rounded-xl border border-border p-4">
+            <div className="bg-gradient-card rounded-xl border border-border/60 p-4 relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
               <div className="flex items-center gap-2 mb-3">
-                <BarChart3 className="w-4 h-4 text-cyan-400" />
-                <span className="font-display text-[10px] tracking-[0.15em] font-bold text-cyan-400">JOGADAS ALTERNATIVAS</span>
-                <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold">
+                <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
+                  <BarChart3 className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <span className="font-display text-[10px] tracking-[0.2em] font-bold text-primary text-glow-cyan">JOGADAS ALTERNATIVAS</span>
+                <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-bold font-mono">
                   TOP {sniperData.topAlternatives.length}
                 </span>
               </div>
@@ -501,18 +511,21 @@ const Index = () => {
 
           {/* ─── SEÇÃO 4: ANÁLISE AVANÇADA (COLAPSÁVEL) ─── */}
           {sniperData && (
-            <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <div className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden relative">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neon-purple/40 to-transparent" />
               <button onClick={() => setShowAdvanced(!showAdvanced)}
-                className="w-full flex items-center gap-2 px-4 py-3 hover:bg-secondary/50 transition-colors">
-                <Brain className="w-4 h-4 text-purple-400" />
-                <span className="font-display text-[10px] tracking-[0.15em] font-bold text-purple-400">ANÁLISE AVANÇADA</span>
+                className="w-full flex items-center gap-2.5 px-4 py-3.5 hover:bg-neon-purple/5 transition-colors">
+                <div className="w-6 h-6 rounded-md bg-neon-purple/15 border border-neon-purple/30 flex items-center justify-center">
+                  <Brain className="w-3.5 h-3.5 text-neon-purple" />
+                </div>
+                <span className="font-display text-[10px] tracking-[0.2em] font-bold text-neon-purple">ANÁLISE AVANÇADA</span>
                 {sniperData?.aiLearnings?.length > 0 && (
-                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 font-bold">
+                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-neon-purple/15 text-neon-purple border border-neon-purple/30 font-bold font-mono">
                     {sniperData.aiLearnings.length} insights
                   </span>
                 )}
                 {sniperData?.deepMemory && (
-                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold">
+                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-bold font-mono">
                     1700+ CAMADAS
                   </span>
                 )}
@@ -797,11 +810,14 @@ const Index = () => {
           {/* ─── SEÇÃO 6: HISTÓRICO + TERMINAIS ─── */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* Histórico */}
-            <div className="lg:col-span-3 bg-card rounded-xl border border-border p-4">
+            <div className="lg:col-span-3 bg-gradient-card rounded-xl border border-border/60 p-4 relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-primary" />
-                  <span className="font-display text-sm text-primary tracking-widest font-bold">HISTÓRICO</span>
+                  <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
+                    <Activity className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <span className="font-display text-[10px] text-primary tracking-[0.2em] font-bold text-glow-cyan">HISTÓRICO</span>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {[50, 100, 250, 500].map(lim => (
@@ -976,10 +992,13 @@ const Index = () => {
             </div>
 
             {/* Terminais */}
-            <div className="lg:col-span-1 bg-card rounded-xl border border-border p-4">
+            <div className="lg:col-span-1 bg-gradient-card rounded-xl border border-border/60 p-4 relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
               <div className="flex items-center gap-2 mb-3">
-                <Hash className="w-4 h-4 text-primary" />
-                <span className="font-display text-xs text-primary tracking-widest font-bold">TERMINAIS</span>
+                <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
+                  <Hash className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <span className="font-display text-[10px] text-primary tracking-[0.2em] font-bold text-glow-cyan">TERMINAIS</span>
               </div>
               <div className="grid grid-cols-5 gap-2">
                 {Array.from({ length: 10 }, (_, t) => {
@@ -1049,12 +1068,15 @@ const Index = () => {
           </div>
 
           {/* ─── SEÇÃO 7: CASSINO AO VIVO ─── */}
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden relative">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
             <button onClick={() => setShowCasino(!showCasino)}
-              className="w-full flex items-center gap-2 px-4 py-3 border-b border-border hover:bg-secondary/50 transition-colors">
-              <MonitorPlay className="w-4 h-4 text-primary" />
-              <span className="font-display text-sm text-primary tracking-widest font-bold">CASSINO AO VIVO</span>
-              <span className="text-[9px] text-muted-foreground ml-1">— {selectedTable.name}</span>
+              className="w-full flex items-center gap-2.5 px-4 py-3.5 border-b border-border/40 hover:bg-primary/5 transition-colors">
+              <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
+                <MonitorPlay className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <span className="font-display text-[10px] text-primary tracking-[0.2em] font-bold text-glow-cyan">CASSINO AO VIVO</span>
+              <span className="text-[9px] text-muted-foreground font-mono ml-1">— {selectedTable.name}</span>
               <ChevronDown className={`w-4 h-4 text-muted-foreground ml-auto transition-transform ${showCasino ? 'rotate-180' : ''}`} />
             </button>
             {showCasino && (

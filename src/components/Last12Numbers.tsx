@@ -31,14 +31,21 @@ const Last12Numbers = ({ allNumbers }: Props) => {
   if (allNumbers.length === 0) return null;
 
   return (
-    <div className="bg-card/95 border border-border rounded-xl p-3 backdrop-blur-sm">
-      <div className="flex items-center gap-2 mb-3">
-        <Clock className="w-4 h-4 text-primary" />
-        <span className="font-display text-[10px] font-bold tracking-[0.18em] text-primary uppercase">Últimos 12 Números</span>
-        <div className="flex-1 h-px bg-gradient-to-r from-primary/30 to-transparent ml-2" />
+    <div className="bg-gradient-card rounded-xl border border-border/60 p-4 relative overflow-hidden">
+      {/* Accent line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+      
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
+          <Clock className="w-3.5 h-3.5 text-primary" />
+        </div>
+        <span className="font-display text-[10px] font-bold tracking-[0.2em] text-primary uppercase text-glow-cyan">
+          Últimos 12 Números
+        </span>
+        <div className="flex-1 h-px bg-gradient-to-r from-primary/20 to-transparent ml-2" />
       </div>
 
-      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5">
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2">
         {allNumbers.slice(0, 12).map((n, i) => {
           const color = getColor(n);
           const dozen = n === 0 ? '-' : n <= 12 ? '1ª Dz' : n <= 24 ? '2ª Dz' : '3ª Dz';
@@ -55,54 +62,54 @@ const Last12Numbers = ({ allNumbers }: Props) => {
               initial={isLatest ? { scale: 0.7, opacity: 0 } : false}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.3, type: 'spring', stiffness: 200 }}
-              className={`flex flex-col items-center rounded-lg border transition-all ${
+              className={`flex flex-col items-center rounded-xl border transition-all ${
                 isLatest
-                  ? 'bg-gradient-to-b from-primary/15 to-primary/5 border-primary/40 shadow-md shadow-primary/10'
-                  : 'bg-secondary/30 border-border/60 hover:border-border hover:bg-secondary/50'
+                  ? 'bg-gradient-to-b from-primary/15 to-primary/5 border-primary/40 shadow-neon-cyan'
+                  : 'bg-secondary/20 border-border/40 hover:border-primary/30 hover:bg-secondary/40'
               }`}
-              style={{ padding: '6px 2px' }}
+              style={{ padding: '8px 3px' }}
             >
               {/* Number Ball */}
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-md transition-all ${
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all ${
                 color === 'red'
-                  ? 'bg-gradient-to-br from-red-500 to-red-700 text-white border-2 border-red-400/40'
+                  ? 'bg-gradient-to-br from-red-500 to-red-700 text-white border-2 border-red-400/30'
                   : color === 'black'
-                  ? 'bg-gradient-to-br from-gray-700 to-gray-900 text-white border-2 border-gray-500/40'
-                  : 'bg-gradient-to-br from-emerald-500 to-emerald-700 text-white border-2 border-emerald-400/40'
-              } ${isLatest ? 'ring-2 ring-primary/50 ring-offset-1 ring-offset-background scale-110' : ''}`}>
+                  ? 'bg-gradient-to-br from-gray-600 to-gray-900 text-white border-2 border-gray-500/30'
+                  : 'bg-gradient-to-br from-emerald-500 to-emerald-700 text-white border-2 border-emerald-400/30'
+              } ${isLatest ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background scale-110 shadow-[0_0_15px_hsl(var(--primary)/0.3)]' : ''}`}>
                 {n}
               </div>
 
               {/* Color Label */}
-              <span className={`text-[7px] font-bold mt-1 ${
+              <span className={`text-[7px] font-bold mt-1.5 font-mono ${
                 color === 'red' ? 'text-red-400' : color === 'black' ? 'text-gray-400' : 'text-emerald-400'
               }`}>
                 {color === 'red' ? 'VRM' : color === 'black' ? 'PRT' : 'VRD'}
               </span>
 
               {/* Info Grid */}
-              <div className="w-full mt-1 space-y-px">
+              <div className="w-full mt-1.5 space-y-0.5">
                 <div className="flex justify-between px-1">
-                  <span className="text-[6px] text-muted-foreground/70">{dozen}</span>
+                  <span className="text-[6px] text-muted-foreground/60 font-mono">{dozen}</span>
                 </div>
                 <div className="flex justify-between px-1">
-                  <span className="text-[6px] text-muted-foreground/70">{col}</span>
-                  <span className="text-[6px] text-muted-foreground/70">{terminal}</span>
+                  <span className="text-[6px] text-muted-foreground/60 font-mono">{col}</span>
+                  <span className="text-[6px] text-muted-foreground/60 font-mono">{terminal}</span>
                 </div>
 
                 {/* Cavalos */}
                 <div className="flex justify-center">
                   {cavalo ? (
-                    <span className="text-[6px] text-amber-400 font-bold">🐎 {cavalo}</span>
+                    <span className="text-[6px] text-gold font-bold">🐎 {cavalo}</span>
                   ) : (
-                    <span className="text-[6px] text-muted-foreground/40">—</span>
+                    <span className="text-[6px] text-muted-foreground/30">—</span>
                   )}
                 </div>
 
                 {/* Sector */}
                 <div className="flex justify-center">
                   <span className={`text-[6px] font-semibold ${
-                    sector === 'Vois' ? 'text-cyan-400' : sector === 'Tier' ? 'text-purple-400' : sector === 'Orph' ? 'text-rose-400' : 'text-emerald-400'
+                    sector === 'Vois' ? 'text-primary' : sector === 'Tier' ? 'text-neon-pink' : sector === 'Orph' ? 'text-accent' : 'text-neon-green'
                   }`}>
                     {sector}
                   </span>
@@ -112,10 +119,10 @@ const Last12Numbers = ({ allNumbers }: Props) => {
                 <div className="flex justify-center mt-0.5">
                   <span className={`text-[7px] font-mono font-bold px-1.5 py-px rounded-sm ${
                     freqIn100 >= 5
-                      ? 'bg-red-500/15 text-red-400 border border-red-500/20'
+                      ? 'bg-destructive/15 text-destructive border border-destructive/20'
                       : freqIn100 >= 3
-                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
-                      : 'bg-secondary/60 text-muted-foreground border border-border/40'
+                      ? 'bg-gold/15 text-gold border border-gold/20'
+                      : 'bg-secondary/40 text-muted-foreground border border-border/30'
                   }`}>
                     {freqIn100}x/100
                   </span>
