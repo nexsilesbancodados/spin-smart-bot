@@ -2848,70 +2848,94 @@ serve(async (req) => {
     // ========================================================
     {
       const recent = numbers.slice(0, 20);
-      // Streak detection: Alta
+      // Streak detection: Alta — INTELLIGENT: follows trend or reverses based on trend engine
       let highStreak = 0;
       for (const n of recent) { if (n >= 19) highStreak++; else break; }
       if (highStreak >= 3) {
+        const followHigh = trendEngine.highLowTrend.shouldFollow && trendEngine.highLowTrend.direction === 'alto';
         transitionMatrix.detectedPatterns.push({
-          name: `Sequência de ${highStreak} ALTOS`,
-          emoji: '🔝', confidence: Math.min(95, 50 + highStreak * 10),
-          description: `${highStreak} números altos (19-36) consecutivos. Probabilidade de reversão para Baixo aumenta.`,
-          category: 'streak', action: 'Aposte em Baixo (1-18) — reversão iminente',
+          name: followHigh ? `🚀 ${highStreak} ALTOS — Tendência Ativa` : `Sequência de ${highStreak} ALTOS`,
+          emoji: followHigh ? '🚀' : '🔝', confidence: Math.min(95, 50 + highStreak * 10),
+          description: followHigh
+            ? `${highStreak} números altos (19-36) consecutivos. ALGORITMO EM TENDÊNCIA — continuar apostando Alto.`
+            : `${highStreak} números altos (19-36) consecutivos. ${highStreak >= 6 ? 'Exaustão provável — reversão.' : 'Possível reversão para Baixo.'}`,
+          category: 'streak',
+          action: followHigh ? 'Aposte em Alto (19-36) — A FAVOR do algoritmo' : 'Aposte em Baixo (1-18) — reversão iminente',
         });
       }
       // Streak: Baixa
       let lowStreak = 0;
       for (const n of recent) { if (n >= 1 && n <= 18) lowStreak++; else break; }
       if (lowStreak >= 3) {
+        const followLow = trendEngine.highLowTrend.shouldFollow && trendEngine.highLowTrend.direction === 'baixo';
         transitionMatrix.detectedPatterns.push({
-          name: `Sequência de ${lowStreak} BAIXOS`,
-          emoji: '⬇️', confidence: Math.min(95, 50 + lowStreak * 10),
-          description: `${lowStreak} números baixos (1-18) consecutivos. Probabilidade de reversão para Alto aumenta.`,
-          category: 'streak', action: 'Aposte em Alto (19-36) — reversão iminente',
+          name: followLow ? `🚀 ${lowStreak} BAIXOS — Tendência Ativa` : `Sequência de ${lowStreak} BAIXOS`,
+          emoji: followLow ? '🚀' : '⬇️', confidence: Math.min(95, 50 + lowStreak * 10),
+          description: followLow
+            ? `${lowStreak} números baixos (1-18) consecutivos. ALGORITMO EM TENDÊNCIA — continuar apostando Baixo.`
+            : `${lowStreak} números baixos (1-18) consecutivos. ${lowStreak >= 6 ? 'Exaustão provável — reversão.' : 'Possível reversão para Alto.'}`,
+          category: 'streak',
+          action: followLow ? 'Aposte em Baixo (1-18) — A FAVOR do algoritmo' : 'Aposte em Alto (19-36) — reversão iminente',
         });
       }
       // Streak: Vermelhos
       let redStreak = 0;
       for (const n of recent) { if (getColor(n) === 'red') redStreak++; else break; }
       if (redStreak >= 3) {
+        const followRed = trendEngine.colorTrend.shouldFollow && trendEngine.colorTrend.direction === 'red';
         transitionMatrix.detectedPatterns.push({
-          name: `${redStreak} Vermelhos Seguidos`,
-          emoji: '🔴', confidence: Math.min(90, 45 + redStreak * 10),
-          description: `${redStreak} números vermelhos consecutivos. Tendência de reversão para Preto.`,
-          category: 'streak', action: 'Aposte em Preto — reversão de cor',
+          name: followRed ? `🚀 ${redStreak} Vermelhos — Tendência` : `${redStreak} Vermelhos Seguidos`,
+          emoji: followRed ? '🚀' : '🔴', confidence: Math.min(90, 45 + redStreak * 10),
+          description: followRed
+            ? `${redStreak} vermelhos consecutivos. Momentum ACELERANDO — continuar no Vermelho.`
+            : `${redStreak} números vermelhos consecutivos. ${redStreak >= 6 ? 'Exaustão — reversão.' : 'Tendência de reversão para Preto.'}`,
+          category: 'streak',
+          action: followRed ? 'Aposte em Vermelho — A FAVOR do algoritmo' : 'Aposte em Preto — reversão de cor',
         });
       }
       // Streak: Pretos
       let blackStreak = 0;
       for (const n of recent) { if (getColor(n) === 'black') blackStreak++; else break; }
       if (blackStreak >= 3) {
+        const followBlack = trendEngine.colorTrend.shouldFollow && trendEngine.colorTrend.direction === 'black';
         transitionMatrix.detectedPatterns.push({
-          name: `${blackStreak} Pretos Seguidos`,
-          emoji: '⚫', confidence: Math.min(90, 45 + blackStreak * 10),
-          description: `${blackStreak} números pretos consecutivos. Tendência de reversão para Vermelho.`,
-          category: 'streak', action: 'Aposte em Vermelho — reversão de cor',
+          name: followBlack ? `🚀 ${blackStreak} Pretos — Tendência` : `${blackStreak} Pretos Seguidos`,
+          emoji: followBlack ? '🚀' : '⚫', confidence: Math.min(90, 45 + blackStreak * 10),
+          description: followBlack
+            ? `${blackStreak} pretos consecutivos. Momentum ACELERANDO — continuar no Preto.`
+            : `${blackStreak} números pretos consecutivos. ${blackStreak >= 6 ? 'Exaustão — reversão.' : 'Tendência de reversão para Vermelho.'}`,
+          category: 'streak',
+          action: followBlack ? 'Aposte em Preto — A FAVOR do algoritmo' : 'Aposte em Vermelho — reversão de cor',
         });
       }
       // Streak: Pares
       let evenStreak = 0;
       for (const n of recent) { if (n > 0 && n % 2 === 0) evenStreak++; else break; }
       if (evenStreak >= 3) {
+        const followPar = trendEngine.parityTrend.shouldFollow && trendEngine.parityTrend.direction === 'par';
         transitionMatrix.detectedPatterns.push({
-          name: `${evenStreak} Pares Seguidos`,
-          emoji: '2️⃣', confidence: Math.min(88, 45 + evenStreak * 9),
-          description: `${evenStreak} números pares consecutivos. Tendência de reversão para Ímpar.`,
-          category: 'streak', action: 'Aposte em Ímpar — reversão',
+          name: followPar ? `🚀 ${evenStreak} Pares — Tendência` : `${evenStreak} Pares Seguidos`,
+          emoji: followPar ? '🚀' : '2️⃣', confidence: Math.min(88, 45 + evenStreak * 9),
+          description: followPar
+            ? `${evenStreak} pares consecutivos. Algoritmo em tendência — continuar Par.`
+            : `${evenStreak} números pares consecutivos. Tendência de reversão para Ímpar.`,
+          category: 'streak',
+          action: followPar ? 'Aposte em Par — A FAVOR do algoritmo' : 'Aposte em Ímpar — reversão',
         });
       }
       // Streak: Ímpares
       let oddStreak = 0;
       for (const n of recent) { if (n > 0 && n % 2 === 1) oddStreak++; else break; }
       if (oddStreak >= 3) {
+        const followImpar = trendEngine.parityTrend.shouldFollow && trendEngine.parityTrend.direction === 'impar';
         transitionMatrix.detectedPatterns.push({
-          name: `${oddStreak} Ímpares Seguidos`,
-          emoji: '1️⃣', confidence: Math.min(88, 45 + oddStreak * 9),
-          description: `${oddStreak} números ímpares consecutivos. Tendência de reversão para Par.`,
-          category: 'streak', action: 'Aposte em Par — reversão',
+          name: followImpar ? `🚀 ${oddStreak} Ímpares — Tendência` : `${oddStreak} Ímpares Seguidos`,
+          emoji: followImpar ? '🚀' : '1️⃣', confidence: Math.min(88, 45 + oddStreak * 9),
+          description: followImpar
+            ? `${oddStreak} ímpares consecutivos. Algoritmo em tendência — continuar Ímpar.`
+            : `${oddStreak} números ímpares consecutivos. Tendência de reversão para Par.`,
+          category: 'streak',
+          action: followImpar ? 'Aposte em Ímpar — A FAVOR do algoritmo' : 'Aposte em Par — reversão',
         });
       }
       // Alternância Alto↕Baixo (gangorra 3+)
