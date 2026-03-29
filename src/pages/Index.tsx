@@ -650,8 +650,6 @@ const Index = () => {
             </div>
           </div>
 
-          {/* PREVISÕES */}
-          <PredictionHistory />
 
           {/* CASSINO AO VIVO - collapsible */}
           <div className="bg-card rounded-xl border border-border overflow-hidden">
