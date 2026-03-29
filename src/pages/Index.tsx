@@ -500,58 +500,70 @@ const Index = () => {
 
                   {sniperData.signal && sniperData.strategy ? (
                     <div className="space-y-3">
-                      {/* BET TYPE BADGE */}
-                      <div className="flex flex-wrap gap-1.5 mb-1">
-                        {(() => {
-                          const type = sniperData.strategy.type;
-                          const betCategory = ['cor', 'paridade', 'alto_baixo'].includes(type) ? { label: 'APOSTA SIMPLES', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' }
-                            : ['coluna', 'duzia_unica', 'duzias', 'column_cycle', 'dozen_phase'].includes(type) ? { label: 'GRUPO/DÚZIA', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' }
-                            : ['sniper', 'voisins', 'setor_oposto'].includes(type) ? { label: 'SETOR/VIZINHOS', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' }
-                            : ['cavalos', 'terminal_alternation'].includes(type) ? { label: 'CAVALOS/TERMINAIS', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' }
-                            : ['numero_exato'].includes(type) ? { label: 'PLENO', color: 'bg-red-500/20 text-red-400 border-red-500/30' }
-                            : { label: 'ESTRATÉGIA IA', color: 'bg-primary/20 text-primary border-primary/30' };
-                          return (
-                            <span className={`text-[8px] px-2 py-0.5 rounded-full font-bold border ${betCategory.color}`}>
-                              {betCategory.label}
+                      {/* BET INSTRUCTIONS — MAIN ACTION */}
+                      {sniperData.betInstructions && sniperData.betInstructions.bets?.length > 0 && (
+                        <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-transparent border-2 border-primary/40 rounded-xl p-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Zap className="w-4 h-4 text-primary" />
+                            <span className="text-[10px] font-bold tracking-[0.15em] text-primary">JOGADAS RECOMENDADAS</span>
+                            <span className={`ml-auto text-lg font-bold font-mono ${sniperData.signal.probability >= 85 ? 'text-primary' : 'text-yellow-400'}`}>
+                              {sniperData.signal.probability}%
                             </span>
-                          );
-                        })()}
-                        <span className="text-[8px] px-2 py-0.5 rounded-full font-bold bg-secondary text-muted-foreground border border-border">
-                          {sniperData.strategy.numbers.length} números • {sniperData.strategy.coverage}% cobertura
-                        </span>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <div className="text-center shrink-0">
-                          <div className="text-3xl mb-1">{sniperData.strategy.emoji}</div>
-                          <div className={`text-2xl font-bold font-mono ${sniperData.signal.probability >= 85 ? 'text-primary' : 'text-yellow-400'}`}>
-                            {sniperData.signal.probability}%
                           </div>
-                          <span className="text-[7px] text-muted-foreground block">
-                            {sniperData.layerResults ? `${sniperData.layerResults.total}/500` : ''}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-bold mb-1 ${sniperData.mode === 'sniper' ? 'text-primary' : 'text-yellow-400'}`}>
-                            💡 {sniperData.strategy.label}
-                          </p>
-                          <p className="text-[9px] text-muted-foreground mb-2">
-                            Payout: {sniperData.strategy.payout}x
-                          </p>
-                          <div className="mb-2">
-                            <span className="text-[8px] text-muted-foreground block mb-1">🎯 NÚMEROS:</span>
-                            <div className="flex flex-wrap gap-1">
-                              {sniperData.strategy.numbers.slice(0, 18).map((n: number, i: number) => (
-                                <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold border ${
-                                  i === 0 && sniperData.strategy.type === 'sniper'
-                                    ? 'bg-primary text-primary-foreground border-primary/50 ring-2 ring-primary/30 animate-pulse'
-                                    : `${colorClass(n)} border-white/20`
-                                }`}>
-                                  {n}
+                          <div className="space-y-1.5">
+                            {sniperData.betInstructions.bets.map((bet: any, i: number) => (
+                              <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+                                i === 0 
+                                  ? 'bg-primary/15 border-primary/30 shadow-sm shadow-primary/10' 
+                                  : 'bg-secondary/50 border-border'
+                              }`}>
+                                <span className="text-lg">{bet.emoji}</span>
+                                <div className="flex-1 min-w-0">
+                                  <span className={`text-xs font-bold ${i === 0 ? 'text-primary' : 'text-foreground'}`}>{bet.label}</span>
+                                  <p className="text-[9px] text-muted-foreground truncate">{bet.detail}</p>
                                 </div>
-                              ))}
-                            </div>
+                                {i === 0 && (
+                                  <span className="text-[7px] px-1.5 py-0.5 bg-primary/20 text-primary rounded-full font-bold border border-primary/30 shrink-0">
+                                    PRINCIPAL
+                                  </span>
+                                )}
+                                {i > 0 && (
+                                  <span className="text-[7px] px-1.5 py-0.5 bg-secondary text-muted-foreground rounded-full font-bold border border-border shrink-0">
+                                    REFORÇO
+                                  </span>
+                                )}
+                              </div>
+                            ))}
                           </div>
+                          <div className="flex items-center gap-2 text-[8px] text-muted-foreground">
+                            <span>Payout: {sniperData.strategy.payout}x</span>
+                            <span>•</span>
+                            <span>{sniperData.strategy.numbers.length} números</span>
+                            <span>•</span>
+                            <span>{sniperData.strategy.coverage}% cobertura</span>
+                            {sniperData.layerResults && (
+                              <>
+                                <span>•</span>
+                                <span>{sniperData.layerResults.total}/500 camadas</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* NÚMEROS */}
+                      <div>
+                        <span className="text-[8px] text-muted-foreground block mb-1">🎯 NÚMEROS COBERTOS:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {sniperData.strategy.numbers.slice(0, 18).map((n: number, i: number) => (
+                            <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold border ${
+                              i === 0 && sniperData.strategy.type === 'sniper'
+                                ? 'bg-primary text-primary-foreground border-primary/50 ring-2 ring-primary/30 animate-pulse'
+                                : `${colorClass(n)} border-white/20`
+                            }`}>
+                              {n}
+                            </div>
+                          ))}
                         </div>
                       </div>
 
