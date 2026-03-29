@@ -113,10 +113,14 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
     const entry: RouletteNumber = { value: n, color: getNumberColor(n), timestamp: new Date() };
     setHistory(prev => {
       const updated = [entry, ...prev];
-      const newAlerts = detectPatterns(updated);
-      if (newAlerts.length > 0) {
-        setAlerts(prev => [...newAlerts, ...prev].slice(0, 10));
-      }
+      // Defer alert detection to avoid needing alerts state inside setHistory
+      setTimeout(() => {
+        setAlerts(currentAlerts => {
+          const newAlerts = detectPatterns(updated, currentAlerts);
+          if (newAlerts.length > 0) return [...newAlerts, ...currentAlerts].slice(0, 10);
+          return currentAlerts;
+        });
+      }, 0);
       return updated;
     });
   }, []);
@@ -129,10 +133,13 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
     } as RouletteNumber));
     setHistory(prev => {
       const updated = [...entries.reverse(), ...prev];
-      const newAlerts = detectPatterns(updated);
-      if (newAlerts.length > 0) {
-        setAlerts(prev => [...newAlerts, ...prev].slice(0, 10));
-      }
+      setTimeout(() => {
+        setAlerts(currentAlerts => {
+          const newAlerts = detectPatterns(updated, currentAlerts);
+          if (newAlerts.length > 0) return [...newAlerts, ...currentAlerts].slice(0, 10);
+          return currentAlerts;
+        });
+      }, 0);
       return updated;
     });
   }, []);
