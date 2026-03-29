@@ -115,6 +115,7 @@ const Index = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showPredHistory, setShowPredHistory] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
+  const [strategyFilter, setStrategyFilter] = useState<string>('all');
   const handleManualNumbers = (nums: number[]) => {
     setApiNumbers(prev => [...nums, ...prev].slice(0, 1000));
   };
@@ -167,7 +168,7 @@ const Index = () => {
       // Send client-side numbers for instant reaction (before DB sync)
       const clientNums = apiNumbers.length > 0 ? apiNumbers.slice(0, sampleSize) : undefined;
       const res = await supabase.functions.invoke('sniper-predict', { 
-        body: { sampleSize, numbers: clientNums } 
+        body: { sampleSize, numbers: clientNums, strategyFilter: strategyFilter !== 'all' ? strategyFilter : undefined } 
       });
       if (res.data) {
         const key = `${res.data.strategy?.type}-${res.data.signal?.number}-${res.data.mode}`;
