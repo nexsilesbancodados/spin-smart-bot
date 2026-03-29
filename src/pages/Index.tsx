@@ -163,7 +163,16 @@ const Index = () => {
     if (data) setLearned(data as LearnedPattern[]);
   }, []);
 
-  useEffect(() => { loadInsights(); loadLearned(); }, [loadInsights, loadLearned]);
+  const loadPredStats = useCallback(async () => {
+    const { data } = await supabase.from('prediction_history').select('hit, hit_type').not('hit', 'is', null).limit(500);
+    if (data) {
+      const hits = data.filter((r: any) => r.hit === true).length;
+      const exact = data.filter((r: any) => r.hit_type === 'exact').length;
+      setPredStats({ hits, misses: data.length - hits, exact, total: data.length });
+    }
+  }, []);
+
+  useEffect(() => { loadInsights(); loadLearned(); loadPredStats(); }, [loadInsights, loadLearned, loadPredStats]);
 
   // CONTINUOUS AUTO-LEARNING ENGINE (disabled when credits exhausted)
   const autoLearnRef = useRef<NodeJS.Timeout | null>(null);
