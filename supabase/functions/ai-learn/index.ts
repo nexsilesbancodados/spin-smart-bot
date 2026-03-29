@@ -298,6 +298,92 @@ Deno.serve(async (req) => {
       hourMap[h] = (hourMap[h] || 0) + 1;
     });
 
+    // === PATTERN RECOGNITION MODULE ===
+
+    // 1. Sector/Octave repetition in last 10
+    const last10 = numbers.slice(0, 10);
+    const last10Sectors: Record<string, number> = {};
+    const last10Octaves: Record<string, number> = {};
+    last10.forEach(n => {
+      const s = getSector(n);
+      last10Sectors[s] = (last10Sectors[s] || 0) + 1;
+      for (const [k, nums] of Object.entries(OCTAVES)) {
+        if (nums.includes(n)) { last10Octaves[k] = (last10Octaves[k] || 0) + 1; break; }
+      }
+    });
+    const sectorBias10 = Object.entries(last10Sectors).filter(([,c]) => c >= 5).map(([s,c]) => `${s}:${c}/10`);
+    const octaveBias10 = Object.entries(last10Octaves).filter(([,c]) => c >= 3).map(([k,c]) => `${k}:${c}/10`);
+
+    // 2. Tendency vs Alternation (color)
+    let alternations = 0, tendencies = 0;
+    for (let i = 1; i < Math.min(30, numbers.length); i++) {
+      const prev = getColor(numbers[i-1]);
+      const curr = getColor(numbers[i]);
+      if (prev === curr && prev !== 'green') tendencies++;
+      else if (prev !== 'green' && curr !== 'green') alternations++;
+    }
+    const mode = tendencies > alternations * 1.5 ? 'TENDÊNCIA (Viciado)' : alternations > tendencies * 1.5 ? 'ALTERNÂNCIA (Volátil)' : 'MISTO';
+
+    // 3. Dozen blocks (3+ consecutive same dozen)
+    const dozenBlocks: string[] = [];
+    let blockDozen = -1, blockLen = 0;
+    for (let i = 0; i < Math.min(50, numbers.length); i++) {
+      const d = numbers[i] === 0 ? -1 : numbers[i] <= 12 ? 1 : numbers[i] <= 24 ? 2 : 3;
+      if (d === blockDozen && d > 0) { blockLen++; }
+      else { if (blockLen >= 3) dozenBlocks.push(`${blockLen}x Dúzia${blockDozen}`); blockDozen = d; blockLen = 1; }
+    }
+    if (blockLen >= 3) dozenBlocks.push(`${blockLen}x Dúzia${blockDozen}`);
+
+    // 4. Terminal dominance in last 30
+    const last30 = numbers.slice(0, 30);
+    const termMap30: Record<number, number> = {};
+    last30.forEach(n => { termMap30[n % 10] = (termMap30[n % 10] || 0) + 1; });
+    const dominantTerms = Object.entries(termMap30).filter(([,c]) => c >= 5).sort(([,a],[,b]) => b - a).map(([t,c]) => `T${t}:${c}`);
+
+    // 5. Skip pattern (consecutive distance pattern)
+    const skipPattern: string[] = [];
+    let shortStreak = 0, longStreak = 0;
+    for (const s of skips.slice(0, 20)) {
+      if (s < 5) { shortStreak++; longStreak = 0; }
+      else if (s > 15) { longStreak++; shortStreak = 0; }
+      else { shortStreak = 0; longStreak = 0; }
+      if (shortStreak >= 3) skipPattern.push('Salto Curto Consecutivo');
+      if (longStreak >= 3) skipPattern.push('Salto Longo Consecutivo');
+    }
+
+    // 6. Delay break detection (group that was cold then gets hot)
+    const first50 = numbers.slice(0, 50);
+    const last50 = numbers.slice(50, 100);
+    const delayBreaks: string[] = [];
+    ['1ªDúzia','2ªDúzia','3ªDúzia'].forEach((label, i) => {
+      const recentCount = first50.filter(n => {
+        if (n === 0) return false;
+        return i === 0 ? n <= 12 : i === 1 ? n <= 24 && n >= 13 : n >= 25;
+      }).length;
+      const oldCount = last50.filter(n => {
+        if (n === 0) return false;
+        return i === 0 ? n <= 12 : i === 1 ? n <= 24 && n >= 13 : n >= 25;
+      }).length;
+      if (oldCount < 10 && recentCount > 20) delayBreaks.push(`${label} RECUPERAÇÃO (${oldCount}→${recentCount})`);
+    });
+
+    // 7. Mirror patterns (same number repeating within 5 spins)
+    const mirrorPatterns: string[] = [];
+    for (let i = 0; i < Math.min(30, numbers.length); i++) {
+      for (let j = i + 1; j < Math.min(i + 6, numbers.length); j++) {
+        if (numbers[i] === numbers[j]) { mirrorPatterns.push(`${numbers[i]} rep(dist ${j-i})`); break; }
+      }
+    }
+
+    // 8. Active patterns (3+ consecutive in same group)
+    const activePatterns: string[] = [];
+    for (let i = 0; i < Math.min(20, numbers.length) - 2; i++) {
+      const s1 = getSector(numbers[i]), s2 = getSector(numbers[i+1]), s3 = getSector(numbers[i+2]);
+      if (s1 === s2 && s2 === s3 && s1 !== 'Zero') activePatterns.push(`Setor ${s1} 3x@pos${i}`);
+      const t1 = numbers[i]%10, t2 = numbers[i+1]%10, t3 = numbers[i+2]%10;
+      if (t1 === t2 && t2 === t3) activePatterns.push(`Terminal ${t1} 3x@pos${i}`);
+    }
+
     const prompt = `${KNOWLEDGE_PROMPT}
 
 ## DADOS DAS ÚLTIMAS 24 HORAS (${numbers.length} números)
@@ -327,11 +413,22 @@ Deno.serve(async (req) => {
 - Complementares próximos (últ 20): ${compPairs.length > 0 ? compPairs.join(', ') : 'nenhum'}
 - Horas: ${Object.entries(hourMap).sort(([a],[b]) => Number(a)-Number(b)).map(([h,c]) => `${h}h:${c}`).join(', ')}
 
+### 🔍 MÓDULO DE RECONHECIMENTO DE PADRÕES:
+- Modo atual: ${mode} (tendências:${tendencies} vs alternâncias:${alternations} nas últ 30)
+- Vício de Setor (últ 10): ${sectorBias10.length > 0 ? sectorBias10.join(', ') : 'nenhum detectado'}
+- Vício de Oitavo (últ 10): ${octaveBias10.length > 0 ? octaveBias10.join(', ') : 'nenhum detectado'}
+- Terminais Dominantes (últ 30): ${dominantTerms.length > 0 ? dominantTerms.join(', ') : 'distribuição normal'}
+- Blocos de Dúzia (3+ consecutivos): ${dozenBlocks.length > 0 ? dozenBlocks.join(', ') : 'nenhum'}
+- Padrão de Salto: ${[...new Set(skipPattern)].join(', ') || 'irregular'}
+- Quebra de Atraso (Delay Break): ${delayBreaks.length > 0 ? delayBreaks.join(', ') : 'nenhuma'}
+- Espelhamento/Repetição (últ 30): ${mirrorPatterns.slice(0, 8).join(', ') || 'nenhum'}
+- ⚠️ PADRÕES ATIVOS (3x consecutivos): ${activePatterns.length > 0 ? [...new Set(activePatterns)].join(', ') : 'nenhum'}
+
 ### CONHECIMENTO PRÉVIO:
 ${prevStr || 'Primeiro aprendizado.'}
 
 ## MISSÃO:
-Analise TODOS os dados usando seu conhecimento COMPLETO de roleta europeia. Gere aprendizados profundos sobre:
+Realize uma ANÁLISE TRANSVERSAL DE HISTÓRICO completa. Gere aprendizados profundos sobre:
 1. Viés de frequência com análise de desvio padrão
 2. Padrões de terminais e sua relação com setores do cilindro
 3. Ciclos de dúzias e colunas (qual está "devendo")
@@ -339,15 +436,17 @@ Analise TODOS os dados usando seu conhecimento COMPLETO de roleta europeia. Gere
 5. Concentração em setores físicos e OITAVOS do cilindro
 6. Mapeamento cruzado (cor+paridade) e seus desvios
 7. Padrões horários e temporais
-8. Sequências e reversões de tendência
+8. TENDÊNCIA vs ALTERNÂNCIA: o histórico está viciado ou volátil?
 9. Vizinhos no cilindro que saem juntos
 10. Compare com conhecimento prévio: confirme ou refute
 11. Finais em Pleno: diferencie probabilidade de finais 0-6 vs 7-9
-12. Dominância de coluna por cor
-13. DIAMANTES: qual zona de choque está concentrando resultados
-14. LEI DO TERÇO: quais números estão na zona de repetição
-15. SALTOS: padrão de distância no cilindro entre rodadas
-16. COMPLEMENTARES: identifique pares soma-37 que saem próximos`;
+12. DIAMANTES: qual zona de choque está concentrando
+13. LEI DO TERÇO: quais números na zona de repetição continuam saindo
+14. SALTOS: padrão de distância no cilindro
+15. COMPLEMENTARES: pares soma-37 próximos
+16. PADRÕES ATIVOS: valide os padrões 3x consecutivos detectados
+17. QUEBRA DE ATRASO: identifique grupos em fase de recuperação
+18. ESPELHAMENTO: números que se repetem em curto intervalo`;
 
     // 4. Call AI
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -356,7 +455,7 @@ Analise TODOS os dados usando seu conhecimento COMPLETO de roleta europeia. Gere
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Você é o sistema de IA mais avançado de análise de roleta do mundo. Possui conhecimento COMPLETO: setores, cavalos, terminais, finais em pleno, oitavos, diamantes, lei do terço, saltos, complementares, dominância de coluna, espelhos visuais, mapeamento cruzado. Responda APENAS via tool call. Gere 10-18 aprendizados profundos e acionáveis." },
+          { role: "system", content: "Você é o sistema de IA mais avançado de análise de roleta do mundo. Possui conhecimento COMPLETO: setores, cavalos, terminais, oitavos, diamantes, lei do terço, saltos, complementares, dominância de coluna, espelhos visuais, mapeamento cruzado. Execute ANÁLISE TRANSVERSAL: detecte vício de setor, tendência vs alternância, dominância de terminal, blocos de dúzia, quebra de atraso, padrões de salto e espelhamento. Responda APENAS via tool call. Gere 12-20 aprendizados profundos e acionáveis." },
           { role: "user", content: prompt },
         ],
         tools: [{
@@ -372,7 +471,7 @@ Analise TODOS os dados usando seu conhecimento COMPLETO de roleta europeia. Gere
                   items: {
                     type: "object",
                     properties: {
-                      learning_type: { type: "string", enum: ["frequency_bias","terminal_pattern","color_tendency","dozen_cycle","cavalos_pattern","timing_pattern","streak_behavior","sector_concentration","column_pattern","sixline_pattern","cross_mapping","wheel_neighbors","parity_pattern","final_pleno","column_color_dominance","visual_mirror","octave_pattern","diamond_concentration","third_law","skip_pattern","complementar_pattern"] },
+                      learning_type: { type: "string", enum: ["frequency_bias","terminal_pattern","color_tendency","dozen_cycle","cavalos_pattern","timing_pattern","streak_behavior","sector_concentration","column_pattern","sixline_pattern","cross_mapping","wheel_neighbors","parity_pattern","final_pleno","column_color_dominance","visual_mirror","octave_pattern","diamond_concentration","third_law","skip_pattern","complementar_pattern","sector_bias","tendency_mode","delay_break","mirror_pattern","active_pattern","block_pattern"] },
                       title: { type: "string" },
                       knowledge: { type: "string" },
                       data_points: { type: "integer" },
