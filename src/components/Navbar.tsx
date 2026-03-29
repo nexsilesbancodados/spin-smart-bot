@@ -193,20 +193,28 @@ const Navbar = ({
           <button
             onClick={() => {
               fetch('/roulette-extension.zip')
-                .then(res => { if (!res.ok) throw new Error('Download failed'); return res.blob(); })
+                .then(res => {
+                  if (!res.ok) {
+                    alert(`INSTALAR A EXTENSÃO SPIN SMART BOT:\n\n1. Baixe o arquivo ZIP da extensão\n2. Abra o Chrome e vá em: chrome://extensions\n3. Ative "Modo do desenvolvedor" (canto superior direito)\n4. Clique em "Carregar sem compactação"\n5. Selecione a pasta da extensão\n6. Acesse onabet.com na mesma aba do Chrome\n7. Ative o AutoBet no painel do app\n\nA extensão captura os números automaticamente e\nfaz as apostas quando você ativar o AutoBet! 🤖`);
+                    return;
+                  }
+                  return res.blob();
+                })
                 .then(blob => {
+                  if (!blob) return;
                   const a = document.createElement('a');
                   a.href = URL.createObjectURL(blob);
-                  a.download = 'roulette-extension.zip';
+                  a.download = 'spin-smart-bot-extension.zip';
                   a.click();
                   URL.revokeObjectURL(a.href);
                 })
-                .catch(err => alert(err.message));
+                .catch(() => alert('Use o botão para ver instruções de instalação.'));
             }}
-            className="p-1.5 text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-primary/8"
-            title="Baixar extensão"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-bold bg-primary/8 text-primary border border-primary/20 hover:bg-primary/15 transition-all"
+            title="Instalar extensão Chrome para autobet"
           >
             <Download className="w-3 h-3" />
+            <span className="hidden sm:inline">Extensão</span>
           </button>
           {lastUpdate && (
             <span className="text-[8px] text-primary/50 font-mono hidden lg:inline tabular-nums ml-1">

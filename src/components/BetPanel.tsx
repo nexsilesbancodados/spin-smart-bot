@@ -77,6 +77,31 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
   const [simWins, setSimWins] = useState(0);
   const prevNumberRef = useRef<number | null>(null);
   const autoBetRef = useRef(false);
+  const [extStatus, setExtStatus] = useState<{
+    lastAction: string;
+    lastNumber: number | null;
+    extConnected: boolean;
+  } | null>(null);
+
+  // Escutar mensagens da extensão
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      const d = event.data;
+      if (!d || typeof d !== 'object') return;
+      if (d.type === 'AUTOBET_STATUS') {
+        setExtStatus({
+          lastAction: d.status,
+          lastNumber: d.number || null,
+          extConnected: true,
+        });
+      }
+      if (d.type === 'NUMBER_FROM_EXTENSION') {
+        setExtStatus(prev => prev ? { ...prev, lastNumber: d.number } : null);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
 
   // Auto-reset waitingResult after 60s to prevent stuck state
   useEffect(() => {
@@ -172,6 +197,29 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
     return amount;
   }, [config, stats.currentGaleStep]);
 
+  // Quando vai apostar, enviar para extensão E para iframe
+  const sendBetToExtension = useCallback((numbers: number[], betAmount: number, probability: number) => {
+    window.postMessage({
+      type: 'SNIPER_BET_SIGNAL',
+      numbers,
+      betAmount,
+      probability,
+      timestamp: Date.now(),
+    }, '*');
+    try {
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+        try {
+          (iframe as HTMLIFrameElement).contentWindow?.postMessage({
+            type: 'PLACE_BET',
+            numbers,
+            betAmount,
+          }, '*');
+        } catch { /* cross-origin, extensão vai tratar */ }
+      });
+    } catch { /* ignore */ }
+  }, []);
+
   // Place a bet (manual or auto)
   const placeBet = useCallback(() => {
     if (!sniperData?.signal || !sniperData?.strategy?.numbers || stats.waitingResult || stats.stopped) return;
@@ -197,17 +245,8 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
       return;
     }
 
-    // Send to extension via postMessage (if iframe is open)
-    try {
-      window.postMessage({
-        type: 'roulette_place_bet',
-        numbers,
-        betAmount,
-        probability: sniperData.signal.probability,
-      }, '*');
-    } catch (e) {
-      console.log('[BetPanel] PostMessage sent');
-    }
+    // Enviar para extensão E para iframe
+    sendBetToExtension(numbers, betAmount, sniperData.signal.probability);
 
     console.log(`[BetPanel] 🎯 Aposta: R$${betAmount.toFixed(2)} em [${numbers.join(',')}]`);
   }, [sniperData, stats.waitingResult, stats.stopped, getCurrentBetAmount]);
@@ -537,6 +576,26 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
             </div>
             <p className="text-[7px] text-muted-foreground mt-1">Apostas virtuais — sem dinheiro real</p>
           </div>
+        )}
+
+        {/* Status da extensão */}
+        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[8px] border ${
+          extStatus?.extConnected
+            ? 'bg-green-500/10 text-green-400 border-green-500/20'
+            : 'bg-secondary/60 text-muted-foreground border-border'
+        }`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${extStatus?.extConnected ? 'bg-green-400 animate-pulse' : 'bg-muted-foreground/40'}`} />
+          <span>{extStatus?.extConnected ? '🔌 Extensão ativa' : '🔌 Instale a extensão'}</span>
+        </div>
+
+        {extStatus?.lastAction === 'bet_placed' && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-primary/15 border border-primary/30 rounded-lg px-3 py-2 text-center"
+          >
+            <span className="text-[9px] font-bold text-primary">🎰 APOSTA COLOCADA NO CASSINO</span>
+          </motion.div>
         )}
 
         {/* Action buttons — bold gradient style */}

@@ -115,7 +115,8 @@ const colorClass = (n: number) => {
 };
 
 const ROULETTE_TABLES = [
-  { id: 'brasileira', name: 'Roleta Brasileira', provider: 'Playtech', iframeUrl: 'https://onabet.com/' },
+  { id: 'brasileira', name: 'Roleta Brasileira', provider: 'Playtech', iframeUrl: 'https://onabet.com/casino/roleta-brasileira' },
+  { id: 'brasileira2', name: 'Roleta Brasileira 2', provider: 'Playtech', iframeUrl: 'https://onabet.com/casino/roleta-ao-vivo' },
 ];
 
 const PATTERN_ICONS: Record<string, typeof Brain> = {
@@ -165,7 +166,7 @@ const HistoryGrid = memo(({ historySlice, selectedNum, setSelectedNum, setDnaNum
 });
 
 const Index = () => {
-  const [selectedTable] = useState(ROULETTE_TABLES[0]);
+  const [selectedTable, setSelectedTable] = useState(ROULETTE_TABLES[0]);
   const [apiNumbers, setApiNumbers] = useState<number[]>([]);
   const [storedNumbers, setStoredNumbers] = useState<number[]>([]);
   const [isPolling, setIsPolling] = useState(true);
@@ -379,6 +380,23 @@ const Index = () => {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
+  }, [fetchSniper, handleNewSpin, isBurstDuplicate, markAcceptedSpin]);
+
+  // Listener para mensagens vindas da extensão (via window.postMessage)
+  useEffect(() => {
+    const handleExtMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'AUTOBET_STATUS') {
+        console.log('[Autobet] Status da extensão:', event.data);
+      }
+      if (event.data?.type === 'NUMBER_FROM_EXTENSION') {
+        const n = event.data.number;
+        if (typeof n === 'number' && n >= 0 && n <= 36) {
+          setApiNumbers(prev => [n, ...prev].slice(0, 1000));
+        }
+      }
+    };
+    window.addEventListener('message', handleExtMessage);
+    return () => window.removeEventListener('message', handleExtMessage);
   }, [fetchSniper, handleNewSpin, isBurstDuplicate, markAcceptedSpin]);
 
   useEffect(() => {
@@ -1313,10 +1331,29 @@ const Index = () => {
               <ChevronDown className={`w-4 h-4 text-muted-foreground ml-auto transition-transform ${showCasino ? 'rotate-180' : ''}`} />
             </button>
             {showCasino && (
-              <div className="w-full" style={{ height: '550px' }}>
-                <iframe src={selectedTable.iframeUrl} className="w-full h-full border-0" allowFullScreen
-                  allow="autoplay; fullscreen; microphone; camera"
-                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation" />
+              <div>
+                {/* Seletor de mesa */}
+                <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 bg-secondary/20">
+                  <span className="text-[8px] text-muted-foreground font-bold">MESA:</span>
+                  {ROULETTE_TABLES.map(table => (
+                    <button
+                      key={table.id}
+                      onClick={() => setSelectedTable(table)}
+                      className={`px-3 py-1 rounded-lg text-[9px] font-bold transition-all border ${
+                        selectedTable.id === table.id
+                          ? 'bg-primary/15 text-primary border-primary/30'
+                          : 'bg-secondary/40 text-muted-foreground border-border hover:text-foreground'
+                      }`}
+                    >
+                      {table.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="w-full" style={{ height: '550px' }}>
+                  <iframe src={selectedTable.iframeUrl} className="w-full h-full border-0" allowFullScreen
+                    allow="autoplay; fullscreen; microphone; camera"
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation" />
+                </div>
               </div>
             )}
           </div>

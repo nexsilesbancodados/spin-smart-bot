@@ -1,15 +1,20 @@
 {
   "manifest_version": 3,
-  "name": "Roulette Pro Tracker",
-  "version": "2.0.0",
-  "description": "Captura automática de números da roleta + Auto-Bet inteligente com IA Sniper",
-  "permissions": ["activeTab", "storage", "alarms"],
+  "name": "Spin Smart Bot",
+  "version": "3.0.0",
+  "description": "AutoBet inteligente com IA Sniper para Roleta Brasileira Playtech",
+  "permissions": ["activeTab", "storage", "alarms", "scripting"],
+  "host_permissions": [
+    "*://onabet.com/*",
+    "*://*.onabet.com/*",
+    "*://*.ona.bet.br/*",
+    "*://*.betano.com/*",
+    "*://*.bet365.com/*",
+    "*://spin-smart-bot.lovable.app/*"
+  ],
   "action": {
     "default_popup": "popup.html",
-    "default_icon": {
-      "48": "icon.png",
-      "128": "icon.png"
-    }
+    "default_icon": { "48": "icon.png", "128": "icon.png" }
   },
   "background": {
     "service_worker": "background.js"
@@ -19,20 +24,24 @@
       "matches": [
         "*://onabet.com/*",
         "*://*.onabet.com/*",
-        "*://ona.bet.br/*",
         "*://*.ona.bet.br/*",
-        "*://*.onabet.com.br/*",
         "*://*.betano.com/*",
-        "*://*.bet365.com/*",
-        "*://*.sportingbet.com/*"
+        "*://*.bet365.com/*"
       ],
       "js": ["content.js", "autobet.js"],
       "run_at": "document_idle",
       "all_frames": true
+    },
+    {
+      "matches": ["*://spin-smart-bot.lovable.app/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
     }
   ],
-  "icons": {
-    "48": "icon.png",
-    "128": "icon.png"
-  }
+  "web_accessible_resources": [{
+    "resources": ["icon.png"],
+    "matches": ["<all_urls>"]
+  }],
+  "icons": { "48": "icon.png", "128": "icon.png" }
 }
