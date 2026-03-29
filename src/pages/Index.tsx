@@ -262,6 +262,43 @@ const Index = () => {
   }, {});
   const maxTerminalFreq = Math.max(...Object.values(terminalFreq), 1);
 
+  // === REAL computed stats from allNumbers ===
+  const computedDealer = (() => {
+    if (allNumbers.length < 10) return null;
+    const arcs: number[] = [];
+    for (let i = 0; i < Math.min(50, allNumbers.length - 1); i++) arcs.push(wheelDist(allNumbers[i], allNumbers[i + 1]));
+    const mean = arcs.length > 0 ? arcs.reduce((a, b) => a + b, 0) / arcs.length : 0;
+    const stdDev = Math.sqrt(arcs.length > 0 ? arcs.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / arcs.length : 99);
+    const last3 = arcs.slice(0, 3);
+    const range3 = last3.length === 3 ? Math.max(...last3) - Math.min(...last3) : 99;
+    const recentMean = arcs.slice(0, 10).reduce((a, b) => a + b, 0) / Math.max(arcs.slice(0, 10).length, 1);
+    const olderMean = arcs.slice(10, 20).reduce((a, b) => a + b, 0) / Math.max(arcs.slice(10, 20).length, 1);
+    const changed = arcs.length >= 20 && Math.abs(recentMean - olderMean) > 5;
+    return {
+      arcMean: +mean.toFixed(1),
+      arcStdDev: +stdDev.toFixed(1),
+      consistency: stdDev < 2.5 ? 'alta' : stdDev < 4 ? 'média' : 'baixa',
+      maoViciada: range3 <= 2,
+      dealerChanged: changed,
+    };
+  })();
+
+  const computedCavalos = (() => {
+    const slice = allNumbers.slice(0, 50);
+    if (slice.length < 5) return [];
+    const freq: Record<string, number> = { '258': 0, '147': 0, '03': 0, '69': 0 };
+    slice.forEach(n => { const g = getCavaloGroup(n); if (g) freq[g]++; });
+    return Object.entries(freq).sort(([, a], [, b]) => b - a);
+  })();
+
+  const computedSectors = (() => {
+    const slice = allNumbers.slice(0, 100);
+    if (slice.length < 5) return {};
+    const freq: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0, Zero: 0 };
+    slice.forEach(n => { freq[getSectorName(n)]++; });
+    return freq;
+  })();
+
   const rows: number[][] = [];
   for (let i = 0; i < displayNumbers.length; i += 20) rows.push(displayNumbers.slice(i, i + 20));
 
