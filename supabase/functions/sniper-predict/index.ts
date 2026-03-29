@@ -2234,7 +2234,7 @@ serve(async (req) => {
     }));
 
     // Final probability = winner's probability boosted by layer convergence
-    const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 900)));
+    const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 1200)));
     
     // Add strategy performance learnings
     const winnerPerf = strategyPerformance[winner.type];
