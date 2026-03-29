@@ -4366,26 +4366,59 @@ serve(async (req) => {
     const winnerCategory = getBetCategory(winner.type);
     const seenCategories = new Set([winnerCategory]);
     const diverseAlts: typeof strategies = [];
+    // First pass: one per category (max 6 diverse)
     for (const s of strategies.slice(1)) {
-      if (diverseAlts.length >= 4) break;
+      if (diverseAlts.length >= 6) break;
       const cat = getBetCategory(s.type);
       if (!seenCategories.has(cat)) {
         seenCategories.add(cat);
         diverseAlts.push(s);
       }
     }
-    // If we don't have enough diverse, fill with top remaining
+    // Fill to at least 4 if not enough categories
     for (const s of strategies.slice(1)) {
       if (diverseAlts.length >= 4) break;
       if (!diverseAlts.includes(s)) diverseAlts.push(s);
     }
-    const topAlternatives = diverseAlts.slice(0, 4).map(s => ({
+
+    // Build COMBINED BET: merge all diverse alternatives, weight by frequency across strategies
+    const combinedNumFreq: Record<number, { count: number; totalProb: number; sources: string[] }> = {};
+    for (const s of diverseAlts) {
+      for (const n of s.numbers.slice(0, 12)) {
+        if (!combinedNumFreq[n]) combinedNumFreq[n] = { count: 0, totalProb: 0, sources: [] };
+        combinedNumFreq[n].count++;
+        combinedNumFreq[n].totalProb += s.probability;
+        if (!combinedNumFreq[n].sources.includes(s.emoji)) combinedNumFreq[n].sources.push(s.emoji);
+      }
+    }
+    // Sort combined numbers: multi-strategy first, then by total probability
+    const combinedSorted = Object.entries(combinedNumFreq)
+      .sort(([,a],[,b]) => b.count - a.count || b.totalProb - a.totalProb)
+      .map(([n, info]) => ({ num: Number(n), ...info }));
+    // Add protection
+    PROTECTION_NUMBERS.forEach(pn => {
+      if (!combinedSorted.find(c => c.num === pn)) {
+        combinedSorted.push({ num: pn, count: 0, totalProb: 0, sources: ['🛡️'] });
+      }
+    });
+
+    const topAlternatives = diverseAlts.slice(0, 6).map(s => ({
       type: s.type, label: s.label, emoji: s.emoji,
       numbers: s.numbers.slice(0, 12), coverage: +s.coverage.toFixed(1), payout: s.payout,
       score: +s.score.toFixed(1), probability: s.probability,
       justification: s.justification,
       betInstructions: generateBetInstructions(s),
     }));
+
+    // Combined bet data
+    const combinedBet = {
+      numbers: combinedSorted.map(c => c.num),
+      highlighted: combinedSorted.filter(c => c.count >= 2).map(c => c.num),
+      coverage: +((combinedSorted.length / 37) * 100).toFixed(1),
+      payout: Math.round(36 / combinedSorted.length),
+      avgProbability: Math.round(diverseAlts.reduce((s, a) => s + a.probability, 0) / (diverseAlts.length || 1)),
+      strategiesUsed: diverseAlts.map(s => ({ emoji: s.emoji, label: s.label, type: s.type })),
+    };
 
     // Merge protection numbers into winner
     const winnerNumbersWithProtection = [...new Set([...winner.numbers, ...PROTECTION_NUMBERS])];
