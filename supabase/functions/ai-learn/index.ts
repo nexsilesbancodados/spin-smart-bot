@@ -577,6 +577,16 @@ Deno.serve(async (req) => {
 ### CONHECIMENTO PRÉVIO:
 ${prevStr || 'Primeiro aprendizado.'}
 
+### 📈 HISTÓRICO DE ACERTOS/ERROS DAS PREVISÕES:
+- Total previsões: ${totalPredictions} | Acertos: ${totalHits} | Erros: ${totalMisses} | Win Rate: ${winRate}%
+- Acertos exatos (número central): ${exactHits}
+- Performance por estratégia: ${strategyPerfStr || 'sem dados'}
+- Alta confiança (≥85%): ${highProbPreds.length} previsões, ${highProbHits} acertos (${highProbPreds.length > 0 ? ((highProbHits/highProbPreds.length)*100).toFixed(0) : 0}%)
+- Baixa confiança (<70%): ${lowProbPreds.length} previsões, ${lowProbHits} acertos (${lowProbPreds.length > 0 ? ((lowProbHits/lowProbPreds.length)*100).toFixed(0) : 0}%)
+- Modo Físico: ${fisicoHitRate}% win rate | Modo Matemático: ${matHitRate}% win rate
+- Terminais nos erros recentes: ${topMissTerminals || 'sem dados'}
+- Números que saíram nos erros: ${missedActuals.slice(0, 10).join(',') || 'sem dados'}
+
 ## MISSÃO:
 Aja como SUPERCOMPUTADOR DE ANALÍTICA PREDITIVA. Realize análise transversal completa:
 1. Viés de frequência com desvio padrão
@@ -601,7 +611,8 @@ Aja como SUPERCOMPUTADOR DE ANALÍTICA PREDITIVA. Realize análise transversal c
 20. CLUSTERS DE CALOR: valide os clusters detectados
 21. ENTROPIA: avalie probabilidade de quebra de padrão
 22. EFEITO GANGORRA: preveja transição entre semicírculos
-23. PROBABILIDADE RESIDUAL: priorize os alvos de atraso cruzado`;
+23. PROBABILIDADE RESIDUAL: priorize os alvos de atraso cruzado
+24. **AUTOCORREÇÃO**: Analise o histórico de erros/acertos. Identifique quais estratégias estão falhando e por quê. Ajuste recomendações para melhorar o win rate. Se uma estratégia erra consistentemente, reduza sua confiança. Se acerta, aumente.`;
 
     // 4. Call AI
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
