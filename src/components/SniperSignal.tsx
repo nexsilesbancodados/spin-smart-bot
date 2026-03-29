@@ -182,6 +182,20 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                         <p className="text-[10px] text-muted-foreground">{primaryBet.detail}</p>
                       </div>
                     </div>
+                    {/* Vizinhos info */}
+                    {(() => {
+                      const numCount = sniperData.strategy?.numbers?.length || 0;
+                      const neighborsCount = numCount > 1 ? Math.floor((numCount - 1) / 2) : 0;
+                      return neighborsCount > 0 ? (
+                        <div className="mt-2 flex items-center gap-2 bg-accent/30 rounded-lg px-3 py-1.5">
+                          <span className="text-lg">🎡</span>
+                          <span className="text-xs font-bold text-accent-foreground">
+                            Jogue <span className="text-primary text-sm">{neighborsCount}</span> vizinhos de cada lado
+                          </span>
+                          <span className="text-[9px] text-muted-foreground ml-auto">({numCount} números total)</span>
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 )}
 
