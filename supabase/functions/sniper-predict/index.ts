@@ -12,6 +12,7 @@ const VOISINS = [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25];
 const TIERS = [27,13,36,11,30,8,23,10,5,24,16,33];
 const ORPHELINS = [1,20,14,31,9,17,34,6];
 const JEU_ZERO = [12,35,3,26,0,32,15];
+const PROTECTION_NUMBERS = [0, 26, 32]; // Always included as protection in every play
 
 const OCTAVES: Record<string, number[]> = {
   O1:[0,32,15,19,4], O2:[21,2,25,17], O3:[34,6,27,13], O4:[36,11,30,8],
