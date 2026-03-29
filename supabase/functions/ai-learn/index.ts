@@ -1126,6 +1126,55 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
     const { data: old } = await supabase.from('pattern_insights').select('id').order('created_at', { ascending: false }).range(500, 999);
     if (old && old.length > 0) await supabase.from('pattern_insights').delete().in('id', old.map((r: any) => r.id));
 
+    // ── PUXADAS CONFIRMADAS: aprendizado automático sem IA ──
+    const PULL_MAP_LEARN: Record<number, number[]> = {
+      0:[10,20,30,32,15,26,3,33,31],1:[11,35,16,4,18,28,27,29,33],
+      2:[14,1,13,18,35,29],3:[13,27,6,11,30,8],4:[26,15,18,32,33,16,8],
+      5:[3,33,16,24,10,18],6:[8,15,31,21,22,23],7:[16,18,17,30,31],
+      8:[11,9,10],9:[34,35,36,3,16,26,23,24,32,31],10:[20,5,18,11,14,24],
+      20:[4,14],27:[28,29,24,22,26,33,31,34,35,36],30:[4,8,16,9,18,22,5,25,3],36:[3,10,27]
+    };
+
+    const pullStats: Record<string, { hits: number; total: number }> = {};
+    for (let i = 0; i < Math.min(50, numbers.length - 1); i++) {
+      const source = numbers[i];
+      const expectedPulls = PULL_MAP_LEARN[source] || [];
+      if (expectedPulls.length === 0) continue;
+      const key = `${source}`;
+      if (!pullStats[key]) pullStats[key] = { hits: 0, total: 0 };
+      pullStats[key].total++;
+      const nextFour = numbers.slice(i + 1, i + 5);
+      if (nextFour.some(n => expectedPulls.includes(n))) pullStats[key].hits++;
+    }
+
+    const topPulls = Object.entries(pullStats)
+      .filter(([, s]) => s.total >= 3)
+      .map(([src, s]) => ({ source: Number(src), rate: s.hits / s.total, hits: s.hits, total: s.total }))
+      .sort((a, b) => b.rate - a.rate)
+      .slice(0, 3);
+
+    for (const tp of topPulls) {
+      const puxados = PULL_MAP_LEARN[tp.source] || [];
+      await supabase.from('ai_learned_patterns').upsert({
+        learning_type: 'pull_confirmed',
+        title: `Puxada ${tp.source}→[${puxados.slice(0,4).join(',')}] (${(tp.rate*100).toFixed(0)}%)`,
+        knowledge: `Número ${tp.source} puxou seus targets em ${tp.hits}/${tp.total} vezes (${(tp.rate*100).toFixed(0)}%). Apostar [${puxados.join(',')}] nas próximas 4 rodadas após o ${tp.source} sair.`,
+        data_points: tp.total,
+        accuracy: Math.min(95, tp.rate * 100),
+        metadata: {
+          source: tp.source,
+          targets: puxados,
+          hits: tp.hits,
+          total: tp.total,
+          pullRate: tp.rate,
+          key_numbers: puxados,
+          hotNumbers: puxados.slice(0, 5),
+          lastSeen: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString(),
+      } as any, { onConflict: 'learning_type,title' } as any).catch(() => {})
+    }
+
     return new Response(JSON.stringify({
       status: "success",
       learnings: learnings.length,

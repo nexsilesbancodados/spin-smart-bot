@@ -71,6 +71,10 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
   const [showSettings, setShowSettings] = useState(false);
   const [betFlash, setBetFlash] = useState(false);
+  const [simMode, setSimMode] = useState(false);
+  const [simProfit, setSimProfit] = useState(0);
+  const [simTotal, setSimTotal] = useState(0);
+  const [simWins, setSimWins] = useState(0);
   const prevNumberRef = useRef<number | null>(null);
   const autoBetRef = useRef(false);
 
@@ -174,6 +178,13 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
     setBetFlash(true);
     setTimeout(() => setBetFlash(false), 600);
 
+    if (simMode) {
+      // Simulação: não envia para extensão
+      setSimTotal(prev => prev + 1);
+      console.log(`[BetPanel] 🧪 Simulação: R$${betAmount.toFixed(2)} em [${numbers.join(',')}]`);
+      return;
+    }
+
     // Send to extension via postMessage (if iframe is open)
     try {
       window.postMessage({
@@ -268,6 +279,17 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           )}
         </div>
         <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setSimMode(prev => !prev)}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-bold border transition-all ${
+              simMode
+                ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                : 'bg-secondary text-muted-foreground border-border hover:text-foreground'
+            }`}
+            title="Modo Simulação — apostas virtuais sem dinheiro real"
+          >
+            🧪 {simMode ? 'SIM' : 'REAL'}
+          </button>
           <button onClick={() => setShowSettings(!showSettings)}
             className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
             <Settings className="w-4 h-4" />
@@ -489,6 +511,19 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                 </span>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Sim mode summary */}
+        {simMode && simTotal > 0 && (
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2 mt-2">
+            <p className="text-[8px] font-bold text-blue-400 mb-1">🧪 MODO SIMULAÇÃO</p>
+            <div className="flex gap-3 text-[8px]">
+              <span className="text-muted-foreground">Total: <strong className="text-foreground">{simTotal}</strong></span>
+              <span className="text-muted-foreground">P&L: <strong className={simProfit >= 0 ? 'text-green-400' : 'text-red-400'}>R${simProfit.toFixed(2)}</strong></span>
+              <span className="text-muted-foreground">Win: <strong className="text-foreground">{simTotal > 0 ? ((simWins/simTotal)*100).toFixed(0) : 0}%</strong></span>
+            </div>
+            <p className="text-[7px] text-muted-foreground mt-1">Apostas virtuais — sem dinheiro real</p>
           </div>
         )}
 

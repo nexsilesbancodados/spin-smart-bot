@@ -24,6 +24,43 @@ import WheelMap from '@/components/WheelMap';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+
+// Sound feedback via Web Audio API
+const playSound = (type: 'hit' | 'miss' | 'signal', enabled: boolean) => {
+  if (!enabled) return;
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (type === 'hit') {
+      osc.frequency.setValueAtTime(523, ctx.currentTime);
+      osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1);
+      osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.5);
+    } else if (type === 'miss') {
+      osc.frequency.setValueAtTime(200, ctx.currentTime);
+      osc.frequency.setValueAtTime(150, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    } else if (type === 'signal') {
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.setValueAtTime(554, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.25);
+    }
+  } catch { /* áudio não disponível */ }
+};
+
 const CAVALOS_258 = [2, 5, 8, 12, 15, 18, 22, 25, 28, 32, 35];
 const WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 const WL = WHEEL.length;
@@ -155,9 +192,25 @@ const Index = () => {
   const [showPredHistory, setShowPredHistory] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
   const [strategyFilter, setStrategyFilter] = useState<string>('all');
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [activePatternCount, setActivePatternCount] = useState(0);
   const handleManualNumbers = (nums: number[]) => {
     setApiNumbers(prev => [...nums, ...prev].slice(0, 1000));
   };
+
+  // Pattern count polling
+  useEffect(() => {
+    const loadPatternCount = async () => {
+      const { count } = await supabase
+        .from('pattern_insights')
+        .select('*', { count: 'exact', head: true })
+        .gt('confidence', 45);
+      setActivePatternCount(count || 0);
+    };
+    loadPatternCount();
+    const interval = setInterval(loadPatternCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Track if sniper is already being fetched to avoid double calls
   const sniperFetchingRef = useRef(false);
@@ -194,7 +247,8 @@ const Index = () => {
     sniperSameCount.current = 0;
     setSniperStale(false);
     setSniperCountdown(13);
-  }, []);
+    playSound('signal', soundEnabled);
+  }, [soundEnabled]);
 
   // Track spins for micro-learning trigger
   const spinCountSinceMicroLearnRef = useRef(0);
@@ -432,6 +486,9 @@ const Index = () => {
           console.log(`❌ ERRO — ${label} — Previsto: ${row.predicted_main}, Saiu: ${row.actual_number}`);
         }
 
+        // Sound feedback
+        playSound(isHit ? 'hit' : 'miss', soundEnabled);
+
         // Also sync from DB after a short delay to stay accurate
         setTimeout(() => loadPredStats(), 2000);
       }
@@ -509,6 +566,8 @@ const Index = () => {
         aiEnabled={aiEnabled} setAiEnabled={setAiEnabled}
         strategyFilter={strategyFilter} setStrategyFilter={setStrategyFilter}
         predStats={predStats} setPredStats={setPredStats}
+        activePatternCount={activePatternCount}
+        soundEnabled={soundEnabled} setSoundEnabled={setSoundEnabled}
       />
 
       {/* ═══════ PREDICTION HISTORY (COLLAPSIBLE) ═══════ */}
@@ -959,6 +1018,30 @@ const Index = () => {
                   <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/60 border border-border">
                     <span className="text-muted-foreground">Dívida:</span>
                     <span className="font-mono font-bold text-blue-400">{sniperData.memoryWindows.macro.topDebt.slice(0, 3).join(', ')}</span>
+                  </span>
+                )}
+                {sniperData?.kellyBetting && (
+                  <span className={`flex items-center gap-1 px-2 py-1 rounded-lg border ${
+                    sniperData.kellyBetting.riskLevel === 'conservative'
+                      ? 'bg-green-500/10 border-green-500/20'
+                      : sniperData.kellyBetting.riskLevel === 'aggressive'
+                      ? 'bg-red-500/10 border-red-500/20'
+                      : 'bg-secondary/60 border-border'
+                  }`}>
+                    <span className="text-muted-foreground">Kelly:</span>
+                    <span className={`font-bold ${
+                      sniperData.kellyBetting.riskLevel === 'conservative' ? 'text-green-400' :
+                      sniperData.kellyBetting.riskLevel === 'aggressive' ? 'text-red-400' : 'text-foreground'
+                    }`}>
+                      {sniperData.kellyBetting.unitMultiplier}x
+                    </span>
+                    <span className={`text-[7px] font-semibold ${
+                      sniperData.kellyBetting.riskLevel === 'conservative' ? 'text-green-400/70' :
+                      sniperData.kellyBetting.riskLevel === 'aggressive' ? 'text-red-400/70' : 'text-muted-foreground'
+                    }`}>
+                      {sniperData.kellyBetting.riskLevel === 'conservative' ? '🛡️' :
+                       sniperData.kellyBetting.riskLevel === 'aggressive' ? '🔥' : '⚖️'}
+                    </span>
                   </span>
                 )}
               </div>
