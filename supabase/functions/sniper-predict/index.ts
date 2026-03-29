@@ -3073,6 +3073,23 @@ serve(async (req) => {
         bets.push({ type: 'vizinhos', label: `Vizinhos do ${mainNum}`, detail: `Pleno no ${mainNum} + vizinhos: ${nums.slice(1, 5).join(', ')}`, emoji: '🎯' });
       } else if (t === 'numero_exato') {
         bets.push({ type: 'pleno', label: `Pleno no ${nums[0]}`, detail: `Aposte Pleno (straight) no ${nums[0]} — paga 35:1`, emoji: '💎' });
+      } else if (t === 'ritmo_calibrado') {
+        bets.push({ type: 'ritmo', label: `Ritmo Calibrado → ${nums[0]}`, detail: `Alvo calculado por arco direcional do dealer: Pleno ${nums[0]} + ${nums.length - 1} vizinhos`, emoji: '🎯' });
+      } else if (t === 'archetype_fusion') {
+        bets.push({ type: 'fusao', label: `Fusão de Arquétipos`, detail: `Convergência de múltiplos padrões: ${nums.slice(0, 6).join(', ')}`, emoji: '🏛️' });
+      } else if (t === 'matrix_fusion') {
+        bets.push({ type: 'matriz', label: `Convergência Matricial`, detail: `Interseção Setor+Dúzia+Terminal: ${nums.slice(0, 6).join(', ')}`, emoji: '🔮' });
+      } else if (t === 'cobertura_area') {
+        bets.push({ type: 'area', label: `Cobertura de Setor`, detail: `Cubra setor via matriz de transição: ${nums.slice(0, 6).join(', ')}`, emoji: '🗺️' });
+      } else if (t === 'terminais_cruzados') {
+        const term = nums.length > 0 ? nums[0] % 10 : 0;
+        bets.push({ type: 'terminal', label: `Terminais Cruzados ${term}`, detail: `Aposte nos terminais ${term}: ${nums.join(', ')}`, emoji: '🐎' });
+      } else if (t === 'pressao_retorno') {
+        const dz = nums[0] <= 12 ? 1 : nums[0] <= 24 ? 2 : 3;
+        bets.push({ type: 'duzia', label: `Pressão D${dz}`, detail: `Dúzia ${dz} em dívida estatística — Retorno iminente`, emoji: '🔥' });
+      } else {
+        // Generic fallback
+        bets.push({ type: 'generico', label: strat.label, detail: `Cubra: ${nums.slice(0, 8).join(', ')}`, emoji: strat.emoji });
       }
 
       // Add complementary bets based on number groupings
