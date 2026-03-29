@@ -481,45 +481,46 @@ const Index = () => {
             </div>
           </details>
 
-          {/* ─── SEÇÃO 3: JOGADAS ALTERNATIVAS ─── */}
+          {/* ─── SEÇÃO 3: JOGADAS ALTERNATIVAS (COLAPSÁVEL) ─── */}
           {sniperData?.topAlternatives?.length > 0 && (
-            <div className="bg-gradient-card rounded-xl border border-border/60 p-4 relative overflow-hidden">
+            <details className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden relative">
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
-                  <BarChart3 className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <span className="font-display text-[10px] tracking-[0.2em] font-bold text-primary text-glow-cyan">JOGADAS ALTERNATIVAS</span>
+              <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none hover:bg-primary/5 transition-colors">
+                <ChevronDown className="w-4 h-4 text-primary/60 transition-transform" />
+                <BarChart3 className="w-3.5 h-3.5 text-primary" />
+                <span className="font-display text-[10px] tracking-[0.2em] font-bold text-primary">JOGADAS ALTERNATIVAS</span>
                 <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-bold font-mono">
                   TOP {sniperData.topAlternatives.length}
                 </span>
+              </summary>
+              <div className="p-4 border-t border-border/40">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {sniperData.topAlternatives.map((alt: any, i: number) => (
+                    <div key={i} className="bg-secondary/40 rounded-lg p-3 border border-border hover:border-primary/30 transition-all">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="text-sm">{alt.emoji}</span>
+                        <span className="text-[9px] font-bold text-foreground truncate">{alt.label}</span>
+                        <span className={`ml-auto text-[10px] font-mono font-bold ${alt.probability >= 80 ? 'text-primary' : alt.probability >= 65 ? 'text-yellow-400' : 'text-muted-foreground'}`}>
+                          {alt.probability}%
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {alt.numbers?.slice(0, 8).map((n: number, j: number) => (
+                          <div key={j} className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ${colorClass(n)} border border-white/10`}>{n}</div>
+                        ))}
+                        {alt.numbers?.length > 8 && <span className="text-[7px] text-muted-foreground self-center">+{alt.numbers.length - 8}</span>}
+                      </div>
+                      <p className="text-[7px] text-muted-foreground line-clamp-2 mb-1.5">{alt.justification}</p>
+                      <div className="flex items-center gap-2 text-[7px] text-muted-foreground">
+                        <span>Payout: {alt.payout}x</span>
+                        <span>•</span>
+                        <span>{alt.coverage}% cobertura</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {sniperData.topAlternatives.map((alt: any, i: number) => (
-                  <div key={i} className="bg-secondary/40 rounded-lg p-3 border border-border hover:border-primary/30 transition-all">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <span className="text-sm">{alt.emoji}</span>
-                      <span className="text-[9px] font-bold text-foreground truncate">{alt.label}</span>
-                      <span className={`ml-auto text-[10px] font-mono font-bold ${alt.probability >= 80 ? 'text-primary' : alt.probability >= 65 ? 'text-yellow-400' : 'text-muted-foreground'}`}>
-                        {alt.probability}%
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {alt.numbers?.slice(0, 8).map((n: number, j: number) => (
-                        <div key={j} className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ${colorClass(n)} border border-white/10`}>{n}</div>
-                      ))}
-                      {alt.numbers?.length > 8 && <span className="text-[7px] text-muted-foreground self-center">+{alt.numbers.length - 8}</span>}
-                    </div>
-                    <p className="text-[7px] text-muted-foreground line-clamp-2 mb-1.5">{alt.justification}</p>
-                    <div className="flex items-center gap-2 text-[7px] text-muted-foreground">
-                      <span>Payout: {alt.payout}x</span>
-                      <span>•</span>
-                      <span>{alt.coverage}% cobertura</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            </details>
           )}
 
           {/* ─── SEÇÃO 4: ANÁLISE AVANÇADA (COLAPSÁVEL) ─── */}
