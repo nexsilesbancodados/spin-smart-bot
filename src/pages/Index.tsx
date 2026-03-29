@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition, lazy, Suspense } from 'react';
 
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -360,30 +360,30 @@ const Index = () => {
     finally { setIsAnalyzing(false); }
   };
 
-  // === Computed ===
-  const allNumbers = apiNumbers.length > 0 ? apiNumbers : storedNumbers;
-  const historySlice = allNumbers.slice(0, historyLimit);
+  // === Computed (memoized) ===
+  const allNumbers = useMemo(() => apiNumbers.length > 0 ? apiNumbers : storedNumbers, [apiNumbers, storedNumbers]);
+  const historySlice = useMemo(() => allNumbers.slice(0, historyLimit), [allNumbers, historyLimit]);
 
-  const terminalFreq = allNumbers.slice(0, 200).reduce<Record<number, number>>((acc, n) => {
+  const terminalFreq = useMemo(() => allNumbers.slice(0, 200).reduce<Record<number, number>>((acc, n) => {
     const t = n % 10; acc[t] = (acc[t] || 0) + 1; return acc;
-  }, {});
-  const maxTerminalFreq = Math.max(...Object.values(terminalFreq), 1);
+  }, {}), [allNumbers]);
+  const maxTerminalFreq = useMemo(() => Math.max(...Object.values(terminalFreq), 1), [terminalFreq]);
 
-  const computedCavalos = (() => {
+  const computedCavalos = useMemo(() => {
     const slice = allNumbers.slice(0, 50);
     if (slice.length < 5) return [];
     const freq: Record<string, number> = { '258': 0, '147': 0, '03': 0, '69': 0 };
     slice.forEach(n => { const g = getCavaloGroup(n); if (g) freq[g]++; });
     return Object.entries(freq).sort(([, a], [, b]) => b - a);
-  })();
+  }, [allNumbers]);
 
-  const computedSectors = (() => {
+  const computedSectors = useMemo(() => {
     const slice = allNumbers.slice(0, 100);
     if (slice.length < 5) return {};
     const freq: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0, Zero: 0 };
     slice.forEach(n => { freq[getSectorName(n)]++; });
     return freq;
-  })();
+  }, [allNumbers]);
 
   return (
     <div className="min-h-screen bg-gradient-casino flex flex-col relative">
@@ -878,31 +878,7 @@ const Index = () => {
               {historySlice.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">Aguardando dados...</div>
               ) : (
-                <div className="space-y-1.5">
-                  {(() => {
-                    const hRows: number[][] = [];
-                    for (let i = 0; i < historySlice.length; i += 20) hRows.push(historySlice.slice(i, i + 20));
-                    return hRows.map((row, rowIdx) => (
-                      <div key={rowIdx} className="flex gap-1 flex-wrap">
-                        {row.map((n, i) => {
-                          const isSelected = selectedNum === n;
-                          const isDimmed = selectedNum !== null && selectedNum !== n;
-                          return (
-                            <motion.div key={`${rowIdx}-${i}-${n}`}
-                              initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: isDimmed ? 0.25 : 1 }}
-                              transition={{ duration: 0.12, delay: i * 0.005 }}
-                              onClick={() => setSelectedNum(selectedNum === n ? null : n)}
-                              onDoubleClick={() => { setDnaNumber(n); setDnaOpen(true); }}
-                              className={`w-[32px] h-[32px] rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm transition-all cursor-pointer border
-                                ${isSelected ? 'ring-2 ring-primary scale-110 bg-primary text-primary-foreground border-primary' : isDimmed ? `${colorClass(n)} border-white/5` : `${colorClass(n)} border-white/10 hover:scale-110`}`}>
-                              {n}
-                            </motion.div>
-                          );
-                        })}
-                      </div>
-                    ));
-                  })()}
-                </div>
+                <HistoryGrid historySlice={historySlice} selectedNum={selectedNum} setSelectedNum={setSelectedNum} setDnaNumber={setDnaNumber} setDnaOpen={setDnaOpen} />
               )}
 
               {/* Análise do número selecionado */}
