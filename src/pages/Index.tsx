@@ -1465,6 +1465,9 @@ const Index = () => {
 
         </div>
       </div>
+
+      {/* DNA Dialog */}
+      <NumberDNADialog number={dnaNumber} allNumbers={allNumbers} open={dnaOpen} onClose={() => setDnaOpen(false)} />
     </div>
   );
 };
