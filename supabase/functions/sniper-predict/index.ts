@@ -443,6 +443,203 @@ const detectGatilhoPerfeito = (nums: number[], hotTerminal: number, pullNums: nu
 
 const REED_MAX = 4;
 
+// ========================================================
+// ADVANCED ANALYSIS ENGINES
+// ========================================================
+
+// MOMENTUM INDEX — measures directional momentum of categories
+const calculateMomentum = (nums: number[], getCat: (n: number) => string, window = 20): Record<string, { momentum: number; trend: 'rising' | 'falling' | 'stable'; streak: number }> => {
+  const result: Record<string, { momentum: number; trend: 'rising' | 'falling' | 'stable'; streak: number }> = {};
+  if (nums.length < window) return result;
+  // Split into 4 micro-windows
+  const wSize = Math.floor(window / 4);
+  const windows: Record<string, number[]> = {};
+  for (let w = 0; w < 4; w++) {
+    const slice = nums.slice(w * wSize, (w + 1) * wSize);
+    const catCount: Record<string, number> = {};
+    slice.forEach(n => { const c = getCat(n); if (c) catCount[c] = (catCount[c] || 0) + 1; });
+    for (const [cat, count] of Object.entries(catCount)) {
+      if (!windows[cat]) windows[cat] = [];
+      windows[cat].push(count);
+    }
+  }
+  for (const [cat, counts] of Object.entries(windows)) {
+    while (counts.length < 4) counts.push(0);
+    // Momentum = weighted slope (recent windows matter more)
+    const momentum = (counts[0] * 4 + counts[1] * 2 - counts[2] * 1 - counts[3] * 2) / (4 * wSize);
+    // Streak: consecutive windows with increasing count
+    let streak = 0;
+    for (let i = 0; i < counts.length - 1; i++) {
+      if (counts[i] >= counts[i + 1]) streak++;
+      else break;
+    }
+    const trend = momentum > 0.15 ? 'rising' : momentum < -0.15 ? 'falling' : 'stable';
+    result[cat] = { momentum: +momentum.toFixed(3), trend, streak };
+  }
+  return result;
+};
+
+// VOLATILITY INDEX — measures how unpredictable the session is
+const calculateVolatility = (nums: number[], window = 30): { score: number; level: 'baixa' | 'média' | 'alta' | 'extrema'; arcVolatility: number; categoryVolatility: number } => {
+  if (nums.length < 10) return { score: 0, level: 'média', arcVolatility: 0, categoryVolatility: 0 };
+  const slice = nums.slice(0, Math.min(window, nums.length));
+  // Arc volatility: std deviation of wheel distances
+  const arcs: number[] = [];
+  for (let i = 0; i < slice.length - 1; i++) arcs.push(wheelDist(slice[i], slice[i + 1]));
+  const arcMean = arcs.reduce((a, b) => a + b, 0) / (arcs.length || 1);
+  const arcVar = arcs.reduce((a, b) => a + Math.pow(b - arcMean, 2), 0) / (arcs.length || 1);
+  const arcVolatility = Math.sqrt(arcVar);
+  // Category volatility: how often sector/dozen/column changes
+  let sectorChanges = 0, dozenChanges = 0, colorChanges = 0;
+  for (let i = 0; i < slice.length - 1; i++) {
+    if (getSector(slice[i]) !== getSector(slice[i + 1])) sectorChanges++;
+    if (getDozen(slice[i]) !== getDozen(slice[i + 1])) dozenChanges++;
+    if (getColor(slice[i]) !== getColor(slice[i + 1])) colorChanges++;
+  }
+  const totalTransitions = slice.length - 1 || 1;
+  const categoryVolatility = ((sectorChanges + dozenChanges + colorChanges) / (totalTransitions * 3)) * 100;
+  // Combined score
+  const score = Math.round(arcVolatility * 3 + categoryVolatility * 0.7);
+  const level = score > 80 ? 'extrema' : score > 55 ? 'alta' : score > 30 ? 'média' : 'baixa';
+  return { score, level, arcVolatility: +arcVolatility.toFixed(1), categoryVolatility: +categoryVolatility.toFixed(1) };
+};
+
+// RECENCY-WEIGHTED FREQUENCY — exponential decay weight for recent numbers
+const recencyWeightedFreq = (nums: number[], decay = 0.92): Record<number, number> => {
+  const freq: Record<number, number> = {};
+  for (let n = 0; n <= 36; n++) freq[n] = 0;
+  nums.forEach((n, i) => { freq[n] += Math.pow(decay, i); });
+  return freq;
+};
+
+// PATTERN BREAKOUT DETECTION — identifies when a stable pattern suddenly breaks
+const detectBreakout = (nums: number[]): { active: boolean; type: string; description: string; confidence: number }[] => {
+  const breakouts: { active: boolean; type: string; description: string; confidence: number }[] = [];
+  if (nums.length < 20) return breakouts;
+  // Check if recent 5 numbers break the pattern of the previous 15
+  const recent5 = nums.slice(0, 5);
+  const prev15 = nums.slice(5, 20);
+  // Sector breakout
+  const prevSectorDom: Record<string, number> = {};
+  prev15.forEach(n => { const s = getSector(n); prevSectorDom[s] = (prevSectorDom[s] || 0) + 1; });
+  const topPrevSector = Object.entries(prevSectorDom).sort(([,a],[,b]) => b - a)[0];
+  if (topPrevSector && topPrevSector[1] >= 8) {
+    const recentInSector = recent5.filter(n => getSector(n) === topPrevSector[0]).length;
+    if (recentInSector <= 1) {
+      breakouts.push({
+        active: true, type: 'sector_breakout',
+        description: `Setor ${topPrevSector[0]} dominava (${topPrevSector[1]}/15) mas parou nos últimos 5 giros`,
+        confidence: Math.min(85, 50 + (topPrevSector[1] - recentInSector) * 5),
+      });
+    }
+  }
+  // Color breakout
+  const prevRedCount = prev15.filter(n => getColor(n) === 'red').length;
+  const prevBlackCount = prev15.filter(n => getColor(n) === 'black').length;
+  const recentRedCount = recent5.filter(n => getColor(n) === 'red').length;
+  if (prevRedCount >= 10 && recentRedCount <= 1) {
+    breakouts.push({ active: true, type: 'color_breakout', description: `Vermelho dominava (${prevRedCount}/15) — Preto assumindo`, confidence: 78 });
+  } else if (prevBlackCount >= 10 && recent5.filter(n => getColor(n) === 'black').length <= 1) {
+    breakouts.push({ active: true, type: 'color_breakout', description: `Preto dominava (${prevBlackCount}/15) — Vermelho assumindo`, confidence: 78 });
+  }
+  // Dozen breakout
+  const prevDzCount = [0, 0, 0];
+  prev15.forEach(n => { const d = getDozen(n); if (d > 0) prevDzCount[d - 1]++; });
+  const hotDzIdx = prevDzCount.indexOf(Math.max(...prevDzCount));
+  if (prevDzCount[hotDzIdx] >= 8) {
+    const recentInDz = recent5.filter(n => getDozen(n) === hotDzIdx + 1).length;
+    if (recentInDz <= 0) {
+      breakouts.push({ active: true, type: 'dozen_breakout', description: `Dúzia ${hotDzIdx + 1} dominava (${prevDzCount[hotDzIdx]}/15) — saiu de cena`, confidence: 75 });
+    }
+  }
+  // High/Low breakout
+  const prevHighCount = prev15.filter(n => n >= 19).length;
+  const recentHighCount = recent5.filter(n => n >= 19).length;
+  if (prevHighCount >= 10 && recentHighCount <= 1) {
+    breakouts.push({ active: true, type: 'highlow_breakout', description: `Altos dominavam (${prevHighCount}/15) — Baixos assumindo`, confidence: 75 });
+  } else if (prevHighCount <= 5 && recentHighCount >= 4) {
+    breakouts.push({ active: true, type: 'highlow_breakout', description: `Baixos dominavam — Altos assumindo (${recentHighCount}/5)`, confidence: 72 });
+  }
+  return breakouts;
+};
+
+// BAYESIAN CONDITIONAL PROBABILITY — P(next=X | last=Y)
+const bayesianPredict = (nums: number[], getCat: (n: number) => string | number): { predicted: string | number | null; probability: number; matrix: Record<string, Record<string, number>> } => {
+  const matrix: Record<string, Record<string, number>> = {};
+  for (let i = 0; i < nums.length - 1; i++) {
+    const from = String(getCat(nums[i + 1]));
+    const to = String(getCat(nums[i]));
+    if (!matrix[from]) matrix[from] = {};
+    matrix[from][to] = (matrix[from][to] || 0) + 1;
+  }
+  // Predict from last number
+  const lastCat = String(getCat(nums[0]));
+  const row = matrix[lastCat];
+  if (!row) return { predicted: null, probability: 0, matrix };
+  const total = Object.values(row).reduce((a, b) => a + b, 0);
+  const best = Object.entries(row).sort(([,a],[,b]) => b - a)[0];
+  if (!best || total < 5) return { predicted: null, probability: 0, matrix };
+  return { predicted: best[0], probability: Math.round((best[1] / total) * 100), matrix };
+};
+
+// WHEEL ZONE MOMENTUM — which physical zone on wheel has highest recent activity
+const wheelZoneMomentum = (nums: number[], zones = 6): { zone: number; momentum: number; numbers: number[]; label: string }[] => {
+  const zoneSize = Math.floor(WL / zones);
+  const results: { zone: number; momentum: number; numbers: number[]; label: string }[] = [];
+  for (let z = 0; z < zones; z++) {
+    const zoneNums = WHEEL.slice(z * zoneSize, (z + 1) * zoneSize);
+    // Recency-weighted count
+    let momentum = 0;
+    nums.slice(0, 30).forEach((n, i) => {
+      if (zoneNums.includes(n)) momentum += Math.pow(0.9, i);
+    });
+    const centerNum = zoneNums[Math.floor(zoneNums.length / 2)];
+    results.push({ zone: z + 1, momentum: +momentum.toFixed(2), numbers: zoneNums, label: `Zona ${z + 1} (perto do ${centerNum})` });
+  }
+  return results.sort((a, b) => b.momentum - a.momentum);
+};
+
+// FIBONACCI GAP ANALYSIS — numbers due based on Fibonacci intervals
+const fibonacciGapAnalysis = (nums: number[]): { number: number; lastSeen: number; fibonacci: number; due: boolean }[] => {
+  const FIB = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
+  const results: { number: number; lastSeen: number; fibonacci: number; due: boolean }[] = [];
+  for (let n = 0; n <= 36; n++) {
+    let lastSeen = -1;
+    for (let i = 0; i < nums.length; i++) { if (nums[i] === n) { lastSeen = i; break; } }
+    if (lastSeen < 0) lastSeen = nums.length;
+    // Check if lastSeen matches a Fibonacci number (±1 tolerance)
+    const matchedFib = FIB.find(f => Math.abs(lastSeen - f) <= 1);
+    if (matchedFib && lastSeen > 5) {
+      results.push({ number: n, lastSeen, fibonacci: matchedFib, due: true });
+    }
+  }
+  return results.sort((a, b) => b.lastSeen - a.lastSeen);
+};
+
+// MULTI-DIMENSION CONVERGENCE — finds numbers where multiple independent dimensions agree
+const multiDimensionConvergence = (
+  nums: number[],
+  sectorPred: string | null,
+  dozenPred: number | null,
+  terminalPred: number | null,
+  colorBias: string | null,
+  highLowBias: 'high' | 'low' | null
+): { number: number; dimensions: number; reasons: string[] }[] => {
+  const results: { number: number; dimensions: number; reasons: string[] }[] = [];
+  for (let n = 0; n <= 36; n++) {
+    let dims = 0;
+    const reasons: string[] = [];
+    if (sectorPred && getSector(n) === sectorPred) { dims++; reasons.push(`Setor ${sectorPred}`); }
+    if (dozenPred && getDozen(n) === dozenPred) { dims++; reasons.push(`D${dozenPred}`); }
+    if (terminalPred !== null && n % 10 === terminalPred) { dims++; reasons.push(`T${terminalPred}`); }
+    if (colorBias === 'red' && RED.includes(n)) { dims++; reasons.push('Vermelho'); }
+    else if (colorBias === 'black' && !RED.includes(n) && n > 0) { dims++; reasons.push('Preto'); }
+    if (highLowBias === 'high' && n >= 19) { dims++; reasons.push('Alto'); }
+    else if (highLowBias === 'low' && n >= 1 && n <= 18) { dims++; reasons.push('Baixo'); }
+    if (dims >= 3) results.push({ number: n, dimensions: dims, reasons });
+  }
+  return results.sort((a, b) => b.dimensions - a.dimensions);
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -722,7 +919,30 @@ serve(async (req) => {
     };
 
     // ========================================================
-    // NOISE FILTER — Remove outlier spins (ball bouncing off diamonds)
+    // ADVANCED ANALYSES — Momentum, Volatility, Bayesian, Breakouts
+    // ========================================================
+    const sectorMomentum = calculateMomentum(numbers, n => getSector(n), 20);
+    const dozenMomentum = calculateMomentum(numbers, n => { const d = getDozen(n); return d > 0 ? `D${d}` : ''; }, 20);
+    const colorMomentum = calculateMomentum(numbers, n => getColor(n), 20);
+    const parityMomentum = calculateMomentum(numbers, n => n > 0 ? (n % 2 === 0 ? 'Par' : 'Ímpar') : '', 20);
+    const highLowMomentum = calculateMomentum(numbers, n => n > 0 ? (n >= 19 ? 'Alto' : 'Baixo') : '', 20);
+    
+    const volatility = calculateVolatility(numbers, 30);
+    const recencyFreq = recencyWeightedFreq(numbers);
+    const breakoutsDetected = detectBreakout(numbers);
+    const wheelZones = wheelZoneMomentum(numbers, 6);
+    const fibGaps = fibonacciGapAnalysis(numbers);
+    
+    // Bayesian predictions
+    const bayesSector = bayesianPredict(numbers, n => getSector(n));
+    const bayesDozen = bayesianPredict(numbers, n => { const d = getDozen(n); return d > 0 ? d : 0; });
+    const bayesColor = bayesianPredict(numbers, n => getColor(n));
+    const bayesHighLow = bayesianPredict(numbers, n => n > 0 ? (n >= 19 ? 'Alto' : 'Baixo') : 'Zero');
+    const bayesParity = bayesianPredict(numbers, n => n > 0 ? (n % 2 === 0 ? 'Par' : 'Ímpar') : 'Zero');
+    
+    // Multi-dimension convergence will be calculated after transitionMatrix is ready
+
+
     // ========================================================
     const rawArcs: number[] = [];
     for (let i = 0; i < Math.min(100, numbers.length - 1); i++) rawArcs.push(wheelDist(numbers[i], numbers[i + 1]));
@@ -2987,11 +3207,100 @@ serve(async (req) => {
     // ========================================================
     // BASE RESPONSE
     // ========================================================
+    // Add advanced analyses to detectedPatterns
+    // Momentum patterns
+    for (const [cat, mom] of Object.entries(sectorMomentum)) {
+      if (mom.trend === 'rising' && mom.momentum > 0.2) {
+        transitionMatrix.detectedPatterns.push({
+          name: `Momentum ${cat} Subindo`, emoji: '📈', confidence: Math.min(85, 55 + Math.round(mom.momentum * 100)),
+          description: `Setor ${cat} com momentum crescente (${(mom.momentum * 100).toFixed(0)}%). Tendência de continuação.`,
+          category: 'momentum', action: `Aposte no setor ${cat}`,
+        });
+      }
+    }
+    for (const [cat, mom] of Object.entries(dozenMomentum)) {
+      if (mom.trend === 'rising' && mom.momentum > 0.15 && cat) {
+        transitionMatrix.detectedPatterns.push({
+          name: `Momentum ${cat} Subindo`, emoji: '📊', confidence: Math.min(82, 50 + Math.round(mom.momentum * 100)),
+          description: `${cat} com momentum crescente. Frequência aumentando nas últimas rodadas.`,
+          category: 'momentum', action: `Aposte em ${cat}`,
+        });
+      }
+    }
+    // Volatility pattern
+    if (volatility.level === 'baixa') {
+      transitionMatrix.detectedPatterns.push({
+        name: `Volatilidade Baixa (${volatility.score})`, emoji: '🧊', confidence: 80,
+        description: `Sessão estável com volatilidade ${volatility.score}/100. Padrões são mais confiáveis.`,
+        category: 'volatilidade', action: 'Momento ideal — padrões são confiáveis',
+      });
+    } else if (volatility.level === 'extrema') {
+      transitionMatrix.detectedPatterns.push({
+        name: `Volatilidade Extrema (${volatility.score})`, emoji: '🌋', confidence: 70,
+        description: `Sessão muito instável. Arcos (±${volatility.arcVolatility}) e categorias (${volatility.categoryVolatility}%) variando muito.`,
+        category: 'volatilidade', action: 'CUIDADO — reduzir apostas ou aguardar',
+      });
+    }
+    // Breakout patterns
+    for (const bo of breakoutsDetected) {
+      transitionMatrix.detectedPatterns.push({
+        name: `Quebra: ${bo.type.replace('_', ' ')}`, emoji: '🔀', confidence: bo.confidence,
+        description: bo.description, category: 'breakout', action: 'Padrão anterior quebrou — nova tendência emergindo',
+      });
+    }
+    // Bayesian predictions
+    if (bayesSector.predicted && bayesSector.probability >= 40) {
+      transitionMatrix.detectedPatterns.push({
+        name: `Bayes: Setor ${bayesSector.predicted} (${bayesSector.probability}%)`, emoji: '🧮', confidence: bayesSector.probability,
+        description: `Probabilidade condicional Bayesiana aponta para setor ${bayesSector.predicted} com ${bayesSector.probability}% baseado em transições históricas.`,
+        category: 'bayesian', action: `Aposte no setor ${bayesSector.predicted}`,
+      });
+    }
+    if (bayesColor.predicted && bayesColor.probability >= 50 && bayesColor.predicted !== 'green') {
+      transitionMatrix.detectedPatterns.push({
+        name: `Bayes: ${bayesColor.predicted === 'red' ? 'Vermelho' : 'Preto'} (${bayesColor.probability}%)`, emoji: '🧮', confidence: bayesColor.probability,
+        description: `Análise Bayesiana de cor: ${bayesColor.predicted === 'red' ? 'Vermelho' : 'Preto'} com ${bayesColor.probability}% de probabilidade condicional.`,
+        category: 'bayesian', action: `Aposte em ${bayesColor.predicted === 'red' ? 'Vermelho' : 'Preto'}`,
+      });
+    }
+    // Wheel zone momentum
+    if (wheelZones.length > 0 && wheelZones[0].momentum > 3) {
+      transitionMatrix.detectedPatterns.push({
+        name: `Zona Quente: ${wheelZones[0].label}`, emoji: '🎰', confidence: Math.min(85, 50 + Math.round(wheelZones[0].momentum * 5)),
+        description: `${wheelZones[0].label} é a zona mais ativa do cilindro. Momentum: ${wheelZones[0].momentum}.`,
+        category: 'zona', action: `Cubra números da ${wheelZones[0].label}`,
+      });
+    }
+    // Fibonacci gaps
+    if (fibGaps.length >= 3) {
+      transitionMatrix.detectedPatterns.push({
+        name: `${fibGaps.length} Números em Intervalo Fibonacci`, emoji: '🔢', confidence: 65,
+        description: `Números ${fibGaps.slice(0, 4).map(f => f.number).join(', ')} estão em intervalos Fibonacci de ausência (${fibGaps.slice(0, 4).map(f => f.fibonacci + 'r').join(', ')}).`,
+        category: 'fibonacci', action: `Aposte nos números: ${fibGaps.slice(0, 4).map(f => f.number).join(', ')}`,
+      });
+    }
+    // Sort all detected patterns by confidence
+    transitionMatrix.detectedPatterns.sort((a, b) => b.confidence - a.confidence);
+
+    // AI learnings for advanced analyses
+    if (volatility.level !== 'média') aiLearnings.push(`📊 Volatilidade: ${volatility.level} (${volatility.score}/100) — Arco ±${volatility.arcVolatility}`);
+    if (breakoutsDetected.length > 0) aiLearnings.push(`🔀 ${breakoutsDetected.length} QUEBRA(S) DE PADRÃO detectada(s)`);
+    if (wheelZones[0]?.momentum > 4) aiLearnings.push(`🎰 Zona quente no cilindro: ${wheelZones[0].label} (mom.${wheelZones[0].momentum})`);
+    if (bayesSector.probability >= 50) aiLearnings.push(`🧮 Bayes: ${bayesSector.predicted} (${bayesSector.probability}%)`);
+
     const baseResponse = {
       entropy: entropy.toFixed(3), dealerMode, dealerSignature,
       hotTerminals: { cavalos: sortedCavalos, terminals: sortedTerminals.slice(0, 5) },
       sectorTrend, sectorFreq, convergenceScore: totalLayers, reasons, layerResults,
       ritmoCalibration, transitionMatrix,
+      advancedAnalysis: {
+        volatility,
+        momentum: { sector: sectorMomentum, dozen: dozenMomentum, color: colorMomentum, parity: parityMomentum, highLow: highLowMomentum },
+        bayesian: { sector: { predicted: bayesSector.predicted, probability: bayesSector.probability }, dozen: { predicted: bayesDozen.predicted, probability: bayesDozen.probability }, color: { predicted: bayesColor.predicted, probability: bayesColor.probability }, highLow: { predicted: bayesHighLow.predicted, probability: bayesHighLow.probability }, parity: { predicted: bayesParity.predicted, probability: bayesParity.probability } },
+        wheelZones: wheelZones.slice(0, 3),
+        fibonacciGaps: fibGaps.slice(0, 5),
+        breakouts: breakoutsDetected,
+      },
     };
 
     // Dealer change: don't block prediction, just add a warning
@@ -3275,6 +3584,56 @@ serve(async (req) => {
       }
       // AI LEARNED PATTERNS BOOST — knowledge accumulated from history
       if (learnedBoosts[n] > 0) { s += learnedBoosts[n]; r.push(`🧠 IA Aprendeu(+${learnedBoosts[n].toFixed(1)})`); }
+      // ====== ADVANCED: Recency-Weighted Frequency ======
+      const rFreq = recencyFreq[n] || 0;
+      if (rFreq > 2.5) { s += Math.min(4, rFreq * 0.8); r.push(`⏳ Recência(${rFreq.toFixed(1)})`); }
+      // ====== ADVANCED: Sector Momentum ======
+      const nSec = getSector(n);
+      if (nSec !== 'Zero' && sectorMomentum[nSec]?.trend === 'rising' && sectorMomentum[nSec].momentum > 0.2) {
+        s += 3; r.push(`📈 Momentum ${nSec.slice(0,4)}`);
+      }
+      // ====== ADVANCED: Dozen Momentum ======
+      const nDz = getDozen(n);
+      if (nDz > 0 && dozenMomentum[`D${nDz}`]?.trend === 'rising') {
+        s += 2; r.push(`📈 Momentum D${nDz}`);
+      }
+      // ====== ADVANCED: Bayesian Prediction Boost ======
+      if (bayesSector.predicted && bayesSector.probability >= 40 && getSector(n) === bayesSector.predicted) {
+        s += 2.5; r.push(`🎯 Bayes→${String(bayesSector.predicted).slice(0,4)}(${bayesSector.probability}%)`);
+      }
+      if (bayesDozen.predicted && bayesDozen.probability >= 40 && getDozen(n) === Number(bayesDozen.predicted)) {
+        s += 2; r.push(`🎯 Bayes→D${bayesDozen.predicted}(${bayesDozen.probability}%)`);
+      }
+      // ====== ADVANCED: Wheel Zone Momentum ======
+      if (wheelZones.length > 0) {
+        const topZone = wheelZones[0];
+        if (topZone.momentum > 3 && topZone.numbers.includes(n)) {
+          s += 2.5; r.push(`🎰 ZonaQuente(${topZone.label.slice(0,10)})`);
+        }
+      }
+      // ====== ADVANCED: Fibonacci Gap ======
+      const fibMatch = fibGaps.find(f => f.number === n);
+      if (fibMatch) { s += 2; r.push(`🔢 Fib(${fibMatch.fibonacci}r)`); }
+      // ====== ADVANCED: Breakout Detection ======
+      for (const bo of breakoutsDetected) {
+        if (bo.type === 'sector_breakout' && bo.description.includes('parou') && getSector(n) !== nSec) { s += 1.5; }
+        if (bo.type === 'color_breakout' && bo.description.includes('Vermelho assumindo') && RED.includes(n)) { s += 1.5; r.push('🔀 Breakout→Verm'); break; }
+        if (bo.type === 'color_breakout' && bo.description.includes('Preto assumindo') && !RED.includes(n) && n > 0) { s += 1.5; r.push('🔀 Breakout→Preto'); break; }
+        if (bo.type === 'highlow_breakout' && bo.description.includes('Altos assumindo') && n >= 19) { s += 1.5; r.push('🔀 Breakout→Alto'); break; }
+        if (bo.type === 'highlow_breakout' && bo.description.includes('Baixos assumindo') && n >= 1 && n <= 18) { s += 1.5; r.push('🔀 Breakout→Baixo'); break; }
+      }
+      // ====== ADVANCED: Color Momentum ======
+      if (colorMomentum['red']?.trend === 'rising' && RED.includes(n)) { s += 1; r.push('🔴 Mom.Verm'); }
+      else if (colorMomentum['black']?.trend === 'rising' && !RED.includes(n) && n > 0) { s += 1; r.push('⚫ Mom.Preto'); }
+      // ====== ADVANCED: Parity Momentum ======
+      if (parityMomentum['Par']?.trend === 'rising' && n > 0 && n % 2 === 0) { s += 0.8; }
+      else if (parityMomentum['Ímpar']?.trend === 'rising' && n > 0 && n % 2 === 1) { s += 0.8; }
+      // ====== ADVANCED: High/Low Momentum ======
+      if (highLowMomentum['Alto']?.trend === 'rising' && n >= 19) { s += 1; r.push('⬆️ Mom.Alto'); }
+      else if (highLowMomentum['Baixo']?.trend === 'rising' && n >= 1 && n <= 18) { s += 1; r.push('⬇️ Mom.Baixo'); }
+      // ====== ADVANCED: Volatility Adjustment ======
+      if (volatility.level === 'baixa') { s *= 1.1; } // low volatility = patterns more reliable
+      else if (volatility.level === 'extrema') { s *= 0.85; } // extreme volatility = less trustworthy
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
