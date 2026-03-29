@@ -1144,7 +1144,7 @@ serve(async (req) => {
     }
 
     // J71-J100: Final confidence — all 10 blocks must agree
-    const allBlockPcts = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH, blocoI / maxI];
+    const allBlockPcts = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH, blocoI / maxI, blocoK / maxK];
     const avgBlockPct = allBlockPcts.reduce((a, b) => a + b, 0) / allBlockPcts.length;
     const minBlockPct = Math.min(...allBlockPcts);
     // High average + high minimum = strong convergence
