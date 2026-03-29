@@ -45,6 +45,8 @@ const Index = () => {
   const [provider, setProvider] = useState('Playtech');
   const [table, setTable] = useState('Roleta Brasileira');
   const [showSettings, setShowSettings] = useState(false);
+  const [showPasteHistory, setShowPasteHistory] = useState(false);
+  const [pasteText, setPasteText] = useState('');
   const [activeTab, setActiveTab] = useState<'roleta' | 'aulas' | 'bacbo'>('roleta');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fibIndex = useRef(0);
