@@ -134,8 +134,13 @@ const Index = () => {
     try {
       const res = await supabase.functions.invoke('sniper-predict');
       if (res.data) {
+        // Only reset countdown if the prediction actually changed
+        const key = `${res.data.strategy?.type}-${res.data.signal?.number}-${res.data.mode}`;
+        if (key !== sniperPrevKey.current) {
+          sniperPrevKey.current = key;
+          setSniperCountdown(13);
+        }
         setSniperData(res.data);
-        setSniperCountdown(13);
       }
     } catch (err) { console.error('Sniper error:', err); }
   }, []);
