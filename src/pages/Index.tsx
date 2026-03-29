@@ -405,7 +405,7 @@ const Index = () => {
     return () => { if (timeoutId) clearTimeout(timeoutId); };
   }, [aiEnabled]);
 
-  // === Realtime ===
+  // === Realtime — counter update with optimistic + DB reload ===
   useEffect(() => {
     const ch = supabase.channel('prediction_result_rt').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'prediction_history' }, (payload: any) => {
       const row = payload.new;
@@ -417,17 +417,32 @@ const Index = () => {
         const label = row.strategy_label || row.strategy_type || 'Previsão';
         setLastPredResult({ hit: isHit, hitType, predicted: row.predicted_main, actual: row.actual_number, label });
 
+        // Optimistic instant counter update
+        setPredStats(prev => ({
+          hits: prev.hits + (isHit ? 1 : 0),
+          misses: prev.misses + (isHit ? 0 : 1),
+          exact: prev.exact + (hitType === 'exact' ? 1 : 0),
+          total: prev.total + 1,
+        }));
+
         if (isHit) {
           console.log(`${hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO VIZINHO!'} ${label} — Previsto: ${row.predicted_main}, Saiu: ${row.actual_number}`);
         } else {
           console.log(`❌ ERRO — ${label} — Previsto: ${row.predicted_main}, Saiu: ${row.actual_number}`);
         }
 
-        loadPredStats();
+        // Also sync from DB after a short delay to stay accurate
+        setTimeout(() => loadPredStats(), 2000);
       }
     }).subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [loadPredStats, shouldProcessPredictionEvent]);
+
+  // Periodic stats reload every 30s as fallback
+  useEffect(() => {
+    const interval = setInterval(() => loadPredStats(), 30000);
+    return () => clearInterval(interval);
+  }, [loadPredStats]);
 
   const triggerLearn = async () => {
     setIsAnalyzing(true);
