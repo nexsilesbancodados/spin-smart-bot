@@ -199,6 +199,48 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener('message', handler);
   }, [addNumber]);
 
+  // Supabase Realtime: listen for new inserts on historico_roleta
+  useEffect(() => {
+    const channel = supabase
+      .channel('historico_roleta_realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'historico_roleta' },
+        (payload) => {
+          const row = payload.new as { number: number; color: string };
+          if (typeof row.number === 'number' && row.number >= 0 && row.number <= 36) {
+            addNumber(row.number);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [addNumber]);
+
+  // Load recent history from Supabase on mount
+  useEffect(() => {
+    const loadHistory = async () => {
+      const { data } = await supabase
+        .from('historico_roleta')
+        .select('number, color, created_at')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (data && data.length > 0) {
+        const entries: RouletteNumber[] = data.map(row => ({
+          value: row.number,
+          color: getNumberColor(row.number),
+          timestamp: new Date(row.created_at),
+        }));
+        setHistory(entries);
+      }
+    };
+    loadHistory();
+  }, []);
+
   return (
     <RouletteContext.Provider value={{
       history, alerts, provider, table, autoMode, autoSpeed,
