@@ -1420,6 +1420,181 @@ serve(async (req) => {
     };
 
     // ========================================================
+    // 7 ARQUÉTIPOS DE PADRÕES (Varredura Total)
+    // ========================================================
+    interface Archetype { name: string; emoji: string; active: boolean; strength: number; detail: string; predictedNums: number[] }
+    const archetypes: Archetype[] = [];
+
+    // ARQUÉTIPO 1: Sincronia de Salto (Física de Micro-Arco)
+    // Detecta saltos repetidos no cilindro
+    (() => {
+      if (numbers.length < 30) return;
+      const jumpFreq: Record<number, number> = {};
+      const recentJumps = Math.min(50, rawArcs.length);
+      for (let i = 0; i < recentJumps; i++) jumpFreq[rawArcs[i]] = (jumpFreq[rawArcs[i]] || 0) + 1;
+      const topJump = Object.entries(jumpFreq).sort(([,a],[,b]) => b - a)[0];
+      if (!topJump) return;
+      const jumpDist = Number(topJump[0]);
+      const jumpCount = topJump[1];
+      const jumpPct = jumpCount / recentJumps;
+      const predicted: number[] = [];
+      if (jumpPct >= 0.15 && jumpCount >= 4) {
+        const idx0 = wheelIdx(numbers[0]);
+        if (idx0 !== -1) {
+          predicted.push(WHEEL[(idx0 + jumpDist) % WL], WHEEL[(idx0 - jumpDist + WL) % WL]);
+          // neighbors of predicted
+          predicted.forEach(p => { const ni = wheelIdx(p); if (ni !== -1) { predicted.push(WHEEL[(ni+1)%WL], WHEEL[(ni-1+WL)%WL]); }});
+        }
+        const unique = [...new Set(predicted)].filter(n => n >= 0 && n <= 36);
+        archetypes.push({ name: 'Sincronia de Salto', emoji: '⚡', active: jumpPct >= 0.2, strength: +(jumpPct * 100).toFixed(0), detail: `Salto de ${jumpDist} casas: ${jumpCount}x em ${recentJumps} (${(jumpPct*100).toFixed(0)}%) — Força Estática`, predictedNums: unique });
+        if (jumpPct >= 0.2) aiLearnings.push(`⚡ SINCRONIA: Salto ${jumpDist} casas repetiu ${jumpCount}x — Padrão de Força Estática`);
+      }
+    })();
+
+    // ARQUÉTIPO 2: Puxada Atômica (já calculada em pullPatterns, enriquecer)
+    (() => {
+      if (pullPatterns.length === 0) return;
+      for (const pp of pullPatterns) {
+        if (pp.targets.length > 0 && pp.targets[0].count >= 3) {
+          const domPct = pp.targets[0].count / (pullPatterns.length > 0 ? Math.max(3, pp.targets.reduce((a, t) => a + t.count, 0)) : 3);
+          archetypes.push({ name: 'Puxada Atômica', emoji: '🧲', active: domPct > 0.3, strength: +(domPct * 100).toFixed(0), detail: `${pp.source} puxa ${pp.targets[0].num} (${pp.targets[0].count}x) → Setor ${pp.dominantSector}`, predictedNums: pp.targets.slice(0, 3).map(t => t.num) });
+          if (domPct > 0.3) aiLearnings.push(`🧲 PUXADA ATÔMICA: ${pp.source}→${pp.targets[0].num} confirmada (${pp.targets[0].count}x)`);
+        }
+      }
+    })();
+
+    // ARQUÉTIPO 3: Ressonância de Terminal (Escada e Espelho)
+    (() => {
+      if (numbers.length < 15) return;
+      const terms = numbers.slice(0, 15).map(n => n % 10);
+      // Escada: mesmos terminais incrementando (2→12→22 = terminal 2)
+      const termStreaks: Record<number, number[]> = {};
+      for (let i = 0; i < terms.length; i++) { if (!termStreaks[terms[i]]) termStreaks[terms[i]] = []; termStreaks[terms[i]].push(i); }
+      for (const [t, positions] of Object.entries(termStreaks)) {
+        const term = Number(t);
+        if (positions.length >= 3) {
+          // Check if they form close clusters
+          const maxGap = Math.max(...positions.slice(1).map((p, i) => p - positions[i]));
+          if (maxGap <= 5) {
+            const resonantNums = Array.from({length: 37}, (_, n) => n).filter(n => n % 10 === term);
+            archetypes.push({ name: 'Ressonância Terminal', emoji: '🔔', active: true, strength: positions.length * 20, detail: `Terminal ${term} ressoando: ${positions.length}x em 15 giros (Escada ativa)`, predictedNums: resonantNums });
+            aiLearnings.push(`🔔 RESSONÂNCIA: Terminal ${term} em ciclo — ${positions.length}x concentrado`);
+            break;
+          }
+        }
+      }
+      // Espelho: 5→15→5 (mesmo terminal alternando)
+      for (let i = 0; i < Math.min(10, numbers.length) - 2; i++) {
+        if (numbers[i] % 10 === numbers[i+2] % 10 && numbers[i] !== numbers[i+2]) {
+          const t = numbers[i] % 10;
+          const mirrorNums = Array.from({length: 37}, (_, n) => n).filter(n => n % 10 === t);
+          archetypes.push({ name: 'Espelho Terminal', emoji: '🪞', active: true, strength: 60, detail: `Espelho: ${numbers[i]}→${numbers[i+1]}→${numbers[i+2]} (T${t} rebatendo)`, predictedNums: mirrorNums });
+          break;
+        }
+      }
+    })();
+
+    // ARQUÉTIPO 4: Geometria de Pano (Zonas do tapete)
+    (() => {
+      if (numbers.length < 20) return;
+      const dz20 = [0, 0, 0]; const col20 = [0, 0, 0];
+      numbers.slice(0, 20).forEach(n => { const d = getDozen(n); if (d > 0) dz20[d-1]++; const c = getColumn(n); if (c > 0) col20[c-1]++; });
+      // Check dead zone (dozen with <15% coverage)
+      const dzTotal = dz20.reduce((a, b) => a + b, 0);
+      const deadDozen = dz20.findIndex(d => d / dzTotal < 0.15);
+      const hotDozenIdx = dz20.indexOf(Math.max(...dz20));
+      if (deadDozen !== -1 && dzTotal > 15) {
+        const hotNums = Array.from({length: 12}, (_, i) => (hotDozenIdx) * 12 + i + 1);
+        archetypes.push({ name: 'Geometria de Pano', emoji: '📐', active: true, strength: Math.round((dz20[hotDozenIdx] / dzTotal) * 100), detail: `Dúzia ${deadDozen+1} MORTA (${dz20[deadDozen]}/${dzTotal}), Dúzia ${hotDozenIdx+1} QUENTE (${dz20[hotDozenIdx]}/${dzTotal})`, predictedNums: hotNums });
+      }
+      // Zigzag columns
+      const colSeq = numbers.slice(0, 10).map(n => getColumn(n)).filter(c => c > 0);
+      let zigzag = 0;
+      for (let i = 1; i < colSeq.length; i++) if (colSeq[i] !== colSeq[i-1]) zigzag++;
+      if (zigzag >= 7 && colSeq.length >= 8) {
+        const predictedCol = colSeq[0] === 1 ? 3 : colSeq[0] === 3 ? 1 : 2;
+        const colNums = predictedCol === 1 ? COL1 : predictedCol === 2 ? COL2 : COL3;
+        archetypes.push({ name: 'Zigue-Zague Coluna', emoji: '📐', active: true, strength: Math.round((zigzag / (colSeq.length - 1)) * 100), detail: `Zigue-Zague entre colunas: ${zigzag}/${colSeq.length-1} alternâncias → Coluna ${predictedCol}`, predictedNums: colNums });
+      }
+    })();
+
+    // ARQUÉTIPO 5: Alternância de Setores (Ritmo Gangorra) — enriches existing
+    (() => {
+      if (numbers.length < 12) return;
+      const secSeq = numbers.slice(0, 12).map(n => getSector(n));
+      // Detect A-B-A-B pattern
+      const pairs: string[] = [];
+      for (let i = 0; i < secSeq.length - 1; i++) pairs.push(`${secSeq[i]}→${secSeq[i+1]}`);
+      const pairFreq: Record<string, number> = {};
+      pairs.forEach(p => pairFreq[p] = (pairFreq[p] || 0) + 1);
+      const topPair = Object.entries(pairFreq).sort(([,a],[,b]) => b - a)[0];
+      if (topPair && topPair[1] >= 3) {
+        const [from, to] = topPair[0].split('→');
+        const predictSec = secSeq[0] === from ? to : from;
+        const secNums = predictSec === 'Voisins' ? [...VOISINS] : predictSec === 'Tiers' ? [...TIERS] : [...ORPHELINS];
+        archetypes.push({ name: 'Alternância de Setores', emoji: '🔄', active: true, strength: topPair[1] * 20, detail: `Gangorra ${from}↔${to}: ${topPair[1]}x — próximo: ${predictSec}`, predictedNums: secNums.slice(0, 8) });
+      }
+    })();
+
+    // ARQUÉTIPO 6: Quebra de Entropia (Exaustão de Cor/Paridade)
+    (() => {
+      if (numbers.length < 10) return;
+      // Color streak
+      let colorStreak = 1; const firstColor = getColor(numbers[0]);
+      for (let i = 1; i < numbers.length && i < 20; i++) {
+        if (numbers[i] === 0) break;
+        if (getColor(numbers[i]) === firstColor) colorStreak++; else break;
+      }
+      if (colorStreak >= 4) {
+        const reverseColor = firstColor === 'red' ? 'black' : 'red';
+        const reverseNums = Array.from({length: 37}, (_, n) => n).filter(n => getColor(n) === reverseColor);
+        const breakProb = Math.min(98, 60 + colorStreak * 6);
+        archetypes.push({ name: 'Quebra de Entropia', emoji: '🔥', active: colorStreak >= 5, strength: breakProb, detail: `${colorStreak}x ${firstColor === 'red' ? 'Vermelho' : 'Preto'} seguidos — Reversão para ${reverseColor === 'red' ? 'Vermelho' : 'Preto'} (${breakProb}%)`, predictedNums: reverseNums });
+        if (colorStreak >= 5) aiLearnings.push(`🔥 ENTROPIA: ${colorStreak}x mesma cor — Reversão iminente (${breakProb}%)`);
+      }
+      // Parity streak
+      let parStreak = 1; const firstPar = numbers[0] > 0 ? (numbers[0] % 2 === 0 ? 'even' : 'odd') : '';
+      if (firstPar) {
+        for (let i = 1; i < numbers.length && i < 20; i++) {
+          if (numbers[i] === 0) break;
+          if ((numbers[i] % 2 === 0 ? 'even' : 'odd') === firstPar) parStreak++; else break;
+        }
+        if (parStreak >= 5) {
+          const reverseNums = Array.from({length: 37}, (_, n) => n).filter(n => n > 0 && (n % 2 === 0 ? 'even' : 'odd') !== firstPar);
+          archetypes.push({ name: 'Exaustão de Paridade', emoji: '🔥', active: true, strength: Math.min(95, 55 + parStreak * 7), detail: `${parStreak}x ${firstPar === 'even' ? 'Par' : 'Ímpar'} — Reversão`, predictedNums: reverseNums });
+        }
+      }
+    })();
+
+    // ARQUÉTIPO 7: Espelhamento Temporal (Backtest de sequência)
+    (() => {
+      if (numbers.length < 50) return;
+      const seqLen = 3;
+      const currentSeq = numbers.slice(0, seqLen);
+      // Search for this exact sequence in history
+      for (let start = seqLen + 1; start <= numbers.length - seqLen - 1; start++) {
+        let match = 0;
+        for (let j = 0; j < seqLen; j++) if (numbers[start + j] === currentSeq[j]) match++;
+        if (match === seqLen) {
+          // Found exact match! What came next?
+          const nextInHistory = numbers[start - 1]; // the number that followed
+          if (nextInHistory !== undefined) {
+            const predicted = [nextInHistory, ...getNeighbors(nextInHistory, 2)];
+            archetypes.push({ name: 'Espelhamento Temporal', emoji: '👻', active: true, strength: 85, detail: `Sequência ${currentSeq.join(',')} repetiu há ${start} giros — próximo foi ${nextInHistory}`, predictedNums: [...new Set(predicted)] });
+            aiLearnings.push(`👻 ESPELHAMENTO: Sequência ${currentSeq.join(',')} se repetiu — histórico aponta ${nextInHistory}`);
+            break;
+          }
+        }
+      }
+    })();
+
+    // Active archetypes summary
+    const activeArchetypes = archetypes.filter(a => a.active);
+    if (activeArchetypes.length >= 3) {
+      aiLearnings.push(`🏛️ ${activeArchetypes.length} ARQUÉTIPOS ATIVOS: ${activeArchetypes.map(a => a.emoji + a.name.split(' ')[0]).join(', ')}`);
+    }
+
+    // ========================================================
     // SECTOR ANALYSIS
     // ========================================================
     const sectorFreq: Record<string, number> = { Voisins:0, Tiers:0, Orphelins:0 };
@@ -1675,6 +1850,15 @@ serve(async (req) => {
       else if (randomnessIndex.overall >= 50) { s -= 1; }
       // DEALER BIOMETRICS: bonus if dealer is mechanical
       if (dealerBiometrics.profileType === 'mecânico') { s += 1; r.push('🎭 Dealer mecânico'); }
+      // ARCHETYPES: boost numbers predicted by active archetypes
+      for (const arch of activeArchetypes) {
+        if (arch.predictedNums.includes(n)) {
+          const bonus = arch.strength > 70 ? 3 : arch.strength > 40 ? 2 : 1;
+          s += bonus;
+          r.push(`${arch.emoji} ${arch.name.split(' ')[0]}`);
+          break; // only count strongest archetype per number
+        }
+      }
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
@@ -2445,6 +2629,7 @@ serve(async (req) => {
       diamondDeflection: diamondDeflection.slice(0, 4),
       kellyBetting,
       dealerBiometrics,
+      archetypes: archetypes.map(a => ({ name: a.name, emoji: a.emoji, active: a.active, strength: a.strength, detail: a.detail, predictedNums: a.predictedNums.slice(0, 6) })),
       deepMemory: {
         ancestralPatterns: ancestralPatterns.slice(0, 3),
         mesaDNA,

@@ -937,6 +937,46 @@ const Index = () => {
             </motion.div>
           )}
 
+          {/* 7 ARQUÉTIPOS DE PADRÕES */}
+          {sniperData?.archetypes?.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+              className="bg-card rounded-xl border border-border p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="w-4 h-4 text-amber-400" />
+                <span className="font-display text-[10px] tracking-[0.15em] font-bold text-amber-400">7 ARQUÉTIPOS DE PADRÕES</span>
+                <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold ml-auto">
+                  {sniperData.archetypes.filter((a: any) => a.active).length} ATIVOS
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {sniperData.archetypes.map((arch: any, i: number) => (
+                  <div key={i} className={`rounded-lg p-2 border text-[8px] ${arch.active ? 'bg-amber-500/10 border-amber-500/30' : 'bg-secondary/40 border-border opacity-60'}`}>
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="text-sm">{arch.emoji}</span>
+                      <span className={`font-bold ${arch.active ? 'text-amber-400' : 'text-muted-foreground'}`}>{arch.name}</span>
+                      {arch.active && <span className="ml-auto text-[7px] px-1 py-0.5 rounded bg-primary/20 text-primary font-bold">ATIVO</span>}
+                    </div>
+                    <div className="text-foreground/70 mb-1">{arch.detail}</div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-muted-foreground">Força:</span>
+                      <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${arch.strength > 70 ? 'bg-primary' : arch.strength > 40 ? 'bg-amber-400' : 'bg-muted-foreground'}`} style={{ width: `${Math.min(100, arch.strength)}%` }} />
+                      </div>
+                      <span className="font-mono font-bold">{arch.strength}%</span>
+                    </div>
+                    {arch.predictedNums?.length > 0 && (
+                      <div className="flex flex-wrap gap-0.5 mt-1">
+                        {arch.predictedNums.slice(0, 6).map((n: number) => (
+                          <div key={n} className={`w-4 h-4 rounded-full flex items-center justify-center text-[6px] font-bold ${colorClass(n)} border border-white/20`}>{n}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
           {sniperData?.memoryWindows && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* MICRO */}
