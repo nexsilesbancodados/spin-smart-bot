@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { type RouletteNumber, type BotState, getNumberColor, generateRandomNumber, getHotNumbers, getColdNumbers } from '@/lib/roulette';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -106,13 +106,22 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
   const [provider, setProvider] = useState('Playtech');
   const [table, setTable] = useState('Roleta Brasileira');
   const [autoMode, setAutoMode] = useState(false);
-  const [autoSpeed, setAutoSpeedState] = useState(8); // seconds between numbers
+  const [autoSpeed, setAutoSpeedState] = useState(8);
   const autoRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // Dedup: track last added numbers with timestamps to prevent duplicates
+  const lastAddedRef = useRef<{ value: number; time: number }[]>([]);
+  const DEDUP_WINDOW_MS = 3000; // ignore same number within 3 seconds
 
-  const addNumber = useCallback((n: number) => {
-    const entry: RouletteNumber = { value: n, color: getNumberColor(n), timestamp: new Date() };
-    setHistory(prev => {
-      const updated = [entry, ...prev];
+  const isDuplicate = useCallback((n: number): boolean => {
+    const now = Date.now();
+    // Clean old entries
+    lastAddedRef.current = lastAddedRef.current.filter(e => now - e.time < DEDUP_WINDOW_MS);
+    // Check if this number was added recently
+    if (lastAddedRef.current.some(e => e.value === n)) return true;
+    lastAddedRef.current.push({ value: n, time: now });
+    return false;
+  }, []);
       // Defer alert detection to avoid needing alerts state inside setHistory
       setTimeout(() => {
         setAlerts(currentAlerts => {
