@@ -3002,8 +3002,6 @@ serve(async (req) => {
       });
     }
 
-    const aiLearnings: string[] = [];
-
 
     // 20. RITMO CALIBRADO — strategy based on directional arc prediction (blocoP)
     if (ritmoCalibration.alvo !== null && ritmoCalibration.confianca >= 70) {
