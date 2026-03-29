@@ -1001,6 +1001,60 @@ const Index = () => {
           {/* LOG DE APRENDIZADO IA */}
           <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} />
 
+          {/* PULL RADAR + ERROR ANALYSIS */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {/* RADAR DE PUXADA */}
+            {sniperData?.deepMemory?.flowDynamics?.pullPatterns && allNumbers.length > 0 && (
+              <PullRadar pullPatterns={sniperData.deepMemory.flowDynamics.pullPatterns} latestNumber={allNumbers[0]} />
+            )}
+
+            {/* ERROR ANALYSIS PANEL */}
+            {sniperData?.errorAnalysis && (
+              <div className="bg-card/90 rounded-xl border border-destructive/20 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="w-4 h-4 text-destructive" />
+                  <span className="font-display text-[10px] tracking-[0.15em] font-bold text-destructive">ANÁLISE DE ERROS (RL)</span>
+                  {sniperData.timeAwareness && (
+                    <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold ml-auto">
+                      🕐 {sniperData.timeAwareness.shift}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                  {Object.entries(sniperData.errorAnalysis.categories || {}).map(([cat, cnt]) => {
+                    const labels: Record<string, { icon: string; name: string }> = {
+                      dealer_change: { icon: '🎭', name: 'Dealer' },
+                      wrong_sector: { icon: '🗺️', name: 'Setor' },
+                      wrong_terminal: { icon: '🔢', name: 'Terminal' },
+                      deflector_bounce: { icon: '💎', name: 'Defletor' },
+                      entropy_break: { icon: '🔀', name: 'Entropia' },
+                    };
+                    const info = labels[cat] || { icon: '❓', name: cat };
+                    return (
+                      <div key={cat} className={`rounded-lg p-1.5 text-center border ${
+                        (cnt as number) >= 2 ? 'bg-destructive/10 border-destructive/30' : 'bg-secondary/40 border-border'
+                      }`}>
+                        <span className="text-sm block">{info.icon}</span>
+                        <span className={`text-[10px] font-mono font-bold block ${(cnt as number) >= 2 ? 'text-destructive' : 'text-muted-foreground'}`}>{cnt as number}</span>
+                        <span className="text-[7px] text-muted-foreground block">{info.name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Consecutive hit boosts */}
+                {sniperData.errorAnalysis.consecutiveBoosts && Object.keys(sniperData.errorAnalysis.consecutiveBoosts).length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {Object.entries(sniperData.errorAnalysis.consecutiveBoosts).map(([st, boost]) => (
+                      <span key={st} className="text-[8px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 font-bold">
+                        🔥 {st}: +{boost as number} peso ({(boost as number) / 8}x seguidas)
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {sniperData?.memoryWindows && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* MICRO */}
