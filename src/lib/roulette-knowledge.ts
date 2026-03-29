@@ -177,8 +177,194 @@ export const FULL_PULL_MAP: Record<number, number[]> = {
   30: [4, 8, 16, 9, 18, 22, 5, 25, 3],
 };
 
-// REED rule
-export const REED_MAX = 4;
+// === TERMINAL TRIANGULATIONS ===
+export const TERMINAL_TRIANGLES: Record<string, number[][]> = {
+  'T1+T4+T7': [[1,11,21,31], [4,14,24,34], [7,17,27]],
+  'T2+T5+T8': [[2,12,22,32], [5,15,25,35], [8,18,28]],
+  'T3+T6+T9': [[3,13,23,33], [6,16,26,36], [9,19,29]],
+};
+
+// === TRIPLE TERMINALS (Arithmetic sequences) ===
+export const TRIPLE_TERMINALS: Record<string, number[]> = {
+  'T2+T4+T6': [2,12,22,32,4,14,24,34,6,16,26,36],
+  'T1+T3+T5': [1,11,21,31,3,13,23,33,5,15,25,35],
+  'T0+T3+T6': [0,10,20,30,3,13,23,33,6,16,26,36],
+  'T1+T4+T7': [1,11,21,31,4,14,24,34,7,17,27],
+  'T2+T5+T8': [2,12,22,32,5,15,25,35,8,18,28],
+  'T3+T6+T9': [3,13,23,33,6,16,26,36,9,19,29],
+};
+
+// === CAVALOS VERMELHOS (ambos números vermelhos) ===
+export const CAVALOS_RED = [[9,12], [16,19], [18,21], [27,30]];
+// === CAVALOS PRETOS ===
+export const CAVALOS_BLACK = [[8,11], [10,13], [17,20], [26,29]];
+// === CAVALOS DO ZERO ===
+export const CAVALOS_ZERO = [[0,1], [0,2], [0,3]];
+
+// === SISTEMA EDDIE (6 Cavalos) ===
+export const EDDIE_SPLITS = [[5,8], [10,11], [13,16], [23,24], [27,30], [33,36]];
+
+// === SISTEMA KAVOURAS ===
+export const KAVOURAS = {
+  corners: [[14,15,17,18], [8,9,11,12], [26,27,29,30]],
+  lines: [[1,2,3,4,5,6], [31,32,33,34,35,36]],
+  numbers: [1,2,3,4,5,6,8,9,11,12,14,15,17,18,26,27,29,30,31,32,33,34,35,36],
+};
+
+// === ESPELHOS NUMÉRICOS (dígitos invertidos) ===
+export const NUMERIC_MIRRORS: Record<number, number | null> = {
+  12:21, 21:12, 13:31, 31:13, 14:null, 15:null, 16:null,
+  23:32, 32:23, 24:null, 25:null, 26:null, 34:null, 35:null, 36:null,
+};
+
+// === MÚLTIPLOS QUE PUXAM ===
+export const MULTIPLES: Record<number, number[]> = {
+  2: [2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36],
+  3: [3,6,9,12,15,18,21,24,27,30,33,36],
+  4: [4,8,12,16,20,24,28,32,36],
+  5: [5,10,15,20,25,30,35],
+  6: [6,12,18,24,30,36],
+};
+
+// === ESTRATÉGIAS PÓS-ZERO (Cat. 5) ===
+export const POST_ZERO_TERMINALS = [0, 2, 5]; // T0, T2, T5 tendem a sair após zero
+export const POST_ZERO_NUMBERS = [0,10,20,30, 2,12,22,32, 5,15,25,35];
+export const ZERO_CLUSTER_CYCLE = ['zero', 'T0', 'vizinhos']; // 0→T0→Vizinhos
+
+// === ESTRELA DE DAVI (Invictor) ===
+export const ESTRELA_DAVI = {
+  numbers: [30, 31, 33, 34, 35],
+  neighbors: [8,23,10,5,9,22,1,20,14,3,26,12],
+};
+
+// === PADRÃO 4567 (Vizinhos não sobrepostos) ===
+export const PATTERN_4567 = {
+  description: '4 grupos de 5 vizinhos, distância 7 na roda',
+  probability: 0.54,
+  fichas: 20,
+};
+
+// === 100 ESTRATÉGIAS — Catálogo Completo ===
+export interface Strategy {
+  id: number;
+  name: string;
+  category: string;
+  fichas: string;
+  numbers?: number[];
+  description: string;
+  trigger?: string;
+}
+
+export const ALL_STRATEGIES: Strategy[] = [
+  // CAT 1: TERMINAIS (1-20)
+  { id: 1, name: 'Terminal Único Quente', category: 'terminal', fichas: '3-4', description: 'Terminal mais frequente em 10+ rodadas. REED 4.' },
+  { id: 2, name: 'Duplo Terminal (Dani M1)', category: 'terminal', fichas: '7-8', description: 'T1+T6, T2+T7, T3+T8, T4+T9, T0+T5.' },
+  { id: 3, name: 'Terminal Puxa Terminal', category: 'terminal', fichas: '7-8', description: 'Terminal atual + vizinho. Ex: T3→T3+T4.' },
+  { id: 4, name: 'Terminais Altos (Dani M2)', category: 'terminal', fichas: '7-10', description: 'Mesa alto→T0(20,30),T9(19,29),T6(26,36).', trigger: '3+ alto' },
+  { id: 5, name: 'Terminais Baixos (Dani M2)', category: 'terminal', fichas: '6-8', description: 'Mesa baixo→T7(7,17),T8(8,18),T1(1,11).', trigger: '3+ baixo' },
+  { id: 6, name: 'Triple Terminal', category: 'terminal', fichas: '11', description: '3 terminais aritmética: T2+T4+T6 = 12 nums.' },
+  { id: 7, name: 'Terminal do Anterior', category: 'terminal', fichas: '7', description: 'Mesmo terminal do último + vizinhos.' },
+  { id: 8, name: 'Terminais Espelhados', category: 'terminal', fichas: '7', description: 'Espelho (dif=5): T1↔T6, T2↔T7 etc.' },
+  { id: 9, name: 'Terminal Frio+Quente', category: 'terminal', fichas: '7', description: '1 quente (2+ em 10) + 1 frio (8+ ausente).' },
+  { id: 10, name: 'Cavalos de Terminal', category: 'terminal', fichas: '3', description: 'Cavalos internos: T1→1/11,11/21,21/31.' },
+  { id: 11, name: 'Terminal 20-30', category: 'terminal', fichas: '4', description: 'Após 20→aposte 10,30,4,14.' },
+  { id: 12, name: 'Terminais do Zero', category: 'terminal', fichas: '11', description: 'Após zero→T0+T2+T5.' },
+  { id: 13, name: 'Terminal Crescente', category: 'terminal', fichas: '4', description: 'T3→T4→T5→aposte T6.' },
+  { id: 14, name: 'Terminal Decrescente', category: 'terminal', fichas: '4', description: 'T6→T5→T4→aposte T3.' },
+  { id: 15, name: 'Terminal Repetido', category: 'terminal', fichas: '8-10', description: '2x mesmo terminal→3ª + vizinhos.' },
+  { id: 16, name: 'Triangulação Terminais', category: 'terminal', fichas: '10-11', description: 'T1+T4+T7 ou T2+T5+T8 ou T3+T6+T9.' },
+  { id: 17, name: 'Terminal Alternado', category: 'terminal', fichas: '7', description: 'Ímpares dominam→entre pares e vice-versa.' },
+  { id: 18, name: 'Duplo Terminal+Zero', category: 'terminal', fichas: '8-9', description: 'Duplo terminal + 1 ficha zero proteção.' },
+  { id: 19, name: 'Terminal+Vizinhos Roda', category: 'terminal', fichas: '12-16', description: 'Terminal + vizinhos de cada num na roda.' },
+  { id: 20, name: 'Cavalos Finais Terminal', category: 'terminal', fichas: '4', description: 'T2+T5→cavalos 2/5,12/15,22/25,32/35.' },
+  // CAT 2: VIZINHOS (21-35)
+  { id: 21, name: 'Vizinhos do Zero', category: 'vizinhos', fichas: '9', numbers: [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25], description: '17 números. Voisins du Zéro.' },
+  { id: 22, name: 'Jeu Zéro', category: 'vizinhos', fichas: '4', numbers: [12,35,3,26,0,32,15], description: '7 números ao redor do zero.' },
+  { id: 23, name: 'Terços (Tiers)', category: 'vizinhos', fichas: '6', numbers: [27,13,36,11,30,8,23,10,5,24,16,33], description: '12 números oposto ao zero.' },
+  { id: 24, name: 'Órfãos', category: 'vizinhos', fichas: '5', numbers: [1,6,9,14,17,20,31,34], description: '8 números "desabrigados".' },
+  { id: 25, name: 'Vizinhos de 3', category: 'vizinhos', fichas: '3', description: 'Número quente + 1 vizinho cada lado.' },
+  { id: 26, name: 'Vizinhos de 5', category: 'vizinhos', fichas: '5', description: 'Número + 2 cada lado na roda.' },
+  { id: 27, name: 'Vizinhos de 7', category: 'vizinhos', fichas: '7', description: 'Número + 3 cada lado na roda.' },
+  { id: 28, name: 'Vizinhos Número Quente', category: 'vizinhos', fichas: '5', description: 'Mais frequente em 10→vizinhos 5.' },
+  { id: 29, name: 'Vizinhos Número Frio', category: 'vizinhos', fichas: '5', description: 'Frio 15+ rodadas→vizinhos 5.' },
+  { id: 30, name: 'Estrela de Davi (Invictor)', category: 'vizinhos', fichas: '6', description: 'Triangulação 30/31 e 33/34/35.' },
+  { id: 31, name: 'Vizinhos Último Número', category: 'vizinhos', fichas: '5', description: 'Resultado→vizinhos 5 imediato.' },
+  { id: 32, name: 'Setor 30-35', category: 'vizinhos', fichas: '6', description: 'Região 30-35 via Terços.' },
+  { id: 33, name: 'Vizinhos Duplos', category: 'vizinhos', fichas: '6', description: '2 números opostos→vizinhos 3 cada.' },
+  { id: 34, name: 'Proteção Vizinhos', category: 'vizinhos', fichas: '+2', description: '+1 ficha vizinhos do alvo como seguro.' },
+  { id: 35, name: 'Vizinhos Crescentes', category: 'vizinhos', fichas: '5', description: 'Seguir progressão geográfica na roda.' },
+  // CAT 3: CAVALOS (36-50)
+  { id: 36, name: 'Cavalos 1-4-7', category: 'cavalos', fichas: '12', description: '1/4,4/7,...,34/36. 24 números.' },
+  { id: 37, name: 'Cavalos 2-5-8', category: 'cavalos', fichas: '11', description: '2/5,5/8,...,32/35. 22 números.' },
+  { id: 38, name: 'Cavalos 3-6-9', category: 'cavalos', fichas: '11', description: '3/6,6/9,...,33/36. 22 números.' },
+  { id: 39, name: 'Eddie (6 Cavalos)', category: 'cavalos', fichas: '6', description: '5/8,10/11,13/16,23/24,27/30,33/36.' },
+  { id: 40, name: 'Cavalo do Zero', category: 'cavalos', fichas: '3', description: '0/1, 0/2, 0/3.' },
+  { id: 41, name: 'Cavalos Terminal Quente', category: 'cavalos', fichas: '3', description: 'Cavalos internos do terminal quente.' },
+  { id: 42, name: 'Cavalos Espelhados', category: 'cavalos', fichas: '3-6', description: '1/2, 4/5, 7/8 em linha.' },
+  { id: 43, name: 'Cavalos Vermelhos', category: 'cavalos', fichas: '4', description: '9/12,16/19,18/21,27/30.' },
+  { id: 44, name: 'Cavalos Pretos', category: 'cavalos', fichas: '4-5', description: '8/11,10/13,17/20,26/29.' },
+  { id: 45, name: 'Cavalos Alto-Baixo', category: 'cavalos', fichas: '2', description: '1 baixo + 1 alto. Ex: 3/6+27/30.' },
+  { id: 46, name: 'Kavouras', category: 'cavalos', fichas: '8', description: '3 esquinas+2 linhas. 23 números.' },
+  { id: 47, name: 'Cavalo+Plena', category: 'cavalos', fichas: '2', description: '1 cavalo + 1 plena central.' },
+  { id: 48, name: '6 Cavalos Fixos (Tiers)', category: 'cavalos', fichas: '6', description: '5/8,10/11,13/16,23/24,27/30,33/36.' },
+  { id: 49, name: 'Cavalos Progressivos', category: 'cavalos', fichas: 'var', description: '+1 cavalo a cada perda.' },
+  { id: 50, name: 'Cavalo Único Foco', category: 'cavalos', fichas: '1', description: '1 cavalo frio 10+ rodadas.' },
+  // CAT 4: PUXADOS (51-65)
+  { id: 51, name: 'Puxados Playtech Base', category: 'puxados', fichas: 'var', description: 'Tabela de correlações. REED 4.' },
+  { id: 52, name: 'Puxados+Vizinhos', category: 'puxados', fichas: 'var', description: 'Puxados + vizinhos de cada.' },
+  { id: 53, name: 'Puxados Evolution', category: 'puxados', fichas: 'var', description: '0→4,10,11; 20→1,4,14,28; 30→Tier.' },
+  { id: 54, name: 'Número Puxa Terminal', category: 'puxados', fichas: '3-4', description: 'Saiu X→aposte no terminal de X.' },
+  { id: 55, name: 'Padrão do 20', category: 'puxados', fichas: '4', description: '20→4,14,10,30. T4 imediato.' },
+  { id: 56, name: 'Padrão do 27', category: 'puxados', fichas: '7', description: '27→28,29,24,22,26,33. T8+T6.' },
+  { id: 57, name: 'Padrão do 30', category: 'puxados', fichas: '7-8', description: '30→4,8,16,9,18,22,5,25,3. T8+T5.' },
+  { id: 58, name: 'Padrão do 9', category: 'puxados', fichas: '8', description: '9→34,35,36,3,16,26. T6+T4.' },
+  { id: 59, name: 'Padrão do 1', category: 'puxados', fichas: '10-12', description: '1→11,35,16,4+Vizinhos0+T6+T1.' },
+  { id: 60, name: 'Padrão do Zero', category: 'puxados', fichas: '11', description: 'Após zero→T0+T2+T5.' },
+  { id: 61, name: 'Padrão do 10', category: 'puxados', fichas: '7-8', description: '10→20,5,18,11,14,24. T0+T5.' },
+  { id: 62, name: 'Padrão do 7', category: 'puxados', fichas: '10', description: '7→16,18,17,30. T7+T8+T0.' },
+  { id: 63, name: 'Padrão Reverso', category: 'puxados', fichas: 'var', description: 'Y confirmou puxada de X→repita.' },
+  { id: 64, name: 'Múltiplos que Puxam', category: 'puxados', fichas: '7', description: 'Múltiplos de 5: T0+T5.' },
+  { id: 65, name: 'Espelho Numérico', category: 'puxados', fichas: '2', description: '12↔21, 13↔31 aparecem próximos.' },
+  // CAT 5: ZERO (66-72)
+  { id: 66, name: 'Zero Frio (Dani M4)', category: 'zero', fichas: '3', description: 'Zero 15+ ausente→plena+32,15.' },
+  { id: 67, name: 'Jeu Zero Pista', category: 'zero', fichas: '4', description: 'Zero pressionado→Jeu Zero 7 nums.' },
+  { id: 68, name: 'Vizinhos Zero Completos', category: 'zero', fichas: '9', description: 'Máxima proteção: 17 números.' },
+  { id: 69, name: 'Zero+Terminal 0', category: 'zero', fichas: '4', description: 'Plena zero + T0 (10,20,30).' },
+  { id: 70, name: 'Zero Após Vizinhos', category: 'zero', fichas: '1-3', description: '32,15,26,3 saíram→zero forte.' },
+  { id: 71, name: 'Zero Duplo Win', category: 'zero', fichas: '1-3', description: 'Acertou zero→5+ rodadas→repete.' },
+  { id: 72, name: 'Sequência Zero-Terminal', category: 'zero', fichas: '3-9', description: '0→T0→Vizinhos. Ciclo 3 fases.' },
+  // CAT 6: PADRÃO/SEQUÊNCIA (73-85)
+  { id: 73, name: 'Um-Dois-Um (Invictor)', category: 'sequencia', fichas: '4-12', description: '1 dentro, 2 fora→volta pra dentro.' },
+  { id: 74, name: 'Central Crescente', category: 'sequencia', fichas: '1', description: '5→14→23→32. Próximo passo.' },
+  { id: 75, name: 'Central Decrescente', category: 'sequencia', fichas: '1', description: '32→23→14→5. Próximo passo.' },
+  { id: 76, name: 'Crescente Terminal (M6)', category: 'sequencia', fichas: '3-4', description: 'T1→T2→T3→aposte T4.' },
+  { id: 77, name: 'Decrescente Terminal', category: 'sequencia', fichas: '3-4', description: 'T6→T5→T4→aposte T3.' },
+  { id: 78, name: 'Sequência Dúzias', category: 'sequencia', fichas: '1', description: 'D1→D2→D3→aposte D1.' },
+  { id: 79, name: '4ª Crescente/Decrescente', category: 'sequencia', fichas: 'var', description: '4º tendência→rompe. Aposte contra.' },
+  { id: 80, name: 'Números Camuflados', category: 'sequencia', fichas: '5', description: 'Número fora do padrão + vizinhos.' },
+  { id: 81, name: 'Gatilho Perfeito', category: 'sequencia', fichas: '7-10', description: 'Terminal+vizinhança+puxados = 3 confirm.' },
+  { id: 82, name: 'Padrão de Cores', category: 'sequencia', fichas: '4', description: '3+ mesma cor→terminal dominante.' },
+  { id: 83, name: 'Par-Ímpar+Terminal', category: 'sequencia', fichas: '4', description: 'Pares dominam→T2,T4,T6.' },
+  { id: 84, name: 'Alternância Alto-Baixo', category: 'sequencia', fichas: '4-7', description: 'A→B→A→aposte A.' },
+  { id: 85, name: 'Fibonacci Terminais', category: 'sequencia', fichas: 'var', description: '1,1,2,3,5→índice de terminal.' },
+  // CAT 7: SETORES (86-93)
+  { id: 86, name: 'Setor Quente Ao Vivo', category: 'setor', fichas: '4-9', description: 'Setor mais saídas em 20 rounds.' },
+  { id: 87, name: 'Setor Frio', category: 'setor', fichas: '4-9', description: 'Setor 10+ ausente→correção.' },
+  { id: 88, name: 'Rotação de Setores', category: 'setor', fichas: '4-9', description: 'Voisins→Tiers→Órfãos→Jeu Zero.' },
+  { id: 89, name: 'Setor 4567', category: 'setor', fichas: '20', description: '4 grupos de 5 vizinhos. 54% prob.' },
+  { id: 90, name: 'Cerrados pelo Terminal', category: 'setor', fichas: '1-3', description: 'Número entre 2 do mesmo terminal.' },
+  { id: 91, name: 'Região 30-35 (Invictor)', category: 'setor', fichas: '6', description: '30-35 ativa→cobrir com Terços.' },
+  { id: 92, name: 'Região Alta Frequência', category: 'setor', fichas: '6', description: 'Região com mais saídas em 20+.' },
+  { id: 93, name: 'Anunciadas Completas', category: 'setor', fichas: '24', description: 'Voisins+Tiers+Órfãos+Jeu Zero=36 nums.' },
+  // CAT 8: PROGRESSÃO/GESTÃO (94-100)
+  { id: 94, name: 'Anti-Martingale Terminal', category: 'gestao', fichas: 'var', description: 'Acertou→dobra. Perdeu→volta base.' },
+  { id: 95, name: 'Sistema 1-3-2-6', category: 'gestao', fichas: 'max 6', description: '1→3→2→6 em vitórias consecutivas.' },
+  { id: 96, name: 'Plena Única Sniper', category: 'gestao', fichas: '1', description: 'Número mais provável. 5 rodadas max.' },
+  { id: 97, name: 'Saída Parcial', category: 'gestao', fichas: 'var', description: 'Acertou→retira metade→continua.' },
+  { id: 98, name: 'Stop Móvel', category: 'gestao', fichas: 'var', description: 'Stop acompanha pico de lucro.' },
+  { id: 99, name: 'Sessão Dupla', category: 'gestao', fichas: 'var', description: 'Sessão conservadora + arrojada.' },
+  { id: 100, name: 'Método Completo', category: 'gestao', fichas: '12-15', description: '15 rodadas→3+ confirmações→Duplo+Viz3→REED 4.' },
+];
 
 // Módulo 6: Detect ascending/descending terminal sequences
 export const detectTerminalProgression = (nums: number[]): { active: boolean; sequence: number[]; nextTerminal: number | null } => {
@@ -420,4 +606,18 @@ ${COMPLEMENTARES.map(([a, b]) => `(${a},${b})`).join(' | ')}
 - **MÓD 5 - Números que Puxam**: Correlações empíricas da mesa Playtech BR + vizinhos de cada alvo. REED: max 4 rounds.
 - **MÓD 6 - Crescentes**: Sequência ascendente de terminais (ex: T3→T4→T5→T6) → apostar no próximo terminal.
 - **Pares de Terminais**: ${Object.entries(TERMINAL_PAIRS).map(([a, b]) => `T${a}↔T${b}`).join(', ')}
+
+### 17. 100 Estratégias Completas (Catálogo)
+${ALL_STRATEGIES.map(s => `- **#${s.id} ${s.name}** [${s.category}] (${s.fichas} fichas): ${s.description}`).join('\n')}
+
+### 18. Estratégias Especiais
+- **Eddie (6 Cavalos)**: 5/8, 10/11, 13/16, 23/24, 27/30, 33/36 — 12 números, 6 fichas
+- **Kavouras**: 3 esquinas + 2 linhas = 23 números, 8 fichas
+- **Estrela de Davi**: Triangulação 30/31/33/34/35 + vizinhos
+- **Padrão 4567**: 4 grupos de 5 vizinhos não sobrepostos, probabilidade 54%
+- **Cavalos Vermelhos**: ${CAVALOS_RED.map(c => c.join('/')).join(', ')}
+- **Cavalos Pretos**: ${CAVALOS_BLACK.map(c => c.join('/')).join(', ')}
+- **Espelhos Numéricos**: 12↔21, 13↔31, 23↔32
+- **Pós-Zero**: Terminais T0+T2+T5 tendem a sair após o zero
+- **Ciclo Zero**: 0 → T0 (10,20,30) → Vizinhos do Zero → repete
 `;
