@@ -1741,7 +1741,7 @@ serve(async (req) => {
     }));
 
     // Final probability = winner's probability boosted by layer convergence
-    const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 400)));
+    const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 800)));
     
     // Add strategy performance learnings
     const winnerPerf = strategyPerformance[winner.type];
@@ -1762,19 +1762,29 @@ serve(async (req) => {
     if (statisticalDebt.length >= 3) {
       aiLearnings.push(`💰 Dívida estatística: números ${statisticalDebt.slice(0,3).map(d=>d.num).join(',')} devem compensar em breve`);
     }
+    // Deep memory learnings
+    if (ancestralPatterns.length > 0) {
+      aiLearnings.push(`👻 ${ancestralPatterns.length} sequência(s) ancestral(is) detectada(s) no histórico longo`);
+    }
+    if (mesaDNA.sectorBalance > 0.85) {
+      aiLearnings.push(`🧬 DNA de mesa estável: equilíbrio de setores ${(mesaDNA.sectorBalance * 100).toFixed(0)}%`);
+    }
+    if (mesaDNA.terminalSignature.length > 0) {
+      aiLearnings.push(`🔑 Assinatura terminal: T${mesaDNA.terminalSignature.join(',T')} consistentes`);
+    }
 
-    const mode = totalLayers >= 420 && finalProbability >= 88 ? 'sniper'
-      : totalLayers >= 370 && finalProbability >= 80 ? 'alert'
+    const mode = totalLayers >= 840 && finalProbability >= 88 ? 'sniper'
+      : totalLayers >= 740 && finalProbability >= 80 ? 'alert'
       : 'monitoring';
 
     const message = mode === 'sniper'
-      ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/500`
+      ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/1000`
       : mode === 'alert'
-      ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/500`
-      : `👁️ Analisando... ${totalLayers}/500 — aguardando convergência`;
+      ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/1000`
+      : `👁️ Analisando... ${totalLayers}/1000 — aguardando convergência`;
 
     const diagnostic = mode === 'sniper'
-      ? `Convergência Pentacentesimal: ${winner.justification}`
+      ? `Convergência Milenária (1000 camadas): ${winner.justification}`
       : mode === 'alert'
       ? `Quase lá: ${winner.justification}`
       : `Análise em andamento: ${winner.justification}`;
