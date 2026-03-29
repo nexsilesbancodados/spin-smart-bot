@@ -1193,22 +1193,26 @@ serve(async (req) => {
     // Final probability = winner's probability boosted by layer convergence
     const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 400)));
     
-    const mode = totalLayers >= 400 && finalProbability >= 85 ? 'sniper'
-      : totalLayers >= 300 || finalProbability >= 70 ? 'alert'
+    const mode = totalLayers >= 420 && finalProbability >= 88 ? 'sniper'
+      : totalLayers >= 370 && finalProbability >= 80 ? 'alert'
       : 'monitoring';
 
     const message = mode === 'sniper'
       ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/500`
       : mode === 'alert'
       ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/500`
-      : `👁️ Convergência parcial ${totalLayers}/500`;
+      : `👁️ Analisando... ${totalLayers}/500 — aguardando convergência`;
 
-    const diagnostic = totalLayers >= 400
+    const diagnostic = mode === 'sniper'
       ? `Convergência Pentacentesimal: ${winner.justification}`
-      : `Análise: ${winner.justification}`;
+      : mode === 'alert'
+      ? `Quase lá: ${winner.justification}`
+      : `Análise em andamento: ${winner.justification}`;
 
-    // Save prediction to history — ONLY once per new number (not every poll)
-    if (isNewNumber && mode !== 'monitoring' && winner.numbers.length > 0) {
+    // Save prediction to history — ONLY when truly confident (sniper or strong alert)
+    // The AI must be selective: only commit when multiple layers converge strongly
+    const shouldSave = isNewNumber && mode === 'sniper' && winner.numbers.length > 0 && finalProbability >= 85;
+    if (shouldSave) {
       await supabase.from('prediction_history').insert({
         strategy_type: winner.type,
         strategy_label: winner.label,
