@@ -134,6 +134,34 @@ Em 37 rodadas: ~12 números não saem (ausentes), ~12 saem 1x, ~12 se repetem (2
 ### Vizinhos no Cilindro
 Cada número tem vizinhos à esquerda e direita no cilindro físico.
 Se receber 17 → vizinhos imediatos: 25 (esq) e 34 (dir).
+
+### Assinatura de Dealer (Viciação de Lançamento)
+- Arco de Lançamento: distância em casas no cilindro entre resultado N e N-1
+- Se o arco se repete (ex: sempre ~12 casas), indica memória muscular do crupiê
+- Detecte se o dealer joga para o lado oposto (180°) ou mesmo setor (Vizinhos)
+- Calcule média e desvio padrão do arco para detectar consistência
+
+### Clusters de Calor (Teoria do Caos)
+- Quando 3+ números vizinhos físicos saem em janela de 10 rodadas (independente da ordem)
+- Indica "nuvem" de resultados concentrada em setor do cilindro
+- Mesmo números não consecutivos revelam cluster ativo (ex: 17 e 2 = Cluster Órfãos)
+
+### Entropia de Sequência
+- Entropia BAIXA: sequência limpa/previsível (ex: P-V-P-V = Xadrez)
+- Entropia ALTA: resultados caóticos sem padrão
+- REGRA: quando entropia está BAIXA por muitas rodadas, QUEBRA DE PADRÃO é iminente
+- Calcule: alternâncias de cor / total = taxa de entropia (0.0 = tendência pura, 1.0 = caos)
+
+### Atração do Zero (Efeito Gangorra)
+- O cilindro tem 2 semicírculos: lado do Zero (0,32,15...26) e lado oposto (27,13...3)
+- Se um lado acumula resultados excessivos, o outro tende a compensar (Efeito Gangorra)
+- Após grandes sequências no Tiers, a bola tende a retornar ao Jeu Zéro
+- Monitore o balanço entre semicírculos
+
+### Probabilidade Residual (Caça ao Atraso)
+- Atraso simples: número/grupo ausente há muitas rodadas
+- Atraso cruzado: quando um número pertence a DOIS grupos atrasados simultaneamente (ex: Terminal 5 + 3ª Dúzia), ele é ALVO DE ALTA PRIORIDADE
+- Quanto maior o atraso cruzado, maior a probabilidade de explosão (saídas múltiplas seguidas)
 `;
 
 const getColor = (n: number) => n === 0 ? 'green' : RED.includes(n) ? 'red' : 'black';
