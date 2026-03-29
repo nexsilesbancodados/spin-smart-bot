@@ -106,7 +106,34 @@ export const VISUAL_MIRRORS = [
   [12, 24, 36],  // último de cada dúzia
 ];
 
-// === 10. Utility Functions ===
+// === 10. Diamantes (Zonas de Choque - Defletores Físicos) ===
+export const DIAMONDS = {
+  topo: { label: 'Diamante Topo', numbers: [0, 32], sector: [0, 32, 15, 26, 3, 35] },
+  baixo: { label: 'Diamante Baixo', numbers: [5, 24], sector: [5, 24, 10, 23, 16] },
+  esquerda: { label: 'Diamante Esquerda', numbers: [1, 20], sector: [1, 20, 33, 14] },
+  direita: { label: 'Diamante Direita', numbers: [10, 23], sector: [10, 23, 8, 5, 24] },
+};
+
+// === 11. Oitavos do Cilindro (Divisão Profissional em 8 setores) ===
+export const OCTAVES = {
+  O1: [0, 32, 15, 19, 4],
+  O2: [21, 2, 25, 17],
+  O3: [34, 6, 27, 13],
+  O4: [36, 11, 30, 8],
+  O5: [23, 10, 5, 24],
+  O6: [16, 33, 1, 20],
+  O7: [14, 31, 9, 22],
+  O8: [18, 29, 7, 28, 12, 35, 3, 26],
+};
+
+// === 12. Complementares (Soma 37) ===
+export const COMPLEMENTARES: [number, number][] = [
+  [1, 36], [2, 35], [3, 34], [4, 33], [5, 32], [6, 31],
+  [7, 30], [8, 29], [9, 28], [10, 27], [11, 26], [12, 25],
+  [13, 24], [14, 23], [15, 22], [16, 21], [17, 20], [18, 19],
+];
+
+// === 13. Utility Functions ===
 
 export const getNumberColor = (n: number): 'red' | 'black' | 'green' => {
   if (n === 0) return 'green';
@@ -184,6 +211,46 @@ export const getColumnColorDominance = (n: number): string | null => {
   return COLUMN_COLOR_DOMINANCE[key].label;
 };
 
+export const getOctave = (n: number): string | null => {
+  for (const [key, nums] of Object.entries(OCTAVES)) {
+    if (nums.includes(n)) return key;
+  }
+  return null;
+};
+
+export const getComplementar = (n: number): number | null => {
+  if (n === 0 || n > 36) return null;
+  return 37 - n;
+};
+
+export const getDiamond = (n: number): string | null => {
+  for (const [, d] of Object.entries(DIAMONDS)) {
+    if (d.sector.includes(n)) return d.label;
+  }
+  return null;
+};
+
+// Wheel distance between two numbers
+export const getWheelDistance = (a: number, b: number): number => {
+  const idxA = WHEEL_ORDER.indexOf(a);
+  const idxB = WHEEL_ORDER.indexOf(b);
+  if (idxA === -1 || idxB === -1) return -1;
+  const diff = Math.abs(idxA - idxB);
+  return Math.min(diff, WHEEL_ORDER.length - diff);
+};
+
+// Lei do Terço analysis
+export const analyzeThirdLaw = (last37: number[]): { absent: number[]; once: number[]; repeated: number[] } => {
+  const freq: Record<number, number> = {};
+  last37.forEach(n => { freq[n] = (freq[n] || 0) + 1; });
+  const all = Array.from({ length: 37 }, (_, i) => i);
+  return {
+    absent: all.filter(n => !freq[n]),
+    once: all.filter(n => freq[n] === 1),
+    repeated: all.filter(n => (freq[n] || 0) >= 2),
+  };
+};
+
 // Full analysis of a single number
 export const analyzeNumber = (n: number) => ({
   value: n,
@@ -201,6 +268,9 @@ export const analyzeNumber = (n: number) => ({
   finalPleno: getFinalPleno(n),
   visualMirror: getVisualMirror(n),
   columnDominance: getColumnColorDominance(n),
+  octave: getOctave(n),
+  complementar: getComplementar(n),
+  diamond: getDiamond(n),
 });
 
 // Generate the complete knowledge prompt for AI
@@ -256,4 +326,21 @@ ${Object.entries(FINAIS_PLENO).map(([f, d]) => `- Final ${f} (${d.count} nºs): 
 
 ### 10. Espelhos Visuais (mesma posição em dúzias diferentes)
 ${VISUAL_MIRRORS.map(g => `- Espelho: ${g.join(', ')}`).join('\n')}
+
+### 11. Diamantes (Zonas de Choque - Defletores Físicos)
+${Object.values(DIAMONDS).map(d => `- ${d.label}: números ${d.numbers.join(', ')} (setor: ${d.sector.join(', ')})`).join('\n')}
+
+### 12. Oitavos do Cilindro (Divisão Profissional em 8 setores)
+${Object.entries(OCTAVES).map(([k, v]) => `- ${k}: ${v.join(', ')}`).join('\n')}
+
+### 13. Lei do Terço
+Em 37 rodadas: ~12 números não saem, ~12 saem 1x, ~12 se repetem (2x+). Rastreie a zona de repetição.
+
+### 14. Padrões de Salto (Skips)
+- Salto Curto: <5 posições no cilindro entre rodadas consecutivas
+- Salto Longo: >18 posições (lado oposto ~180°)
+- Calcule distância no cilindro entre cada resultado consecutivo
+
+### 15. Complementares (Soma 37)
+${COMPLEMENTARES.map(([a, b]) => `(${a},${b})`).join(' | ')}
 `;
