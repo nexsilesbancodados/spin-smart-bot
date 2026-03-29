@@ -287,6 +287,7 @@ const Index = () => {
         confidenceFilter={confidenceFilter} setConfidenceFilter={setConfidenceFilter}
         lastUpdate={lastUpdate} fetchNumbers={fetchNumbers} fetchStored={fetchStored}
         autoLearnStatus={autoLearnStatus}
+        onShowHistory={() => setShowPredHistory(!showPredHistory)}
       />
 
       {/* Stats Bar - Fixo */}
