@@ -114,7 +114,7 @@ const Index = () => {
   const [sampleSize, setSampleSize] = useState(100);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showPredHistory, setShowPredHistory] = useState(false);
-
+  const [aiEnabled, setAiEnabled] = useState(true);
   const handleManualNumbers = (nums: number[]) => {
     setApiNumbers(prev => [...nums, ...prev].slice(0, 1000));
   };
