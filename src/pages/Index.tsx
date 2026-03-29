@@ -1,300 +1,236 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { generateRandomNumber, getNumberColor, getHotNumbers, type RouletteNumber, type BotState } from '@/lib/roulette';
-import NumberHistory from '@/components/NumberHistory';
-import StatsPanel from '@/components/StatsPanel';
-import BotControls from '@/components/BotControls';
-import ProfitChart from '@/components/ProfitChart';
-import BetSuggestion from '@/components/BetSuggestion';
-import QuickNumberPad from '@/components/QuickNumberPad';
-import AnalysisFilter from '@/components/AnalysisFilter';
+import { useState } from 'react';
+import { useRoulette } from '@/contexts/RouletteContext';
+import { getNumberColor, getHotNumbers, getColdNumbers } from '@/lib/roulette';
+import AnimatedHistory from '@/components/AnimatedHistory';
+import AlertBanner from '@/components/AlertBanner';
+import PasteHistory from '@/components/PasteHistory';
+import LiveStats from '@/components/LiveStats';
 import PremiumTable from '@/components/PremiumTable';
-import { CircleDot, Settings, ChevronDown, ClipboardPaste, X } from 'lucide-react';
+import QuickNumberPad from '@/components/QuickNumberPad';
+import { CircleDot, ChevronDown, MonitorPlay, BarChart3, Flame, Snowflake } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const PROVIDERS: Record<string, { label: string; tables: string[] }> = {
+const PROVIDERS: Record<string, { label: string; tables: { name: string; iframeUrl?: string }[] }> = {
   Playtech: {
     label: 'Playtech',
-    tables: ['Roleta Brasileira', 'Mega Fire Blaze Roulette Live', 'Roulette'],
+    tables: [
+      { name: 'Roleta Brasileira', iframeUrl: '' },
+      { name: 'Mega Fire Blaze Roulette Live', iframeUrl: '' },
+      { name: 'Roulette', iframeUrl: '' },
+    ],
   },
   Evolution: {
     label: 'Evolution',
-    tables: ['Roleta Immersiva', 'Roulette Evo', 'Roleta Relâmpago XXXtreme', 'Roleta ao Vivo'],
+    tables: [
+      { name: 'Roleta Immersiva', iframeUrl: '' },
+      { name: 'Roulette Evo', iframeUrl: '' },
+      { name: 'Roleta Relâmpago XXXtreme', iframeUrl: '' },
+      { name: 'Roleta ao Vivo', iframeUrl: '' },
+    ],
   },
   Pragmatic: {
     label: 'Pragmatic',
-    tables: ['PowerUP Roulette', 'Roulette Macao', 'Brasileira Roleta'],
+    tables: [
+      { name: 'PowerUP Roulette', iframeUrl: '' },
+      { name: 'Roulette Macao', iframeUrl: '' },
+      { name: 'Brasileira Roleta', iframeUrl: '' },
+    ],
   },
 };
 
-const INITIAL_BOT: BotState = {
-  isRunning: false,
-  strategy: 'martingale',
-  currentBet: 5,
-  baseBet: 5,
-  balance: 1000,
-  totalBets: 0,
-  wins: 0,
-  losses: 0,
-  profitLoss: 0,
-  sequence: [1, 1],
-};
-
 const Index = () => {
-  const [history, setHistory] = useState<RouletteNumber[]>([]);
-  const [bot, setBot] = useState<BotState>(INITIAL_BOT);
-  const [profitData, setProfitData] = useState<{ round: number; profit: number }[]>([]);
-  const [provider, setProvider] = useState('Playtech');
-  const [table, setTable] = useState('Roleta Brasileira');
-  const [showSettings, setShowSettings] = useState(false);
-  const [showPasteHistory, setShowPasteHistory] = useState(false);
-  const [pasteText, setPasteText] = useState('');
+  const { history, provider, table, setProvider, setTable, addNumber } = useRoulette();
+  const [showIframe, setShowIframe] = useState(false);
+  const [iframeUrl, setIframeUrl] = useState('');
   const [activeTab, setActiveTab] = useState<'roleta' | 'aulas' | 'bacbo'>('roleta');
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const fibIndex = useRef(0);
 
-  const addNumber = useCallback((n: number) => {
-    const entry: RouletteNumber = { value: n, color: getNumberColor(n), timestamp: new Date() };
-    setHistory(prev => [entry, ...prev]);
+  const hotNumbers = getHotNumbers(history, 8);
+  const coldNumbers = getColdNumbers(history, 8);
 
-    setBot(prev => {
-      if (!prev.isRunning) return prev;
-      const won = entry.color === 'red';
-      const payout = won ? prev.currentBet : -prev.currentBet;
-      const newBalance = prev.balance + payout;
-      const newPL = prev.profitLoss + payout;
-      let nextBet = prev.baseBet;
-
-      switch (prev.strategy) {
-        case 'martingale':
-          nextBet = won ? prev.baseBet : prev.currentBet * 2;
-          break;
-        case 'fibonacci': {
-          if (won) fibIndex.current = Math.max(0, fibIndex.current - 2);
-          else fibIndex.current++;
-          const seq = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
-          nextBet = prev.baseBet * (seq[Math.min(fibIndex.current, seq.length - 1)] || 1);
-          break;
-        }
-        case 'dalembert':
-          nextBet = won ? Math.max(prev.baseBet, prev.currentBet - prev.baseBet) : prev.currentBet + prev.baseBet;
-          break;
-        case 'pattern':
-          nextBet = prev.baseBet;
-          break;
-      }
-
-      const updated: BotState = {
-        ...prev,
-        balance: newBalance,
-        profitLoss: newPL,
-        totalBets: prev.totalBets + 1,
-        wins: prev.wins + (won ? 1 : 0),
-        losses: prev.losses + (won ? 0 : 1),
-        currentBet: Math.min(nextBet, newBalance),
-      };
-      setProfitData(pd => [...pd, { round: pd.length + 1, profit: newPL }]);
-      return updated;
-    });
-  }, []);
-
-  const handleStart = () => {
-    setBot(prev => ({ ...prev, isRunning: true }));
-    fibIndex.current = 0;
-    intervalRef.current = setInterval(() => addNumber(generateRandomNumber()), 1500);
-  };
-
-  const handleStop = () => {
-    setBot(prev => ({ ...prev, isRunning: false }));
-    if (intervalRef.current) clearInterval(intervalRef.current);
-  };
-
-  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
-
-  const importPastedNumbers = () => {
-    // Extract all numbers from pasted text (supports comma, space, newline, dash separators)
-    const numbers = pasteText.match(/\d+/g);
-    if (!numbers) return;
-    
-    // Parse and filter valid roulette numbers (0-36), reverse so oldest first
-    const validNumbers = numbers
-      .map(n => parseInt(n))
-      .filter(n => !isNaN(n) && n >= 0 && n <= 36);
-    
-    if (validNumbers.length === 0) return;
-    
-    // Add numbers in reverse order (last pasted = most recent)
-    const reversed = [...validNumbers].reverse();
-    reversed.forEach(n => addNumber(n));
-    
-    setPasteText('');
-    setShowPasteHistory(false);
-  };
-
-  const hotNumbers = getHotNumbers(history, 10);
+  // Color stats
+  const redCount = history.filter(h => h.color === 'red').length;
+  const blackCount = history.filter(h => h.color === 'black').length;
+  const greenCount = history.filter(h => h.color === 'green').length;
+  const total = history.length || 1;
 
   return (
     <div className="min-h-screen bg-gradient-casino flex flex-col">
       {/* Navbar */}
-      <nav className="bg-secondary border-b border-border px-4 py-2.5">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
+      <nav className="bg-secondary/80 backdrop-blur-md border-b border-border px-3 py-2 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CircleDot className="w-5 h-5 text-primary animate-spin-slow" />
-            <span className="font-display text-sm tracking-wider text-glow-green">ANALISES PARA ROLETA</span>
+            <span className="font-display text-xs tracking-widest text-glow-green">ROULETTE ANALYTICS</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground px-2 py-0.5 bg-accent/20 rounded text-accent font-semibold">Free</span>
-            <button onClick={() => setShowSettings(!showSettings)} className="p-1.5 rounded-md bg-card text-muted-foreground hover:text-foreground transition-colors">
-              <Settings className="w-4 h-4" />
-            </button>
+            <span className="text-[10px] text-muted-foreground px-2 py-0.5 bg-accent/20 rounded text-accent font-bold">
+              PRO
+            </span>
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" title="Online" />
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-2xl mx-auto w-full p-3 space-y-3 pb-16">
-        {/* Provider & Table Selectors */}
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
-          <div className="flex">
-            <div className="flex-1 relative border-r border-border">
-              <select
-                value={provider}
-                onChange={e => {
-                  setProvider(e.target.value);
-                  setTable(PROVIDERS[e.target.value].tables[0]);
-                }}
-                className="w-full bg-card text-foreground text-sm font-semibold px-3 py-2.5 appearance-none cursor-pointer focus:outline-none"
-              >
-                <option value="" disabled>Selecione Provedor</option>
-                {Object.entries(PROVIDERS).map(([key, p]) => (
-                  <option key={key} value={key}>{p.label}</option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-            <div className="flex-1 relative">
-              <select
-                value={table}
-                onChange={e => setTable(e.target.value)}
-                className="w-full bg-card text-foreground text-sm font-semibold px-3 py-2.5 appearance-none cursor-pointer focus:outline-none"
-              >
-                {PROVIDERS[provider]?.tables.map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-          </div>
-          <div className="bg-primary text-center py-1.5 text-xs font-bold text-primary-foreground tracking-wide">
-            ⚡ {PROVIDERS[provider]?.label} • {table}
-          </div>
-        </div>
-
-        {/* Colar Histórico */}
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
-          <button
-            onClick={() => setShowPasteHistory(!showPasteHistory)}
-            className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-secondary/50 transition-colors"
-          >
-            <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <ClipboardPaste className="w-4 h-4 text-primary" />
-              📋 Colar Histórico do Casino
-            </span>
-            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showPasteHistory ? 'rotate-180' : ''}`} />
-          </button>
-          
-          {showPasteHistory && (
-            <div className="p-3 border-t border-border space-y-2">
-              <p className="text-xs text-muted-foreground">
-                Copie os números do histórico da roleta no casino e cole aqui. Aceita qualquer formato: 
-                <span className="text-primary font-medium"> 32, 15, 0, 26, 3</span> ou 
-                <span className="text-primary font-medium"> 32 15 0 26 3</span>
-              </p>
-              <textarea
-                value={pasteText}
-                onChange={e => setPasteText(e.target.value)}
-                placeholder="Cole os números aqui... Ex: 32, 15, 0, 26, 3, 35, 12, 28, 7, 29, 18, 22, 9, 31, 14"
-                className="w-full bg-secondary border border-border rounded-md p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary min-h-[80px] resize-y"
-              />
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  {pasteText.match(/\d+/g)?.filter(n => { const v = parseInt(n); return v >= 0 && v <= 36; }).length || 0} números detectados
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { setPasteText(''); setShowPasteHistory(false); }}
-                    className="px-3 py-1.5 text-xs font-medium rounded bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+      <main className="flex-1 max-w-7xl mx-auto w-full p-2 pb-14">
+        <div className="flex flex-col lg:flex-row gap-2">
+          {/* LEFT: Iframe / Video Area */}
+          <div className="lg:w-[55%] space-y-2">
+            {/* Provider/Table */}
+            <div className="bg-card rounded-lg border border-border overflow-hidden">
+              <div className="flex">
+                <div className="flex-1 relative border-r border-border">
+                  <select
+                    value={provider}
+                    onChange={e => {
+                      setProvider(e.target.value);
+                      setTable(PROVIDERS[e.target.value].tables[0].name);
+                    }}
+                    className="w-full bg-card text-foreground text-xs font-semibold px-3 py-2 appearance-none cursor-pointer focus:outline-none"
                   >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={importPastedNumbers}
-                    disabled={!pasteText.trim()}
-                    className="px-4 py-1.5 text-xs font-bold rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    {Object.entries(PROVIDERS).map(([key, p]) => (
+                      <option key={key} value={key}>{p.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+                <div className="flex-1 relative">
+                  <select
+                    value={table}
+                    onChange={e => setTable(e.target.value)}
+                    className="w-full bg-card text-foreground text-xs font-semibold px-3 py-2 appearance-none cursor-pointer focus:outline-none"
                   >
-                    ✅ Importar Números
-                  </button>
+                    {PROVIDERS[provider]?.tables.map(t => (
+                      <option key={t.name} value={t.name}>{t.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
+              <div className="bg-primary/10 border-t border-primary/20 text-center py-1 text-[10px] font-bold text-primary tracking-widest font-display">
+                ⚡ {PROVIDERS[provider]?.label} • {table}
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* Premium Table */}
-        <PremiumTable history={history} />
-
-        {/* Analysis Filter */}
-        <AnalysisFilter history={history} />
-
-        {/* Quick Number Pad */}
-        <QuickNumberPad onAddNumber={addNumber} />
-
-        {/* Histórico Rodadas */}
-        <NumberHistory history={history} />
-
-        {/* Números Puxado */}
-        <div className="bg-card rounded-lg p-4 border border-border">
-          <h3 className="font-display text-sm text-foreground mb-3 tracking-wider text-center">Números Puxado</h3>
-          <div className="flex flex-wrap gap-1.5 justify-center">
-            {hotNumbers.length > 0 && history.length > 0 ? hotNumbers.map(h => {
-              const color = getNumberColor(h.number);
-              const colorClass = color === 'red' ? 'bg-roulette-red' : color === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
-              return (
-                <div key={h.number} className={`${colorClass} w-9 h-9 rounded-sm flex items-center justify-center text-xs font-bold text-foreground relative`}>
-                  {h.number}
-                  <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-[8px] rounded-full w-3.5 h-3.5 flex items-center justify-center font-bold">
-                    {h.freq}
-                  </span>
+            {/* Iframe Area */}
+            <div className="bg-card rounded-lg border border-border overflow-hidden">
+              {iframeUrl ? (
+                <iframe src={iframeUrl} className="w-full aspect-video" allowFullScreen />
+              ) : (
+                <div className="aspect-video flex flex-col items-center justify-center bg-secondary/30 space-y-3">
+                  <MonitorPlay className="w-12 h-12 text-muted-foreground/30" />
+                  <p className="text-xs text-muted-foreground text-center px-4">
+                    Cole a URL do iframe da mesa aqui para visualizar ao vivo
+                  </p>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      placeholder="https://..."
+                      value={iframeUrl}
+                      onChange={e => setIframeUrl(e.target.value)}
+                      className="bg-card border border-border rounded px-3 py-1.5 text-xs text-foreground w-64 focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
                 </div>
-              );
-            }) : (
-              <p className="text-muted-foreground text-sm">Adicione números para ver os mais puxados</p>
+              )}
+            </div>
+
+            {/* Alerts */}
+            <AlertBanner />
+
+            {/* Paste / Number Pad */}
+            <PasteHistory />
+            <QuickNumberPad onAddNumber={addNumber} />
+          </div>
+
+          {/* RIGHT: Analytics Panel */}
+          <div className="lg:w-[45%] space-y-2">
+            {/* Animated History */}
+            <AnimatedHistory />
+
+            {/* Color Distribution Mini Bar */}
+            {history.length > 0 && (
+              <div className="bg-card rounded-lg border border-border p-2.5">
+                <div className="flex gap-0.5 h-3 rounded overflow-hidden">
+                  <motion.div
+                    animate={{ width: `${(redCount / total) * 100}%` }}
+                    className="bg-roulette-red rounded-l"
+                    transition={{ duration: 0.5 }}
+                  />
+                  <motion.div
+                    animate={{ width: `${(blackCount / total) * 100}%` }}
+                    className="bg-roulette-black"
+                    transition={{ duration: 0.5 }}
+                  />
+                  <motion.div
+                    animate={{ width: `${(greenCount / total) * 100}%` }}
+                    className="bg-roulette-green rounded-r"
+                    transition={{ duration: 0.5 }}
+                  />
+                </div>
+                <div className="flex justify-between mt-1.5 text-[9px] font-mono text-muted-foreground">
+                  <span className="text-red-400">🔴 {((redCount / total) * 100).toFixed(0)}%</span>
+                  <span>⚫ {((blackCount / total) * 100).toFixed(0)}%</span>
+                  <span className="text-green-400">🟢 {((greenCount / total) * 100).toFixed(0)}%</span>
+                </div>
+              </div>
             )}
+
+            {/* Hot & Cold Numbers */}
+            {history.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-card rounded-lg border border-border p-2.5">
+                  <div className="flex items-center gap-1 mb-2">
+                    <Flame className="w-3 h-3 text-destructive" />
+                    <span className="font-display text-[9px] text-destructive tracking-widest">QUENTES</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {hotNumbers.map(h => {
+                      const color = getNumberColor(h.number);
+                      const cls = color === 'red' ? 'bg-roulette-red' : color === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
+                      return (
+                        <div key={h.number} className={`${cls} w-7 h-7 rounded flex items-center justify-center text-[10px] font-bold text-white relative`}>
+                          {h.number}
+                          <span className="absolute -top-1 -right-1 bg-destructive text-white text-[7px] rounded-full w-3 h-3 flex items-center justify-center">
+                            {h.freq}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="bg-card rounded-lg border border-border p-2.5">
+                  <div className="flex items-center gap-1 mb-2">
+                    <Snowflake className="w-3 h-3 text-blue-400" />
+                    <span className="font-display text-[9px] text-blue-400 tracking-widest">FRIOS</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {coldNumbers.map(h => {
+                      const color = getNumberColor(h.number);
+                      const cls = color === 'red' ? 'bg-roulette-red' : color === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
+                      return (
+                        <div key={h.number} className={`${cls} w-7 h-7 rounded flex items-center justify-center text-[10px] font-bold text-white opacity-60`}>
+                          {h.number}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Live Stats */}
+            <LiveStats />
+
+            {/* Premium Table */}
+            <PremiumTable history={history} />
           </div>
         </div>
-
-        {/* Sinal de Aposta */}
-        <BetSuggestion history={history} bot={bot} />
-
-        {/* Stats */}
-        <StatsPanel history={history} />
-
-        {/* Settings Panel */}
-        {showSettings && (
-          <div className="space-y-3">
-            <BotControls
-              bot={bot}
-              onStart={handleStart}
-              onStop={handleStop}
-              onStrategyChange={id => setBot(prev => ({ ...prev, strategy: id }))}
-              onBaseBetChange={bet => setBot(prev => ({ ...prev, baseBet: bet, currentBet: bet }))}
-            />
-            <ProfitChart data={profitData} />
-          </div>
-        )}
       </main>
 
       {/* Footer Navigation */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-secondary border-t border-border">
-        <div className="max-w-2xl mx-auto flex justify-around">
+      <footer className="fixed bottom-0 left-0 right-0 bg-secondary/90 backdrop-blur border-t border-border z-50">
+        <div className="max-w-7xl mx-auto flex justify-around">
           {[
             { id: 'aulas' as const, icon: '📚', label: 'Aulas' },
             { id: 'roleta' as const, icon: '🎰', label: 'Roleta' },
@@ -303,11 +239,11 @@ const Index = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex flex-col items-center py-2 text-xs transition-colors ${
+              className={`flex-1 flex flex-col items-center py-1.5 text-[10px] transition-colors ${
                 activeTab === tab.id ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
-              <span className="text-lg">{tab.icon}</span>
+              <span className="text-base">{tab.icon}</span>
               <span className="font-medium">{tab.label}</span>
             </button>
           ))}
