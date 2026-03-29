@@ -1481,9 +1481,101 @@ serve(async (req) => {
     blocoJ = Math.min(maxJ, blocoJ);
 
     // ========================================================
-    // TOTAL DAS 1.500 CAMADAS
+    // BLOCO P: CALIBRADOR DE RITMO E PREVISÃO DE IMPACTO (100 CAMADAS)
+    // Analisa a constância do Dealer via saltos DIRECIONAIS no cilindro
+    // e calcula o número-alvo pela média de arco direcional
     // ========================================================
-    const totalLayers = blocoA + blocoB + blocoC + blocoD + blocoE + blocoF + blocoG + blocoH + blocoI + blocoJ + blocoK + blocoL + blocoM + blocoN + blocoO;
+    let blocoP = 0;
+    const maxP = 100;
+
+    const ritmoCalibration: { alvo: number | null; confianca: number; estabilidade: number; mensagem: string; saltosDirecionais: number[] } = {
+      alvo: null, confianca: 0, estabilidade: 99, mensagem: 'Calibrando...', saltosDirecionais: []
+    };
+
+    if (numbers.length >= 6) {
+      // Salto DIRECIONAL (sentido horário): (posAtual - posAnt + 37) % 37
+      const saltosDir: number[] = [];
+      const jumpCount = Math.min(20, numbers.length - 1);
+      for (let i = 0; i < jumpCount; i++) {
+        const posAnt = wheelIdx(numbers[i + 1]);
+        const posAtual = wheelIdx(numbers[i]);
+        if (posAnt !== -1 && posAtual !== -1) {
+          saltosDir.push((posAtual - posAnt + WL) % WL);
+        }
+      }
+      ritmoCalibration.saltosDirecionais = saltosDir.slice(0, 5);
+
+      if (saltosDir.length >= 5) {
+        // Últimos 5 saltos para avaliar ritmo imediato
+        const ultimos5 = saltosDir.slice(0, 5);
+        const mediaSalto = ultimos5.reduce((a, b) => a + b, 0) / ultimos5.length;
+        const variancia = ultimos5.reduce((a, b) => a + Math.pow(b - mediaSalto, 2), 0) / ultimos5.length;
+        const estabilidade = Math.sqrt(variancia);
+        ritmoCalibration.estabilidade = +estabilidade.toFixed(2);
+
+        // Confiança baseada na estabilidade do dealer
+        let confianca = 0;
+        if (estabilidade < 2.5) { confianca = 98; blocoP += 60; } // Dealer Sniper
+        else if (estabilidade < 5) { confianca = 85; blocoP += 40; } // Dealer Regular
+        else if (estabilidade < 8) { confianca = 70; blocoP += 25; } // Dealer Moderado
+        else { confianca = 55; blocoP += 10; } // Dealer Caótico
+        ritmoCalibration.confianca = confianca;
+
+        // Cálculo do número-alvo pelo arco direcional
+        const ultimaPos = wheelIdx(numbers[0]);
+        if (ultimaPos !== -1) {
+          const proximaPos = Math.round((ultimaPos + mediaSalto) % WL);
+          const alvo = WHEEL[proximaPos >= 0 && proximaPos < WL ? proximaPos : 0];
+          ritmoCalibration.alvo = alvo;
+
+          // Validar com janelas maiores (10 e 20 saltos)
+          if (saltosDir.length >= 10) {
+            const media10 = saltosDir.slice(0, 10).reduce((a, b) => a + b, 0) / 10;
+            const consistencia = Math.abs(mediaSalto - media10);
+            if (consistencia < 2) { blocoP += 20; } // Arco consistente entre janelas
+            else if (consistencia < 4) { blocoP += 10; }
+
+            if (saltosDir.length >= 20) {
+              const media20 = saltosDir.slice(0, 20).reduce((a, b) => a + b, 0) / 20;
+              const tendencia = mediaSalto - media20;
+              if (Math.abs(tendencia) > 3) {
+                ritmoCalibration.mensagem = tendencia > 0 
+                  ? 'Dealer acelerando — arco crescente' 
+                  : 'Dealer desacelerando — arco encurtando';
+                blocoP += 5;
+              }
+            }
+          }
+
+          // Bonus: mão mecânica extrema (últimos 3 saltos quase idênticos)
+          if (saltosDir.length >= 3) {
+            const range3 = Math.max(...saltosDir.slice(0, 3)) - Math.min(...saltosDir.slice(0, 3));
+            if (range3 <= 1) {
+              blocoP += 15;
+              ritmoCalibration.confianca = Math.min(99, ritmoCalibration.confianca + 5);
+            }
+          }
+        }
+
+        ritmoCalibration.mensagem = confianca >= 85 
+          ? `Mão Mecânica Detectada — Alvo ${ritmoCalibration.alvo} (±${estabilidade.toFixed(1)} estabilidade)` 
+          : confianca >= 70 
+          ? `Dealer Regular — Arco médio ${mediaSalto.toFixed(1)} casas`
+          : 'Aguardando Estabilização do Dealer';
+
+        if (confianca >= 85) {
+          aiLearnings.push(`🎯 RITMO CALIBRADO: Dealer Sniper (σ=${estabilidade.toFixed(1)}) → Alvo ${ritmoCalibration.alvo}`);
+        } else if (confianca >= 70) {
+          aiLearnings.push(`⏱️ Ritmo do dealer: arco ~${mediaSalto.toFixed(0)} casas (σ=${estabilidade.toFixed(1)})`);
+        }
+      }
+    }
+    blocoP = Math.min(maxP, blocoP);
+
+    // ========================================================
+    // TOTAL DAS 1.600 CAMADAS
+    // ========================================================
+    const totalLayers = blocoA + blocoB + blocoC + blocoD + blocoE + blocoF + blocoG + blocoH + blocoI + blocoJ + blocoK + blocoL + blocoM + blocoN + blocoO + blocoP;
     const layerResults = {
       blocoA: { score: blocoA, max: maxA, label: 'Biomecânica & Física' },
       blocoB: { score: blocoB, max: maxB, label: 'Matemática & Terminais' },
@@ -1500,8 +1592,9 @@ serve(async (req) => {
       blocoM: { score: blocoM, max: maxM, label: 'Defletores (Diamantes)' },
       blocoN: { score: blocoN, max: maxN, label: 'Kelly Criterion' },
       blocoO: { score: blocoO, max: maxO, label: 'Biometria Dealer' },
+      blocoP: { score: blocoP, max: maxP, label: 'Calibrador de Ritmo' },
       total: totalLayers,
-      max: 1500,
+      max: 1600,
     };
 
     // ========================================================
@@ -1815,6 +1908,7 @@ serve(async (req) => {
       entropy: entropy.toFixed(3), dealerMode, dealerSignature,
       hotTerminals: { cavalos: sortedCavalos, terminals: sortedTerminals.slice(0, 5) },
       sectorTrend, sectorFreq, convergenceScore: totalLayers, reasons, layerResults,
+      ritmoCalibration,
     };
 
     if (dealerChanged) {
@@ -1943,6 +2037,13 @@ serve(async (req) => {
           r.push(`${arch.emoji} ${arch.name.split(' ')[0]}`);
           break; // only count strongest archetype per number
         }
+      }
+      // RITMO CALIBRADOR: boost target and neighbors from directional arc prediction
+      if (ritmoCalibration.alvo !== null && ritmoCalibration.confianca >= 70) {
+        const ritmoWeight = ritmoCalibration.confianca >= 98 ? 7 : ritmoCalibration.confianca >= 85 ? 5 : 3;
+        if (n === ritmoCalibration.alvo) { s += ritmoWeight; r.push(`⏱️ Alvo Ritmo (${ritmoCalibration.confianca}%)`); }
+        else if (wheelDist(n, ritmoCalibration.alvo) <= 2) { s += ritmoWeight * 0.6; r.push(`⏱️ Ritmo ±2`); }
+        else if (wheelDist(n, ritmoCalibration.alvo) <= 4) { s += ritmoWeight * 0.3; r.push(`⏱️ Ritmo ±4`); }
       }
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
