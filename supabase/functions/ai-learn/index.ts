@@ -745,7 +745,7 @@ Responda APENAS via tool call. Gere 15-25 aprendizados profundos, variados e aci
     let learnings: any[] = [];
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall?.function?.arguments) {
-      const parsed = JSON.parse(toolCall.function.arguments);
+      const parsed = safeParseJson(toolCall.function.arguments);
       learnings = parsed.learnings || [];
     }
 
@@ -828,7 +828,7 @@ Responda APENAS via tool call. Gere 15-25 aprendizados profundos, variados e aci
       const pData = await patternRes.json();
       const pTC = pData.choices?.[0]?.message?.tool_calls?.[0];
       if (pTC?.function?.arguments) {
-        const parsed = JSON.parse(pTC.function.arguments);
+        const parsed = safeParseJson(pTC.function.arguments);
         const patterns = (parsed.patterns || []).map((p: any) => ({
           pattern_type: p.pattern_type,
           description: p.description,
