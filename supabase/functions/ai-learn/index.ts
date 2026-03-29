@@ -1028,8 +1028,18 @@ Responda APENAS via tool call store_learnings. Seja preciso, específico e acion
       const row = {
         knowledge: l.knowledge,
         data_points: l.data_points || numbers.length,
-        accuracy: Math.min(100, Math.max(0, l.accuracy || 50)),
-        metadata: { key_numbers: l.key_numbers || [], last_analysis: new Date().toISOString(), total: numbers.length },
+        // Fix: DeepSeek returns accuracy 0-1, normalize to 0-100
+        accuracy: Math.min(100, Math.max(10,
+          (l.accuracy || 0.5) <= 1.0
+            ? Math.round((l.accuracy || 0.5) * 100)
+            : Math.round(l.accuracy || 50)
+        )),
+        metadata: {
+          key_numbers: l.key_numbers || [],
+          hotNumbers: (l.key_numbers || []).slice(0, 8),
+          last_analysis: new Date().toISOString(),
+          total: numbers.length,
+        },
         updated_at: new Date().toISOString(),
       };
 
@@ -1464,7 +1474,7 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
         }
       }
     }
-    await supabase.from('ai_learned_patterns').delete().lt('accuracy', 15);
+    await supabase.from('ai_learned_patterns').delete().lt('accuracy', 10);
 
     return new Response(JSON.stringify({
       status: "success",

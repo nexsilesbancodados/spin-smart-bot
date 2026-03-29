@@ -905,12 +905,18 @@ serve(async (req) => {
 
     for (const insight of patternInsights) {
       const conf = (insight.confidence || 0) / 100;
-      if (conf < 0.5) continue;
+      if (conf < 0.3) continue; // threshold lowered from 0.5 to 0.3
       const nums = insight.numbers_involved || [];
+      // Boost extra for multi-window confirmed patterns
+      const src = (insight.source_data as any) || {};
+      const windowsConfirmed = src.windows_confirmed?.length || 1;
+      const windowMultiplier = 1 + (windowsConfirmed - 1) * 0.2;
+      const btRate = src.backtest_rate || 0;
+      const btMultiplier = 1 + btRate;
       for (const n of nums) {
         if (n >= 0 && n <= 36) {
-          insightNumbers[n] += conf * 1.2;
-          insightReasons[n].push(`📊 ${insight.pattern_type}`);
+          insightNumbers[n] += conf * 1.5 * windowMultiplier * btMultiplier;
+          insightReasons[n].push(`📊 ${insight.pattern_type}(${windowsConfirmed}W)`);
         }
       }
     }
@@ -1315,8 +1321,13 @@ serve(async (req) => {
       'duplo_terminal': 8,
       'matriz_numerica': 8,
       'cluster_regional': -15,
-      'cor_reversa': -20,
-      'paridade_reversa': -20,
+      'cor_reversa': -25,
+      'paridade_reversa': -25,
+      'alto_baixo_reversa': -25,
+      'cor_alternancia': -10,
+      'alto_baixo': -10,
+      'paridade': -10,
+      'cor': -5,
     };
     for (const [stType, adj] of Object.entries(MESA_CALIBRATION)) {
       strategyWeightAdjust[stType] = (strategyWeightAdjust[stType] || 0) + adj;
@@ -5767,6 +5778,18 @@ serve(async (req) => {
       }
     }
 
+    // Cap: external strategies (coverage > 40%) cannot outscore internal ones
+    const maxInternalScore = strategies
+      .filter((s: any) => s.coverage < 35)
+      .reduce((max: number, s: any) => Math.max(max, s.score), 0);
+    if (maxInternalScore > 0 && numScores.length >= 5 && numScores[0].score > 15) {
+      for (const st of strategies) {
+        if ((st as any).coverage > 40) {
+          (st as any).score = Math.min((st as any).score, Math.round(maxInternalScore * 0.85));
+        }
+      }
+    }
+
     strategies.sort((a, b) => b.score - a.score || b.payout - a.payout);
 
     const winner = strategies[0];
@@ -5857,18 +5880,23 @@ serve(async (req) => {
     const winnerPerfCal = strategyPerformance[winner.type];
     if (winnerPerfCal && winnerPerfCal.total >= 3) {
       const dataWeight = Math.min(0.65, winnerPerfCal.total / 30);
-      // Média ponderada: modelo × (1-w) + histórico × w
       const modelProb = finalProbability;
       const historicalProb = winnerPerfCal.winRate * 100;
       finalProbability = modelProb * (1 - dataWeight) + historicalProb * dataWeight;
 
-      // Se estratégia está em sequência de acertos, boost extra
-      if (winnerPerfCal.recentTrend > 0.5 && winnerPerfCal.winRate > 0.4) {
+      // Penalização agressiva por WR recente baixo
+      if (winnerPerfCal.recentTrend < 0.20 && winnerPerfCal.total >= 5) {
+        finalProbability -= 25;
+        aiLearnings.push(`🚫 ${winner.label} em COLAPSO: ${(winnerPerfCal.recentTrend*100).toFixed(0)}% recente → penalidade -25%`);
+        strategyWeightAdjust[winner.type] = (strategyWeightAdjust[winner.type] || 0) - 30;
+      } else if (winnerPerfCal.recentTrend < 0.30 && winnerPerfCal.total >= 5) {
+        finalProbability -= 12;
+        strategyWeightAdjust[winner.type] = (strategyWeightAdjust[winner.type] || 0) - 15;
+      } else if (winnerPerfCal.recentTrend > 0.50) {
         finalProbability += 8;
-        aiLearnings.push(`🔥 ${winner.label} em SEQUÊNCIA: trend ${(winnerPerfCal.recentTrend*100).toFixed(0)}%, WR ${(winnerPerfCal.winRate*100).toFixed(0)}%`);
+        aiLearnings.push(`🔥 ${winner.label} em SÉRIE: ${(winnerPerfCal.recentTrend*100).toFixed(0)}% recente → boost +8%`);
       }
 
-      // Se estratégia erra muito mas continua sendo escolhida, penalizar mais
       if (winnerPerfCal.winRate < 0.20 && winnerPerfCal.total >= 8) {
         finalProbability -= 20;
         aiLearnings.push(`⚠️ Calibração: ${winner.label} WR ${(winnerPerfCal.winRate*100).toFixed(0)}% — confiança reduzida`);
