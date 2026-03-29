@@ -39,6 +39,20 @@ const COL3 = [3,6,9,12,15,18,21,24,27,30,33,36];
 // Six Lines
 const SIX_LINES = [[1,2,3,4,5,6],[7,8,9,10,11,12],[13,14,15,16,17,18],[19,20,21,22,23,24],[25,26,27,28,29,30],[31,32,33,34,35,36]];
 
+// Oitavos do Cilindro (8 setores profissionais)
+const OCTAVES: Record<string, number[]> = {
+  O1: [0,32,15,19,4], O2: [21,2,25,17], O3: [34,6,27,13], O4: [36,11,30,8],
+  O5: [23,10,5,24], O6: [16,33,1,20], O7: [14,31,9,22], O8: [18,29,7,28,12,35,3,26],
+};
+
+// Diamantes (Zonas de Choque)
+const DIAMONDS = {
+  topo: [0,32,15,26,3,35], baixo: [5,24,10,23,16], esquerda: [1,20,33,14], direita: [10,23,8,5,24],
+};
+
+// Complementares (Soma 37)
+const getComplementar = (n: number) => n > 0 && n <= 36 ? 37 - n : null;
+
 const KNOWLEDGE_PROMPT = `
 ## CONHECIMENTO COMPLETO DE ROLETA EUROPEIA (MEMORIZADO)
 
@@ -91,7 +105,31 @@ const KNOWLEDGE_PROMPT = `
 
 ### Espelhos Visuais (mesma posição em dúzias)
 - Ex: 1,13,25 | 2,14,26 | ... | 12,24,36
-- REGRA: quando 2+ espelhos saem próximos, indica tendência posicional na mesa
+
+### Diamantes (Zonas de Choque - Defletores Físicos)
+- Diamante Topo: setor 0,32,15,26,3,35
+- Diamante Baixo: setor 5,24,10,23,16
+- Diamante Esquerda: setor 1,20,33,14
+- Diamante Direita: setor 10,23,8,5,24
+- REGRA: identifique concentrações em diamantes para detectar viés físico
+
+### Oitavos do Cilindro (Divisão Profissional em 8)
+- O1: 0,32,15,19,4 | O2: 21,2,25,17 | O3: 34,6,27,13 | O4: 36,11,30,8
+- O5: 23,10,5,24 | O6: 16,33,1,20 | O7: 14,31,9,22 | O8: 18,29,7,28,12,35,3,26
+- REGRA: precisão cirúrgica, identifique qual oitavo está quente/frio
+
+### Lei do Terço
+Em 37 rodadas: ~12 números não saem (ausentes), ~12 saem 1x, ~12 se repetem (2x+).
+- REGRA: rastreie zona de repetição para identificar números com maior probabilidade
+
+### Padrões de Salto (Skips)
+- Salto Curto: <5 posições no cilindro entre rodadas consecutivas
+- Salto Longo: >18 posições (~180° do cilindro)
+- REGRA: calcule distância no cilindro entre cada resultado consecutivo
+
+### Complementares (Soma 37)
+- Pares: (1,36)(2,35)(3,34)...(18,19)
+- REGRA: quando um número sai, seu complementar tende a aparecer em breve
 
 ### Vizinhos no Cilindro
 Cada número tem vizinhos à esquerda e direita no cilindro físico.
