@@ -6288,8 +6288,8 @@ serve(async (req) => {
         }
       }
 
-      // ALWAYS add protection numbers (0, 26, 32) to every play
-      bets.push({ type: 'protecao', label: 'Proteção 0-26-32', detail: 'Sempre marque: 0, 26 e 32 como proteção fixa em toda jogada (3 fichas extras)', emoji: '🛡️' });
+      // ALWAYS add protection numbers to every play
+      bets.push({ type: 'protecao', label: 'Proteção 24-29-35-11', detail: 'Sempre marque: 24, 29, 35 e 11 como proteção fixa em toda jogada (4 fichas extras)', emoji: '🛡️' });
 
       const summary = bets.map(b => `${b.emoji} ${b.label}`).join(' • ');
       return { bets, summary };
