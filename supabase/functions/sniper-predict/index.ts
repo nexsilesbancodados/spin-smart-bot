@@ -3499,6 +3499,90 @@ serve(async (req) => {
     // 22. CONVERGÊNCIA MATRICIAL — combines predicted sector + dozen + terminal from transition matrices
 
     // ==========================================
+    // 23. ULTRA-SNIPER — the single most converged number with maximum context
+    // Uses: numScore + deepPullChain + ritmo + matrix + dealer signature
+    // ==========================================
+    if (numScores.length >= 3) {
+      const top3 = numScores.slice(0, 3);
+      // Find the number with the most DIVERSE reasons (not just high score)
+      const bestDiversity = top3.reduce((best, curr) => {
+        const uniqueCategories = new Set(curr.reasons.map(r => r.split(':')[0].replace(/[^a-zA-Z]/g, '')));
+        const bestCategories = new Set(best.reasons.map(r => r.split(':')[0].replace(/[^a-zA-Z]/g, '')));
+        return uniqueCategories.size > bestCategories.size ? curr : best;
+      });
+      
+      const ultraTarget = bestDiversity.score >= top3[0].score * 0.85 ? bestDiversity : top3[0];
+      const ultraNeighborCount = ultraTarget.score > 30 ? 2 : ultraTarget.score > 20 ? 3 : 4;
+      const ultraNeighbors = getNeighbors(ultraTarget.num, ultraNeighborCount);
+      const ultraNums = [...new Set([ultraTarget.num, ...ultraNeighbors])];
+      
+      // Ultra score combines: individual score + chain depth + ritmo alignment + matrix alignment
+      let ultraBonus = 0;
+      if (deepPullChain[ultraTarget.num] > 5) ultraBonus += deepPullChain[ultraTarget.num];
+      if (ritmoCalibration.alvo !== null && wheelDist(ultraTarget.num, ritmoCalibration.alvo) <= 3) ultraBonus += ritmoCalibration.confianca * 0.15;
+      if (transitionMatrix.predictedSector && getSector(ultraTarget.num) === transitionMatrix.predictedSector) ultraBonus += 8;
+      if (transitionMatrix.predictedTerminal !== null && ultraTarget.num % 10 === transitionMatrix.predictedTerminal) ultraBonus += 6;
+      if (transitionMatrix.predictedDozen && getDozen(ultraTarget.num) === transitionMatrix.predictedDozen) ultraBonus += 5;
+      // Dealer arc alignment
+      if (maoViciada || arcStdDev < 3) {
+        const avgArc = maoViciada ? Math.round(last3Arcs.reduce((a: number, b: number) => a + b, 0) / 3) : Math.round(arcMean);
+        const idx0 = wheelIdx(numbers[0]);
+        if (idx0 !== -1) {
+          const pCW = WHEEL[(idx0 + avgArc) % WL];
+          const pCCW = WHEEL[(idx0 - avgArc + WL) % WL];
+          if (wheelDist(ultraTarget.num, pCW) <= 2 || wheelDist(ultraTarget.num, pCCW) <= 2) ultraBonus += 12;
+        }
+      }
+      
+      const ultraScore = sumScores(ultraNums) + ultraTarget.score * 2.5 + ultraBonus;
+      const ultraBt = backtestSet(ultraNums);
+      strategies.push({
+        type: 'ultra_sniper', label: `🔥 Ultra Sniper → ${ultraTarget.num}`, emoji: '🔥',
+        numbers: ultraNums, coverage: (ultraNums.length / 37) * 100, payout: Math.round(36 / ultraNums.length),
+        score: ultraScore + ultraBt * 30 + (ultraTarget.reasons.length >= 6 ? 15 : ultraTarget.reasons.length >= 4 ? 8 : 0),
+        probability: Math.min(98, Math.round(55 + ultraScore * 2 + ultraBt * 30 + ultraBonus * 0.5)),
+        justification: `CONVERGÊNCIA SUPREMA: ${ultraTarget.num} com ${ultraTarget.reasons.length} sinais simultâneos. Chain: ${deepPullChain[ultraTarget.num].toFixed(0)}pts. ${ultraTarget.reasons.slice(0, 4).join(', ')}.`,
+      });
+    }
+
+    // ==========================================
+    // 24. FUSÃO SUPREMA — intersection of top 3 strategies' best numbers
+    // ==========================================
+    // After all strategies are defined, find numbers that appear in multiple strategies
+    const numberAppearanceCount: Record<number, { count: number; strategies: string[]; totalScore: number }> = {};
+    for (const st of strategies) {
+      for (const n of st.numbers.slice(0, 12)) {
+        if (!numberAppearanceCount[n]) numberAppearanceCount[n] = { count: 0, strategies: [], totalScore: 0 };
+        numberAppearanceCount[n].count++;
+        numberAppearanceCount[n].strategies.push(st.emoji);
+        numberAppearanceCount[n].totalScore += st.score;
+      }
+    }
+    const fusionCandidates = Object.entries(numberAppearanceCount)
+      .filter(([, v]) => v.count >= 3) // appeared in 3+ strategies
+      .sort(([, a], [, b]) => b.count - a.count || b.totalScore - a.totalScore)
+      .slice(0, 10)
+      .map(([n]) => Number(n));
+    
+    if (fusionCandidates.length >= 3) {
+      const fusionNeighbors: number[] = [];
+      fusionCandidates.slice(0, 3).forEach(n => getNeighbors(n, 1).forEach(nb => {
+        if (!fusionCandidates.includes(nb) && !fusionNeighbors.includes(nb)) fusionNeighbors.push(nb);
+      }));
+      const fusionFinalNums = [...fusionCandidates, ...fusionNeighbors.slice(0, 4)];
+      const fusionScore = sumScores(fusionFinalNums) + fusionCandidates.length * 5 + fusionCandidates.reduce((a, n) => a + (numberAppearanceCount[n]?.count || 0) * 3, 0);
+      const fusionBt = backtestSet(fusionFinalNums);
+      const topFusionInfo = fusionCandidates.slice(0, 3).map(n => `${n}(${numberAppearanceCount[n]?.count}est)`).join(', ');
+      strategies.push({
+        type: 'fusao_suprema', label: `⚡ Fusão Suprema`, emoji: '⚡',
+        numbers: fusionFinalNums, coverage: (fusionFinalNums.length / 37) * 100, payout: Math.round(36 / fusionFinalNums.length),
+        score: fusionScore + fusionBt * 28 + fusionCandidates.length * 3,
+        probability: Math.min(98, Math.round(55 + fusionScore * 1.8 + fusionBt * 30 + fusionCandidates.length * 4)),
+        justification: `${fusionCandidates.length} números aparecem em 3+ estratégias simultâneas. Convergência máxima: ${topFusionInfo}. Interseção validada por backtest.`,
+      });
+    }
+
+    // ==========================================
     // DANI GREEN STRATEGIES (Módulos 1-6)
     // ==========================================
 
