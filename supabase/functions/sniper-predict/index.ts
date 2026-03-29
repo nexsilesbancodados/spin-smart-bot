@@ -2178,6 +2178,7 @@ serve(async (req) => {
         cylinderInertia,
         geneticPatterns: geneticPatterns.slice(0, 3),
         backpropWeights,
+        flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression },
       },
       ...baseResponse, recoveryMode,
       topCandidates: numScores.slice(0, 8).map(s => ({ num: s.num, score: +s.score.toFixed(1), reasons: s.reasons })),
