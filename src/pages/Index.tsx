@@ -810,11 +810,14 @@ const Index = () => {
           {/* ─── SEÇÃO 6: HISTÓRICO + TERMINAIS ─── */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* Histórico */}
-            <div className="lg:col-span-3 bg-card rounded-xl border border-border p-4">
+            <div className="lg:col-span-3 bg-gradient-card rounded-xl border border-border/60 p-4 relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-primary" />
-                  <span className="font-display text-sm text-primary tracking-widest font-bold">HISTÓRICO</span>
+                  <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
+                    <Activity className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <span className="font-display text-[10px] text-primary tracking-[0.2em] font-bold text-glow-cyan">HISTÓRICO</span>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {[50, 100, 250, 500].map(lim => (
@@ -989,10 +992,13 @@ const Index = () => {
             </div>
 
             {/* Terminais */}
-            <div className="lg:col-span-1 bg-card rounded-xl border border-border p-4">
+            <div className="lg:col-span-1 bg-gradient-card rounded-xl border border-border/60 p-4 relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
               <div className="flex items-center gap-2 mb-3">
-                <Hash className="w-4 h-4 text-primary" />
-                <span className="font-display text-xs text-primary tracking-widest font-bold">TERMINAIS</span>
+                <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
+                  <Hash className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <span className="font-display text-[10px] text-primary tracking-[0.2em] font-bold text-glow-cyan">TERMINAIS</span>
               </div>
               <div className="grid grid-cols-5 gap-2">
                 {Array.from({ length: 10 }, (_, t) => {
@@ -1062,12 +1068,15 @@ const Index = () => {
           </div>
 
           {/* ─── SEÇÃO 7: CASSINO AO VIVO ─── */}
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden relative">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
             <button onClick={() => setShowCasino(!showCasino)}
-              className="w-full flex items-center gap-2 px-4 py-3 border-b border-border hover:bg-secondary/50 transition-colors">
-              <MonitorPlay className="w-4 h-4 text-primary" />
-              <span className="font-display text-sm text-primary tracking-widest font-bold">CASSINO AO VIVO</span>
-              <span className="text-[9px] text-muted-foreground ml-1">— {selectedTable.name}</span>
+              className="w-full flex items-center gap-2.5 px-4 py-3.5 border-b border-border/40 hover:bg-primary/5 transition-colors">
+              <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
+                <MonitorPlay className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <span className="font-display text-[10px] text-primary tracking-[0.2em] font-bold text-glow-cyan">CASSINO AO VIVO</span>
+              <span className="text-[9px] text-muted-foreground font-mono ml-1">— {selectedTable.name}</span>
               <ChevronDown className={`w-4 h-4 text-muted-foreground ml-auto transition-transform ${showCasino ? 'rotate-180' : ''}`} />
             </button>
             {showCasino && (
