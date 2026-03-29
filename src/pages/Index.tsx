@@ -7,7 +7,7 @@ import PasteHistory from '@/components/PasteHistory';
 import LiveStats from '@/components/LiveStats';
 import PremiumTable from '@/components/PremiumTable';
 import QuickNumberPad from '@/components/QuickNumberPad';
-import { CircleDot, ChevronDown, MonitorPlay, BarChart3, Flame, Snowflake } from 'lucide-react';
+import { CircleDot, ChevronDown, MonitorPlay, BarChart3, Flame, Snowflake, Play, Square, Zap, Timer } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const PROVIDERS: Record<string, { label: string; tables: { name: string; iframeUrl?: string }[] }> = {
@@ -39,7 +39,7 @@ const PROVIDERS: Record<string, { label: string; tables: { name: string; iframeU
 };
 
 const Index = () => {
-  const { history, provider, table, setProvider, setTable, addNumber } = useRoulette();
+  const { history, provider, table, setProvider, setTable, addNumber, autoMode, autoSpeed, toggleAutoMode, setAutoSpeed } = useRoulette();
   const [showIframe, setShowIframe] = useState(false);
   const [iframeUrl, setIframeUrl] = useState('');
   const [activeTab, setActiveTab] = useState<'roleta' | 'aulas' | 'bacbo'>('roleta');
@@ -137,6 +137,56 @@ const Index = () => {
 
             {/* Alerts */}
             <AlertBanner />
+
+            {/* Auto Mode Controls */}
+            <div className="bg-card rounded-lg border border-border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap className={`w-4 h-4 ${autoMode ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
+                  <span className="font-display text-xs tracking-widest text-foreground uppercase">Modo Automático</span>
+                </div>
+                <button
+                  onClick={toggleAutoMode}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                    autoMode
+                      ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                      : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon-green'
+                  }`}
+                >
+                  {autoMode ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                  {autoMode ? 'PARAR' : 'INICIAR'}
+                </button>
+              </div>
+              {autoMode && (
+                <div className="flex items-center gap-2">
+                  <Timer className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-[10px] text-muted-foreground">Intervalo:</span>
+                  <div className="flex gap-1">
+                    {[3, 5, 8, 12, 20].map(s => (
+                      <button
+                        key={s}
+                        onClick={() => setAutoSpeed(s)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-all ${
+                          autoSpeed === s
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-muted-foreground hover:bg-muted'
+                        }`}
+                      >
+                        {s}s
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {autoMode && (
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                  <span className="text-[10px] text-primary font-mono">
+                    Gerando números a cada {autoSpeed}s • {history.length} resultados
+                  </span>
+                </div>
+              )}
+            </div>
 
             {/* Paste / Number Pad */}
             <PasteHistory />
