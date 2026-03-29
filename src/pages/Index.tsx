@@ -449,13 +449,25 @@ const Index = () => {
               </div>
 
               {/* Sniper Signal */}
-              <SniperSignal
-                sniperData={sniperData}
-                sniperCountdown={sniperCountdown}
-                sniperStale={sniperStale}
-                lastPredResult={lastPredResult}
-                confidenceFilter={confidenceFilter}
-              />
+              {aiEnabled ? (
+                <SniperSignal
+                  sniperData={sniperData}
+                  sniperCountdown={sniperCountdown}
+                  sniperStale={sniperStale}
+                  lastPredResult={lastPredResult}
+                  confidenceFilter={confidenceFilter}
+                />
+              ) : (
+                <div className="bg-card rounded-2xl border border-destructive/30 p-8 h-full flex items-center justify-center">
+                  <div className="text-center space-y-3">
+                    <div className="w-14 h-14 rounded-full bg-destructive/10 border-2 border-destructive/30 flex items-center justify-center mx-auto">
+                      <Power className="w-7 h-7 text-destructive" />
+                    </div>
+                    <p className="text-sm font-bold text-destructive">IA DESLIGADA</p>
+                    <p className="text-xs text-muted-foreground">Clique em "IA ON" na barra superior para reativar as previsões</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Coluna Lateral — Mapa + Bet */}
