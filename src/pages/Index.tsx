@@ -89,6 +89,7 @@ const Index = () => {
   const [autoLearnStatus, setAutoLearnStatus] = useState<'idle' | 'learning' | 'analyzing' | 'backtesting'>('idle');
   const [lastAutoLearnTime, setLastAutoLearnTime] = useState<Date | null>(null);
   const [showCasino, setShowCasino] = useState(false);
+  const [predStats, setPredStats] = useState<{ hits: number; misses: number; exact: number; total: number }>({ hits: 0, misses: 0, exact: 0, total: 0 });
 
   // Fetch from API
   const fetchNumbers = useCallback(async () => {
@@ -162,7 +163,16 @@ const Index = () => {
     if (data) setLearned(data as LearnedPattern[]);
   }, []);
 
-  useEffect(() => { loadInsights(); loadLearned(); }, [loadInsights, loadLearned]);
+  const loadPredStats = useCallback(async () => {
+    const { data } = await supabase.from('prediction_history').select('hit, hit_type').not('hit', 'is', null).limit(500);
+    if (data) {
+      const hits = data.filter((r: any) => r.hit === true).length;
+      const exact = data.filter((r: any) => r.hit_type === 'exact').length;
+      setPredStats({ hits, misses: data.length - hits, exact, total: data.length });
+    }
+  }, []);
+
+  useEffect(() => { loadInsights(); loadLearned(); loadPredStats(); }, [loadInsights, loadLearned, loadPredStats]);
 
   // CONTINUOUS AUTO-LEARNING ENGINE (disabled when credits exhausted)
   const autoLearnRef = useRef<NodeJS.Timeout | null>(null);
@@ -237,10 +247,11 @@ const Index = () => {
             { duration: 6000, style: { background: '#2e0a0a', border: '1px solid #ef4444', color: '#f87171' } }
           );
         }
+        loadPredStats();
       }
     }).subscribe();
     return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); supabase.removeChannel(ch3); };
-  }, [loadInsights, loadLearned]);
+  }, [loadInsights, loadLearned, loadPredStats]);
 
   const triggerLearn = async () => {
     setIsAnalyzing(true);
@@ -357,6 +368,42 @@ const Index = () => {
           </div>
         </div>
       </nav>
+
+      {/* CONTADOR DE ACERTOS/ERROS */}
+      {predStats.total > 0 && (
+        <div className="bg-card/80 border-b border-border px-4 py-1.5 shrink-0">
+          <div className="max-w-[1400px] mx-auto flex items-center justify-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[8px] text-muted-foreground font-bold">PREVISÕES:</span>
+              <span className="text-[10px] font-mono font-bold text-foreground">{predStats.total}</span>
+            </div>
+            <div className="w-px h-3 bg-border" />
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-green-500" />
+              <span className="text-[10px] font-mono font-bold text-green-400">{predStats.hits}</span>
+              <span className="text-[7px] text-muted-foreground">ACERTOS</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-destructive" />
+              <span className="text-[10px] font-mono font-bold text-destructive">{predStats.misses}</span>
+              <span className="text-[7px] text-muted-foreground">ERROS</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-[10px] font-mono font-bold text-primary">{predStats.exact}</span>
+              <span className="text-[7px] text-muted-foreground">EXATOS</span>
+            </div>
+            <div className="w-px h-3 bg-border" />
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+              predStats.total > 0 && (predStats.hits / predStats.total) >= 0.5
+                ? 'bg-green-500/10 text-green-400 border-green-500/30'
+                : 'bg-destructive/10 text-destructive border-destructive/30'
+            }`}>
+              {predStats.total > 0 ? ((predStats.hits / predStats.total) * 100).toFixed(1) : '0.0'}% WIN
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto p-3 space-y-3">
