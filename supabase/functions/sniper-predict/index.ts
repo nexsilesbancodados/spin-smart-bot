@@ -4446,6 +4446,7 @@ serve(async (req) => {
       },
       betInstructions,
       topAlternatives,
+      combinedBet,
       allStrategies,
       mesaMode,
       mode, message,
