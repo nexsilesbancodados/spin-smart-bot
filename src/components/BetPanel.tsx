@@ -22,6 +22,15 @@ interface AutoBetState {
   minProbability: number;
 }
 
+interface BetResult {
+  won: boolean;
+  numbers: number[];
+  actual: number;
+  amount: number;
+  profit: number;
+  timestamp: number;
+}
+
 interface BetStats {
   totalBets: number;
   wins: number;
@@ -34,6 +43,7 @@ interface BetStats {
   waitingResult: boolean;
   stopped: boolean;
   stopReason: string;
+  history: BetResult[];
 }
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
