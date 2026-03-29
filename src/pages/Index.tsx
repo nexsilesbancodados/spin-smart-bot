@@ -297,7 +297,7 @@ const Index = () => {
         const msg = err?.message || String(err);
         if (/402|429|[Cc]redit|[Rr]ate|exhausted|payment/i.test(msg)) {
           autoLearnDisabled.current = true;
-          toast.error('Créditos de IA esgotados.');
+          console.warn('Créditos de IA esgotados.');
         }
       } finally {
         setAutoLearnStatus('idle');
