@@ -6,6 +6,86 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// =====================================================
+// COMPLETE EUROPEAN ROULETTE KNOWLEDGE BASE
+// =====================================================
+const RED = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+const BLACK = [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35];
+
+// Cylinder Sectors
+const VOISINS = [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25];
+const TIERS = [27,13,36,11,30,8,23,10,5,24,16,33];
+const ORPHELINS = [1,20,14,31,9,17,34,6];
+const JEU_ZERO = [12,35,3,26,0,32,15];
+const WHEEL_ORDER = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+
+// Cavalos
+const CAVALOS_258 = [2,5,8,12,15,18,22,25,28,32,35];
+const CAVALOS_147 = [1,4,7,11,14,17,21,24,27,31,34];
+const CAVALOS_03 = [0,3,10,13,20,23,30,33];
+const CAVALOS_69 = [6,9,16,19,26,29,36];
+
+// Cross mapping
+const RED_EVEN = [12,14,16,18,30,32,34,36];
+const RED_ODD = [1,3,5,7,9,19,21,23,25,27];
+const BLACK_EVEN = [2,4,6,8,10,20,22,24,26,28];
+const BLACK_ODD = [11,13,15,17,29,31,33,35];
+
+// Columns
+const COL1 = [1,4,7,10,13,16,19,22,25,28,31,34];
+const COL2 = [2,5,8,11,14,17,20,23,26,29,32,35];
+const COL3 = [3,6,9,12,15,18,21,24,27,30,33,36];
+
+// Six Lines
+const SIX_LINES = [[1,2,3,4,5,6],[7,8,9,10,11,12],[13,14,15,16,17,18],[19,20,21,22,23,24],[25,26,27,28,29,30],[31,32,33,34,35,36]];
+
+const KNOWLEDGE_PROMPT = `
+## CONHECIMENTO COMPLETO DE ROLETA EUROPEIA (MEMORIZADO)
+
+### Classificação por Unidade
+- Vermelhos (18): ${RED.join(', ')}
+- Pretos (18): ${BLACK.join(', ')}
+- Zero: 0 (Verde)
+
+### Setores do Cilindro (Física do Disco)
+- Vizinhos do Zero (17): ${VOISINS.join(', ')}
+- Terço do Cilindro (12): ${TIERS.join(', ')}
+- Órfãos (8): ${ORPHELINS.join(', ')}
+- Jogo do Zero (7): ${JEU_ZERO.join(', ')}
+- Ordem física do cilindro: ${WHEEL_ORDER.join(', ')}
+
+### Terminais (Finais)
+- T0: 0,10,20,30 | T1: 1,11,21,31 | T2: 2,12,22,32 | T3: 3,13,23,33
+- T4: 4,14,24,34 | T5: 5,15,25,35 | T6: 6,16,26,36
+- T7: 7,17,27 | T8: 8,18,28 | T9: 9,19,29
+
+### Cavalos (Splits por Terminal)
+- Cavalos 2/5/8: ${CAVALOS_258.join(', ')}
+- Cavalos 1/4/7: ${CAVALOS_147.join(', ')}
+- Cavalos 0/3: ${CAVALOS_03.join(', ')}
+- Cavalos 6/9: ${CAVALOS_69.join(', ')}
+
+### Mesa
+- 1ª Dúzia: 1-12 | 2ª Dúzia: 13-24 | 3ª Dúzia: 25-36
+- Coluna 1: ${COL1.join(', ')}
+- Coluna 2: ${COL2.join(', ')}
+- Coluna 3: ${COL3.join(', ')}
+- Seisenas: S1(1-6) S2(7-12) S3(13-18) S4(19-24) S5(25-30) S6(31-36)
+
+### Mapeamento Cruzado
+- Vermelhos Pares (8): ${RED_EVEN.join(', ')}
+- Vermelhos Ímpares (10): ${RED_ODD.join(', ')}
+- Pretos Pares (10): ${BLACK_EVEN.join(', ')}
+- Pretos Ímpares (8): ${BLACK_ODD.join(', ')}
+
+### Vizinhos no Cilindro
+Cada número tem vizinhos à esquerda e direita no cilindro físico. Use a ordem para calcular concentrações em setores.
+`;
+
+const getColor = (n: number) => n === 0 ? 'green' : RED.includes(n) ? 'red' : 'black';
+const getSector = (n: number) => VOISINS.includes(n) ? 'Vizinhos' : TIERS.includes(n) ? 'Terço' : ORPHELINS.includes(n) ? 'Órfãos' : 'Zero';
+const getCavalo = (n: number) => CAVALOS_258.includes(n) ? '2/5/8' : CAVALOS_147.includes(n) ? '1/4/7' : CAVALOS_03.includes(n) ? '0/3' : CAVALOS_69.includes(n) ? '6/9' : null;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -17,7 +97,7 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 1. Fetch last 24 hours of stored numbers
+    // 1. Fetch last 24 hours
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: recentData } = await supabase
       .from('roulette_numbers')
@@ -27,62 +107,82 @@ Deno.serve(async (req) => {
       .limit(1000);
 
     const numbers = (recentData || []).map((r: any) => r.number as number);
-    
     if (numbers.length < 50) {
       return new Response(JSON.stringify({ status: "not_enough_data", count: numbers.length }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 2. Load previous learned knowledge for context
+    // 2. Previous knowledge
     const { data: prevKnowledge } = await supabase
       .from('ai_learned_patterns')
       .select('learning_type, title, knowledge, accuracy')
       .order('updated_at', { ascending: false })
-      .limit(10);
+      .limit(15);
 
-    const prevKnowledgeStr = (prevKnowledge || [])
-      .map((k: any) => `[${k.learning_type}] ${k.title}: ${k.knowledge} (precisão: ${k.accuracy}%)`)
-      .join('\n');
+    const prevStr = (prevKnowledge || []).map((k: any) => `[${k.learning_type}] ${k.title}: ${k.knowledge} (${k.accuracy}%)`).join('\n');
 
-    // 3. Build comprehensive stats
-    const RED = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
-    const CAVALOS = [2,5,8,12,15,18,22,25,28,32,35];
-    
+    // 3. Comprehensive stats
     const freqMap: Record<number, number> = {};
     const termMap: Record<number, number> = {};
+    const sectorMap: Record<string, number> = { Vizinhos: 0, Terço: 0, Órfãos: 0 };
+    const cavalosMap: Record<string, number> = { '2/5/8': 0, '1/4/7': 0, '0/3': 0, '6/9': 0 };
     const colorMap = { red: 0, black: 0, green: 0 };
     const dozenMap = [0, 0, 0];
     const colMap = [0, 0, 0];
-    let parCount = 0, imparCount = 0;
-    const cavalosCount = numbers.filter(n => CAVALOS.includes(n)).length;
-    
+    const sixLineMap = [0, 0, 0, 0, 0, 0];
+    const crossMap = { redEven: 0, redOdd: 0, blackEven: 0, blackOdd: 0 };
+    let parCount = 0, imparCount = 0, lowCount = 0, highCount = 0;
+
     numbers.forEach(n => {
       freqMap[n] = (freqMap[n] || 0) + 1;
       termMap[n % 10] = (termMap[n % 10] || 0) + 1;
-      if (n === 0) colorMap.green++;
-      else if (RED.includes(n)) colorMap.red++;
-      else colorMap.black++;
+      const c = getColor(n);
+      colorMap[c as keyof typeof colorMap]++;
+      const s = getSector(n);
+      if (sectorMap[s] !== undefined) sectorMap[s]++;
+      const cav = getCavalo(n);
+      if (cav) cavalosMap[cav]++;
       if (n >= 1 && n <= 12) dozenMap[0]++;
       else if (n >= 13 && n <= 24) dozenMap[1]++;
       else if (n >= 25 && n <= 36) dozenMap[2]++;
-      if (n > 0) { if (n % 2 === 0) parCount++; else imparCount++; }
-      if (n > 0 && n <= 36) colMap[(n - 1) % 3]++;
+      if (n > 0) {
+        colMap[(n - 1) % 3]++;
+        sixLineMap[Math.ceil(n / 6) - 1]++;
+        if (n % 2 === 0) parCount++; else imparCount++;
+        if (n <= 18) lowCount++; else highCount++;
+      }
+      if (RED_EVEN.includes(n)) crossMap.redEven++;
+      else if (RED_ODD.includes(n)) crossMap.redOdd++;
+      else if (BLACK_EVEN.includes(n)) crossMap.blackEven++;
+      else if (BLACK_ODD.includes(n)) crossMap.blackOdd++;
     });
 
     const sortedFreq = Object.entries(freqMap).sort(([,a],[,b]) => b - a);
     const top10 = sortedFreq.slice(0, 10).map(([n, f]) => `${n}(${f}x)`).join(', ');
     const bottom10 = sortedFreq.slice(-10).map(([n, f]) => `${n}(${f}x)`).join(', ');
     const termStr = Object.entries(termMap).sort(([,a],[,b]) => b - a).map(([t,f]) => `T${t}:${f}x`).join(', ');
+    const sectorStr = Object.entries(sectorMap).map(([s,c]) => `${s}:${c}`).join(', ');
+    const cavalosStr = Object.entries(cavalosMap).map(([k,c]) => `C${k}:${c}`).join(', ');
+    const sixStr = sixLineMap.map((c,i) => `S${i+1}:${c}`).join(', ');
 
-    // Detect streaks
+    // Streaks
     let maxRedStreak = 0, maxBlackStreak = 0, curStreak = 0, curColor = '';
     numbers.forEach(n => {
-      const c = n === 0 ? 'green' : RED.includes(n) ? 'red' : 'black';
-      if (c === curColor) { curStreak++; }
-      else { curStreak = 1; curColor = c; }
+      const c = getColor(n);
+      if (c === curColor) curStreak++; else { curStreak = 1; curColor = c; }
       if (c === 'red' && curStreak > maxRedStreak) maxRedStreak = curStreak;
       if (c === 'black' && curStreak > maxBlackStreak) maxBlackStreak = curStreak;
+    });
+
+    // Wheel neighbor concentration (consecutive numbers on wheel)
+    const wheelConcentration: Record<string, number> = {};
+    numbers.slice(0, 50).forEach(n => {
+      const idx = WHEEL_ORDER.indexOf(n);
+      if (idx !== -1) {
+        const zone = Math.floor(idx / 9); // divide wheel into ~4 zones
+        wheelConcentration[`zone${zone}`] = (wheelConcentration[`zone${zone}`] || 0) + 1;
+      }
     });
 
     // Hourly distribution
@@ -92,55 +192,52 @@ Deno.serve(async (req) => {
       hourMap[h] = (hourMap[h] || 0) + 1;
     });
 
-    const prompt = `Você é um sistema de IA especialista em análise estatística de roleta. Sua missão é APRENDER continuamente analisando dados das últimas 24 horas.
+    const prompt = `${KNOWLEDGE_PROMPT}
 
-## DADOS ANALISADOS (${numbers.length} números das últimas 24h)
+## DADOS DAS ÚLTIMAS 24 HORAS (${numbers.length} números)
 
-Últimos 30 números: ${numbers.slice(0, 30).join(', ')}
+Últimos 50: ${numbers.slice(0, 50).join(', ')}
 
-### Estatísticas Completas:
-- Top 10 mais frequentes: ${top10}
-- Top 10 menos frequentes: ${bottom10}  
+### ESTATÍSTICAS COMPLETAS:
+- Top 10 quentes: ${top10}
+- Top 10 frios: ${bottom10}
 - Terminais: ${termStr}
-- Cores: Vermelho ${colorMap.red} (${((colorMap.red/numbers.length)*100).toFixed(1)}%), Preto ${colorMap.black} (${((colorMap.black/numbers.length)*100).toFixed(1)}%), Verde ${colorMap.green}
-- Dúzias: 1ª(1-12): ${dozenMap[0]}, 2ª(13-24): ${dozenMap[1]}, 3ª(25-36): ${dozenMap[2]}
-- Colunas: C1: ${colMap[0]}, C2: ${colMap[1]}, C3: ${colMap[2]}
-- Par: ${parCount} vs Ímpar: ${imparCount}
-- Cavalos 258 aparições: ${cavalosCount} de ${numbers.length} (${((cavalosCount/numbers.length)*100).toFixed(1)}%)
-- Maior sequência vermelha: ${maxRedStreak}, preta: ${maxBlackStreak}
-- Distribuição horária: ${Object.entries(hourMap).sort(([a],[b]) => Number(a)-Number(b)).map(([h,c]) => `${h}h:${c}`).join(', ')}
+- Cores: Verm ${colorMap.red} (${((colorMap.red/numbers.length)*100).toFixed(1)}%), Preto ${colorMap.black} (${((colorMap.black/numbers.length)*100).toFixed(1)}%), Verde ${colorMap.green}
+- Dúzias: 1ª:${dozenMap[0]}, 2ª:${dozenMap[1]}, 3ª:${dozenMap[2]}
+- Colunas: C1:${colMap[0]}, C2:${colMap[1]}, C3:${colMap[2]}
+- Seisenas: ${sixStr}
+- Par:${parCount} vs Ímpar:${imparCount} | Baixo:${lowCount} vs Alto:${highCount}
+- Setores cilindro: ${sectorStr}
+- Cavalos: ${cavalosStr}
+- Cruzado: VermPar:${crossMap.redEven}, VermÍmp:${crossMap.redOdd}, PretPar:${crossMap.blackEven}, PretÍmp:${crossMap.blackOdd}
+- Streaks máx: Verm ${maxRedStreak}, Preto ${maxBlackStreak}
+- Concentração cilindro: ${Object.entries(wheelConcentration).map(([z,c]) => `${z}:${c}`).join(', ')}
+- Horas: ${Object.entries(hourMap).sort(([a],[b]) => Number(a)-Number(b)).map(([h,c]) => `${h}h:${c}`).join(', ')}
 
-### CONHECIMENTO PRÉVIO APRENDIDO:
-${prevKnowledgeStr || 'Nenhum conhecimento anterior. Este é o primeiro aprendizado.'}
+### CONHECIMENTO PRÉVIO:
+${prevStr || 'Primeiro aprendizado.'}
 
-## TAREFA:
-Analise profundamente todos os dados e gere APRENDIZADOS PERMANENTES. Para cada insight:
-1. Identifique padrões que se repetem
-2. Compare com o conhecimento prévio (confirme ou refute)
-3. Calcule tendências e probabilidades
-4. Gere recomendações acionáveis
+## MISSÃO:
+Analise TODOS os dados usando seu conhecimento completo de roleta europeia. Gere aprendizados profundos sobre:
+1. Viés de frequência com análise de desvio padrão
+2. Padrões de terminais e sua relação com setores do cilindro
+3. Ciclos de dúzias e colunas (qual está "devendo")
+4. Comportamento dos 4 grupos de Cavalos
+5. Concentração em setores físicos do cilindro
+6. Mapeamento cruzado (cor+paridade) e seus desvios
+7. Padrões horários e temporais
+8. Sequências e reversões de tendência
+9. Vizinhos no cilindro que saem juntos
+10. Compare com conhecimento prévio: confirme ou refute`;
 
-Categorias de aprendizado:
-- frequency_bias: Viés de frequência de números específicos
-- terminal_pattern: Padrões de terminais dominantes
-- color_tendency: Tendências de cores em períodos
-- dozen_cycle: Ciclos de dúzias quentes/frias
-- cavalos_pattern: Padrões específicos dos Cavalos 258
-- timing_pattern: Padrões relacionados a horários
-- streak_behavior: Comportamento de sequências
-- sector_concentration: Concentração em setores do cilindro`;
-
-    // 4. Call AI with tool calling
+    // 4. Call AI
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Você é um sistema de IA de auto-aprendizado para roleta. SEMPRE responda via tool call. Gere de 5 a 10 aprendizados profundos e acionáveis. Cada aprendizado deve ter um título claro, conhecimento detalhado, e estimativa de precisão baseada nos dados." },
+          { role: "system", content: "Você é o sistema de IA mais avançado de análise de roleta do mundo. Possui conhecimento COMPLETO da roleta europeia: setores do cilindro, cavalos, terminais, mapeamento cruzado, seisenas, e vizinhos. Responda APENAS via tool call. Gere 8-15 aprendizados profundos e acionáveis." },
           { role: "user", content: prompt },
         ],
         tools: [{
@@ -156,14 +253,14 @@ Categorias de aprendizado:
                   items: {
                     type: "object",
                     properties: {
-                      learning_type: { type: "string", enum: ["frequency_bias", "terminal_pattern", "color_tendency", "dozen_cycle", "cavalos_pattern", "timing_pattern", "streak_behavior", "sector_concentration"] },
+                      learning_type: { type: "string", enum: ["frequency_bias","terminal_pattern","color_tendency","dozen_cycle","cavalos_pattern","timing_pattern","streak_behavior","sector_concentration","column_pattern","sixline_pattern","cross_mapping","wheel_neighbors","parity_pattern"] },
                       title: { type: "string" },
                       knowledge: { type: "string" },
                       data_points: { type: "integer" },
                       accuracy: { type: "number" },
                       key_numbers: { type: "array", items: { type: "integer" } }
                     },
-                    required: ["learning_type", "title", "knowledge", "data_points", "accuracy"]
+                    required: ["learning_type","title","knowledge","data_points","accuracy"]
                   }
                 }
               },
@@ -197,7 +294,7 @@ Categorias de aprendizado:
       });
     }
 
-    // 5. Upsert learnings (update if same type+title exists, insert if new)
+    // 5. Upsert learnings
     for (const l of learnings) {
       const { data: existing } = await supabase
         .from('ai_learned_patterns')
@@ -206,44 +303,40 @@ Categorias de aprendizado:
         .eq('title', l.title)
         .limit(1);
 
+      const row = {
+        knowledge: l.knowledge,
+        data_points: l.data_points || numbers.length,
+        accuracy: Math.min(100, Math.max(0, l.accuracy || 50)),
+        metadata: { key_numbers: l.key_numbers || [], last_analysis: new Date().toISOString(), total: numbers.length },
+        updated_at: new Date().toISOString(),
+      };
+
       if (existing && existing.length > 0) {
-        await supabase.from('ai_learned_patterns').update({
-          knowledge: l.knowledge,
-          data_points: l.data_points || numbers.length,
-          accuracy: Math.min(100, Math.max(0, l.accuracy || 50)),
-          metadata: { key_numbers: l.key_numbers || [], last_analysis: new Date().toISOString(), total_numbers_analyzed: numbers.length },
-          updated_at: new Date().toISOString(),
-        }).eq('id', existing[0].id);
+        await supabase.from('ai_learned_patterns').update(row).eq('id', existing[0].id);
       } else {
         await supabase.from('ai_learned_patterns').insert({
+          ...row,
           learning_type: l.learning_type,
           title: l.title,
-          knowledge: l.knowledge,
-          data_points: l.data_points || numbers.length,
-          accuracy: Math.min(100, Math.max(0, l.accuracy || 50)),
-          metadata: { key_numbers: l.key_numbers || [], last_analysis: new Date().toISOString(), total_numbers_analyzed: numbers.length },
         });
       }
     }
 
-    // 6. Also run quick pattern detection for pattern_insights
+    // 6. Quick pattern insights
     const patternRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-lite",
         messages: [
-          { role: "system", content: "Analise os números recentes e retorne padrões rápidos via tool call. Máximo 5 padrões." },
-          { role: "user", content: `Últimos 50 números: ${numbers.slice(0, 50).join(', ')}. Terminais: ${termStr}. Cores: V${colorMap.red} P${colorMap.black}. Cavalos258: ${cavalosCount}/${numbers.length}` },
+          { role: "system", content: "Analise e retorne padrões rápidos via tool call. Max 5. Use conhecimento de setores, cavalos, terminais." },
+          { role: "user", content: `Últimos 30: ${numbers.slice(0, 30).join(', ')}. Terminais: ${termStr}. Setores: ${sectorStr}. Cavalos: ${cavalosStr}` },
         ],
         tools: [{
           type: "function",
           function: {
             name: "store_patterns",
-            description: "Store quick patterns",
+            description: "Quick patterns",
             parameters: {
               type: "object",
               properties: {
@@ -252,13 +345,13 @@ Categorias de aprendizado:
                   items: {
                     type: "object",
                     properties: {
-                      pattern_type: { type: "string", enum: ["streak", "terminal", "dozen", "column", "hot", "cold", "parity", "sector"] },
+                      pattern_type: { type: "string", enum: ["streak","terminal","dozen","column","hot","cold","parity","sector","cavalos","sixline"] },
                       description: { type: "string" },
                       confidence: { type: "number" },
                       numbers_involved: { type: "array", items: { type: "integer" } },
                       recommendation: { type: "string" }
                     },
-                    required: ["pattern_type", "description", "confidence", "recommendation"]
+                    required: ["pattern_type","description","confidence","recommendation"]
                   }
                 }
               },
@@ -272,45 +365,35 @@ Categorias de aprendizado:
 
     if (patternRes.ok) {
       const pData = await patternRes.json();
-      const pToolCall = pData.choices?.[0]?.message?.tool_calls?.[0];
-      if (pToolCall?.function?.arguments) {
-        const parsed = JSON.parse(pToolCall.function.arguments);
+      const pTC = pData.choices?.[0]?.message?.tool_calls?.[0];
+      if (pTC?.function?.arguments) {
+        const parsed = JSON.parse(pTC.function.arguments);
         const patterns = (parsed.patterns || []).map((p: any) => ({
           pattern_type: p.pattern_type,
           description: p.description,
           confidence: Math.min(100, Math.max(0, p.confidence)),
           numbers_involved: p.numbers_involved || [],
           recommendation: p.recommendation || "",
-          source_data: { total_analyzed: numbers.length },
+          source_data: { total: numbers.length },
         }));
-        if (patterns.length > 0) {
-          await supabase.from('pattern_insights').insert(patterns);
-        }
+        if (patterns.length > 0) await supabase.from('pattern_insights').insert(patterns);
       }
     }
 
-    // 7. Cleanup old pattern_insights (keep last 500)
-    const { data: oldInsights } = await supabase
-      .from('pattern_insights')
-      .select('id')
-      .order('created_at', { ascending: false })
-      .range(500, 999);
-    if (oldInsights && oldInsights.length > 0) {
-      await supabase.from('pattern_insights').delete().in('id', oldInsights.map((r: any) => r.id));
-    }
+    // 7. Cleanup
+    const { data: old } = await supabase.from('pattern_insights').select('id').order('created_at', { ascending: false }).range(500, 999);
+    if (old && old.length > 0) await supabase.from('pattern_insights').delete().in('id', old.map((r: any) => r.id));
 
     return new Response(JSON.stringify({
       status: "success",
-      learnings_stored: learnings.length,
-      numbers_analyzed: numbers.length,
+      learnings: learnings.length,
+      numbers: numbers.length,
       timestamp: new Date().toISOString()
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (e) {
     console.error("ai-learn error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
