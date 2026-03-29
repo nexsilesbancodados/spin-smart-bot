@@ -3,94 +3,130 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Robust JSON extraction from LLM responses — multi-layer repair
 function safeParseJson(raw: string): any {
-  // Step 1: Strip markdown fences
-  let cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  const source = typeof raw === "string" ? raw : String(raw ?? "");
 
-  // Step 2: Find JSON boundaries
-  const jsonStart = cleaned.search(/[\{\[]/);
-  const isArray = jsonStart !== -1 && cleaned[jsonStart] === '[';
-  const closer = isArray ? ']' : '}';
-  const jsonEnd = cleaned.lastIndexOf(closer);
-  if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON found in response");
-  cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+  // remove markdown fences / wrappers
+  let cleaned = source
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
+    .trim();
 
-  // Step 3: Try direct parse
-  try { return JSON.parse(cleaned); } catch (_) { /* continue to repair */ }
+  // find first JSON token and keep the remainder even if truncated
+  const jsonStart = cleaned.search(/[\[{]/);
+  if (jsonStart === -1) {
+    console.error("JSON parse failed: no JSON start token found");
+    return {};
+  }
+  cleaned = cleaned.slice(jsonStart);
 
-  // Step 4: Basic repairs
-  cleaned = cleaned
-    .replace(/,\s*}/g, "}")
-    .replace(/,\s*]/g, "]")
-    .replace(/[\x00-\x1F\x7F]/g, " ")  // control chars → space
-    .replace(/\\\n/g, "\\n")            // literal newlines in strings
-    .replace(/\n/g, " ");               // remaining newlines
+  const firstToken = cleaned[0];
+  const isArray = firstToken === "[";
 
-  try { return JSON.parse(cleaned); } catch (_) { /* continue */ }
+  const normalize = (input: string) =>
+    input
+      .replace(/[\u0000-\u001F\u007F]/g, " ")
+      .replace(/,\s*([}\]])/g, "$1")
+      .replace(/([{,]\s*)([A-Za-z0-9_]+)\s*:/g, '$1"$2":')
+      .replace(/:\s*'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_, value) => `: ${JSON.stringify(value)}`)
+      .replace(/\r/g, " ")
+      .replace(/\n/g, " ")
+      .trim();
 
-  // Step 5: Fix unquoted keys and single-quoted values
-  cleaned = cleaned
-    .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":')
-    .replace(/:\s*'([^']*)'/g, ': "$1"');
+  const tryParse = (input: string) => {
+    try {
+      return JSON.parse(input);
+    } catch {
+      return undefined;
+    }
+  };
 
-  try { return JSON.parse(cleaned); } catch (_) { /* continue */ }
+  // direct parse / normalized parse first
+  const direct = tryParse(cleaned);
+  if (direct !== undefined) return direct;
 
-  // Step 6: Fix unescaped double quotes inside string values
-  // Strategy: walk char-by-char and escape quotes that aren't structural
-  try {
-    let result = '';
+  cleaned = normalize(cleaned);
+  const normalized = tryParse(cleaned);
+  if (normalized !== undefined) return normalized;
+
+  // escape likely unescaped quotes inside string values
+  const escapeInnerQuotes = (input: string) => {
+    let out = "";
     let inString = false;
-    let prevChar = '';
-    for (let i = 0; i < cleaned.length; i++) {
-      const ch = cleaned[i];
-      if (ch === '"' && prevChar !== '\\') {
+    let prev = "";
+
+    for (let i = 0; i < input.length; i++) {
+      const ch = input[i];
+      if (ch === '"' && prev !== '\\') {
         if (!inString) {
           inString = true;
-          result += ch;
+          out += ch;
         } else {
-          // Check if this quote ends the string (next non-space char is : , } ])
-          const rest = cleaned.substring(i + 1).trimStart();
-          if (rest.length === 0 || ':,}]'.includes(rest[0])) {
+          const next = input.slice(i + 1).trimStart()[0];
+          if (!next || [",", "}", "]", ":"].includes(next)) {
             inString = false;
-            result += ch;
+            out += ch;
           } else {
-            result += '\\"'; // escape it
+            out += '\\"';
           }
         }
       } else {
-        result += ch;
-      }
-      prevChar = ch;
-    }
-    return JSON.parse(result);
-  } catch (_) { /* continue */ }
-
-  // Step 7: Truncation repair — close open structures
-  try {
-    let repaired = cleaned;
-    // Remove trailing incomplete key-value pair
-    repaired = repaired.replace(/,\s*"[^"]*"\s*:\s*"?[^"}\]]*$/, '');
-    repaired = repaired.replace(/,\s*"[^"]*"\s*:?\s*$/, '');
-    // Count and close open braces/brackets
-    let openBraces = 0, openBrackets = 0;
-    let inStr = false, prev = '';
-    for (const ch of repaired) {
-      if (ch === '"' && prev !== '\\') inStr = !inStr;
-      if (!inStr) {
-        if (ch === '{') openBraces++;
-        else if (ch === '}') openBraces--;
-        else if (ch === '[') openBrackets++;
-        else if (ch === ']') openBrackets--;
+        out += ch;
       }
       prev = ch;
     }
-    for (let i = 0; i < openBrackets; i++) repaired += ']';
-    for (let i = 0; i < openBraces; i++) repaired += '}';
-    return JSON.parse(repaired);
-  } catch (e) {
-    // Final fallback: return a safe default instead of crashing
-    console.error("JSON repair completely failed, returning empty object. Raw length:", raw.length, "Error:", (e as Error).message);
-    return isArray ? [] : {};
+    return out;
+  };
+
+  const quoted = tryParse(escapeInnerQuotes(cleaned));
+  if (quoted !== undefined) return quoted;
+
+  // truncation recovery: trim tail progressively, rebalance, and retry
+  const balanceJson = (input: string) => {
+    let out = "";
+    const closers: string[] = [];
+    let inString = false;
+    let prev = "";
+
+    for (let i = 0; i < input.length; i++) {
+      const ch = input[i];
+      out += ch;
+
+      if (ch === '"' && prev !== '\\') {
+        inString = !inString;
+      } else if (!inString) {
+        if (ch === "{") closers.push("}");
+        else if (ch === "[") closers.push("]");
+        else if ((ch === "}" || ch === "]") && closers.length > 0) closers.pop();
+      }
+      prev = ch;
+    }
+
+    if (inString) out += '"';
+    while (closers.length) out += closers.pop();
+    return out.replace(/,\s*([}\]])/g, "$1");
+  };
+
+  for (let trim = 0; trim < Math.min(600, cleaned.length); trim++) {
+    const candidate = cleaned.slice(0, cleaned.length - trim).trimEnd();
+    if (!candidate) break;
+
+    const repaired = balanceJson(
+      candidate
+        .replace(/,\s*"[^"]*"\s*:\s*[^,}\]]*$/g, "")
+        .replace(/,\s*[^,\]}]*$/g, "")
+    );
+
+    const parsed = tryParse(repaired);
+    if (parsed !== undefined) return parsed;
   }
+
+  console.error("JSON repair completely failed, returning safe fallback", {
+    rawLength: source.length,
+    startsWith: source.slice(0, 120),
+    expected: isArray ? "array" : "object",
+  });
+
+  return isArray ? [] : {};
 }
 
 const corsHeaders = {
