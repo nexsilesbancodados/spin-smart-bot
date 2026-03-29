@@ -2185,6 +2185,7 @@ serve(async (req) => {
       predictedSector: string | null;
       predictedDozen: number | null;
       predictedTerminal: number | null;
+      detectedPatterns: { name: string; emoji: string; description: string; confidence: number; category: string; action: string }[];
     } = {
       sectorMatrix: { Voisins: { Voisins: 0, Tiers: 0, Orphelins: 0 }, Tiers: { Voisins: 0, Tiers: 0, Orphelins: 0 }, Orphelins: { Voisins: 0, Tiers: 0, Orphelins: 0 } },
       dozenMatrix: { 1: { 1: 0, 2: 0, 3: 0 }, 2: { 1: 0, 2: 0, 3: 0 }, 3: { 1: 0, 2: 0, 3: 0 } },
@@ -2196,6 +2197,7 @@ serve(async (req) => {
       predictedSector: null,
       predictedDozen: null,
       predictedTerminal: null,
+      detectedPatterns: [],
     };
 
     // Initialize terminal matrix
