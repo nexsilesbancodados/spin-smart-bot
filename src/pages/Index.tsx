@@ -60,11 +60,16 @@ const Index = () => {
   const [showAllHistory, setShowAllHistory] = useState(false);
   const prevNumbersRef = useRef<string>('');
   const [sniperData, setSniperData] = useState<any>(null);
-  const [sniperCountdown, setSniperCountdown] = useState(13);
+  const [sniperCountdown, setSniperCountdown] = useState(0);
   const [autoLearnCycle, setAutoLearnCycle] = useState(0);
   const [autoLearnStatus, setAutoLearnStatus] = useState<'idle' | 'learning' | 'analyzing' | 'backtesting'>('idle');
   const [lastAutoLearnTime, setLastAutoLearnTime] = useState<Date | null>(null);
   const [showCasino, setShowCasino] = useState(false);
+
+  // Roulette spin cycle sync
+  const lastNewNumberTime = useRef<number>(Date.now());
+  const spinCycleEstimate = useRef<number>(35); // estimated seconds per spin
+  const spinHistory = useRef<number[]>([]); // history of spin intervals for averaging
 
   // Fetch from API
   const fetchNumbers = useCallback(async () => {
