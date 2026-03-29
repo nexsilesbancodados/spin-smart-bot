@@ -448,13 +448,23 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // Parse sampleSize from request body (default 100, range 10-500)
+    let sampleSize = 100;
+    try {
+      const body = await req.json();
+      if (body?.sampleSize && typeof body.sampleSize === 'number') {
+        sampleSize = Math.max(10, Math.min(500, Math.round(body.sampleSize)));
+      }
+    } catch { /* no body or invalid JSON — use default */ }
+
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
+    const fetchLimit = Math.max(sampleSize, 200); // always fetch at least 200 for backtest depth
     // Fetch data from ALL tables + AI learned patterns + predictions in parallel
     const [numbersRes, historicoRes, resultadosRes, learnedRes, unresolvedRes, resolvedRes, insightsRes] = await Promise.all([
-      supabase.from('roulette_numbers').select('number, fetched_at').order('fetched_at', { ascending: false }).limit(1000),
-      supabase.from('historico_roleta').select('number, created_at').order('created_at', { ascending: false }).limit(500),
-      supabase.from('resultados_roleta').select('numero, created_at').order('created_at', { ascending: false }).limit(500),
+      supabase.from('roulette_numbers').select('number, fetched_at').order('fetched_at', { ascending: false }).limit(fetchLimit),
+      supabase.from('historico_roleta').select('number, created_at').order('created_at', { ascending: false }).limit(fetchLimit),
+      supabase.from('resultados_roleta').select('numero, created_at').order('created_at', { ascending: false }).limit(fetchLimit),
       supabase.from('ai_learned_patterns').select('learning_type, title, knowledge, accuracy, metadata').order('updated_at', { ascending: false }).limit(50),
       supabase.from('prediction_history').select('id, predicted_numbers, predicted_main, strategy_type').is('hit', null).order('created_at', { ascending: false }).limit(10),
       supabase.from('prediction_history').select('strategy_type, strategy_label, predicted_numbers, predicted_main, probability, convergence_score, actual_number, hit, hit_type, mesa_mode, justification').not('hit', 'is', null).order('created_at', { ascending: false }).limit(200),
