@@ -84,6 +84,7 @@ const Index = () => {
   const [dnaOpen, setDnaOpen] = useState(false);
   const [confidenceFilter, setConfidenceFilter] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showPredHistory, setShowPredHistory] = useState(false);
 
   // === Data Fetching ===
   const fetchNumbers = useCallback(async () => {
