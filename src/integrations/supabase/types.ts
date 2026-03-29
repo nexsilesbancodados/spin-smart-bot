@@ -14,7 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      historico_roleta: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          number: number
+          table_id: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          number: number
+          table_id?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          number?: number
+          table_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
