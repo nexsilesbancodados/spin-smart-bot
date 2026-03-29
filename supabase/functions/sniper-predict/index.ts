@@ -336,6 +336,8 @@ serve(async (req) => {
       return json({ signal: null, mode: 'waiting', message: 'Aguardando dados...', layerResults: null, memoryWindows: null, aiLearnings: [] });
     }
 
+    const aiLearnings: string[] = [];
+
     // ========================================================
     // MÓDULOS DANI GREEN — Detecção de Padrões
     // ========================================================
