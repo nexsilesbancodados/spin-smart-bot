@@ -451,6 +451,7 @@ serve(async (req) => {
     // Parse request body — accepts sampleSize and optional clientNumbers for instant reaction
     let sampleSize = 100;
     let clientNumbers: number[] | null = null;
+    let strategyFilterParam: string | null = null;
     try {
       const body = await req.json();
       if (body?.sampleSize && typeof body.sampleSize === 'number') {
@@ -459,6 +460,10 @@ serve(async (req) => {
       // Accept client-side numbers for faster response (before DB sync)
       if (body?.numbers && Array.isArray(body.numbers)) {
         clientNumbers = body.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 500);
+      }
+      // Strategy category filter from UI
+      if (body?.strategyFilter && typeof body.strategyFilter === 'string') {
+        strategyFilterParam = body.strategyFilter;
       }
     } catch { /* no body or invalid JSON — use default */ }
 
