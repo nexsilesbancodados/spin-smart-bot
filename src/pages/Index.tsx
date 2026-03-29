@@ -301,6 +301,13 @@ const Index = () => {
           handleNewSpin(`${row.number}-${row.fetched_at ?? ''}`, row.number);
           setLastUpdate(new Date());
           fetchSniper();
+          
+          // Micro-learn every 10 spins
+          spinCountSinceMicroLearnRef.current++;
+          if (spinCountSinceMicroLearnRef.current >= 10) {
+            spinCountSinceMicroLearnRef.current = 0;
+            triggerMicroLearn();
+          }
         }
       })
       .subscribe();
