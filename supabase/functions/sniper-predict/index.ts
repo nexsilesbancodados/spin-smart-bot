@@ -2102,7 +2102,7 @@ serve(async (req) => {
       entropy: entropy.toFixed(3), dealerMode, dealerSignature,
       hotTerminals: { cavalos: sortedCavalos, terminals: sortedTerminals.slice(0, 5) },
       sectorTrend, sectorFreq, convergenceScore: totalLayers, reasons, layerResults,
-      ritmoCalibration,
+      ritmoCalibration, transitionMatrix,
     };
 
     if (dealerChanged) {
@@ -2238,6 +2238,20 @@ serve(async (req) => {
         if (n === ritmoCalibration.alvo) { s += ritmoWeight; r.push(`⏱️ Alvo Ritmo (${ritmoCalibration.confianca}%)`); }
         else if (wheelDist(n, ritmoCalibration.alvo) <= 2) { s += ritmoWeight * 0.6; r.push(`⏱️ Ritmo ±2`); }
         else if (wheelDist(n, ritmoCalibration.alvo) <= 4) { s += ritmoWeight * 0.3; r.push(`⏱️ Ritmo ±4`); }
+      }
+      // TRANSITION MATRIX: boost numbers predicted by sector/dozen/terminal matrix
+      if (transitionMatrix.predictedSector && getSector(n) === transitionMatrix.predictedSector) {
+        s += 2.5; r.push(`📊 Matriz→${transitionMatrix.predictedSector.slice(0, 4)}`);
+      }
+      if (transitionMatrix.predictedDozen && getDozen(n) === transitionMatrix.predictedDozen) {
+        s += 2; r.push(`📊 Matriz→D${transitionMatrix.predictedDozen}`);
+      }
+      if (transitionMatrix.predictedTerminal !== null && n % 10 === transitionMatrix.predictedTerminal) {
+        s += 2; r.push(`📊 Matriz→T${transitionMatrix.predictedTerminal}`);
+      }
+      // DOZEN PRESSURE TRIGGER
+      if (transitionMatrix.dozenPressureTrigger?.active && getDozen(n) === transitionMatrix.dozenPressureTrigger.dozen) {
+        s += 3; r.push(`🔥 Pressão D${transitionMatrix.dozenPressureTrigger.dozen}`);
       }
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
