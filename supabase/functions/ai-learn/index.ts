@@ -1155,10 +1155,17 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
 
     for (const tp of topPulls) {
       const puxados = PULL_MAP_LEARN[tp.source] || [];
-      await supabase.from('ai_learned_patterns').upsert({
-        learning_type: 'pull_confirmed',
-        title: `Puxada ${tp.source}→[${puxados.slice(0,4).join(',')}] (${(tp.rate*100).toFixed(0)}%)`,
-        knowledge: `Número ${tp.source} puxou seus targets em ${tp.hits}/${tp.total} vezes (${(tp.rate*100).toFixed(0)}%). Apostar [${puxados.join(',')}] nas próximas 4 rodadas após o ${tp.source} sair.`,
+      const titulo = `Puxada ${tp.source}→[${puxados.slice(0,4).join(',')}]`;
+
+      const { data: existing } = await supabase
+        .from('ai_learned_patterns')
+        .select('id, data_points')
+        .eq('learning_type', 'pull_confirmed')
+        .eq('title', titulo)
+        .maybeSingle();
+
+      const rowData = {
+        knowledge: `Número ${tp.source} puxou targets em ${tp.hits}/${tp.total} (${(tp.rate*100).toFixed(0)}%). Apostar [${puxados.join(',')}] nas próximas 4 rodadas.`,
         data_points: tp.total,
         accuracy: Math.min(95, tp.rate * 100),
         metadata: {
@@ -1172,7 +1179,75 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
           lastSeen: new Date().toISOString(),
         },
         updated_at: new Date().toISOString(),
-      } as any, { onConflict: 'learning_type,title' } as any).catch(() => {})
+      };
+
+      if (existing?.id) {
+        await supabase.from('ai_learned_patterns').update(rowData).eq('id', existing.id).catch(() => {});
+      } else {
+        await supabase.from('ai_learned_patterns').insert({ learning_type: 'pull_confirmed', title: titulo, ...rowData }).catch(() => {});
+      }
+    }
+
+    // ── TERMINAL DOMINANTE: aprendizado por janela ──
+    const windows = [
+      { label: 'curta', slice: numbers.slice(0, 15) },
+      { label: 'media', slice: numbers.slice(0, 30) },
+      { label: 'longa', slice: numbers.slice(0, 50) },
+    ];
+
+    for (const w of windows) {
+      if (w.slice.length < 10) continue;
+      const tFreq: Record<number,number> = {};
+      w.slice.forEach((n: number) => { const t=n%10; tFreq[t]=(tFreq[t]||0)+1; });
+      const sorted = Object.entries(tFreq).sort(([,a],[,b])=>(b as number)-(a as number));
+      const [hotT, hotC] = [Number(sorted[0]?.[0]??-1), Number(sorted[0]?.[1]??0)];
+      const distintos = Object.keys(tFreq).length;
+
+      if (hotT < 0 || hotC < 3) continue;
+
+      const isConcentrado = distintos <= 5;
+      const T_TO_DG: Record<number,string> = {1:'DG1',6:'DG1',2:'DG2',7:'DG2',3:'DG3',8:'DG3',4:'DG4',9:'DG4',0:'DG5',5:'DG5'};
+      const DUPLAS_LEARN: Record<string,number[]> = {
+        'DG1':[1,11,21,31,6,16,26,36],'DG2':[2,12,22,32,7,17,27],
+        'DG3':[3,13,23,33,8,18,28],'DG4':[4,14,24,34,9,19,29],'DG5':[10,20,30,5,15,25,35]
+      };
+      const dgKey = T_TO_DG[hotT];
+      const dgNums = DUPLAS_LEARN[dgKey] || [];
+
+      const titulo2 = `Terminal T${hotT} dominante (janela ${w.label})`;
+      const { data: exT } = await supabase
+        .from('ai_learned_patterns')
+        .select('id')
+        .eq('learning_type', 'terminal_dominance')
+        .eq('title', titulo2)
+        .maybeSingle();
+
+      const rowT = {
+        knowledge: `T${hotT} aparece ${hotC}x em ${w.slice.length} rodadas. ${isConcentrado ? `Entropia baixa (${distintos} distintos) — padrão forte.` : ''} Dupla ${dgKey}: [${dgNums.join(',')}]`,
+        data_points: w.slice.length,
+        accuracy: Math.min(90, 40 + hotC * 6 + (isConcentrado ? 15 : 0)),
+        metadata: {
+          terminal: hotT,
+          count: hotC,
+          janela: w.label,
+          distintos,
+          isConcentrado,
+          dupla: dgKey,
+          bestTerminals: [hotT, Number(sorted[1]?.[0]??hotT)],
+          key_numbers: dgNums,
+          hotNumbers: dgNums.slice(0, 5),
+          lastSeen: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString(),
+      };
+
+      if (exT?.id) {
+        await supabase.from('ai_learned_patterns').update(rowT).eq('id', exT.id).catch(() => {});
+      } else {
+        await supabase.from('ai_learned_patterns').insert({
+          learning_type: 'terminal_dominance', title: titulo2, ...rowT
+        }).catch(() => {});
+      }
     }
 
     return new Response(JSON.stringify({

@@ -48,7 +48,7 @@ const STRATEGY_FRIENDLY: Record<string, string> = {
   cor: 'Cor', paridade: 'Par/Ímpar', alto_baixo: 'Alto/Baixo', coluna: 'Coluna', duzia_unica: 'Dúzia Única',
 };
 
-type TabType = 'resumo' | 'todos' | 'acertos' | 'erros';
+type TabType = 'resumo' | 'todos' | 'acertos' | 'erros' | 'estrategias';
 
 const PredictionHistory = () => {
   const [predictions, setPredictions] = useState<PredictionRecord[]>([]);
@@ -107,6 +107,7 @@ const PredictionHistory = () => {
   const filteredPredictions = activeTab === 'acertos' ? hits
     : activeTab === 'erros' ? misses
     : activeTab === 'todos' ? resolved
+    : activeTab === 'estrategias' ? [] as PredictionRecord[]
     : resolved.slice(0, 15);
 
   const tabs: { key: TabType; label: string; count?: number }[] = [
@@ -114,6 +115,7 @@ const PredictionHistory = () => {
     { key: 'todos', label: 'Todos', count: resolved.length },
     { key: 'acertos', label: 'Acertos', count: hits.length },
     { key: 'erros', label: 'Erros', count: misses.length },
+    { key: 'estrategias', label: 'Estratégias', count: Object.keys(strategyStats).length },
   ];
 
   const winRateNum = parseFloat(winRate);
@@ -282,8 +284,33 @@ const PredictionHistory = () => {
           </div>
         )}
 
+        {/* Estratégias Tab */}
+        {activeTab === 'estrategias' && (
+          <div className="space-y-1.5 mt-2">
+            {Object.entries(strategyStats)
+              .sort(([,a],[,b]) => (b.hits/b.total) - (a.hits/a.total))
+              .map(([type, s], i) => {
+                const wr = s.total > 0 ? (s.hits/s.total*100) : 0;
+                const isHot = wr >= 45;
+                const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
+                return (
+                  <div key={type} className={`flex items-center gap-2 p-2 rounded-lg border text-[8px] ${
+                    isHot ? 'bg-green-500/[0.08] border-green-500/20' : 'bg-secondary/40 border-border'
+                  }`}>
+                    <span>{medal}</span>
+                    <span className="flex-1 truncate font-medium">{STRATEGY_FRIENDLY[type] || type.replace(/_/g,' ')}</span>
+                    <span className={`font-mono font-bold ${isHot?'text-green-400':'text-muted-foreground'}`}>
+                      {wr.toFixed(0)}%
+                    </span>
+                    <span className="text-muted-foreground">{s.hits}/{s.total}</span>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+
         {/* Prediction List */}
-        {filteredPredictions.length === 0 ? (
+        {activeTab !== 'estrategias' && filteredPredictions.length === 0 ? (
           <div className="text-center py-8">
             <Target className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
             <p className="text-xs text-muted-foreground">Nenhuma previsão registrada.</p>

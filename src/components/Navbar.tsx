@@ -44,6 +44,7 @@ interface NavbarProps {
   activePatternCount?: number;
   soundEnabled?: boolean;
   setSoundEnabled?: (v: boolean) => void;
+  sessionMode?: { label: string; color: string } | null;
 }
 
 const Navbar = ({
@@ -51,7 +52,7 @@ const Navbar = ({
   confidenceFilter, setConfidenceFilter, lastUpdate,
   fetchNumbers, fetchStored, autoLearnStatus, onShowHistory,
   aiEnabled, setAiEnabled, strategyFilter, setStrategyFilter,
-  predStats, setPredStats, activePatternCount, soundEnabled, setSoundEnabled,
+  predStats, setPredStats, activePatternCount, soundEnabled, setSoundEnabled, sessionMode,
 }: NavbarProps) => {
   const winPct = predStats.total > 0 ? ((predStats.hits / predStats.total) * 100).toFixed(1) : '0.0';
   const isWinning = predStats.total > 0 && (predStats.hits / predStats.total) >= 0.5;
@@ -89,6 +90,12 @@ const Navbar = ({
             <div className="hidden md:flex items-center gap-1 text-[7px] px-1.5 py-0.5 rounded-md bg-secondary border border-border">
               <span className="text-green-400 font-bold">{activePatternCount}</span>
               <span className="text-muted-foreground">padrões</span>
+            </div>
+          )}
+
+          {sessionMode && (
+            <div className={`hidden md:flex items-center gap-1 text-[8px] font-bold ${sessionMode.color}`}>
+              {sessionMode.label}
             </div>
           )}
 

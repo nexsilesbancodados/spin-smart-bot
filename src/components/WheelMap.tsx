@@ -21,6 +21,13 @@ const WheelMap = ({ allNumbers, sniperData }: Props) => {
     return { n0: allNumbers[0], n1: allNumbers[1], n2: allNumbers[2] };
   }, [allNumbers[0], allNumbers[1], allNumbers[2]]);
 
+  const heatmap = useMemo(() => {
+    const freq: Record<number, number> = {};
+    allNumbers.slice(0, 50).forEach(n => { freq[n] = (freq[n] || 0) + 1; });
+    const max = Math.max(...Object.values(freq), 1);
+    return { freq, max };
+  }, [allNumbers.slice(0, 50).join(',')]);
+
   const size = 400;
   const cx = size / 2;
   const cy = size / 2;
@@ -127,10 +134,20 @@ const WheelMap = ({ allNumbers, sniperData }: Props) => {
           let stroke = 'none';
           let strokeWidth = 0;
 
+          // Heatmap ring
+          const heat = heatmap.freq[num] || 0;
+          const heatPct = heat / heatmap.max;
+          const heatRing = heatPct > 0.6
+            ? 'rgba(249,115,22,0.8)'
+            : heatPct < 0.1 && heat === 0
+            ? 'rgba(59,130,246,0.6)'
+            : null;
+
           if (isLast) { stroke = '#ffffff'; strokeWidth = 2.5; }
           else if (isSecond) { stroke = '#a1a1aa'; strokeWidth = 2; }
           else if (isThird) { stroke = '#52525b'; strokeWidth = 1.5; }
           else if (isRecommended) { stroke = '#eab308'; strokeWidth = 2; }
+          else if (heatRing) { stroke = heatRing; strokeWidth = 1.5; }
 
           return (
             <g key={num}>

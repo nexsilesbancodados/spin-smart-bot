@@ -18,6 +18,7 @@ import Navbar from '@/components/Navbar';
 import StatsBar from '@/components/StatsBar';
 import Last12Numbers from '@/components/Last12Numbers';
 import ZeroPressure from '@/components/ZeroPressure';
+import SessionSummary from '@/components/SessionSummary';
 import SniperSignal from '@/components/SniperSignal';
 import ManualInput from '@/components/ManualInput';
 import WheelMap from '@/components/WheelMap';
@@ -194,6 +195,17 @@ const Index = () => {
   const [strategyFilter, setStrategyFilter] = useState<string>('all');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [activePatternCount, setActivePatternCount] = useState(0);
+
+  const sessionMode = useMemo(() => {
+    if (!sniperData?.trendEngine) return null;
+    const te = sniperData.trendEngine;
+    if (Number(te.confidence) >= 70) return { label: '🎯 PADRÃO FORTE', color: 'text-green-400' };
+    if (Number(te.confidence) >= 50) return { label: '⚡ PADRÃO ATIVO', color: 'text-yellow-400' };
+    if (sniperData.mode === 'observing') return { label: '👁️ OBSERVANDO', color: 'text-muted-foreground' };
+    if (sniperData.mode === 'calibrating') return { label: '🔄 CALIBRANDO', color: 'text-blue-400' };
+    return null;
+  }, [sniperData?.trendEngine?.confidence, sniperData?.mode]);
+
   const handleManualNumbers = (nums: number[]) => {
     setApiNumbers(prev => [...nums, ...prev].slice(0, 1000));
   };
@@ -568,6 +580,7 @@ const Index = () => {
         predStats={predStats} setPredStats={setPredStats}
         activePatternCount={activePatternCount}
         soundEnabled={soundEnabled} setSoundEnabled={setSoundEnabled}
+        sessionMode={sessionMode}
       />
 
       {/* ═══════ PREDICTION HISTORY (COLLAPSIBLE) ═══════ */}
@@ -635,6 +648,9 @@ const Index = () => {
 
               {/* Pressão do Zero */}
               <ZeroPressure allNumbers={allNumbers} />
+
+              {/* Resumo da Sessão */}
+              <SessionSummary allNumbers={allNumbers} />
 
               {/* Mapa + Bet */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
