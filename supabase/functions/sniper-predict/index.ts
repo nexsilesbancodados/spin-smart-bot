@@ -704,7 +704,41 @@ serve(async (req) => {
       aiLearnings.push(`🧲 MÓD5 Puxada: ${daniGreen.mod5LastNum} puxa ${daniGreen.mod5Pull.slice(0,5).join(',')}`);
     }
     if (daniGreen.mod6.active) {
-      aiLearnings.push(`📈 MÓD6 Crescente: T${daniGreen.mod6.sequence.join('→T')}${daniGreen.mod6.nextTerminal !== null ? ` → próximo T${daniGreen.mod6.nextTerminal}` : ' → D1 retorno'}`);
+      aiLearnings.push(`📈 MÓD6 ${daniGreen.mod6.direction === 'asc' ? 'Crescente' : daniGreen.mod6.direction === 'desc' ? 'Decrescente' : 'Dúzia'}: T${daniGreen.mod6.sequence.join('→T')}${daniGreen.mod6.nextTerminal !== null ? ` → próximo T${daniGreen.mod6.nextTerminal}` : ' → D1 retorno'}`);
+    }
+    // 100 Strategies extended learnings
+    if (ext.terminalRepetido.active) {
+      aiLearnings.push(`🔁 #15 Terminal Repetido: T${ext.terminalRepetido.terminal} saiu 2x seguidas — chance de 3ª`);
+    }
+    if (ext.terminalAlternado) {
+      aiLearnings.push(`🔄 #17 Terminal Alternado: ${ext.terminalAlternado === 'odd' ? 'Ímpares dominam → entrar pares (T2,T4,T6)' : 'Pares dominam → entrar ímpares (T1,T3,T5)'}`);
+    }
+    if (ext.centralProg.active) {
+      aiLearnings.push(`📐 #74/75 Central ${ext.centralProg.direction === 'asc' ? 'Crescente' : 'Decrescente'}: próximo alvo ${ext.centralProg.next}`);
+    }
+    if (ext.colorStreak.active) {
+      aiLearnings.push(`🎨 #82 Padrão Cores: ${ext.colorStreak.count}x ${ext.colorStreak.color} consecutivos`);
+    }
+    if (ext.parImpar) {
+      aiLearnings.push(`⚖️ #83 Par-Ímpar: mesa ${ext.parImpar === 'par' ? 'PARES dominam → T pares' : 'ÍMPARES dominam → T ímpares'}`);
+    }
+    if (ext.altoLowAlt.active) {
+      aiLearnings.push(`↕️ #84 Alternância: próximo → ${ext.altoLowAlt.next === 'high' ? 'ALTO (19-36)' : 'BAIXO (1-18)'}`);
+    }
+    if (ext.mirrorDue.length > 0) {
+      aiLearnings.push(`🪞 #65 Espelho: ${numbers[0]}→${ext.mirrorDue[0]} está devendo`);
+    }
+    if (ext.zeroAfterNeighbors) {
+      aiLearnings.push(`🎯 #70 Zero Após Vizinhos: 32,15,26,3 saíram → ZERO iminente`);
+    }
+    if (ext.gatilhoPerfeito.active) {
+      aiLearnings.push(`⚡ #81 GATILHO PERFEITO: 3 confirmações ativas → ${ext.gatilhoPerfeito.numbers.slice(0,5).join(',')}`);
+    }
+    if (ext.isPostZero) {
+      aiLearnings.push(`🟢 #60 Pós-Zero: entrar T0+T2+T5 (${POST_ZERO_NUMS.slice(0,6).join(',')}...)`);
+    }
+    if (daniGreen.mod1Cold.delay >= 10) {
+      aiLearnings.push(`❄️ #9 Terminal Frio: T${daniGreen.mod1Cold.terminal} ausente (${daniGreen.mod1Cold.delay} atraso) — combo quente+frio`);
     }
     // Time awareness
     aiLearnings.push(`🕐 Turno ${timeAwareness.shift}: ${isNightShift ? 'Dealers mecânicos — prioridade física' : isDayShift ? 'Volume alto — prioridade matemática' : 'Turno misto'}`);
