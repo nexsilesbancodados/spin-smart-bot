@@ -2752,8 +2752,71 @@ serve(async (req) => {
       });
     }
 
-    
-    // DIVERSITY: check last 15 predictions (not just 5) for stronger anti-repetition
+
+    // 20. RITMO CALIBRADO — strategy based on directional arc prediction (blocoP)
+    if (ritmoCalibration.alvo !== null && ritmoCalibration.confianca >= 70) {
+      const alvoNeighbors = getNeighbors(ritmoCalibration.alvo, 4);
+      const ritmoNums = [...new Set([ritmoCalibration.alvo, ...alvoNeighbors])];
+      const ritmoScore = sumScores(ritmoNums) + ritmoCalibration.confianca * 0.3 + (100 - ritmoCalibration.estabilidade) * 0.5;
+      const ritmoBt = backtestSet(ritmoNums);
+      strategies.push({
+        type: 'ritmo_calibrado', label: `🎯 Ritmo → ${ritmoCalibration.alvo}`, emoji: '🎯',
+        numbers: ritmoNums, coverage: (ritmoNums.length / 37) * 100, payout: Math.round(36 / ritmoNums.length),
+        score: ritmoScore + ritmoBt * 25 + (ritmoCalibration.confianca >= 90 ? 15 : ritmoCalibration.confianca >= 80 ? 8 : 0),
+        probability: Math.min(98, Math.round(ritmoCalibration.confianca * 0.8 + ritmoBt * 25)),
+        justification: `Arco direcional calibrado: alvo ${ritmoCalibration.alvo} (σ=${ritmoCalibration.estabilidade}, confiança ${ritmoCalibration.confianca}%). ${ritmoCalibration.mensagem}`,
+      });
+    }
+
+    // 21. ARCHETYPE FUSION — combines numbers from all active archetypes
+    if (activeArchetypes.length >= 2) {
+      const archNums: Record<number, number> = {};
+      activeArchetypes.forEach(a => {
+        a.predictedNums.forEach((n: number) => { archNums[n] = (archNums[n] || 0) + (a.strength / 100); });
+      });
+      const fusionNums = Object.entries(archNums)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 12)
+        .map(([n]) => Number(n));
+      if (fusionNums.length >= 5) {
+        const fusionScore = sumScores(fusionNums) + activeArchetypes.length * 5 + activeArchetypes.reduce((a, ar) => a + ar.strength, 0) * 0.05;
+        const fusionBt = backtestSet(fusionNums);
+        strategies.push({
+          type: 'archetype_fusion', label: `🏛️ Fusão de ${activeArchetypes.length} Arquétipos`, emoji: '🏛️',
+          numbers: fusionNums, coverage: (fusionNums.length / 37) * 100, payout: Math.round(36 / fusionNums.length),
+          score: fusionScore + fusionBt * 22 + activeArchetypes.length * 3,
+          probability: Math.min(98, Math.round(50 + fusionScore * 1.5 + fusionBt * 30 + activeArchetypes.length * 3)),
+          justification: `${activeArchetypes.length} arquétipos convergem: ${activeArchetypes.map(a => a.emoji + a.name.split(' ')[0]).join(', ')}. Top: ${fusionNums.slice(0, 5).join(',')}.`,
+        });
+      }
+    }
+
+    // 22. CONVERGÊNCIA MATRICIAL — combines predicted sector + dozen + terminal from transition matrices
+    if (transitionMatrix.predictedSector && transitionMatrix.predictedDozen && transitionMatrix.predictedTerminal !== null) {
+      const sectorPool = transitionMatrix.predictedSector === 'Voisins' ? VOISINS : transitionMatrix.predictedSector === 'Tiers' ? TIERS : ORPHELINS;
+      const dozenPool = Array.from({ length: 12 }, (_, i) => (transitionMatrix.predictedDozen! - 1) * 12 + i + 1);
+      const tripleNums = sectorPool.filter(n =>
+        dozenPool.includes(n) && n % 10 === transitionMatrix.predictedTerminal
+      );
+      const doubleNums = sectorPool.filter(n =>
+        (dozenPool.includes(n) || n % 10 === transitionMatrix.predictedTerminal!) &&
+        !tripleNums.includes(n)
+      ).slice(0, 8);
+      const matrixNums = [...tripleNums, ...doubleNums].slice(0, 12);
+      if (matrixNums.length >= 3) {
+        const mfScore = sumScores(matrixNums) + tripleNums.length * 8 + transitionMatrix.mesaModeStrength * 0.1;
+        const mfBt = backtestSet(matrixNums);
+        strategies.push({
+          type: 'matrix_fusion', label: `🔮 Convergência Matricial`, emoji: '🔮',
+          numbers: matrixNums, coverage: (matrixNums.length / 37) * 100, payout: Math.round(36 / matrixNums.length),
+          score: mfScore + mfBt * 25 + tripleNums.length * 10,
+          probability: Math.min(98, Math.round(55 + mfScore * 2 + mfBt * 30 + tripleNums.length * 8)),
+          justification: `Convergência tripla: Setor ${transitionMatrix.predictedSector} + Dúzia ${transitionMatrix.predictedDozen} + Terminal ${transitionMatrix.predictedTerminal}. ${tripleNums.length} na interseção total.`,
+        });
+      }
+    }
+
+    // DIVERSITY:
     const recentPreds = resolvedHistory.slice(0, 15);
     const recentStratTypes = recentPreds.map(p => p.strategy_type);
     const recentNumbers = recentPreds.flatMap(p => p.predicted_numbers?.slice(0, 3) || []);
