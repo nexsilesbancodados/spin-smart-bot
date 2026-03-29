@@ -3881,8 +3881,24 @@ serve(async (req) => {
       score: +s.score.toFixed(1), probability: s.probability,
     }));
 
-    // Final probability = winner's probability boosted by layer convergence
-    const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 1200)));
+    // Final probability = calibrated from multiple factors
+    // Uses: winner prob + layer convergence + historical win rate + dealer consistency + entropy
+    let finalProbability = winner.probability * (totalLayers / 1200);
+    // Calibrate with historical performance
+    const winnerPerfCal = strategyPerformance[winner.type];
+    if (winnerPerfCal && winnerPerfCal.total >= 5) {
+      finalProbability = finalProbability * 0.7 + (winnerPerfCal.winRate * 100) * 0.3;
+    }
+    // Dealer consistency boost
+    if (arcStdDev < 2) finalProbability += 5;
+    else if (arcStdDev < 3) finalProbability += 3;
+    // Entropy calibration
+    if (sessionEntropy < 0.4) finalProbability += 5; // very concentrated = boost
+    else if (sessionEntropy > 0.8) finalProbability -= 8; // very dispersed = reduce
+    // Kelly alignment
+    if (kellyBetting.unitMultiplier >= 3) finalProbability += 3;
+    // Cap
+    finalProbability = Math.min(98, Math.max(30, Math.round(finalProbability)));
     
     // Add strategy performance learnings
     const winnerPerf = strategyPerformance[winner.type];
