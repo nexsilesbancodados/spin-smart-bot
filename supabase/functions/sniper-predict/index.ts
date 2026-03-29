@@ -2446,6 +2446,19 @@ serve(async (req) => {
       // Mathematical mode bonus for terminal-based strategies
       if (mesaMode === 'matematico' && ['cavalos', 'duzias', 'terminal_alternation'].includes(st.type)) st.score += 5;
 
+      // TIME-OF-DAY BIAS: night favors physical, day favors math
+      if (['sniper', 'voisins', 'setor_oposto', 'cylinder_bias'].includes(st.type)) st.score += (timeAwareness.physicalBias - 1) * 15;
+      if (['cavalos', 'duzias', 'terminal_alternation', 'dozen_phase'].includes(st.type)) st.score += (timeAwareness.mathBias - 1) * 15;
+
+      // CONSECUTIVE HIT PRIORITY BOOST
+      const chBoost = consecutiveHitBoost[st.type] || 0;
+      if (chBoost > 0) st.score += chBoost;
+
+      // ERROR-BASED ADAPTATION: if errors are mostly from wrong sector, penalize sector strategies
+      if (errorCategories.wrong_sector >= 2 && ['sniper', 'voisins', 'setor_oposto'].includes(st.type)) st.score -= 10;
+      if (errorCategories.wrong_terminal >= 2 && ['cavalos', 'terminal_alternation'].includes(st.type)) st.score -= 10;
+      if (errorCategories.deflector_bounce >= 2) st.score -= 5; // general penalty when deflectors are active
+
       // LEARNED KNOWLEDGE BOOST: apply AI-learned weights
       const learnedBoost = learnedStrategyBoosts[st.type] || 0;
       st.score += learnedBoost * 3;
