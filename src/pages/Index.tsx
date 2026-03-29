@@ -247,7 +247,8 @@ const Index = () => {
     sniperSameCount.current = 0;
     setSniperStale(false);
     setSniperCountdown(13);
-  }, []);
+    playSound('signal', soundEnabled);
+  }, [soundEnabled]);
 
   // Track spins for micro-learning trigger
   const spinCountSinceMicroLearnRef = useRef(0);
