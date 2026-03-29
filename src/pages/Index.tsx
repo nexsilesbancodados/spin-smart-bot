@@ -6,6 +6,7 @@ import {
   Hash, Flame, Snowflake, Target, BarChart3, ChevronDown,
   BookOpen, Zap, Clock, GraduationCap, Crosshair, Eye, AlertTriangle, Download
 } from 'lucide-react';
+import Scanner500 from '@/components/Scanner500';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
