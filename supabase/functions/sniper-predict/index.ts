@@ -185,7 +185,136 @@ serve(async (req) => {
     }
 
     if (numbers.length < 15) {
-      return json({ signal: null, mode: 'waiting', message: 'Aguardando dados...', layerResults: null });
+      return json({ signal: null, mode: 'waiting', message: 'Aguardando dados...', layerResults: null, memoryWindows: null, aiLearnings: [] });
+    }
+
+    // ========================================================
+    // NOISE FILTER — Remove outlier spins (ball bouncing off diamonds)
+    // ========================================================
+    const rawArcs: number[] = [];
+    for (let i = 0; i < Math.min(100, numbers.length - 1); i++) rawArcs.push(wheelDist(numbers[i], numbers[i + 1]));
+    const rawArcMean = rawArcs.length > 0 ? rawArcs.reduce((a, b) => a + b, 0) / rawArcs.length : 10;
+    const rawArcStd = Math.sqrt(rawArcs.length > 0 ? rawArcs.reduce((a, b) => a + Math.pow(b - rawArcMean, 2), 0) / rawArcs.length : 25);
+    const noiseThreshold = rawArcMean + rawArcStd * 2.5; // Outlier = 2.5 std devs above mean
+    const noiseIndices = new Set<number>();
+    for (let i = 0; i < rawArcs.length; i++) {
+      if (rawArcs[i] > noiseThreshold && rawArcs[i] > 16) noiseIndices.add(i); // mark as noise if arc > threshold AND > 16 positions
+    }
+    const noiseCount = noiseIndices.size;
+
+    // ========================================================
+    // SELF-CORRECTION — Strategy weight adjustment (last 5 rounds)
+    // ========================================================
+    const recentResolved = resolvedHistory.slice(0, 5);
+    const strategyWeightAdjust: Record<string, number> = {};
+    for (const pred of recentResolved) {
+      const st = pred.strategy_type || '';
+      if (!strategyWeightAdjust[st]) strategyWeightAdjust[st] = 0;
+      if (pred.hit) {
+        strategyWeightAdjust[st] += 8; // reward recent hits heavily
+      } else {
+        strategyWeightAdjust[st] -= 5; // penalize recent misses
+        // Check what actually hit — boost that strategy type
+        if (pred.actual_number !== null) {
+          const actualSector = getSector(pred.actual_number);
+          const actualCavalo = getCavalo(pred.actual_number);
+          const actualTerm = pred.actual_number % 10;
+          // If predicted sector strategy but terminal hit, boost terminals
+          if (pred.strategy_type?.includes('sniper') || pred.strategy_type?.includes('voisins')) {
+            strategyWeightAdjust['cavalos'] = (strategyWeightAdjust['cavalos'] || 0) + 3;
+            strategyWeightAdjust['terminal_alternation'] = (strategyWeightAdjust['terminal_alternation'] || 0) + 3;
+          }
+          // If predicted terminal but sector hit, boost sectors
+          if (pred.strategy_type?.includes('cavalos') || pred.strategy_type?.includes('terminal')) {
+            strategyWeightAdjust['sniper'] = (strategyWeightAdjust['sniper'] || 0) + 3;
+            strategyWeightAdjust['voisins'] = (strategyWeightAdjust['voisins'] || 0) + 3;
+          }
+        }
+      }
+    }
+
+    // ========================================================
+    // DEALER CHAOS DETECTION — Auto-calibrate Regular vs Chaotic
+    // ========================================================
+    const last20Arcs = rawArcs.slice(0, 20);
+    const arcVariance20 = last20Arcs.length > 0 ? last20Arcs.reduce((a, b) => a + Math.pow(b - rawArcMean, 2), 0) / last20Arcs.length : 99;
+    const chaoticDealer = arcVariance20 > 40; // Very high variance = chaotic
+    const uniqueSectors10 = new Set(numbers.slice(0, 10).map(n => getSector(n))).size;
+    const uniqueOctaves10 = new Set(numbers.slice(0, 10).map(n => getOctave(n))).size;
+    const isDispersingWildly = uniqueSectors10 >= 3 && uniqueOctaves10 >= 6; // hitting all sectors = no pattern
+
+    // ========================================================
+    // 3-LAYER MEMORY WINDOWS — Micro/Mesa/Macro
+    // ========================================================
+    const microWindow = numbers.slice(0, 10); // last 10
+    const mesaWindow = numbers.slice(0, 100); // last 100
+    const macroWindow = numbers.slice(0, 500); // last 500
+
+    // Micro analysis
+    const microArcs = rawArcs.slice(0, 9);
+    const microArcMean = microArcs.length > 0 ? microArcs.reduce((a, b) => a + b, 0) / microArcs.length : 0;
+    const microArcStd = Math.sqrt(microArcs.length > 0 ? microArcs.reduce((a, b) => a + Math.pow(b - microArcMean, 2), 0) / microArcs.length : 99);
+    const microColors = microWindow.map(n => getColor(n));
+    const microRedCount = microColors.filter(c => c === 'red').length;
+    const microSectorDom = (() => { const s: Record<string, number> = {}; microWindow.forEach(n => { const sec = getSector(n); s[sec] = (s[sec]||0)+1; }); return Object.entries(s).sort(([,a],[,b]) => b-a)[0]; })();
+
+    // Mesa analysis — best strategies in last 100
+    const mesaStratPerf: Record<string, { hits: number; total: number }> = {};
+    const mesaRelevant = resolvedHistory.slice(0, 50);
+    for (const p of mesaRelevant) {
+      const st = p.strategy_type || '';
+      if (!mesaStratPerf[st]) mesaStratPerf[st] = { hits: 0, total: 0 };
+      mesaStratPerf[st].total++;
+      if (p.hit) mesaStratPerf[st].hits++;
+    }
+    const bestMesaStrat = Object.entries(mesaStratPerf).sort(([,a],[,b]) => (b.hits/Math.max(b.total,1)) - (a.hits/Math.max(a.total,1)))[0];
+
+    // Macro analysis — statistical debt (numbers that should have appeared more)
+    const macroFreq: Record<number, number> = {};
+    for (let n = 0; n <= 36; n++) macroFreq[n] = 0;
+    macroWindow.forEach(n => macroFreq[n]++);
+    const expectedFreq = macroWindow.length / 37;
+    const statisticalDebt = Object.entries(macroFreq)
+      .map(([n, f]) => ({ num: Number(n), debt: expectedFreq - f, freq: f }))
+      .filter(x => x.debt > expectedFreq * 0.4)
+      .sort((a, b) => b.debt - a.debt)
+      .slice(0, 10);
+
+    const memoryWindows = {
+      micro: {
+        label: 'MICRO (Últimas 10)',
+        arcMean: +microArcMean.toFixed(1),
+        arcStd: +microArcStd.toFixed(1),
+        dealerRhythm: microArcStd < 2 ? 'VICIADO' : microArcStd < 4 ? 'Regular' : 'Caótico',
+        sectorDominant: microSectorDom ? `${microSectorDom[0]} (${microSectorDom[1]}/10)` : '-',
+        colorBias: microRedCount > 6 ? 'Vermelho forte' : microRedCount < 4 ? 'Preto forte' : 'Equilibrado',
+      },
+      mesa: {
+        label: 'MESA (Últimas 100)',
+        bestStrategy: bestMesaStrat ? `${bestMesaStrat[0]} (${bestMesaStrat[1].hits}/${bestMesaStrat[1].total})` : '-',
+        totalPredictions: mesaRelevant.length,
+        winRate: mesaRelevant.length > 0 ? +((mesaRelevant.filter(p => p.hit).length / mesaRelevant.length) * 100).toFixed(1) : 0,
+      },
+      macro: {
+        label: 'MACRO (Últimas 500)',
+        totalNumbers: macroWindow.length,
+        topDebt: statisticalDebt.slice(0, 5).map(d => `${d.num}(${d.debt.toFixed(1)})`),
+        uniqueNumbers: new Set(macroWindow).size,
+      },
+    };
+
+    // ========================================================
+    // AI LEARNINGS — Dynamic real-time phrases
+    // ========================================================
+    const aiLearnings: string[] = [];
+    if (microArcStd < 2) aiLearnings.push(`🎯 Dealer com mão viciada: arco ±${microArcStd.toFixed(1)} casas`);
+    if (chaoticDealer) aiLearnings.push('⚠️ Dealer caótico detectado: reduzindo sinais automáticos');
+    if (microSectorDom && Number(microSectorDom[1]) >= 5) aiLearnings.push(`🔥 Concentração no setor ${microSectorDom[0]}: ${microSectorDom[1]}/10 rodadas`);
+    if (statisticalDebt.length > 3) aiLearnings.push(`📊 ${statisticalDebt.length} números em dívida estatística: ${statisticalDebt.slice(0,3).map(d=>d.num).join(',')}`);
+    if (noiseCount > 3) aiLearnings.push(`🔇 ${noiseCount} saltos anômalos filtrados (bola desviou nos pinos)`);
+    if (bestMesaStrat && bestMesaStrat[1].total >= 3) {
+      const wr = ((bestMesaStrat[1].hits / bestMesaStrat[1].total) * 100).toFixed(0);
+      aiLearnings.push(`🏆 Melhor estratégia atual: ${bestMesaStrat[0]} (${wr}% win rate)`);
     }
 
     const last10 = numbers.slice(0, 10);
@@ -647,16 +776,22 @@ serve(async (req) => {
     };
 
     if (dealerChanged) {
-      return json({ signal: null, mode: 'recalibrating', message: '🔄 Novo Dealer: Recalibrando...', ...baseResponse });
+      return json({ signal: null, mode: 'recalibrating', message: '🔄 Novo Dealer: Recalibrando...', ...baseResponse, memoryWindows, aiLearnings });
+    }
+
+    // CHAOS AUTO-CALIBRATION: If dealer is chaotic AND dispersing wildly, pause signals
+    if (chaoticDealer && isDispersingWildly && totalLayers < 250) {
+      aiLearnings.push('🛑 Mesa sem padrão detectável. Auto-calibração pausou sinais.');
+      return json({ signal: null, mode: 'calibrating', message: '🔄 AUTO-CALIBRAGEM — Dealer caótico, aguardando padrão...', ...baseResponse, memoryWindows, aiLearnings });
     }
 
     if (highEntropy && totalLayers < 200) {
-      return json({ signal: null, mode: 'observing', message: '🔍 OBSERVAÇÃO — Alta entropia', ...baseResponse });
+      return json({ signal: null, mode: 'observing', message: '🔍 OBSERVAÇÃO — Alta entropia', ...baseResponse, memoryWindows, aiLearnings });
     }
 
     if (totalLayers < 150) {
       return json({ signal: null, mode: 'monitoring', message: '👁️ Monitorando...', ...baseResponse,
-        topCandidates: [], delayedTerminals, cavaloDelays });
+        topCandidates: [], delayedTerminals, cavaloDelays, memoryWindows, aiLearnings });
     }
 
     // ========================================================
@@ -1187,6 +1322,18 @@ serve(async (req) => {
       const learnedBoost = learnedStrategyBoosts[st.type] || 0;
       st.score += learnedBoost * 3;
 
+      // ====== SELF-CORRECTION: 5-round weight adjustment ======
+      const selfCorrectionWeight = strategyWeightAdjust[st.type] || 0;
+      st.score += selfCorrectionWeight;
+
+      // ====== NOISE PENALTY: reduce confidence when too many noisy spins ======
+      if (noiseCount > 5) st.score -= 5; // many outliers = less reliable data
+      if (noiseCount > 10) st.score -= 10;
+
+      // ====== CHAOS PENALTY: reduce if dealer is chaotic ======
+      if (chaoticDealer && ['sniper', 'voisins', 'setor_oposto'].includes(st.type)) st.score -= 10; // sector strategies unreliable with chaotic dealer
+      if (!chaoticDealer && microArcStd < 2 && ['sniper', 'voisins'].includes(st.type)) st.score += 8; // bonus for sector strats with consistent dealer
+
       // PERFORMANCE-BASED WEIGHT: boost strategies that historically perform well
       const perf = strategyPerformance[st.type];
       if (perf && perf.total >= 5) {
@@ -1246,6 +1393,26 @@ serve(async (req) => {
     // Final probability = winner's probability boosted by layer convergence
     const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 400)));
     
+    // Add strategy performance learnings
+    const winnerPerf = strategyPerformance[winner.type];
+    if (winnerPerf && winnerPerf.total >= 5) {
+      const wr = (winnerPerf.winRate * 100).toFixed(0);
+      aiLearnings.push(`📈 Estratégia ${winner.label}: ${wr}% win rate (${winnerPerf.hits}/${winnerPerf.total})`);
+    }
+    // Add self-correction info
+    const selfAdj = strategyWeightAdjust[winner.type];
+    if (selfAdj && selfAdj !== 0) {
+      aiLearnings.push(`${selfAdj > 0 ? '✅' : '⚠️'} Auto-correção: ${winner.label} ${selfAdj > 0 ? 'reforçada' : 'reduzida'} (${selfAdj > 0 ? '+' : ''}${selfAdj} peso)`);
+    }
+    // Add noise info
+    if (noiseCount >= 2) {
+      aiLearnings.push(`🔇 Filtro de ruído: ${noiseCount} saltos anômalos excluídos da análise`);
+    }
+    // Add statistical debt info
+    if (statisticalDebt.length >= 3) {
+      aiLearnings.push(`💰 Dívida estatística: números ${statisticalDebt.slice(0,3).map(d=>d.num).join(',')} devem compensar em breve`);
+    }
+
     const mode = totalLayers >= 420 && finalProbability >= 88 ? 'sniper'
       : totalLayers >= 370 && finalProbability >= 80 ? 'alert'
       : 'monitoring';
@@ -1394,6 +1561,11 @@ serve(async (req) => {
       allStrategies,
       mesaMode,
       mode, message,
+      memoryWindows,
+      aiLearnings: aiLearnings.slice(0, 8),
+      noiseFiltered: noiseCount,
+      dealerChaos: chaoticDealer,
+      selfCorrection: strategyWeightAdjust,
       ...baseResponse, recoveryMode,
       topCandidates: numScores.slice(0, 8).map(s => ({ num: s.num, score: +s.score.toFixed(1), reasons: s.reasons })),
     });
