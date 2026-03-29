@@ -619,7 +619,7 @@ Aja como SUPERCOMPUTADOR DE ANALÍTICA PREDITIVA. Realize análise transversal c
       method: "POST",
       headers: { Authorization: `Bearer ${deepseekKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "deepseek-chat",
         messages: [
           { role: "system", content: "Você é um SUPERCOMPUTADOR DE ANALÍTICA PREDITIVA para roleta. Possui conhecimento TOTAL: setores, cavalos, terminais, oitavos, diamantes, lei do terço, saltos, complementares, dominância de coluna, espelhos visuais, mapeamento cruzado, assinatura de dealer, clusters de calor, entropia de sequência, efeito gangorra e probabilidade residual. Execute análise transversal com todos os algoritmos de elite. Responda APENAS via tool call. Gere 15-25 aprendizados profundos e acionáveis." },
           { role: "user", content: prompt },
@@ -707,11 +707,11 @@ Aja como SUPERCOMPUTADOR DE ANALÍTICA PREDITIVA. Realize análise transversal c
     }
 
     // 6. Quick pattern insights
-    const patternRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const patternRes = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${deepseekKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "deepseek-chat",
         messages: [
           { role: "system", content: "Analise e retorne padrões rápidos via tool call. Max 5. Use conhecimento de setores, cavalos, terminais." },
           { role: "user", content: `Últimos 30: ${numbers.slice(0, 30).join(', ')}. Terminais: ${termStr}. Setores: ${sectorStr}. Cavalos: ${cavalosStr}` },
