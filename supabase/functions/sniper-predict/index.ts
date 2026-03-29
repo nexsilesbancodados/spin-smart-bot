@@ -1393,6 +1393,26 @@ serve(async (req) => {
     // Final probability = winner's probability boosted by layer convergence
     const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 400)));
     
+    // Add strategy performance learnings
+    const winnerPerf = strategyPerformance[winner.type];
+    if (winnerPerf && winnerPerf.total >= 5) {
+      const wr = (winnerPerf.winRate * 100).toFixed(0);
+      aiLearnings.push(`📈 Estratégia ${winner.label}: ${wr}% win rate (${winnerPerf.hits}/${winnerPerf.total})`);
+    }
+    // Add self-correction info
+    const selfAdj = strategyWeightAdjust[winner.type];
+    if (selfAdj && selfAdj !== 0) {
+      aiLearnings.push(`${selfAdj > 0 ? '✅' : '⚠️'} Auto-correção: ${winner.label} ${selfAdj > 0 ? 'reforçada' : 'reduzida'} (${selfAdj > 0 ? '+' : ''}${selfAdj} peso)`);
+    }
+    // Add noise info
+    if (noiseCount >= 2) {
+      aiLearnings.push(`🔇 Filtro de ruído: ${noiseCount} saltos anômalos excluídos da análise`);
+    }
+    // Add statistical debt info
+    if (statisticalDebt.length >= 3) {
+      aiLearnings.push(`💰 Dívida estatística: números ${statisticalDebt.slice(0,3).map(d=>d.num).join(',')} devem compensar em breve`);
+    }
+
     const mode = totalLayers >= 420 && finalProbability >= 88 ? 'sniper'
       : totalLayers >= 370 && finalProbability >= 80 ? 'alert'
       : 'monitoring';
@@ -1541,6 +1561,11 @@ serve(async (req) => {
       allStrategies,
       mesaMode,
       mode, message,
+      memoryWindows,
+      aiLearnings: aiLearnings.slice(0, 8),
+      noiseFiltered: noiseCount,
+      dealerChaos: chaoticDealer,
+      selfCorrection: strategyWeightAdjust,
       ...baseResponse, recoveryMode,
       topCandidates: numScores.slice(0, 8).map(s => ({ num: s.num, score: +s.score.toFixed(1), reasons: s.reasons })),
     });
