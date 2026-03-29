@@ -405,23 +405,77 @@ const Index = () => {
                     ))}
                   </div>
 
-                  {/* All strategies comparison (mini) */}
+                  {/* ALL STRATEGIES — Full expanded view */}
                   {sniperData.allStrategies && sniperData.allStrategies.length > 1 && (
-                    <div className="border-t border-border pt-2 mt-1">
-                      <span className="text-[7px] text-muted-foreground block mb-1">DUELO DE ESTRATÉGIAS:</span>
-                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
-                        {sniperData.allStrategies.map((st: any, i: number) => (
-                          <div key={i} className={`text-center p-1.5 rounded-lg border ${
-                            i === 0 ? 'bg-primary/10 border-primary/30' : 'bg-secondary/50 border-border'
-                          }`}>
-                            <span className="text-sm block">{st.emoji}</span>
-                            <span className={`text-[7px] font-bold block ${i === 0 ? 'text-primary' : 'text-muted-foreground'}`}>
-                              {st.probability}%
-                            </span>
-                            <span className="text-[6px] text-muted-foreground block truncate">{st.label.split(' ')[0]}</span>
-                          </div>
-                        ))}
+                    <div className="border-t border-border pt-3 mt-2 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-bold text-primary tracking-wider">🎰 TODAS AS JOGADAS DISPONÍVEIS</span>
+                        <span className="text-[7px] text-muted-foreground">{sniperData.allStrategies.length} estratégias</span>
                       </div>
+                      {sniperData.allStrategies.map((st: any, i: number) => {
+                        const isTop = i === 0;
+                        const isGood = st.probability >= 70;
+                        return (
+                          <motion.div key={i}
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            className={`rounded-lg border p-3 ${
+                              isTop ? 'bg-primary/10 border-primary/40 shadow-md shadow-primary/10' :
+                              isGood ? 'bg-accent/5 border-accent/30' :
+                              'bg-secondary/30 border-border'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-lg">{st.emoji}</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-[10px] font-bold ${isTop ? 'text-primary' : isGood ? 'text-accent' : 'text-foreground'}`}>
+                                    {st.label}
+                                  </span>
+                                  {isTop && <span className="text-[7px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold border border-primary/30 animate-pulse">⭐ MELHOR</span>}
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[8px] text-muted-foreground">Cobertura: {st.coverage}%</span>
+                                  <span className="text-[8px] text-muted-foreground">•</span>
+                                  <span className="text-[8px] text-muted-foreground">Payout: {st.payout}x</span>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className={`text-base font-bold font-mono ${
+                                  st.probability >= 85 ? 'text-primary' :
+                                  st.probability >= 70 ? 'text-accent' :
+                                  st.probability >= 55 ? 'text-yellow-400' :
+                                  'text-muted-foreground'
+                                }`}>{st.probability}%</div>
+                                <div className="w-14 h-1.5 bg-secondary rounded-full overflow-hidden mt-0.5">
+                                  <div className={`h-full rounded-full ${
+                                    st.probability >= 85 ? 'bg-primary' :
+                                    st.probability >= 70 ? 'bg-accent' :
+                                    st.probability >= 55 ? 'bg-yellow-400' :
+                                    'bg-muted-foreground'
+                                  }`} style={{ width: `${st.probability}%` }} />
+                                </div>
+                              </div>
+                            </div>
+                            {/* Numbers */}
+                            <div className="flex flex-wrap gap-1">
+                              {(st.numbers || []).slice(0, 18).map((n: number, j: number) => (
+                                <div key={j} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold border ${
+                                  j === 0 && isTop
+                                    ? 'bg-primary text-primary-foreground border-primary/50 ring-1 ring-primary/30'
+                                    : `${colorClass(n)} border-white/15`
+                                }`}>
+                                  {n}
+                                </div>
+                              ))}
+                              {(st.numbers || []).length > 18 && (
+                                <span className="text-[7px] text-muted-foreground self-center ml-1">+{st.numbers.length - 18}</span>
+                              )}
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
