@@ -146,8 +146,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
         return updated;
       });
-    }
-    
+
       // Atualizar contadores de simulação se estiver em modo sim
       if (simMode) {
         const won = stats.lastBetNumbers.includes(latestNumber);

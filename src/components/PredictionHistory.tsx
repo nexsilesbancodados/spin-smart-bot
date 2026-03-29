@@ -107,6 +107,7 @@ const PredictionHistory = () => {
   const filteredPredictions = activeTab === 'acertos' ? hits
     : activeTab === 'erros' ? misses
     : activeTab === 'todos' ? resolved
+    : activeTab === 'estrategias' ? [] as PredictionRecord[]
     : resolved.slice(0, 15);
 
   const tabs: { key: TabType; label: string; count?: number }[] = [
