@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useRoulette } from '@/contexts/RouletteContext';
 import { getNumberColor, getHotNumbers, getColdNumbers } from '@/lib/roulette';
-import { getTerminal, getDozen, getColumnLabel, getSector, getSide } from '@/lib/roulette-analysis';
+import { getPremiumRow } from '@/lib/roulette-analysis';
 import AnimatedHistory from '@/components/AnimatedHistory';
 import AlertBanner from '@/components/AlertBanner';
 import PremiumTable from '@/components/PremiumTable';
