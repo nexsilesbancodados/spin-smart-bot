@@ -487,7 +487,7 @@ serve(async (req) => {
     });
     allEntries.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
 
-    const entries = allEntries;
+    const entries = allEntries.slice(0, sampleSize);
     const numbers = entries.map(e => e.number);
     const learned = learnedRes.data || [];
     const unresolved = unresolvedRes.data || [];
