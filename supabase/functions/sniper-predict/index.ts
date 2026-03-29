@@ -1059,8 +1059,8 @@ serve(async (req) => {
     blocoA = Math.min(maxA, blocoA);
 
     let minutesSinceStart = 0;
-    if (entries.length > 1) {
-      minutesSinceStart = (new Date(entries[0].time).getTime() - new Date(entries[Math.min(entries.length-1,49)].time).getTime()) / 60000;
+    if (allEntries.length > 1) {
+      minutesSinceStart = (new Date(allEntries[0].time).getTime() - new Date(allEntries[Math.min(allEntries.length-1,49)].time).getTime()) / 60000;
     }
 
     const dealerSignature = {
