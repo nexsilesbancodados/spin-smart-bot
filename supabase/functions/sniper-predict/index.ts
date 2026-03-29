@@ -3683,18 +3683,18 @@ serve(async (req) => {
       if (['sniper', 'voisins', 'setor_oposto', 'cylinder_bias'].includes(st.type)) st.score += (timeAwareness.physicalBias - 1) * 15;
       if (['cavalos', 'duzias', 'terminal_alternation', 'dozen_phase'].includes(st.type)) st.score += (timeAwareness.mathBias - 1) * 15;
 
-      // CONSECUTIVE HIT PRIORITY BOOST
+      // CONSECUTIVE HIT PRIORITY BOOST — TRIPLICADO para priorizar acertos em sequência
       const chBoost = consecutiveHitBoost[st.type] || 0;
-      if (chBoost > 0) st.score += chBoost;
+      if (chBoost > 0) st.score += chBoost * 2;
 
       // ERROR-BASED ADAPTATION: if errors are mostly from wrong sector, penalize sector strategies
       if (errorCategories.wrong_sector >= 2 && ['sniper', 'voisins', 'setor_oposto'].includes(st.type)) st.score -= 10;
       if (errorCategories.wrong_terminal >= 2 && ['cavalos', 'terminal_alternation'].includes(st.type)) st.score -= 10;
-      if (errorCategories.deflector_bounce >= 2) st.score -= 5; // general penalty when deflectors are active
+      if (errorCategories.deflector_bounce >= 2) st.score -= 5;
 
-      // LEARNED KNOWLEDGE BOOST: apply AI-learned weights
+      // LEARNED KNOWLEDGE BOOST: apply AI-learned weights — DOBRADO
       const learnedBoost = learnedStrategyBoosts[st.type] || 0;
-      st.score += learnedBoost * 3;
+      st.score += learnedBoost * 5;
 
       // ====== SELF-CORRECTION: 5-round weight adjustment ======
       const selfCorrectionWeight = strategyWeightAdjust[st.type] || 0;
@@ -3702,70 +3702,57 @@ serve(async (req) => {
 
       // ====== REED PENALTY: suppress strategies that failed 4+ consecutive times ======
       const reed = reedPenalty[st.type];
-      if (reed) st.score -= reed * 8; // massive penalty for REED violations
+      if (reed) st.score -= reed * 8;
 
       // ====== ENTROPY GATING: reduce confidence when session is dispersed ======
       if (sessionEntropy > 0.8) st.score -= 8;
-      else if (sessionEntropy < 0.5) st.score += 5; // concentrated session = bonus
+      else if (sessionEntropy < 0.5) st.score += 5;
 
-      // ====== NOISE PENALTY: reduce confidence when too many noisy spins ======
+      // ====== NOISE PENALTY ======
       if (noiseCount > 5) st.score -= 5;
       if (noiseCount > 10) st.score -= 10;
-      // ====== WHITE NOISE GUARD: strongly penalize all strategies if mesa is chaotic ======
+      // ====== WHITE NOISE GUARD ======
       if (randomnessIndex.overall >= 75) st.score -= 15;
       else if (randomnessIndex.overall >= 60) st.score -= 8;
-      // ====== KELLY BOOST: multiply score by confidence when Kelly is strong ======
+      // ====== KELLY BOOST ======
       if (kellyBetting.unitMultiplier >= 3) st.score += 5;
       else if (kellyBetting.unitMultiplier <= 0.5) st.score -= 5;
 
-      // ====== CHAOS PENALTY: reduce if dealer is chaotic ======
-      if (chaoticDealer && ['sniper', 'voisins', 'setor_oposto'].includes(st.type)) st.score -= 10; // sector strategies unreliable with chaotic dealer
-      if (!chaoticDealer && microArcStd < 2 && ['sniper', 'voisins'].includes(st.type)) st.score += 8; // bonus for sector strats with consistent dealer
+      // ====== CHAOS PENALTY ======
+      if (chaoticDealer && ['sniper', 'voisins', 'setor_oposto'].includes(st.type)) st.score -= 10;
+      if (!chaoticDealer && microArcStd < 2 && ['sniper', 'voisins'].includes(st.type)) st.score += 8;
 
-      // PERFORMANCE-BASED WEIGHT: boost strategies that historically perform well
+      // PERFORMANCE-BASED WEIGHT: REFORÇADO — prioriza estratégias com melhor histórico de acertos
       const perf = strategyPerformance[st.type];
-      if (perf && perf.total >= 5) {
-        const winBonus = (perf.winRate - 0.3) * 30;
+      if (perf && perf.total >= 3) {
+        // Win rate bonus TRIPLICADO — a acertividade é o fator principal
+        const winBonus = (perf.winRate - 0.2) * 50;
         st.score += winBonus;
-        const trendBonus = (perf.recentTrend - 0.3) * 20;
+        // Recent trend bonus DOBRADO — tendência recente importa muito
+        const trendBonus = (perf.recentTrend - 0.2) * 35;
         st.score += trendBonus;
         // Penalize strategies that claim high prob but rarely hit
-        if (perf.avgProb > 80 && perf.winRate < 0.25) st.score -= 15;
+        if (perf.avgProb > 80 && perf.winRate < 0.25) st.score -= 20;
         // Strongly penalize strategies with very low win rates
-        if (perf.total >= 10 && perf.winRate < 0.15) st.score -= 20;
+        if (perf.total >= 8 && perf.winRate < 0.12) st.score -= 25;
       }
 
-      // AGGRESSIVE DIVERSITY PENALTY: much stronger anti-repetition
+      // DIVERSIDADE LEVE — apenas penaliza repetição extrema (4+ seguidas do mesmo tipo)
+      // NUNCA bloqueia a melhor jogada por diversidade
       const recentUseCount = stratTypeCount[st.type] || 0;
-      if (recentUseCount >= 4) st.score -= 25; // almost never repeat 4+ times
-      else if (recentUseCount >= 3) st.score -= 15;
-      else if (recentUseCount >= 2) st.score -= 8;
-      else if (recentUseCount >= 1) st.score -= 3;
-      
-      // NUMBER OVERLAP PENALTY: penalize if predicted numbers overlap heavily with recent predictions
+      if (recentUseCount >= 5) st.score -= 8;
+      else if (recentUseCount >= 4) st.score -= 4;
+      // Sem penalidade para 1-3 repetições — se é o melhor, é o melhor
+
+      // NUMBER OVERLAP — penalidade leve apenas para sobreposição extrema
       const numberOverlap = st.numbers.filter(n => recentNumbers.includes(n)).length;
       const overlapRatio = st.numbers.length > 0 ? numberOverlap / st.numbers.length : 0;
-      if (overlapRatio > 0.7) st.score -= 15; // >70% same numbers as recent = heavy penalty
-      else if (overlapRatio > 0.5) st.score -= 8;
-      else if (overlapRatio > 0.3) st.score -= 3;
+      if (overlapRatio > 0.85) st.score -= 8;
+      else if (overlapRatio > 0.7) st.score -= 4;
+      // Sem penalidade para sobreposição moderada
 
-      // CATEGORY DIVERSITY: group types into categories, penalize if same category repeated
-      const category = ['cor', 'paridade', 'alto_baixo'].includes(st.type) ? 'simple_bet'
-        : ['coluna', 'duzia_unica', 'duzias', 'column_cycle', 'dozen_phase'].includes(st.type) ? 'group_bet'
-        : ['sniper', 'voisins', 'setor_oposto'].includes(st.type) ? 'sector_bet'
-        : 'special_bet';
-      const categoryUsed = recentStratTypes.filter(t => {
-        const cat = ['cor', 'paridade', 'alto_baixo'].includes(t) ? 'simple_bet'
-          : ['coluna', 'duzia_unica', 'duzias', 'column_cycle', 'dozen_phase'].includes(t) ? 'group_bet'
-          : ['sniper', 'voisins', 'setor_oposto'].includes(t) ? 'sector_bet'
-          : 'special_bet';
-        return cat === category;
-      }).length;
-      if (categoryUsed >= 5) st.score -= 12;
-      else if (categoryUsed >= 3) st.score -= 6;
-
-      // BACKTEST VALIDATION: only trust strategies with decent backtest
-      if (st.probability < 60) st.score -= 5; // low-confidence penalty
+      // BACKTEST VALIDATION
+      if (st.probability < 55) st.score -= 5;
     });
 
     // If two strategies tie, prefer higher payout
