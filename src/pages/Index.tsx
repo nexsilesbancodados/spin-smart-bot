@@ -754,6 +754,9 @@ const Index = () => {
             </div>
           </div>
 
+          {/* HISTÓRICO DE PREVISÕES */}
+          <PredictionHistory />
+
           {/* IFRAME */}
           <div className="bg-card rounded-xl border border-border overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border">
