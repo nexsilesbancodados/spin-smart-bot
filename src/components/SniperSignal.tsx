@@ -58,6 +58,54 @@ const getBetTypeLabel = (type: string) => {
   }
 };
 
+// Explica em linguagem simples COMO apostar cada tipo
+const getHowToBet = (type: string, numbers: number[], mainNumber?: number): string => {
+  const cat = getBetTypeCategory(type);
+  switch (cat) {
+    case 'setor':
+      return `Aposte nos VIZINHOS do ${mainNumber ?? numbers[0]} na roleta. Peça ao dealer: "${mainNumber ?? numbers[0]} e vizinhos" ou coloque fichas direto nos números mostrados.`;
+    case 'cavalos':
+      return `Coloque fichas NO MEIO entre dois números (split). Cada ficha cobre 2 números de uma vez. Payout 17:1.`;
+    case 'terminal':
+      return `Aposte em todos os números que TERMINAM com o mesmo dígito. Ex: terminal 5 = 5, 15, 25, 35. Coloque 1 ficha em cada.`;
+    case 'duzia':
+      if (numbers.length > 0) {
+        const d1 = numbers.some(n => n >= 1 && n <= 12);
+        const d2 = numbers.some(n => n >= 13 && n <= 24);
+        const d3 = numbers.some(n => n >= 25 && n <= 36);
+        const duzias = [];
+        if (d1) duzias.push('1ª (1-12)');
+        if (d2) duzias.push('2ª (13-24)');
+        if (d3) duzias.push('3ª (25-36)');
+        return `Coloque fichas na(s) DÚZIA(S): ${duzias.join(' e ')}. Área marcada "1st 12", "2nd 12" ou "3rd 12" na mesa. Payout 2:1.`;
+      }
+      return 'Coloque fichas na área de DÚZIA na mesa. Payout 2:1.';
+    case 'coluna':
+      return `Coloque fichas no final da COLUNA (embaixo da mesa). Cada coluna cobre 12 números. Payout 2:1.`;
+    case 'cor':
+      const isRed = numbers.some(n => [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(n));
+      return `Aposte em ${isRed ? '🔴 VERMELHO' : '⚫ PRETO'} — área grande no meio da mesa. Payout 1:1 (dobra a aposta).`;
+    case 'paridade':
+      const isEven = numbers.length > 0 && numbers[0] % 2 === 0;
+      return `Aposte em ${isEven ? 'PAR (EVEN)' : 'ÍMPAR (ODD)'} — área grande no meio da mesa. Payout 1:1.`;
+    case 'alto_baixo':
+      const isHigh = numbers.some(n => n >= 19);
+      return `Aposte em ${isHigh ? 'ALTO (19-36) / MANQUE' : 'BAIXO (1-18) / PASSE'} — área no meio da mesa. Payout 1:1.`;
+    case 'zero':
+      return `Aposte nos números próximos ao ZERO: 0, 3, 12, 15, 26, 32, 35. Peça "Jeu Zéro" ao dealer.`;
+    case 'rua':
+      return `Coloque a ficha NA BORDA da linha de 3 números (rua). Cada ficha cobre 3 números. Payout 11:1.`;
+    case 'puxada':
+      return `O último número "puxa" estes. Coloque 1 ficha em cada número mostrado. Baseado em padrão histórico.`;
+    case 'fusao':
+      return `Jogada especial — múltiplas análises convergem nos mesmos números. Coloque 1 ficha em cada número mostrado abaixo.`;
+    case 'hiper_quente':
+      return `Números que estão SAINDO MUITO agora. Coloque fichas diretas (pleno) nos números mostrados. Payout até 35:1.`;
+    default:
+      return `Coloque 1 ficha em cada número mostrado abaixo. Os números em destaque têm maior probabilidade.`;
+  }
+};
+
 const getBetTypeCategory = (type: string): string => {
   if (['sniper', 'voisins', 'setor_oposto', 'ultra_sniper', 'ritmo_calibrado', 'cylinder_bias', 'cluster_regional', 'jeu_zero'].includes(type)) return 'setor';
   if (['cavalos', 'cavalos_comp', 'cavalo_split'].includes(type)) return 'cavalos';
