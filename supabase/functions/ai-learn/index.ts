@@ -234,10 +234,62 @@ Deno.serve(async (req) => {
     numbers.slice(0, 50).forEach(n => {
       const idx = WHEEL_ORDER.indexOf(n);
       if (idx !== -1) {
-        const zone = Math.floor(idx / 9); // divide wheel into ~4 zones
+        const zone = Math.floor(idx / 9);
         wheelConcentration[`zone${zone}`] = (wheelConcentration[`zone${zone}`] || 0) + 1;
       }
     });
+
+    // Oitavos analysis
+    const octaveMap: Record<string, number> = {};
+    Object.keys(OCTAVES).forEach(k => { octaveMap[k] = 0; });
+    numbers.forEach(n => {
+      for (const [k, nums] of Object.entries(OCTAVES)) {
+        if (nums.includes(n)) { octaveMap[k]++; break; }
+      }
+    });
+    const octaveStr = Object.entries(octaveMap).map(([k,c]) => `${k}:${c}`).join(', ');
+
+    // Diamond concentration
+    const diamondMap: Record<string, number> = { topo: 0, baixo: 0, esquerda: 0, direita: 0 };
+    numbers.slice(0, 100).forEach(n => {
+      for (const [k, sector] of Object.entries(DIAMONDS)) {
+        if (sector.includes(n)) diamondMap[k]++;
+      }
+    });
+    const diamondStr = Object.entries(diamondMap).map(([k,c]) => `${k}:${c}`).join(', ');
+
+    // Skip/Salto analysis (wheel distance between consecutive)
+    const skips: number[] = [];
+    for (let i = 0; i < Math.min(50, numbers.length - 1); i++) {
+      const idxA = WHEEL_ORDER.indexOf(numbers[i]);
+      const idxB = WHEEL_ORDER.indexOf(numbers[i + 1]);
+      if (idxA !== -1 && idxB !== -1) {
+        const diff = Math.abs(idxA - idxB);
+        skips.push(Math.min(diff, WHEEL_ORDER.length - diff));
+      }
+    }
+    const avgSkip = skips.length > 0 ? (skips.reduce((a,b) => a+b, 0) / skips.length).toFixed(1) : '0';
+    const shortSkips = skips.filter(s => s < 5).length;
+    const longSkips = skips.filter(s => s > 18).length;
+
+    // Lei do Terço (last 37)
+    const last37 = numbers.slice(0, 37);
+    const freq37: Record<number, number> = {};
+    last37.forEach(n => { freq37[n] = (freq37[n] || 0) + 1; });
+    const allNums = Array.from({ length: 37 }, (_, i) => i);
+    const absent37 = allNums.filter(n => !freq37[n]);
+    const once37 = allNums.filter(n => freq37[n] === 1);
+    const repeated37 = allNums.filter(n => (freq37[n] || 0) >= 2);
+
+    // Complementares check (last 20)
+    const last20 = numbers.slice(0, 20);
+    const compPairs: string[] = [];
+    for (let i = 0; i < last20.length; i++) {
+      const comp = getComplementar(last20[i]);
+      if (comp && last20.slice(i+1, i+6).includes(comp)) {
+        compPairs.push(`(${last20[i]},${comp})`);
+      }
+    }
 
     // Hourly distribution
     const hourMap: Record<number, number> = {};
@@ -265,29 +317,37 @@ Deno.serve(async (req) => {
 - Cavalos: ${cavalosStr}
 - Cruzado: VermPar:${crossMap.redEven}, VermÍmp:${crossMap.redOdd}, PretPar:${crossMap.blackEven}, PretÍmp:${crossMap.blackOdd}
 - Streaks máx: Verm ${maxRedStreak}, Preto ${maxBlackStreak}
-- Concentração cilindro: ${Object.entries(wheelConcentration).map(([z,c]) => `${z}:${c}`).join(', ')}
-- Dominância cor/coluna: C1(eq) ${colMap[0]} saídas, C2(preta) ${colMap[1]} saídas, C3(verm) ${colMap[2]} saídas
-- Finais em Pleno: F0-6(4nºs): ${[0,1,2,3,4,5,6].map(f => `F${f}:${termMap[f]||0}`).join(',')} | F7-9(3nºs): ${[7,8,9].map(f => `F${f}:${termMap[f]||0}`).join(',')}
+- Concentração cilindro (zonas): ${Object.entries(wheelConcentration).map(([z,c]) => `${z}:${c}`).join(', ')}
+- Oitavos: ${octaveStr}
+- Diamantes: ${diamondStr}
+- Dominância cor/coluna: C1(eq) ${colMap[0]}, C2(preta) ${colMap[1]}, C3(verm) ${colMap[2]}
+- Finais Pleno: F0-6(4nºs): ${[0,1,2,3,4,5,6].map(f => `F${f}:${termMap[f]||0}`).join(',')} | F7-9(3nºs): ${[7,8,9].map(f => `F${f}:${termMap[f]||0}`).join(',')}
+- Saltos (últ 50): média ${avgSkip}, curtos(<5): ${shortSkips}, longos(>18): ${longSkips}
+- Lei do Terço (últ 37): ausentes ${absent37.length}, 1x ${once37.length}, repetidos ${repeated37.length} → repetidos: [${repeated37.join(',')}]
+- Complementares próximos (últ 20): ${compPairs.length > 0 ? compPairs.join(', ') : 'nenhum'}
 - Horas: ${Object.entries(hourMap).sort(([a],[b]) => Number(a)-Number(b)).map(([h,c]) => `${h}h:${c}`).join(', ')}
 
 ### CONHECIMENTO PRÉVIO:
 ${prevStr || 'Primeiro aprendizado.'}
 
 ## MISSÃO:
-Analise TODOS os dados usando seu conhecimento completo de roleta europeia. Gere aprendizados profundos sobre:
+Analise TODOS os dados usando seu conhecimento COMPLETO de roleta europeia. Gere aprendizados profundos sobre:
 1. Viés de frequência com análise de desvio padrão
 2. Padrões de terminais e sua relação com setores do cilindro
 3. Ciclos de dúzias e colunas (qual está "devendo")
 4. Comportamento dos 4 grupos de Cavalos
-5. Concentração em setores físicos do cilindro
+5. Concentração em setores físicos e OITAVOS do cilindro
 6. Mapeamento cruzado (cor+paridade) e seus desvios
 7. Padrões horários e temporais
 8. Sequências e reversões de tendência
 9. Vizinhos no cilindro que saem juntos
 10. Compare com conhecimento prévio: confirme ou refute
-11. Finais em Pleno: diferencie probabilidade de finais 0-6 (4 nºs) vs 7-9 (3 nºs)
-12. Dominância de coluna por cor: C2 deveria ter mais pretos, C3 mais vermelhos — confirme ou refute
-13. Espelhos visuais: identifique se números na mesma posição de dúzias diferentes saem em sequência`;
+11. Finais em Pleno: diferencie probabilidade de finais 0-6 vs 7-9
+12. Dominância de coluna por cor
+13. DIAMANTES: qual zona de choque está concentrando resultados
+14. LEI DO TERÇO: quais números estão na zona de repetição
+15. SALTOS: padrão de distância no cilindro entre rodadas
+16. COMPLEMENTARES: identifique pares soma-37 que saem próximos`;
 
     // 4. Call AI
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -296,7 +356,7 @@ Analise TODOS os dados usando seu conhecimento completo de roleta europeia. Gere
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Você é o sistema de IA mais avançado de análise de roleta do mundo. Possui conhecimento COMPLETO da roleta europeia: setores do cilindro, cavalos, terminais, finais em pleno, dominância de coluna por cor, espelhos visuais, mapeamento cruzado, seisenas, e vizinhos. Responda APENAS via tool call. Gere 8-15 aprendizados profundos e acionáveis." },
+          { role: "system", content: "Você é o sistema de IA mais avançado de análise de roleta do mundo. Possui conhecimento COMPLETO: setores, cavalos, terminais, finais em pleno, oitavos, diamantes, lei do terço, saltos, complementares, dominância de coluna, espelhos visuais, mapeamento cruzado. Responda APENAS via tool call. Gere 10-18 aprendizados profundos e acionáveis." },
           { role: "user", content: prompt },
         ],
         tools: [{
@@ -312,7 +372,7 @@ Analise TODOS os dados usando seu conhecimento completo de roleta europeia. Gere
                   items: {
                     type: "object",
                     properties: {
-                      learning_type: { type: "string", enum: ["frequency_bias","terminal_pattern","color_tendency","dozen_cycle","cavalos_pattern","timing_pattern","streak_behavior","sector_concentration","column_pattern","sixline_pattern","cross_mapping","wheel_neighbors","parity_pattern","final_pleno","column_color_dominance","visual_mirror"] },
+                      learning_type: { type: "string", enum: ["frequency_bias","terminal_pattern","color_tendency","dozen_cycle","cavalos_pattern","timing_pattern","streak_behavior","sector_concentration","column_pattern","sixline_pattern","cross_mapping","wheel_neighbors","parity_pattern","final_pleno","column_color_dominance","visual_mirror","octave_pattern","diamond_concentration","third_law","skip_pattern","complementar_pattern"] },
                       title: { type: "string" },
                       knowledge: { type: "string" },
                       data_points: { type: "integer" },
