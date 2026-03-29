@@ -257,7 +257,7 @@ const Index = () => {
           {/* 🔬 SCANNER 500 */}
           <Scanner500 layerResults={sniperData?.layerResults || null} isScanning={!!sniperData} />
 
-          {/* 🎯 SNIPER PANEL */}
+          {/* 🎯 STRATEGY PANEL */}
           {sniperData && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -274,6 +274,7 @@ const Index = () => {
                   : 'bg-card border-border'
               }`}
             >
+              {/* Header */}
               <div className="flex items-center gap-2 mb-2">
                 {sniperData.mode === 'sniper' ? (
                   <Crosshair className="w-5 h-5 text-primary animate-pulse" />
@@ -284,7 +285,16 @@ const Index = () => {
                 ) : (
                   <Eye className="w-5 h-5 text-muted-foreground" />
                 )}
-                <span className="font-display text-xs tracking-[0.2em] font-bold text-primary">SNIPER IA</span>
+                <span className="font-display text-xs tracking-[0.2em] font-bold text-primary">
+                  {sniperData.strategy ? `${sniperData.strategy.emoji} ${sniperData.strategy.label}` : 'SNIPER IA'}
+                </span>
+                {sniperData.mesaMode && (
+                  <span className={`text-[7px] px-1.5 py-0.5 rounded font-bold ml-1 ${
+                    sniperData.mesaMode === 'fisico' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                  }`}>
+                    {sniperData.mesaMode === 'fisico' ? '🎰 MODO FÍSICO' : '🧮 MODO MATEMÁTICO'}
+                  </span>
+                )}
                 <div className="ml-auto flex items-center gap-2">
                   {sniperData.entropy && (
                     <span className="text-[8px] font-mono text-muted-foreground">Entropia: {sniperData.entropy}</span>
@@ -303,57 +313,85 @@ const Index = () => {
                 </div>
               </div>
 
-              {sniperData.signal ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold shadow-lg border-2 ${
-                      sniperData.mode === 'sniper' ? 'bg-primary text-primary-foreground border-primary/50 ring-2 ring-primary/30 animate-pulse' : 'bg-yellow-500 text-black border-yellow-400'
-                    }`}>
-                      {sniperData.signal.number}
-                    </div>
-                    <div className="flex-1">
-                      <p className={`text-sm font-bold ${sniperData.mode === 'sniper' ? 'text-primary' : 'text-yellow-400'}`}>
-                        {sniperData.message}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[9px] text-muted-foreground">Vizinhos:</span>
-                        <div className="flex gap-1">
-                          {sniperData.signal.neighbors.map((n: number, i: number) => (
-                            <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold border ${colorClass(n)} border-white/20`}>
-                              {n}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
+              {sniperData.signal && sniperData.strategy ? (
+                <div className="space-y-3">
+                  {/* Main strategy display */}
+                  <div className="flex items-start gap-3">
+                    <div className="text-center shrink-0">
+                      <div className={`text-3xl mb-1`}>{sniperData.strategy.emoji}</div>
                       <div className={`text-2xl font-bold font-mono ${sniperData.signal.probability >= 85 ? 'text-primary' : 'text-yellow-400'}`}>
                         {sniperData.signal.probability}%
                       </div>
-                      <span className="text-[8px] text-muted-foreground">
-                        {sniperData.layerResults ? `${sniperData.layerResults.total}/500` : 'probabilidade'}
+                      <span className="text-[7px] text-muted-foreground block">
+                        {sniperData.layerResults ? `${sniperData.layerResults.total}/500` : ''}
                       </span>
-                      <span className="text-[8px] text-muted-foreground">probabilidade</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-bold mb-1 ${sniperData.mode === 'sniper' ? 'text-primary' : 'text-yellow-400'}`}>
+                        💡 {sniperData.strategy.label}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground mb-2">
+                        Cobertura: {sniperData.strategy.coverage}% • Payout: {sniperData.strategy.payout}x
+                      </p>
+
+                      {/* Numbers to bet */}
+                      <div className="mb-2">
+                        <span className="text-[8px] text-muted-foreground block mb-1">🎯 NÚMEROS PARA APOSTAR:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {sniperData.strategy.numbers.slice(0, 18).map((n: number, i: number) => (
+                            <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold border ${
+                              i === 0 && sniperData.strategy.type === 'sniper'
+                                ? 'bg-primary text-primary-foreground border-primary/50 ring-2 ring-primary/30 animate-pulse'
+                                : `${colorClass(n)} border-white/20`
+                            }`}>
+                              {n}
+                            </div>
+                          ))}
+                          {sniperData.strategy.numbers.length > 18 && (
+                            <span className="text-[8px] text-muted-foreground self-center">+{sniperData.strategy.numbers.length - 18}</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {sniperData.signal.convergenceReasons?.map((r: string, i: number) => (
-                      <span key={i} className="text-[7px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-semibold">{r}</span>
-                    ))}
+
+                  {/* Justification */}
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-2">
+                    <span className="text-[8px] text-muted-foreground">🧠 JUSTIFICATIVA IA:</span>
+                    <p className="text-[9px] text-primary/90 italic mt-0.5">{sniperData.strategy.justification}</p>
                   </div>
+
+                  {/* Diagnostic */}
                   {sniperData.signal.diagnostic && (
-                    <div className="text-[8px] text-primary/70 italic mt-1 px-1">
+                    <div className="text-[8px] text-primary/70 italic px-1">
                       ⚡ {sniperData.signal.diagnostic}
                     </div>
                   )}
-                  {sniperData.topCandidates && (
-                    <div className="flex items-center gap-1 mt-1">
-                      <span className="text-[8px] text-muted-foreground">Top 5:</span>
-                      {sniperData.topCandidates.slice(0, 5).map((c: any, i: number) => (
-                        <span key={i} className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${i === 0 ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'}`}>
-                          {c.num} ({c.score})
-                        </span>
-                      ))}
+
+                  {/* Convergence reasons */}
+                  <div className="flex flex-wrap gap-1">
+                    {sniperData.signal.convergenceReasons?.slice(0, 6).map((r: string, i: number) => (
+                      <span key={i} className="text-[7px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-semibold">{r}</span>
+                    ))}
+                  </div>
+
+                  {/* All strategies comparison (mini) */}
+                  {sniperData.allStrategies && sniperData.allStrategies.length > 1 && (
+                    <div className="border-t border-border pt-2 mt-1">
+                      <span className="text-[7px] text-muted-foreground block mb-1">DUELO DE ESTRATÉGIAS:</span>
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                        {sniperData.allStrategies.map((st: any, i: number) => (
+                          <div key={i} className={`text-center p-1.5 rounded-lg border ${
+                            i === 0 ? 'bg-primary/10 border-primary/30' : 'bg-secondary/50 border-border'
+                          }`}>
+                            <span className="text-sm block">{st.emoji}</span>
+                            <span className={`text-[7px] font-bold block ${i === 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+                              {st.probability}%
+                            </span>
+                            <span className="text-[6px] text-muted-foreground block truncate">{st.label.split(' ')[0]}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -363,7 +401,7 @@ const Index = () => {
                     {sniperData.message}
                   </p>
                   {sniperData.convergenceScore !== undefined && (
-                    <span className="text-[8px] font-mono text-muted-foreground ml-auto">Score: {sniperData.convergenceScore}</span>
+                    <span className="text-[8px] font-mono text-muted-foreground ml-auto">Camadas: {sniperData.convergenceScore}/500</span>
                   )}
                 </div>
               )}
