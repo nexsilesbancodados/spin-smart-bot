@@ -1922,10 +1922,17 @@ serve(async (req) => {
       mesaMode,
       mode, message,
       memoryWindows,
-      aiLearnings: aiLearnings.slice(0, 8),
+      aiLearnings: aiLearnings.slice(0, 12),
       noiseFiltered: noiseCount,
       dealerChaos: chaoticDealer,
       selfCorrection: strategyWeightAdjust,
+      deepMemory: {
+        ancestralPatterns: ancestralPatterns.slice(0, 3),
+        mesaDNA,
+        cylinderInertia,
+        geneticPatterns: geneticPatterns.slice(0, 3),
+        backpropWeights,
+      },
       ...baseResponse, recoveryMode,
       topCandidates: numScores.slice(0, 8).map(s => ({ num: s.num, score: +s.score.toFixed(1), reasons: s.reasons })),
     });
