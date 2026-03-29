@@ -2623,6 +2623,50 @@ serve(async (req) => {
       }
     }
 
+    // 17. COBERTURA DE ÁREA — based on sector alternation from transition matrix
+    if (transitionMatrix.predictedSector) {
+      const sectorNums = transitionMatrix.predictedSector === 'Voisins' ? [...VOISINS]
+        : transitionMatrix.predictedSector === 'Tiers' ? [...TIERS] : [...ORPHELINS];
+      const caScore = sumScores(sectorNums) + transitionMatrix.mesaModeStrength * 0.15;
+      const caBt = backtestSet(sectorNums);
+      strategies.push({
+        type: 'cobertura_area', label: `🗺️ Cobertura ${transitionMatrix.predictedSector}`, emoji: '🗺️',
+        numbers: sectorNums, coverage: (sectorNums.length / 37) * 100, payout: Math.round(36 / sectorNums.length * sectorNums.length),
+        score: caScore + caBt * 22 + (transitionMatrix.mesaModeLabel === 'ALTERNÂNCIA' ? 10 : 0),
+        probability: Math.min(98, Math.round(45 + caScore * 1.5 + caBt * 30)),
+        justification: `Matriz de transição: ${getSector(numbers[0])}→${transitionMatrix.predictedSector} (modo ${transitionMatrix.mesaModeLabel}). Fidelidade ${transitionMatrix.mesaModeStrength}%.`,
+      });
+    }
+
+    // 18. TERMINAIS CRUZADOS — when one terminal "calls" another via matrix
+    if (transitionMatrix.predictedTerminal !== null) {
+      const crossTermNums = Array.from({ length: 37 }, (_, i) => i).filter(n => n % 10 === transitionMatrix.predictedTerminal);
+      const ctScore = sumScores(crossTermNums) + 5;
+      const ctBt = backtestSet(crossTermNums);
+      strategies.push({
+        type: 'terminais_cruzados', label: `🐎 Terminal ${transitionMatrix.predictedTerminal} (Cruzado)`, emoji: '🐎',
+        numbers: crossTermNums, coverage: (crossTermNums.length / 37) * 100, payout: Math.round(36 / crossTermNums.length),
+        score: ctScore + ctBt * 22,
+        probability: Math.min(98, Math.round(42 + ctScore * 2 + ctBt * 35)),
+        justification: `Terminal cruzado: T${numbers[0] % 10}→T${transitionMatrix.predictedTerminal} via matriz de 200 giros.`,
+      });
+    }
+
+    // 19. PRESSÃO DE RETORNO — dozen pressure trigger
+    if (transitionMatrix.dozenPressureTrigger?.active) {
+      const pDz = transitionMatrix.dozenPressureTrigger.dozen;
+      const prNums = Array.from({ length: 12 }, (_, i) => (pDz - 1) * 12 + i + 1);
+      const prScore = sumScores(prNums) + transitionMatrix.dozenPressureTrigger.delay * 0.5 + transitionMatrix.dozenPressureTrigger.historicalDominance * 0.2;
+      const prBt = backtestSet(prNums);
+      strategies.push({
+        type: 'pressao_retorno', label: `🔥 Pressão D${pDz} (Retorno)`, emoji: '🔥',
+        numbers: prNums, coverage: (12 / 37) * 100, payout: 3,
+        score: prScore + prBt * 25 + transitionMatrix.dozenPressureTrigger.delay,
+        probability: Math.min(98, Math.round(50 + prScore * 1.5 + prBt * 35)),
+        justification: `Gatilho de Pressão: Dúzia ${pDz} ausente há ${transitionMatrix.dozenPressureTrigger.delay} giros, mas dominou ${transitionMatrix.dozenPressureTrigger.historicalDominance}% em 500. Retorno iminente.`,
+      });
+    }
+
     // 14. HOT/COLD PHASE — detect whether mesa is in hot (repeating) or cold (spreading) phase
     const uniqueIn10 = new Set(last10).size;
     const repeatRatio = 1 - (uniqueIn10 / last10.length);
