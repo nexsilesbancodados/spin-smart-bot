@@ -1634,9 +1634,36 @@ serve(async (req) => {
       });
     }
 
-    // ==========================================
-    // DUEL: Pick the best strategy with performance + diversity + learned knowledge
-    // ==========================================
+    // 15. GENETIC CLUSTER — strategy from auto-discovered co-occurrence clusters
+    if (geneticPatterns.length > 0) {
+      const gpNums = geneticPatterns[0].numbers;
+      const gpScore = sumScores(gpNums) + geneticPatterns[0].strength * 2;
+      const gpBt = backtestSet(gpNums);
+      strategies.push({
+        type: 'genetic_cluster', label: `🧬 ${geneticPatterns[0].name}`, emoji: '🧬',
+        numbers: gpNums, coverage: (gpNums.length / 37) * 100, payout: Math.round(36 / gpNums.length),
+        score: gpScore + gpBt * 22,
+        probability: Math.min(98, Math.round(45 + gpScore * 1.5 + gpBt * 30)),
+        justification: `Padrão genético auto-descoberto: ${geneticPatterns[0].name}. Co-ocorrência forte: ${gpNums.slice(0, 5).join(',')}.`,
+      });
+    }
+
+    // 16. CYLINDER BIAS — strategy from micro-vibration physics
+    if (cylinderInertia.biasedNums.length >= 3) {
+      const cyNums = [...cylinderInertia.biasedNums];
+      // Add neighbors of biased numbers
+      cylinderInertia.biasedNums.slice(0, 3).forEach(n => getNeighbors(n, 1).forEach(nb => { if (!cyNums.includes(nb)) cyNums.push(nb); }));
+      const cyScore = sumScores(cyNums) + cylinderInertia.biasedNums.length * 3;
+      const cyBt = backtestSet(cyNums);
+      strategies.push({
+        type: 'cylinder_bias', label: '🔩 Vício do Cilindro', emoji: '🔩',
+        numbers: cyNums.slice(0, 15), coverage: (Math.min(15, cyNums.length) / 37) * 100, payout: Math.round(36 / Math.min(15, cyNums.length)),
+        score: cyScore + cyBt * 20 + (cylinderInertia.pinStrength > 20 ? 10 : 0),
+        probability: Math.min(98, Math.round(48 + cyScore * 1.5 + cyBt * 28)),
+        justification: `Micro-imperfeição detectada: ${cylinderInertia.biasedNums.length} posições viciadas. ${cylinderInertia.dominantPin !== null ? `Pino #${cylinderInertia.dominantPin + 1} dominante.` : ''}`,
+      });
+    }
+
     
     // DIVERSITY: check last 15 predictions (not just 5) for stronger anti-repetition
     const recentPreds = resolvedHistory.slice(0, 15);
