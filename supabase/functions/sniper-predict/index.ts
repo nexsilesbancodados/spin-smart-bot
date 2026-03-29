@@ -598,8 +598,24 @@ serve(async (req) => {
       mod5Pull: FULL_PULL_MAP[numbers[0]] || PULL_MAP[numbers[0]] || [],
       mod5PullTerminals: FULL_PULL_TERMINALS[numbers[0]] || PULL_TERMINALS[numbers[0]] || [],
       mod6: detectAscendingTerminals(numbers),
+      entropy: calculateEntropy(numbers, 15),
     };
 
+    // Entropy-based session regime
+    const sessionEntropy = calculateEntropy(numbers, 15);
+    const entropyDrift = numbers.length >= 45 ? [
+      calculateEntropy(numbers.slice(0, 15), 15),
+      calculateEntropy(numbers.slice(15, 30), 15),
+      calculateEntropy(numbers.slice(30, 45), 15),
+    ] : [];
+    const isEntropyDroppingConsistently = entropyDrift.length === 3 && entropyDrift[0] < entropyDrift[1] && entropyDrift[1] < entropyDrift[2];
+    const sessionRegime = sessionEntropy < 0.5 ? 'CONCENTRADO' : sessionEntropy < 0.7 ? 'PADRÃO IDENTIFICÁVEL' : 'DISPERSO';
+
+    // Dupla de terminal detection
+    const hotTermPair = TERMINAL_PAIRS[daniGreen.mod1.terminal];
+    const duplaKey = Object.entries(DUPLAS_TERMINAIS).find(([, nums]) =>
+      nums.some(n => TERMINALS_MAP[daniGreen.mod1.terminal]?.includes(n))
+    )?.[0] || null;
     // Extended detectors (100 strategies)
     const ext = {
       terminalRepetido: detectTerminalRepetido(numbers),
