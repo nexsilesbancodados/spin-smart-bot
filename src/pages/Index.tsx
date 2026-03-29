@@ -133,6 +133,7 @@ const Index = () => {
 
         {/* Right column */}
         <div className="space-y-4">
+          <BetSuggestion history={history} bot={bot} />
           <BotControls
             bot={bot}
             onStart={handleStart}
