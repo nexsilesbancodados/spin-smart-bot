@@ -531,117 +531,238 @@ serve(async (req) => {
     }
 
     // ========================================================
-    // TARGET SELECTION WITH 500 LAYERS
+    // STRATEGY DUEL ENGINE — 6 STRATEGIES COMPETE
     // ========================================================
-    const numScores: { num: number; score: number; reasons: string[] }[] = [];
 
+    // Detect mesa mode: physical vs mathematical
+    const mesaMode = (maoViciada || maoViciada5 || arcStdDev < 3.5) ? 'fisico' : 'matematico';
+
+    // Per-number scoring (reused across strategies)
+    const numScores: { num: number; score: number; reasons: string[] }[] = [];
     for (let n = 0; n <= 36; n++) {
       let s = 0;
       const r: string[] = [];
-
-      // Octave bias
       if (biasedOctave && OCTAVES[biasedOctave]?.includes(n)) { s += 2.5; r.push(`Oitavo ${biasedOctave}`); }
-
-      // Terminal delay
-      if (delayedTerminals.includes(n % 10)) { s += 2.5; r.push(`T${n%10} atrasado (${termDelays[n%10]}r)`); }
-
-      // Cavalo delay
+      if (delayedTerminals.includes(n % 10)) { s += 2.5; r.push(`T${n%10} atrasado`); }
       const cg = getCavalo(n);
       if (cg && cavaloDelays[cg] > 8) { s += 2; r.push(`C${cg} atrasado`); }
-
-      // Hot cavalo
       if (cg === hotCavaloGroup) { s += 1.5; r.push(`C${hotCavaloGroup} quente`); }
-
-      // Arc prediction - MAXIMUM WEIGHT
       const avgArc = maoViciada ? Math.round(last3Arcs.reduce((a,b)=>a+b,0)/3) : Math.round(arcMean);
       const idx0 = wheelIdx(numbers[0]);
       if (idx0 !== -1 && (maoViciada || maoViciada5 || arcStdDev < 4)) {
-        const pCW = WHEEL[(idx0 + avgArc) % WL];
-        const pCCW = WHEEL[(idx0 - avgArc + WL) % WL];
+        const pCW = WHEEL[(idx0 + avgArc) % WL]; const pCCW = WHEEL[(idx0 - avgArc + WL) % WL];
         const arcWeight = maoViciada ? 6 : maoViciada5 ? 5 : 3;
-        if (n === pCW || n === pCCW) { s += arcWeight; r.push(`🎯 Arco exato (${avgArc})`); }
+        if (n === pCW || n === pCCW) { s += arcWeight; r.push(`🎯 Arco exato`); }
         else if (wheelDist(n, pCW) <= 1 || wheelDist(n, pCCW) <= 1) { s += arcWeight * 0.6; r.push(`Arco ±1`); }
         else if (wheelDist(n, pCW) <= 2 || wheelDist(n, pCCW) <= 2) { s += arcWeight * 0.3; r.push(`Arco ±2`); }
       }
-
-      // Moment law
       const term = n % 10, lastTerm = numbers[0] % 10;
       if (momentLaw.includes(`${lastTerm}->${term}`)) { s += 2; r.push('Momento'); }
-
-      // Cross-delay target
       const crossTarget = crossDelayTargets.find(t => t.num === n);
-      if (crossTarget) { s += 3; r.push(`Cruzado (${crossTarget.total})`); }
-
-      // Complementar due
+      if (crossTarget) { s += 3; r.push(`Cruzado`); }
       if (compDue.includes(n)) { s += 1.5; r.push('Complementar'); }
-
-      // Mirror due
       if (mirrorDue.includes(n)) { s += 1; r.push('Espelhado'); }
-
-      // Seesaw
       if (seesawBias === 'zero' && JEU_ZERO.includes(n)) { s += 1.5; r.push('Gangorra→Zero'); }
       if (seesawBias === 'opposite' && TIERS.includes(n)) { s += 1.5; r.push('Gangorra→Tiers'); }
-
-      // Heat map
       const hIdx = wheelIdx(n);
       if (hIdx !== -1 && heatMap[hIdx] > maxHeat * 0.7) { s += 1; r.push('Zona quente'); }
-
-      // Color/parity bias
-      if (colorBias === 'red' && RED.includes(n)) { s += 0.5; r.push('Verm'); }
-      if (colorBias === 'black' && !RED.includes(n) && n !== 0) { s += 0.5; r.push('Preto'); }
-      if (parityBias === 'even' && n > 0 && n % 2 === 0) s += 0.3;
-      if (parityBias === 'odd' && n % 2 === 1) s += 0.3;
-
-      // Hot dozen/sector
-      if (getDozen(n) === hotDozen) s += 0.3;
-      if (hotSector && getSector(n) === hotSector[0]) { s += 0.5; r.push(`Setor ${hotSector[0]}`); }
-
-      // Lei do Terço
+      if (colorBias === 'red' && RED.includes(n)) s += 0.5;
+      if (colorBias === 'black' && !RED.includes(n) && n !== 0) s += 0.5;
       if (freq37map[n] === 0) { s += 1.5; r.push('Ausente (Terço)'); }
-      if (freq37map[n] >= 2) { s += 0.5; r.push('Repetição'); }
-
-      // Quadrant imbalance bonus
-      if (highLowRatio > 1.4 && isLow(n)) { s += 0.5; r.push('Baixo devido'); }
-      if (highLowRatio < 0.7 && isHigh(n)) { s += 0.5; r.push('Alto devido'); }
-
-      // AI learned bonus
+      if (freq37map[n] >= 2) { s += 0.5; }
+      if (highLowRatio > 1.4 && isLow(n)) s += 0.5;
+      if (highLowRatio < 0.7 && isHigh(n)) s += 0.5;
       if (learnedBonus[n] > 0) { s += learnedBonus[n]; r.push(...learnedReasons[n].slice(0, 2)); }
-
-      // Recency penalty
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
-
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
     }
-
     numScores.sort((a, b) => b.score - a.score);
-    const target = numScores[0];
 
-    if (!target || target.score < 2.5) {
-      return json({ signal: null, mode: 'monitoring', message: '👁️ Convergência parcial...',
-        ...baseResponse,
-        topCandidates: numScores.slice(0, 8).map(s => ({ num: s.num, score: +s.score.toFixed(1), reasons: s.reasons })),
+    // Helper: sum scores for a set of numbers
+    const sumScores = (nums: number[]) => {
+      let total = 0;
+      for (const n of nums) { const found = numScores.find(s => s.num === n); if (found) total += found.score; }
+      return total;
+    };
+
+    // Helper: backtest a set of numbers against recent history
+    const backtestSet = (nums: number[]) => {
+      let hits = 0, tests = 0;
+      for (let w = 0; w < Math.min(8, numbers.length - 10); w++) {
+        tests++;
+        if (nums.includes(numbers[w + 5])) hits++;
+      }
+      return tests > 0 ? hits / tests : 0;
+    };
+
+    // ==========================================
+    // Define 6 strategies
+    // ==========================================
+    interface Strategy {
+      type: string;
+      label: string;
+      emoji: string;
+      numbers: number[];
+      coverage: number; // % of wheel covered
+      payout: number; // average payout multiplier
+      score: number;
+      probability: number;
+      justification: string;
+    }
+
+    const strategies: Strategy[] = [];
+
+    // 1. SNIPER (Setor) — best number + 4 neighbors
+    if (numScores.length > 0) {
+      const sniperTarget = numScores[0];
+      const sniperNeighbors = getNeighbors(sniperTarget.num, 4);
+      const sniperNums = [sniperTarget.num, ...sniperNeighbors];
+      const sniperScore = sumScores(sniperNums) + (mesaMode === 'fisico' ? blocoA * 0.1 : 0) + sniperTarget.score * 2;
+      const bt = backtestSet(sniperNums);
+      strategies.push({
+        type: 'sniper', label: 'Sniper (Setor)', emoji: '🎯',
+        numbers: sniperNums, coverage: (9/37)*100, payout: 36,
+        score: sniperScore + bt * 20,
+        probability: Math.min(98, Math.round(50 + sniperScore * 2.5 + bt * 30)),
+        justification: `Viciação de Dealer detectada. Alvo ${sniperTarget.num} + 4 vizinhos. ${sniperTarget.reasons.slice(0,3).join(', ')}`,
       });
     }
 
-    // Scale probability based on layer convergence (400/500 = 80% threshold)
-    const layerFactor = Math.min(1, totalLayers / 400);
-    const probability = Math.min(98, Math.round(50 + target.score * 3 + totalLayers * 0.08));
-    const neighbors = getNeighbors(target.num, 4);
+    // 2. CAVALOS (Terminais) — best cavalo group
+    const bestCavaloGroup = sortedCavalos[0];
+    const cavaloNums = CAVALOS[bestCavaloGroup[0]] || [];
+    const cavaloScore = sumScores(cavaloNums) + (mesaMode === 'matematico' ? blocoB * 0.08 : 0);
+    const cavBt = backtestSet(cavaloNums);
+    strategies.push({
+      type: 'cavalos', label: `Cavalos ${bestCavaloGroup[0]}`, emoji: '🐴',
+      numbers: cavaloNums, coverage: (cavaloNums.length/37)*100, payout: Math.round(36/cavaloNums.length * cavaloNums.length),
+      score: cavaloScore + cavBt * 18,
+      probability: Math.min(98, Math.round(45 + cavaloScore * 1.8 + cavBt * 25)),
+      justification: `Ciclo matemático favorece grupo C${bestCavaloGroup[0]} (${bestCavaloGroup[1]}x em 30). Terminais ${sortedTerminals.slice(0,2).map(([t])=>t).join(',')} dominantes.`,
+    });
 
-    const mode = totalLayers >= 400 ? 'sniper' : totalLayers >= 300 ? 'alert' : 'monitoring';
-    const message = totalLayers >= 400
-      ? `🎯 JOGADA CERTEIRA: ${target.num} — Convergência ${totalLayers}/500`
-      : totalLayers >= 300
-      ? `⚡ ALERTA: Convergência ${totalLayers}/500 em ${target.num}`
+    // 3. DÚZIAS DOBRADAS (24 números)
+    const dozenSorted = dozenCount.map((c, i) => ({ dozen: i+1, count: c })).sort((a,b) => b.count - a.count);
+    const dz1 = dozenSorted[0].dozen, dz2 = dozenSorted[1].dozen;
+    const dozenNums = Array.from({length:36}, (_,i) => i+1).filter(n => getDozen(n) === dz1 || getDozen(n) === dz2);
+    const dzScore = sumScores(dozenNums) * 0.3 + (recoveryMode ? 15 : 0);
+    const dzBt = backtestSet(dozenNums);
+    strategies.push({
+      type: 'duzias', label: `Dúzias ${dz1}+${dz2}`, emoji: '📊',
+      numbers: dozenNums, coverage: (24/37)*100, payout: 3,
+      score: dzScore + dzBt * 15,
+      probability: Math.min(98, Math.round(55 + dzBt * 35 + dzScore * 0.8)),
+      justification: `Recuperação de banca: Dúzias ${dz1} e ${dz2} cobrindo 64% da mesa. ${recoveryMode ? 'Modo recuperação ativo.' : ''}`,
+    });
+
+    // 4. VIZINHOS DO ZERO (17 números)
+    const voisinsScore = sumScores(VOISINS) + (seesawBias === 'zero' ? 10 : 0) + (sectorFreq['Voisins'] > 12 ? 8 : 0);
+    const voisBt = backtestSet(VOISINS);
+    strategies.push({
+      type: 'voisins', label: 'Vizinhos do Zero', emoji: '🎰',
+      numbers: [...VOISINS], coverage: (17/37)*100, payout: Math.round(36/17*17),
+      score: voisinsScore + voisBt * 16 + (mesaMode === 'fisico' ? 5 : 0),
+      probability: Math.min(98, Math.round(50 + voisinsScore * 1.2 + voisBt * 28)),
+      justification: `Atração física do centro do cilindro. Setor Voisins com ${sectorFreq['Voisins']}x em 30. ${seesawBias === 'zero' ? 'Gangorra favorece Zero.' : ''}`,
+    });
+
+    // 5. ORPHELINS/TIERS (opostos)
+    const tiersScore = sumScores(TIERS) + (seesawBias === 'opposite' ? 10 : 0);
+    const orphScore = sumScores(ORPHELINS);
+    const useTiers = tiersScore > orphScore;
+    const opSector = useTiers ? TIERS : ORPHELINS;
+    const opLabel = useTiers ? 'Tiers' : 'Orphelins';
+    const opScore = useTiers ? tiersScore : orphScore;
+    const opBt = backtestSet(opSector);
+    strategies.push({
+      type: 'setor_oposto', label: opLabel, emoji: '🔄',
+      numbers: [...opSector], coverage: (opSector.length/37)*100, payout: Math.round(36/opSector.length * opSector.length),
+      score: opScore + opBt * 16,
+      probability: Math.min(98, Math.round(45 + opScore * 1.5 + opBt * 28)),
+      justification: `Balanço de cilindro favorece ${opLabel}. ${seesawBias === 'opposite' ? 'Gangorra detectada contra Zero.' : `${opLabel} com concentração recente.`}`,
+    });
+
+    // 6. QUEBRA DE SEQUÊNCIA (contra cor/paridade dominante)
+    let breakNums: number[] = [];
+    let breakLabel = '';
+    let breakExtra = 0;
+    if (colorBias === 'red') { breakNums = Array.from({length:36}, (_,i)=>i+1).filter(n => !RED.includes(n)); breakLabel = 'Contra Vermelho → Preto'; breakExtra = redCount - blackCount; }
+    else if (colorBias === 'black') { breakNums = Array.from({length:36}, (_,i)=>i+1).filter(n => RED.includes(n)); breakLabel = 'Contra Preto → Vermelho'; breakExtra = blackCount - redCount; }
+    else if (parityBias === 'even') { breakNums = Array.from({length:36}, (_,i)=>i+1).filter(n => n % 2 === 1); breakLabel = 'Contra Par → Ímpar'; breakExtra = evenCount - oddCount; }
+    else if (parityBias === 'odd') { breakNums = Array.from({length:36}, (_,i)=>i+1).filter(n => n % 2 === 0); breakLabel = 'Contra Ímpar → Par'; breakExtra = oddCount - evenCount; }
+    else { breakNums = Array.from({length:36}, (_,i)=>i+1).filter(n => !RED.includes(n)); breakLabel = 'Cor alternativa'; breakExtra = 0; }
+    const breakScore = (highEntropy ? 15 : 5) + breakExtra * 2;
+    const breakBt = backtestSet(breakNums);
+    strategies.push({
+      type: 'quebra', label: `Quebra: ${breakLabel}`, emoji: '⚡',
+      numbers: breakNums.slice(0, 18), coverage: (18/37)*100, payout: 2,
+      score: breakScore + breakBt * 12,
+      probability: Math.min(98, Math.round(48 + breakBt * 35 + breakExtra * 3)),
+      justification: `Alta entropia (${entropy.toFixed(2)}) sugere reversão. ${breakLabel}. Sequência de ${breakExtra} a mais.`,
+    });
+
+    // ==========================================
+    // DUEL: Pick the best strategy
+    // ==========================================
+    // Weight: higher payout strategies get a small bonus (risk/reward)
+    strategies.forEach(st => {
+      // Bonus for high payout low coverage (more profitable if hits)
+      st.score += (st.payout > 10 ? 3 : st.payout > 3 ? 1 : 0);
+      // Physical mode bonus for sector-based strategies
+      if (mesaMode === 'fisico' && ['sniper', 'voisins'].includes(st.type)) st.score += 5;
+      // Mathematical mode bonus for terminal-based strategies
+      if (mesaMode === 'matematico' && ['cavalos', 'duzias'].includes(st.type)) st.score += 5;
+    });
+
+    // If two strategies tie, prefer higher payout
+    strategies.sort((a, b) => b.score - a.score || b.payout - a.payout);
+
+    const winner = strategies[0];
+    const allStrategies = strategies.map(s => ({
+      type: s.type, label: s.label, emoji: s.emoji,
+      numbers: s.numbers, coverage: +s.coverage.toFixed(1), payout: s.payout,
+      score: +s.score.toFixed(1), probability: s.probability,
+    }));
+
+    // Final probability = winner's probability boosted by layer convergence
+    const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 400)));
+    
+    const mode = totalLayers >= 400 && finalProbability >= 85 ? 'sniper'
+      : totalLayers >= 300 || finalProbability >= 70 ? 'alert'
+      : 'monitoring';
+
+    const message = mode === 'sniper'
+      ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/500`
+      : mode === 'alert'
+      ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/500`
       : `👁️ Convergência parcial ${totalLayers}/500`;
 
     const diagnostic = totalLayers >= 400
-      ? `Convergência Pentacentesimal Detectada: Alinhamento entre ${reasons.slice(0, 3).join(', ')}`
-      : `Análise em progresso: ${reasons.slice(0, 2).join(', ')}`;
+      ? `Convergência Pentacentesimal: ${winner.justification}`
+      : `Análise: ${winner.justification}`;
 
     return json({
-      signal: { number: target.num, neighbors, probability, reasons: target.reasons, convergenceReasons: reasons, diagnostic },
+      signal: {
+        number: winner.numbers[0],
+        neighbors: winner.numbers.slice(1),
+        probability: finalProbability,
+        reasons: numScores.slice(0, 3).map(s => s.reasons).flat().slice(0, 5),
+        convergenceReasons: reasons,
+        diagnostic,
+      },
+      strategy: {
+        type: winner.type,
+        label: winner.label,
+        emoji: winner.emoji,
+        numbers: winner.numbers,
+        coverage: +winner.coverage.toFixed(1),
+        payout: winner.payout,
+        probability: finalProbability,
+        justification: winner.justification,
+      },
+      allStrategies,
+      mesaMode,
       mode, message,
       ...baseResponse, recoveryMode,
       topCandidates: numScores.slice(0, 8).map(s => ({ num: s.num, score: +s.score.toFixed(1), reasons: s.reasons })),
