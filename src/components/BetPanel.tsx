@@ -63,12 +63,13 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
   const prevNumberRef = useRef<number | null>(null);
   const autoBetRef = useRef(false);
 
-  // Auto-reset waitingResult after 60s to prevent stuck state
+  // Auto-reset waitingResult after 40s to prevent stuck state
   useEffect(() => {
     if (!stats.waitingResult) return;
     const timeout = setTimeout(() => {
+      console.log('[BetPanel] ⏱️ Timeout: resetando waitingResult após 40s');
       setStats(prev => prev.waitingResult ? { ...prev, waitingResult: false } : prev);
-    }, 60000);
+    }, 40000);
     return () => clearTimeout(timeout);
   }, [stats.waitingResult]);
 
