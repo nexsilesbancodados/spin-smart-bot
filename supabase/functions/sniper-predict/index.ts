@@ -763,6 +763,20 @@ serve(async (req) => {
       ? `Convergência Pentacentesimal: ${winner.justification}`
       : `Análise: ${winner.justification}`;
 
+    // Save prediction to history (only for alert/sniper modes)
+    if (mode !== 'monitoring' && winner.numbers.length > 0) {
+      await supabase.from('prediction_history').insert({
+        strategy_type: winner.type,
+        strategy_label: winner.label,
+        predicted_numbers: winner.numbers,
+        predicted_main: winner.numbers[0],
+        probability: finalProbability,
+        convergence_score: totalLayers,
+        mesa_mode: mesaMode,
+        justification: winner.justification,
+      }).then(() => {}).catch(() => {}); // non-blocking
+    }
+
     return json({
       signal: {
         number: winner.numbers[0],
