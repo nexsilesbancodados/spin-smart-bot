@@ -1573,9 +1573,202 @@ serve(async (req) => {
     blocoP = Math.min(maxP, blocoP);
 
     // ========================================================
-    // TOTAL DAS 1.600 CAMADAS
+    // BLOCO Q: MATRIZES DE TRANSIÇÃO E ARQUITETO DE PADRÕES (100 CAMADAS)
+    // Analisa transições setor→setor, dúzia→dúzia, terminal→terminal
+    // Detecta modo da mesa e Gatilho de Pressão de Retorno
     // ========================================================
-    const totalLayers = blocoA + blocoB + blocoC + blocoD + blocoE + blocoF + blocoG + blocoH + blocoI + blocoJ + blocoK + blocoL + blocoM + blocoN + blocoO + blocoP;
+    let blocoQ = 0;
+    const maxQ = 100;
+
+    // Q: TRANSITION MATRICES
+    const transitionMatrix: {
+      sectorMatrix: Record<string, Record<string, number>>;
+      dozenMatrix: Record<number, Record<number, number>>;
+      terminalMatrix: Record<number, Record<number, number>>;
+      mesaModeLabel: string;
+      mesaModeStrength: number;
+      dozenPressureTrigger: { dozen: number; delay: number; historicalDominance: number; active: boolean } | null;
+      patternsFidelity: { name: string; emoji: string; fidelity: number; confirmed: number; total: number }[];
+      predictedSector: string | null;
+      predictedDozen: number | null;
+      predictedTerminal: number | null;
+    } = {
+      sectorMatrix: { Voisins: { Voisins: 0, Tiers: 0, Orphelins: 0 }, Tiers: { Voisins: 0, Tiers: 0, Orphelins: 0 }, Orphelins: { Voisins: 0, Tiers: 0, Orphelins: 0 } },
+      dozenMatrix: { 1: { 1: 0, 2: 0, 3: 0 }, 2: { 1: 0, 2: 0, 3: 0 }, 3: { 1: 0, 2: 0, 3: 0 } },
+      terminalMatrix: {},
+      mesaModeLabel: 'CAOS',
+      mesaModeStrength: 0,
+      dozenPressureTrigger: null,
+      patternsFidelity: [],
+      predictedSector: null,
+      predictedDozen: null,
+      predictedTerminal: null,
+    };
+
+    // Initialize terminal matrix
+    for (let t = 0; t <= 9; t++) {
+      transitionMatrix.terminalMatrix[t] = {};
+      for (let t2 = 0; t2 <= 9; t2++) transitionMatrix.terminalMatrix[t][t2] = 0;
+    }
+
+    if (numbers.length >= 50) {
+      // Build sector transition matrix from last 200
+      const sectorSeq200 = numbers.slice(0, Math.min(200, numbers.length)).map(n => getSector(n)).filter(s => s !== 'Zero');
+      for (let i = 0; i < sectorSeq200.length - 1; i++) {
+        const from = sectorSeq200[i], to = sectorSeq200[i + 1];
+        if (transitionMatrix.sectorMatrix[from] && transitionMatrix.sectorMatrix[from][to] !== undefined) {
+          transitionMatrix.sectorMatrix[from][to]++;
+        }
+      }
+
+      // Build dozen transition matrix from last 200
+      const dozenSeq200 = numbers.slice(0, Math.min(200, numbers.length)).map(n => getDozen(n)).filter(d => d > 0);
+      for (let i = 0; i < dozenSeq200.length - 1; i++) {
+        const from = dozenSeq200[i], to = dozenSeq200[i + 1];
+        if (transitionMatrix.dozenMatrix[from]) transitionMatrix.dozenMatrix[from][to]++;
+      }
+
+      // Build terminal transition matrix from last 200
+      const termSeq200 = numbers.slice(0, Math.min(200, numbers.length)).map(n => n % 10);
+      for (let i = 0; i < termSeq200.length - 1; i++) {
+        transitionMatrix.terminalMatrix[termSeq200[i]][termSeq200[i + 1]]++;
+      }
+
+      // PREDICT next sector from transition matrix
+      const lastSector = getSector(numbers[0]);
+      if (lastSector !== 'Zero' && transitionMatrix.sectorMatrix[lastSector]) {
+        const row = transitionMatrix.sectorMatrix[lastSector];
+        const total = Object.values(row).reduce((a, b) => a + b, 0);
+        if (total > 5) {
+          const best = Object.entries(row).sort(([, a], [, b]) => b - a)[0];
+          const prob = best[1] / total;
+          if (prob > 0.35) {
+            transitionMatrix.predictedSector = best[0];
+            blocoQ += Math.round(prob * 30);
+          }
+        }
+      }
+
+      // PREDICT next dozen
+      const lastDozen = getDozen(numbers[0]);
+      if (lastDozen > 0 && transitionMatrix.dozenMatrix[lastDozen]) {
+        const row = transitionMatrix.dozenMatrix[lastDozen];
+        const total = Object.values(row).reduce((a, b) => a + b, 0);
+        if (total > 5) {
+          const best = Object.entries(row).sort(([, a], [, b]) => (b as number) - (a as number))[0];
+          const prob = (best[1] as number) / total;
+          if (prob > 0.35) {
+            transitionMatrix.predictedDozen = Number(best[0]);
+            blocoQ += Math.round(prob * 20);
+          }
+        }
+      }
+
+      // PREDICT next terminal
+      const lastTerminal = numbers[0] % 10;
+      const termRow = transitionMatrix.terminalMatrix[lastTerminal];
+      if (termRow) {
+        const total = Object.values(termRow).reduce((a, b) => a + b, 0);
+        if (total > 5) {
+          const best = Object.entries(termRow).sort(([, a], [, b]) => (b as number) - (a as number))[0];
+          const prob = (best[1] as number) / total;
+          if (prob > 0.2) {
+            transitionMatrix.predictedTerminal = Number(best[0]);
+            blocoQ += Math.round(prob * 20);
+          }
+        }
+      }
+
+      // MESA MODE DETECTION: REPETIÇÃO vs ALTERNÂNCIA vs CAOS
+      // Analyze last 50 spins for mode
+      const sec50 = numbers.slice(0, 50).map(n => getSector(n));
+      let sameCount = 0, altCount = 0;
+      for (let i = 1; i < sec50.length; i++) {
+        if (sec50[i] === sec50[i - 1]) sameCount++;
+        else altCount++;
+      }
+      const sameRatio = sameCount / (sec50.length - 1);
+      const altRatio = altCount / (sec50.length - 1);
+
+      // Check for systematic alternation (A-B-A-B)
+      let ababCount = 0;
+      for (let i = 2; i < Math.min(20, sec50.length); i++) {
+        if (sec50[i] === sec50[i - 2] && sec50[i] !== sec50[i - 1]) ababCount++;
+      }
+      const ababRatio = ababCount / Math.max(1, Math.min(18, sec50.length - 2));
+
+      if (sameRatio > 0.45) {
+        transitionMatrix.mesaModeLabel = 'REPETIÇÃO';
+        transitionMatrix.mesaModeStrength = Math.round(sameRatio * 100);
+        blocoQ += 15;
+        aiLearnings.push(`🔁 Mesa em MODO REPETIÇÃO: ${transitionMatrix.mesaModeStrength}% fidelidade`);
+      } else if (ababRatio > 0.4 || altRatio > 0.7) {
+        transitionMatrix.mesaModeLabel = 'ALTERNÂNCIA';
+        transitionMatrix.mesaModeStrength = Math.round(Math.max(ababRatio, altRatio) * 100);
+        blocoQ += 20;
+        aiLearnings.push(`🔄 Mesa em MODO ALTERNÂNCIA: ${transitionMatrix.mesaModeStrength}% fidelidade`);
+      } else {
+        transitionMatrix.mesaModeLabel = 'CAOS';
+        transitionMatrix.mesaModeStrength = Math.round((1 - Math.max(sameRatio, altRatio)) * 100);
+        blocoQ += 5;
+      }
+
+      // GATILHO DE PRESSÃO DE RETORNO (Dozen Delay vs Historical Dominance)
+      if (numbers.length >= 100) {
+        const dozen500Freq = [0, 0, 0];
+        const window500 = numbers.slice(0, Math.min(500, numbers.length));
+        window500.forEach(n => { const d = getDozen(n); if (d > 0) dozen500Freq[d - 1]++; });
+        const dominantDozen500 = dozen500Freq.indexOf(Math.max(...dozen500Freq)) + 1;
+        const dominance500 = dozen500Freq[dominantDozen500 - 1] / window500.length;
+
+        // Check current delay of the dominant dozen
+        let dozenDelay = 0;
+        for (let i = 0; i < numbers.length; i++) {
+          if (getDozen(numbers[i]) === dominantDozen500) break;
+          dozenDelay++;
+        }
+
+        if (dozenDelay >= 12 && dominance500 > 0.3) {
+          transitionMatrix.dozenPressureTrigger = {
+            dozen: dominantDozen500,
+            delay: dozenDelay,
+            historicalDominance: +(dominance500 * 100).toFixed(1),
+            active: true,
+          };
+          blocoQ += 15;
+          aiLearnings.push(`🔥 PRESSÃO DE RETORNO: Dúzia ${dominantDozen500} ausente há ${dozenDelay} giros (dominou ${(dominance500 * 100).toFixed(0)}% em 500)`);
+        }
+      }
+
+      // PATTERNS FIDELITY — how often each pattern confirmed in last 50
+      const fidelityChecks: { name: string; emoji: string; check: (nums: number[], i: number) => boolean }[] = [
+        { name: 'Vizinhos Consecutivos', emoji: '🤝', check: (nums, i) => i > 0 && wheelDist(nums[i], nums[i - 1]) <= 2 },
+        { name: 'Alternância Setor', emoji: '🔄', check: (nums, i) => i > 0 && getSector(nums[i]) !== getSector(nums[i - 1]) },
+        { name: 'Repetição Dúzia', emoji: '🔁', check: (nums, i) => i > 0 && getDozen(nums[i]) === getDozen(nums[i - 1]) },
+        { name: 'Terminal Cruzado', emoji: '🐎', check: (nums, i) => {
+          if (i === 0) return false;
+          const t1 = nums[i - 1] % 10, t2 = nums[i] % 10;
+          return ([2, 5, 8].includes(t1) && [1, 4, 7].includes(t2)) || ([1, 4, 7].includes(t1) && [2, 5, 8].includes(t2));
+        }},
+        { name: 'Espelho Terminal', emoji: '🪞', check: (nums, i) => i >= 2 && nums[i] % 10 === nums[i - 2] % 10 },
+      ];
+      const check50 = numbers.slice(0, 50);
+      for (const fc of fidelityChecks) {
+        let confirmed = 0, total = 0;
+        for (let i = 1; i < check50.length; i++) {
+          total++;
+          if (fc.check(check50, i)) confirmed++;
+        }
+        const fidelity = total > 0 ? Math.round((confirmed / total) * 100) : 0;
+        transitionMatrix.patternsFidelity.push({ name: fc.name, emoji: fc.emoji, fidelity, confirmed, total });
+      }
+    }
+    blocoQ = Math.min(maxQ, blocoQ);
+
+    // ========================================================
+    // TOTAL DAS 1.700 CAMADAS
+    // ========================================================
+    const totalLayers = blocoA + blocoB + blocoC + blocoD + blocoE + blocoF + blocoG + blocoH + blocoI + blocoJ + blocoK + blocoL + blocoM + blocoN + blocoO + blocoP + blocoQ;
     const layerResults = {
       blocoA: { score: blocoA, max: maxA, label: 'Biomecânica & Física' },
       blocoB: { score: blocoB, max: maxB, label: 'Matemática & Terminais' },
@@ -1593,8 +1786,9 @@ serve(async (req) => {
       blocoN: { score: blocoN, max: maxN, label: 'Kelly Criterion' },
       blocoO: { score: blocoO, max: maxO, label: 'Biometria Dealer' },
       blocoP: { score: blocoP, max: maxP, label: 'Calibrador de Ritmo' },
+      blocoQ: { score: blocoQ, max: maxQ, label: 'Matrizes de Transição' },
       total: totalLayers,
-      max: 1600,
+      max: 1700,
     };
 
     // ========================================================
