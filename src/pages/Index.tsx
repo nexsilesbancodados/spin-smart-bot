@@ -81,9 +81,29 @@ const Index = () => {
         const nums = data.results.map((n: unknown) => Number(n)).filter((n: number) => !isNaN(n) && n >= 0 && n <= 36);
         const key = nums.slice(0, 20).join(',');
         if (key !== prevNumbersRef.current) {
+          // New number detected — sync the spin cycle
+          const now = Date.now();
+          if (prevNumbersRef.current !== '') {
+            const elapsed = (now - lastNewNumberTime.current) / 1000;
+            // Only count reasonable intervals (10s-120s)
+            if (elapsed >= 10 && elapsed <= 120) {
+              spinHistory.current.push(elapsed);
+              // Keep last 10 intervals for averaging
+              if (spinHistory.current.length > 10) spinHistory.current.shift();
+              // Calculate weighted average (recent intervals matter more)
+              const weights = spinHistory.current.map((_, i) => i + 1);
+              const totalWeight = weights.reduce((a, b) => a + b, 0);
+              spinCycleEstimate.current = Math.round(
+                spinHistory.current.reduce((sum, val, i) => sum + val * weights[i], 0) / totalWeight
+              );
+            }
+          }
+          lastNewNumberTime.current = now;
           prevNumbersRef.current = key;
           setApiNumbers(nums);
           setLastUpdate(new Date());
+          // Reset countdown to estimated cycle
+          setSniperCountdown(spinCycleEstimate.current);
         }
         setError(null);
       }
