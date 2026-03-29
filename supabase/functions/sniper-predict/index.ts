@@ -394,24 +394,40 @@ serve(async (req) => {
     let blocoD = 0;
     const maxD = 100;
 
-    // D1-D50: Backtest micro-estratégias (50 camadas)
-    // Simulate: if we had bet on most frequent terminal in last 15, would it hit in next 5?
-    const backtestWindows = Math.min(10, Math.floor(numbers.length / 15) - 1);
+    // D1-D50: Backtest micro-estratégias PROFUNDO (50 camadas)
+    // Uses up to 1000 numbers for deep backtesting
+    const deepBacktestSize = Math.min(numbers.length, 1000);
+    const backtestWindows = Math.min(50, Math.floor(deepBacktestSize / 15) - 1);
     let backtestHits = 0;
+    let backtestCavaloHits = 0;
+    let backtestSectorHits = 0;
     for (let w = 0; w < backtestWindows; w++) {
       const window = numbers.slice(w * 5, w * 5 + 15);
       const nextNums = numbers.slice(w * 5 + 15, w * 5 + 20);
       if (window.length < 15 || nextNums.length < 3) continue;
-      // Find hot terminal in window
+      // Test terminal strategy
       const tf: Record<number, number> = {};
       for (let t = 0; t <= 9; t++) tf[t] = 0;
       window.forEach(n => tf[n % 10]++);
       const hotTerm = Object.entries(tf).sort(([,a],[,b]) => b - a)[0][0];
-      // Check if hot terminal appeared in next numbers
       if (nextNums.some(n => (n % 10) === parseInt(hotTerm))) backtestHits++;
+      // Test cavalo strategy
+      const cf: Record<string, number> = { '258':0, '147':0, '03':0, '69':0 };
+      window.forEach(n => { const g = getCavalo(n); if (g) cf[g]++; });
+      const hotCav = Object.entries(cf).sort(([,a],[,b]) => b - a)[0][0];
+      if (nextNums.some(n => { const g = getCavalo(n); return g === hotCav; })) backtestCavaloHits++;
+      // Test sector strategy
+      const sf: Record<string, number> = { Voisins:0, Tiers:0, Orphelins:0 };
+      window.forEach(n => { const s = getSector(n); if (sf[s] !== undefined) sf[s]++; });
+      const hotSec = Object.entries(sf).sort(([,a],[,b]) => b - a)[0][0];
+      if (nextNums.some(n => getSector(n) === hotSec)) backtestSectorHits++;
     }
     const backtestRate = backtestWindows > 0 ? backtestHits / backtestWindows : 0;
-    blocoD += Math.round(backtestRate * 50);
+    const backtestCavRate = backtestWindows > 0 ? backtestCavaloHits / backtestWindows : 0;
+    const backtestSecRate = backtestWindows > 0 ? backtestSectorHits / backtestWindows : 0;
+    // Use best backtest rate
+    const bestBacktest = Math.max(backtestRate, backtestCavRate, backtestSecRate);
+    blocoD += Math.round(bestBacktest * 50);
 
     // D51-D75: Filtro de Falsos Positivos (25 camadas)
     // Low entropy = more random = subtract layers; high pattern = add
