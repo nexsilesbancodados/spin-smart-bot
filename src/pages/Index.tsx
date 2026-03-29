@@ -1111,6 +1111,8 @@ const Index = () => {
               </div>
             )}
           </div>
+            </div>
+          </details>
 
         </div>
       </div>
