@@ -304,6 +304,9 @@ const Index = () => {
           ))}
         </div>
       </footer>
+
+      {/* Debug Modal */}
+      <DebugModal />
     </div>
   );
 };
