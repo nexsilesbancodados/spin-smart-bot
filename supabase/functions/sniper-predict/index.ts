@@ -64,14 +64,35 @@ serve(async (req) => {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const [numbersRes, learnedRes] = await Promise.all([
+    // Fetch data + AI learned patterns + unresolved predictions in parallel
+    const [numbersRes, learnedRes, unresolvedRes] = await Promise.all([
       supabase.from('roulette_numbers').select('number, fetched_at').order('fetched_at', { ascending: false }).limit(200),
       supabase.from('ai_learned_patterns').select('learning_type, title, knowledge, accuracy, metadata').order('updated_at', { ascending: false }).limit(30),
+      supabase.from('prediction_history').select('id, predicted_numbers, predicted_main, strategy_type').is('hit', null).order('created_at', { ascending: false }).limit(10),
     ]);
 
     const entries = (numbersRes.data || []).map((r: any) => ({ number: r.number as number, time: r.fetched_at as string }));
     const numbers = entries.map(e => e.number);
     const learned = learnedRes.data || [];
+    const unresolved = unresolvedRes.data || [];
+
+    // Resolve previous predictions against latest number
+    if (numbers.length > 0 && unresolved.length > 0) {
+      const latestNum = numbers[0];
+      for (const pred of unresolved) {
+        const nums: number[] = pred.predicted_numbers || [];
+        const isHit = nums.includes(latestNum);
+        const hitType = isHit
+          ? (pred.predicted_main === latestNum ? 'exact' : 'neighbor')
+          : 'miss';
+        await supabase.from('prediction_history').update({
+          actual_number: latestNum,
+          hit: isHit,
+          hit_type: hitType,
+          resolved_at: new Date().toISOString(),
+        }).eq('id', pred.id);
+      }
+    }
 
     if (numbers.length < 15) {
       return json({ signal: null, mode: 'waiting', message: 'Aguardando dados...', layerResults: null });
