@@ -450,21 +450,68 @@ serve(async (req) => {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Fetch data + AI learned patterns + unresolved predictions + resolved history in parallel
-    const [numbersRes, learnedRes, unresolvedRes, resolvedRes, insightsRes] = await Promise.all([
+    // Fetch data from ALL tables + AI learned patterns + predictions in parallel
+    const [numbersRes, historicoRes, resultadosRes, learnedRes, unresolvedRes, resolvedRes, insightsRes] = await Promise.all([
       supabase.from('roulette_numbers').select('number, fetched_at').order('fetched_at', { ascending: false }).limit(1000),
-      supabase.from('ai_learned_patterns').select('learning_type, title, knowledge, accuracy, metadata').order('updated_at', { ascending: false }).limit(30),
+      supabase.from('historico_roleta').select('number, created_at').order('created_at', { ascending: false }).limit(500),
+      supabase.from('resultados_roleta').select('numero, created_at').order('created_at', { ascending: false }).limit(500),
+      supabase.from('ai_learned_patterns').select('learning_type, title, knowledge, accuracy, metadata').order('updated_at', { ascending: false }).limit(50),
       supabase.from('prediction_history').select('id, predicted_numbers, predicted_main, strategy_type').is('hit', null).order('created_at', { ascending: false }).limit(10),
       supabase.from('prediction_history').select('strategy_type, strategy_label, predicted_numbers, predicted_main, probability, convergence_score, actual_number, hit, hit_type, mesa_mode, justification').not('hit', 'is', null).order('created_at', { ascending: false }).limit(200),
       supabase.from('pattern_insights').select('pattern_type, description, confidence, numbers_involved, recommendation').order('created_at', { ascending: false }).limit(50),
     ]);
 
-    const entries = (numbersRes.data || []).map((r: any) => ({ number: r.number as number, time: r.fetched_at as string }));
+    // Merge ALL number sources into a single sorted timeline
+    const allEntries: { number: number; time: string }[] = [];
+    const seenKeys = new Set<string>();
+    const addEntry = (num: number, time: string) => {
+      if (num < 0 || num > 36) return;
+      const key = `${num}-${time}`;
+      if (!seenKeys.has(key)) { seenKeys.add(key); allEntries.push({ number: num, time }); }
+    };
+    (numbersRes.data || []).forEach((r: any) => addEntry(r.number, r.fetched_at));
+    (historicoRes.data || []).forEach((r: any) => addEntry(r.number, r.created_at));
+    (resultadosRes.data || []).forEach((r: any) => {
+      const n = parseInt(r.numero, 10);
+      if (!isNaN(n)) addEntry(n, r.created_at);
+    });
+    allEntries.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+    const entries = allEntries;
     const numbers = entries.map(e => e.number);
     const learned = learnedRes.data || [];
     const unresolved = unresolvedRes.data || [];
     const resolvedHistory = resolvedRes.data || [];
     const patternInsights = insightsRes.data || [];
+
+    // ========================================================
+    // AI SELF-LEARNING ENGINE — learns from each new number
+    // ========================================================
+    // Build a learned-patterns map for quick lookup
+    const learnedMap: Record<string, { knowledge: string; accuracy: number; metadata: any }> = {};
+    for (const lp of learned) {
+      learnedMap[lp.learning_type + ':' + lp.title] = { knowledge: lp.knowledge, accuracy: lp.accuracy || 0, metadata: lp.metadata || {} };
+    }
+
+    // Use learned patterns to boost scoring
+    const learnedBoosts: Record<number, number> = {};
+    for (let n = 0; n <= 36; n++) learnedBoosts[n] = 0;
+    for (const lp of learned) {
+      const meta = lp.metadata as any;
+      if (meta?.hotNumbers && Array.isArray(meta.hotNumbers)) {
+        for (const hn of meta.hotNumbers) {
+          if (typeof hn === 'number' && hn >= 0 && hn <= 36) {
+            learnedBoosts[hn] += (lp.accuracy || 50) / 50; // scale by accuracy
+          }
+        }
+      }
+      if (meta?.bestTerminals && Array.isArray(meta.bestTerminals)) {
+        for (const t of meta.bestTerminals) {
+          const tNums = TERMINALS_MAP[t] || [];
+          tNums.forEach(tn => { learnedBoosts[tn] += (lp.accuracy || 50) / 100; });
+        }
+      }
+    }
 
     // ========================================================
     // STRATEGY PERFORMANCE TRACKER — learns from hits/misses
