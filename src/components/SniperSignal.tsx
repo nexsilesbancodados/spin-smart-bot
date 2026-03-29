@@ -292,39 +292,39 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
             }`}>{sniperData.trendEngine.confidence}%</span>
           </div>
           <div className="flex flex-wrap gap-1">
-            {sniperData.trendEngine.colorTrend && (
+            {sniperData.trendEngine.colorTrend?.direction && (
               <span className={`text-[8px] px-1.5 py-0.5 rounded-full border font-bold ${
-                sniperData.trendEngine.colorTrend === 'red'
+                sniperData.trendEngine.colorTrend.direction === 'red'
                   ? 'bg-red-500/15 text-red-400 border-red-500/30'
                   : 'bg-secondary/60 text-muted-foreground border-border'
               }`}>
-                {sniperData.trendEngine.colorTrend === 'red' ? '🔴 Vermelho' : '⚫ Preto'}
+                {sniperData.trendEngine.colorTrend.direction === 'red' ? '🔴 Vermelho' : '⚫ Preto'}
               </span>
             )}
-            {sniperData.trendEngine.parityTrend && (
+            {sniperData.trendEngine.parityTrend?.direction && (
               <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-purple-500/15 text-purple-400 border-purple-500/30">
-                {sniperData.trendEngine.parityTrend === 'even' ? 'PAR' : 'ÍMPAR'}
+                {sniperData.trendEngine.parityTrend.direction === 'par' ? 'PAR' : 'ÍMPAR'}
               </span>
             )}
-            {sniperData.trendEngine.highLowTrend && (
+            {sniperData.trendEngine.highLowTrend?.direction && (
               <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-blue-500/15 text-blue-400 border-blue-500/30">
-                {sniperData.trendEngine.highLowTrend === 'high' ? '↑ ALTO' : '↓ BAIXO'}
+                {sniperData.trendEngine.highLowTrend.direction === 'alto' ? '↑ ALTO' : '↓ BAIXO'}
               </span>
             )}
-            {sniperData.trendEngine.dozenTrend && (
+            {sniperData.trendEngine.dozenTrend?.direction && (
               <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-amber-500/15 text-amber-400 border-amber-500/30">
-                D{sniperData.trendEngine.dozenTrend}
+                D{sniperData.trendEngine.dozenTrend.direction}
               </span>
             )}
-            {sniperData.trendEngine.sectorTrend && (
+            {sniperData.trendEngine.sectorTrend?.direction && (
               <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-green-500/15 text-green-400 border-green-500/30">
-                {sniperData.trendEngine.sectorTrend}
+                {sniperData.trendEngine.sectorTrend.direction}
               </span>
             )}
-            {sniperData.trendEngine.mode && sniperData.trendEngine.mode !== 'neutral' && (
+            {sniperData.trendEngine.mode && sniperData.trendEngine.mode !== 'NEUTRO' && (
               <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-primary/15 text-primary border-primary/30">
-                {sniperData.trendEngine.mode === 'repetition' ? '🔁 Repetição' :
-                 sniperData.trendEngine.mode === 'alternation' ? '🔄 Alternância' : ''}
+                {sniperData.trendEngine.mode === 'TENDENCIA' ? '🔁 Tendência' :
+                 sniperData.trendEngine.mode === 'REVERSAO' ? '🔄 Reversão' : ''}
               </span>
             )}
           </div>
