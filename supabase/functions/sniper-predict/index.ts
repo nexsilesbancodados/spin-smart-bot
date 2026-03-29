@@ -3526,6 +3526,40 @@ serve(async (req) => {
       });
     }
 
+    // DUPLAS DE TERMINAIS (Método Dani Green) — dedicated strategy
+    for (const [dKey, dNums] of Object.entries(DUPLAS_TERMINAIS)) {
+      const duplaScore = sumScores(dNums);
+      // Only suggest if hot terminal matches this dupla
+      const t1 = daniGreen.mod1.terminal;
+      const t2 = daniGreen.mod1.pair;
+      const matchesHot = dNums.some(n => n % 10 === t1 || n % 10 === t2);
+      if (matchesHot && duplaScore > 10) {
+        const duplaBt = backtestSet(dNums);
+        strategies.push({
+          type: 'dupla_terminal', label: `🎰 Dupla ${dKey}`, emoji: '🎰',
+          numbers: dNums, coverage: (dNums.length / 37) * 100, payout: Math.round(36 / dNums.length),
+          score: duplaScore + duplaBt * 25 + daniGreen.mod1.count * 3 + (sessionEntropy < 0.5 ? 10 : 0),
+          probability: Math.min(98, Math.round(45 + duplaScore * 1.8 + duplaBt * 30)),
+          justification: `Dupla de Terminais ${dKey}: ${dNums.length} números. Sessão ${sessionRegime}. Entropia ${(sessionEntropy * 100).toFixed(0)}%.`,
+        });
+        break; // only add one dupla
+      }
+    }
+
+    // REED TRACKING: suppress strategies that failed 4+ consecutive times
+    const reedPenalty: Record<string, number> = {};
+    for (const st of Object.keys(strategyPerformance)) {
+      const stPreds = resolvedHistory.filter(p => p.strategy_type === st).slice(0, 6);
+      let consecutiveMisses = 0;
+      for (const p of stPreds) {
+        if (!p.hit) consecutiveMisses++;
+        else break;
+      }
+      if (consecutiveMisses >= REED_MAX) {
+        reedPenalty[st] = consecutiveMisses;
+        aiLearnings.push(`🛑 REED: ${st} errou ${consecutiveMisses}x seguidas — PAUSAR esta estratégia`);
+      }
+    }
     if (transitionMatrix.predictedSector && transitionMatrix.predictedDozen && transitionMatrix.predictedTerminal !== null) {
       const sectorPool = transitionMatrix.predictedSector === 'Voisins' ? VOISINS : transitionMatrix.predictedSector === 'Tiers' ? TIERS : ORPHELINS;
       const dozenPool = Array.from({ length: 12 }, (_, i) => (transitionMatrix.predictedDozen! - 1) * 12 + i + 1);
