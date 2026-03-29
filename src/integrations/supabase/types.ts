@@ -38,6 +38,30 @@ export type Database = {
         }
         Relationships: []
       }
+      resultados_roleta: {
+        Row: {
+          created_at: string
+          id: string
+          mesa: string | null
+          numero: string
+          provedor: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mesa?: string | null
+          numero: string
+          provedor?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mesa?: string | null
+          numero?: string
+          provedor?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

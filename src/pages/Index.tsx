@@ -1,42 +1,32 @@
 import { useState } from 'react';
 import { useRoulette } from '@/contexts/RouletteContext';
 import { getNumberColor, getHotNumbers, getColdNumbers } from '@/lib/roulette';
+import { getPremiumRow } from '@/lib/roulette-analysis';
 import AnimatedHistory from '@/components/AnimatedHistory';
 import AlertBanner from '@/components/AlertBanner';
-import PasteHistory from '@/components/PasteHistory';
-import LiveStats from '@/components/LiveStats';
 import PremiumTable from '@/components/PremiumTable';
 import QuickNumberPad from '@/components/QuickNumberPad';
 import AIAnalysis from '@/components/AIAnalysis';
 import DebugModal from '@/components/DebugModal';
-import { CircleDot, ChevronDown, MonitorPlay, Flame, Snowflake, Play, Square, Zap, Timer, ExternalLink, Maximize2, Minimize2, Download, Copy, Check } from 'lucide-react';
-import { motion } from 'framer-motion';
+import {
+  CircleDot, ChevronDown, MonitorPlay, Flame, Snowflake,
+  Play, Square, ExternalLink, Maximize2, Minimize2,
+  Download, Copy, Check, Layers, Hash, Activity, Zap
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const PROVIDERS: Record<string, { label: string; tables: { name: string; defaultUrl?: string }[] }> = {
+const PROVIDERS: Record<string, { label: string; tables: string[] }> = {
   Playtech: {
     label: 'Playtech',
-    tables: [
-      { name: 'Roleta Brasileira', defaultUrl: '' },
-      { name: 'Mega Fire Blaze Roulette Live', defaultUrl: '' },
-      { name: 'Roulette', defaultUrl: '' },
-    ],
+    tables: ['Roleta Brasileira', 'Mega Fire Blaze Roulette Live', 'Roulette'],
   },
   Evolution: {
     label: 'Evolution',
-    tables: [
-      { name: 'Roleta Immersiva', defaultUrl: '' },
-      { name: 'Roulette Evo', defaultUrl: '' },
-      { name: 'Roleta Relâmpago XXXtreme', defaultUrl: '' },
-      { name: 'Roleta ao Vivo', defaultUrl: '' },
-    ],
+    tables: ['Roleta Immersiva', 'Roulette Evo', 'Roleta Relâmpago XXXtreme', 'Roleta ao Vivo'],
   },
   Pragmatic: {
     label: 'Pragmatic',
-    tables: [
-      { name: 'PowerUP Roulette', defaultUrl: '' },
-      { name: 'Roulette Macao', defaultUrl: '' },
-      { name: 'Brasileira Roleta', defaultUrl: '' },
-    ],
+    tables: ['PowerUP Roulette', 'Roulette Macao', 'Brasileira Roleta'],
   },
 };
 
@@ -45,19 +35,30 @@ const Index = () => {
   const DEFAULT_IFRAME_URL = 'https://ona.bet.br/live-casino/game/3782786?provider=Playtech&from=%2Flive-casino';
   const [iframeUrl, setIframeUrl] = useState(DEFAULT_IFRAME_URL);
   const [urlInput, setUrlInput] = useState(DEFAULT_IFRAME_URL);
-  const [activeTab, setActiveTab] = useState<'roleta' | 'aulas' | 'bacbo'>('roleta');
   const [iframeExpanded, setIframeExpanded] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
-
   const [copiedWebhook, setCopiedWebhook] = useState(false);
+  const [copiedScript, setCopiedScript] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true);
+
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-roulette`;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+  const hotNumbers = getHotNumbers(history, 8);
+  const coldNumbers = getColdNumbers(history, 8);
+  const redCount = history.filter(h => h.color === 'red').length;
+  const blackCount = history.filter(h => h.color === 'black').length;
+  const greenCount = history.filter(h => h.color === 'green').length;
+  const total = history.length || 1;
+
+  const handleLoadUrl = () => {
+    if (urlInput.trim()) setIframeUrl(urlInput.trim());
+  };
 
   const downloadExtension = () => {
     fetch('/roulette-tracker-extension.zip')
-      .then(res => {
-        if (!res.ok) throw new Error(`Download failed: ${res.status}`);
-        return res.blob();
-      })
+      .then(res => { if (!res.ok) throw new Error(`${res.status}`); return res.blob(); })
       .then(blob => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -74,50 +75,72 @@ const Index = () => {
     setTimeout(() => setCopiedWebhook(false), 2000);
   };
 
-  const hotNumbers = getHotNumbers(history, 8);
-  const coldNumbers = getColdNumbers(history, 8);
-
-  const redCount = history.filter(h => h.color === 'red').length;
-  const blackCount = history.filter(h => h.color === 'black').length;
-  const greenCount = history.filter(h => h.color === 'green').length;
-  const total = history.length || 1;
-
-  const handleLoadUrl = () => {
-    if (urlInput.trim()) {
-      setIframeUrl(urlInput.trim());
+  const consoleScript = `// Script de Ponte - Cole no Console do navegador na página da Onabet
+(function() {
+  const originalLog = console.log;
+  console.log = function(...args) {
+    if (!isNaN(args[0]) && args[0] !== "") {
+      const n = parseInt(args[0]);
+      if (n >= 0 && n <= 36) {
+        fetch('${supabaseUrl}/rest/v1/resultados_roleta', {
+          method: 'POST',
+          headers: {
+            'apikey': '${anonKey}',
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ numero: n.toString(), mesa: "Roleta Brasileira" })
+        });
+        originalLog("%c[Tracker] Número enviado: " + n, "color: #00E5FF; font-weight: bold;");
+      }
     }
+    originalLog.apply(console, args);
   };
+  console.log("%c[Tracker] Ponte ativa!", "color: #FF00E5; font-weight: bold; font-size: 14px;");
+})();`;
+
+  const copyScript = () => {
+    navigator.clipboard.writeText(consoleScript);
+    setCopiedScript(true);
+    setTimeout(() => setCopiedScript(false), 2000);
+  };
+
+  // Terminal grouping for "Números Puxados" panel
+  const terminalGroups = history.slice(0, 30).reduce<Record<number, number[]>>((acc, h) => {
+    const t = h.value % 10;
+    if (!acc[t]) acc[t] = [];
+    acc[t].push(h.value);
+    return acc;
+  }, {});
 
   return (
     <div className="h-screen bg-gradient-casino flex flex-col overflow-hidden">
-      {/* Compact Navbar */}
-      <nav className="bg-secondary/90 backdrop-blur-md border-b border-border px-3 py-1.5 z-50 shrink-0">
+      {/* Top Navbar */}
+      <nav className="bg-card/90 backdrop-blur-md border-b border-border px-4 py-2 z-50 shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CircleDot className="w-4 h-4 text-primary animate-spin-slow" />
-            <span className="font-display text-[10px] tracking-widest text-glow-green">ROULETTE ANALYTICS</span>
-          </div>
           <div className="flex items-center gap-3">
-            {/* Auto mode toggle inline */}
+            <CircleDot className="w-5 h-5 text-primary animate-spin-slow" />
+            <span className="font-display text-xs tracking-widest text-glow-cyan">ROULETTE ANALYTICS</span>
+            <span className="text-[9px] px-2 py-0.5 bg-accent/20 rounded-full text-accent font-bold border border-accent/30">PRO</span>
+          </div>
+          <div className="flex items-center gap-2">
             <button
               onClick={toggleAutoMode}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold transition-all ${
-                autoMode
-                  ? 'bg-destructive text-destructive-foreground'
-                  : 'bg-primary/20 text-primary hover:bg-primary/30'
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-bold transition-all ${
+                autoMode ? 'bg-destructive text-destructive-foreground shadow-lg' : 'bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30'
               }`}
             >
-              {autoMode ? <Square className="w-2.5 h-2.5" /> : <Play className="w-2.5 h-2.5" />}
+              {autoMode ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
               {autoMode ? 'PARAR' : 'AUTO'}
             </button>
             {autoMode && (
-              <div className="flex gap-0.5">
+              <div className="flex gap-1">
                 {[3, 5, 8].map(s => (
                   <button
                     key={s}
                     onClick={() => setAutoSpeed(s)}
-                    className={`px-1.5 py-0.5 rounded text-[8px] font-semibold ${
-                      autoSpeed === s ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+                    className={`px-2 py-1 rounded text-[9px] font-semibold transition-all ${
+                      autoSpeed === s ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
                     }`}
                   >
                     {s}s
@@ -127,196 +150,257 @@ const Index = () => {
             )}
             <button
               onClick={downloadExtension}
-              className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold bg-accent/20 text-accent hover:bg-accent/30 transition-all"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-bold bg-accent/20 text-accent hover:bg-accent/30 transition-all border border-accent/30"
               title="Baixar extensão Chrome"
             >
-              <Download className="w-2.5 h-2.5" />
-              EXT
+              <Download className="w-3 h-3" />
+              EXTENSÃO
             </button>
-            <span className="text-[9px] px-1.5 py-0.5 bg-accent/20 rounded text-accent font-bold">PRO</span>
-            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-neon-cyan" />
           </div>
         </div>
       </nav>
 
-      {/* Main Split Layout */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* LEFT PANEL - Analysis & Controls */}
-        <div className={`${iframeExpanded ? 'hidden lg:flex' : 'flex'} flex-col ${iframeExpanded ? 'lg:w-[280px]' : 'lg:w-[340px]'} border-r border-border overflow-y-auto transition-all`}>
-          {/* Provider/Table Selectors */}
-          <div className="shrink-0 border-b border-border">
-            <div className="flex">
-              <div className="flex-1 relative border-r border-border">
-                <select
-                  value={provider}
-                  onChange={e => {
-                    setProvider(e.target.value);
-                    setTable(PROVIDERS[e.target.value].tables[0].name);
-                  }}
-                  className="w-full bg-card text-foreground text-[11px] font-semibold px-2 py-1.5 appearance-none cursor-pointer focus:outline-none"
-                >
-                  {Object.entries(PROVIDERS).map(([key, p]) => (
-                    <option key={key} value={key}>{p.label}</option>
-                  ))}
-                </select>
-                <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-              <div className="flex-1 relative">
-                <select
-                  value={table}
-                  onChange={e => setTable(e.target.value)}
-                  className="w-full bg-card text-foreground text-[11px] font-semibold px-2 py-1.5 appearance-none cursor-pointer focus:outline-none"
-                >
-                  {PROVIDERS[provider]?.tables.map(t => (
-                    <option key={t.name} value={t.name}>{t.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-            {/* Premium toggle */}
-            <div className="flex items-center justify-between px-2 py-1 bg-primary/5 border-t border-primary/10">
-              <span className="text-[9px] font-bold text-primary tracking-wider font-display">
-                ⚡ {PROVIDERS[provider]?.label} • {table}
-              </span>
-              <label className="flex items-center gap-1 cursor-pointer">
-                <span className="text-[8px] text-muted-foreground">Tabela Premium</span>
-                <input
-                  type="checkbox"
-                  checked={showPremium}
-                  onChange={e => setShowPremium(e.target.checked)}
-                  className="w-3 h-3 accent-primary"
-                />
-              </label>
-            </div>
-            {/* Webhook URL for extension */}
-            <div className="px-2 py-1.5 bg-card/50 border-t border-border">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[9px] font-bold text-muted-foreground tracking-wider">WEBHOOK URL</span>
-                <button onClick={copyWebhook} className="flex items-center gap-0.5 text-[9px] text-primary hover:text-primary/80">
-                  {copiedWebhook ? <Check className="w-2.5 h-2.5" /> : <Copy className="w-2.5 h-2.5" />}
-                  {copiedWebhook ? 'Copiado!' : 'Copiar'}
-                </button>
-              </div>
-              <div className="text-[8px] text-muted-foreground bg-secondary/50 rounded px-1.5 py-1 font-mono truncate select-all">
-                {webhookUrl}
-              </div>
-            </div>
-          </div>
-
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto p-2 space-y-2">
-            {/* Alerts */}
-            <AlertBanner />
-
-            {/* History */}
-            <AnimatedHistory />
-
-            {/* Color Bar */}
-            {history.length > 0 && (
-              <div className="bg-card rounded-lg border border-border p-2">
-                <div className="flex gap-0.5 h-2.5 rounded overflow-hidden">
-                  <motion.div animate={{ width: `${(redCount / total) * 100}%` }} className="bg-roulette-red rounded-l" transition={{ duration: 0.5 }} />
-                  <motion.div animate={{ width: `${(blackCount / total) * 100}%` }} className="bg-roulette-black" transition={{ duration: 0.5 }} />
-                  <motion.div animate={{ width: `${(greenCount / total) * 100}%` }} className="bg-roulette-green rounded-r" transition={{ duration: 0.5 }} />
+      {/* Main Layout */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* LEFT SIDEBAR */}
+        {showSidebar && (
+          <motion.aside
+            initial={{ x: -300 }}
+            animate={{ x: 0 }}
+            exit={{ x: -300 }}
+            className={`flex flex-col ${iframeExpanded ? 'w-[280px]' : 'w-[360px]'} border-r border-border bg-card/50 backdrop-blur-sm shrink-0 transition-all`}
+          >
+            {/* Provider/Table Selectors */}
+            <div className="shrink-0 border-b border-border">
+              <div className="flex">
+                <div className="flex-1 relative border-r border-border">
+                  <select
+                    value={provider}
+                    onChange={e => {
+                      setProvider(e.target.value);
+                      setTable(PROVIDERS[e.target.value].tables[0]);
+                    }}
+                    className="w-full bg-transparent text-foreground text-[11px] font-semibold px-3 py-2 appearance-none cursor-pointer focus:outline-none"
+                  >
+                    {Object.entries(PROVIDERS).map(([key, p]) => (
+                      <option key={key} value={key} className="bg-card">{p.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
-                <div className="flex justify-between mt-1 text-[8px] font-mono text-muted-foreground">
-                  <span className="text-roulette-red">🔴 {((redCount / total) * 100).toFixed(0)}%</span>
-                  <span>⚫ {((blackCount / total) * 100).toFixed(0)}%</span>
-                  <span className="text-roulette-green">🟢 {((greenCount / total) * 100).toFixed(0)}%</span>
+                <div className="flex-1 relative">
+                  <select
+                    value={table}
+                    onChange={e => setTable(e.target.value)}
+                    className="w-full bg-transparent text-foreground text-[11px] font-semibold px-3 py-2 appearance-none cursor-pointer focus:outline-none"
+                  >
+                    {PROVIDERS[provider]?.tables.map(t => (
+                      <option key={t} value={t} className="bg-card">{t}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
-            )}
 
-            {/* Hot & Cold */}
-            {history.length > 0 && (
-              <div className="grid grid-cols-2 gap-1.5">
-                <div className="bg-card rounded-lg border border-border p-2">
-                  <div className="flex items-center gap-1 mb-1.5">
-                    <Flame className="w-3 h-3 text-destructive" />
-                    <span className="font-display text-[8px] text-destructive tracking-widest">QUENTES</span>
+              {/* Status bar */}
+              <div className="flex items-center justify-between px-3 py-1.5 bg-primary/5 border-t border-primary/10">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-3 h-3 text-primary" />
+                  <span className="text-[9px] font-bold text-primary tracking-wider font-display">
+                    {PROVIDERS[provider]?.label} • {table}
+                  </span>
+                </div>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <span className="text-[9px] text-muted-foreground">Premium</span>
+                  <div
+                    onClick={() => setShowPremium(!showPremium)}
+                    className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${showPremium ? 'bg-primary' : 'bg-muted'}`}
+                  >
+                    <div className={`w-3 h-3 rounded-full bg-foreground absolute top-0.5 transition-transform ${showPremium ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </div>
-                  <div className="flex flex-wrap gap-0.5">
-                    {hotNumbers.map(h => {
-                      const color = getNumberColor(h.number);
-                      const cls = color === 'red' ? 'bg-roulette-red' : color === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
-                      return (
-                        <div key={h.number} className={`${cls} w-6 h-6 rounded flex items-center justify-center text-[9px] font-bold text-white relative`}>
-                          {h.number}
-                          <span className="absolute -top-0.5 -right-0.5 bg-destructive text-white text-[6px] rounded-full w-2.5 h-2.5 flex items-center justify-center">
-                            {h.freq}
-                          </span>
+                </label>
+              </div>
+            </div>
+
+            {/* Scrollable sidebar content */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              {/* Alerts */}
+              <AlertBanner />
+
+              {/* History Grid */}
+              <AnimatedHistory />
+
+              {/* Color Distribution */}
+              {history.length > 0 && (
+                <div className="bg-card rounded-lg border border-border p-3">
+                  <div className="flex gap-1 h-3 rounded-full overflow-hidden mb-2">
+                    <motion.div animate={{ width: `${(redCount / total) * 100}%` }} className="bg-roulette-red" transition={{ duration: 0.5 }} />
+                    <motion.div animate={{ width: `${(blackCount / total) * 100}%` }} className="bg-roulette-black" transition={{ duration: 0.5 }} />
+                    <motion.div animate={{ width: `${(greenCount / total) * 100}%` }} className="bg-roulette-green" transition={{ duration: 0.5 }} />
+                  </div>
+                  <div className="flex justify-between text-[9px] font-mono text-muted-foreground">
+                    <span className="text-roulette-red">🔴 {redCount} ({((redCount / total) * 100).toFixed(0)}%)</span>
+                    <span>⚫ {blackCount} ({((blackCount / total) * 100).toFixed(0)}%)</span>
+                    <span className="text-roulette-green">🟢 {greenCount}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Hot & Cold Numbers */}
+              {history.length > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-card rounded-lg border border-border p-2.5">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Flame className="w-3.5 h-3.5 text-destructive" />
+                      <span className="font-display text-[9px] text-destructive tracking-widest">QUENTES</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {hotNumbers.map(h => {
+                        const color = getNumberColor(h.number);
+                        const cls = color === 'red' ? 'bg-roulette-red' : color === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
+                        return (
+                          <div key={h.number} className={`${cls} w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold text-foreground relative`}>
+                            {h.number}
+                            <span className="absolute -top-1 -right-1 bg-destructive text-foreground text-[7px] rounded-full w-3 h-3 flex items-center justify-center font-bold">
+                              {h.freq}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="bg-card rounded-lg border border-border p-2.5">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Snowflake className="w-3.5 h-3.5 text-primary" />
+                      <span className="font-display text-[9px] text-primary tracking-widest">FRIOS</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {coldNumbers.map(h => {
+                        const color = getNumberColor(h.number);
+                        const cls = color === 'red' ? 'bg-roulette-red' : color === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
+                        return (
+                          <div key={h.number} className={`${cls} w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold text-foreground opacity-50`}>
+                            {h.number}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Números Puxados — Terminal grouping */}
+              {history.length > 0 && (
+                <div className="bg-card rounded-lg border border-border p-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Hash className="w-3.5 h-3.5 text-accent" />
+                    <span className="font-display text-[9px] text-accent tracking-widest">NÚMEROS PUXADOS</span>
+                  </div>
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                    {Object.entries(terminalGroups).sort(([a], [b]) => Number(a) - Number(b)).map(([terminal, nums]) => (
+                      <div key={terminal} className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-accent w-8 shrink-0 font-display">T{terminal}</span>
+                        <div className="flex flex-wrap gap-0.5">
+                          {nums.slice(0, 8).map((n, i) => {
+                            const color = getNumberColor(n);
+                            const cls = color === 'red' ? 'bg-roulette-red' : color === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
+                            return (
+                              <span key={`${n}-${i}`} className={`${cls} w-6 h-6 rounded text-[9px] font-bold text-foreground flex items-center justify-center`}>
+                                {n}
+                              </span>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="bg-card rounded-lg border border-border p-2">
-                  <div className="flex items-center gap-1 mb-1.5">
-                    <Snowflake className="w-3 h-3 text-blue-400" />
-                    <span className="font-display text-[8px] text-blue-400 tracking-widest">FRIOS</span>
+              )}
+
+              {/* Quick Number Pad */}
+              <QuickNumberPad onAddNumber={addNumber} />
+
+              {/* AI Analysis */}
+              <AIAnalysis />
+
+              {/* Premium Table */}
+              {showPremium && <PremiumTable history={history} />}
+
+              {/* Webhook & Script Section */}
+              <div className="bg-card rounded-lg border border-border p-3 space-y-3">
+                <div className="flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-primary" />
+                  <span className="font-display text-[9px] text-primary tracking-widest">INTEGRAÇÃO</span>
+                </div>
+
+                {/* Webhook URL */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] font-semibold text-muted-foreground">WEBHOOK URL</span>
+                    <button onClick={copyWebhook} className="flex items-center gap-1 text-[9px] text-primary hover:text-primary/80 transition-colors">
+                      {copiedWebhook ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      {copiedWebhook ? 'Copiado!' : 'Copiar'}
+                    </button>
                   </div>
-                  <div className="flex flex-wrap gap-0.5">
-                    {coldNumbers.map(h => {
-                      const color = getNumberColor(h.number);
-                      const cls = color === 'red' ? 'bg-roulette-red' : color === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
-                      return (
-                        <div key={h.number} className={`${cls} w-6 h-6 rounded flex items-center justify-center text-[9px] font-bold text-white opacity-60`}>
-                          {h.number}
-                        </div>
-                      );
-                    })}
+                  <div className="text-[8px] text-muted-foreground bg-secondary rounded-md px-2 py-1.5 font-mono truncate select-all border border-border">
+                    {webhookUrl}
                   </div>
+                </div>
+
+                {/* Console Script */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] font-semibold text-muted-foreground">SCRIPT CONSOLE</span>
+                    <button onClick={copyScript} className="flex items-center gap-1 text-[9px] text-accent hover:text-accent/80 transition-colors">
+                      {copiedScript ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      {copiedScript ? 'Copiado!' : 'Copiar'}
+                    </button>
+                  </div>
+                  <p className="text-[8px] text-muted-foreground mb-1">
+                    Cole no console do navegador na página da Onabet para captura automática
+                  </p>
                 </div>
               </div>
-            )}
+            </div>
+          </motion.aside>
+        )}
 
-            {/* Números Puxados (Quick Pad) */}
-            <QuickNumberPad onAddNumber={addNumber} />
-
-            {/* Live Stats */}
-            <LiveStats />
-
-            {/* AI Analysis */}
-            <AIAnalysis />
-
-            {/* Premium Table (toggled) */}
-            {showPremium && <PremiumTable history={history} />}
-
-            {/* Paste History */}
-            <PasteHistory />
-          </div>
-        </div>
-
-        {/* RIGHT PANEL - Casino Iframe */}
-        <div className="flex-1 flex flex-col bg-secondary/20 min-h-0">
+        {/* CENTER - Casino Iframe */}
+        <div className="flex-1 flex flex-col bg-secondary/10 min-h-0">
           {/* Iframe toolbar */}
-          <div className="shrink-0 flex items-center gap-2 px-2 py-1 bg-card border-b border-border">
+          <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-card/80 border-b border-border backdrop-blur-sm">
+            <button
+              onClick={() => setShowSidebar(!showSidebar)}
+              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-secondary"
+              title={showSidebar ? 'Esconder sidebar' : 'Mostrar sidebar'}
+            >
+              <Layers className="w-4 h-4" />
+            </button>
             <input
               type="text"
               value={urlInput}
               onChange={e => setUrlInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleLoadUrl()}
               placeholder="Cole a URL do cassino aqui..."
-              className="flex-1 bg-secondary border border-border rounded px-2 py-1 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="flex-1 bg-secondary border border-border rounded-md px-3 py-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <button
               onClick={handleLoadUrl}
-              className="px-2 py-1 bg-primary text-primary-foreground rounded text-[9px] font-bold hover:bg-primary/90 flex items-center gap-1"
+              className="px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-[10px] font-bold hover:bg-primary/90 flex items-center gap-1.5 transition-colors"
             >
               <ExternalLink className="w-3 h-3" />
               ABRIR
             </button>
             <button
               onClick={() => setIframeExpanded(!iframeExpanded)}
-              className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-              title={iframeExpanded ? 'Reduzir' : 'Expandir'}
+              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-secondary"
             >
-              {iframeExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              {iframeExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
           </div>
 
-          {/* Iframe */}
+          {/* Iframe content */}
           <div className="flex-1 relative min-h-0">
             {iframeUrl ? (
               <iframe
@@ -327,17 +411,22 @@ const Index = () => {
                 sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation"
               />
             ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4">
-                <MonitorPlay className="w-16 h-16 text-muted-foreground/20" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center space-y-6">
+                <div className="relative">
+                  <MonitorPlay className="w-20 h-20 text-primary/20" />
+                  <div className="absolute inset-0 animate-pulse-neon">
+                    <MonitorPlay className="w-20 h-20 text-primary/10" />
+                  </div>
+                </div>
                 <div className="text-center space-y-2">
-                  <p className="text-sm text-muted-foreground font-semibold">Cassino ao Vivo</p>
-                  <p className="text-[10px] text-muted-foreground/60 max-w-xs">
+                  <p className="text-sm text-foreground/80 font-semibold font-display tracking-wider">Cassino ao Vivo</p>
+                  <p className="text-[11px] text-muted-foreground max-w-sm">
                     Cole a URL do cassino na barra acima para jogar aqui dentro enquanto acompanha as estatísticas ao lado
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2 justify-center mt-4">
+                <div className="flex flex-wrap gap-2 justify-center">
                   {['🎰 Roleta Brasileira', '⚡ Immersiva', '🔥 XXXtreme'].map(name => (
-                    <div key={name} className="px-3 py-1.5 bg-card border border-border rounded-lg text-[10px] text-muted-foreground">
+                    <div key={name} className="px-4 py-2 bg-card border border-border rounded-lg text-[11px] text-muted-foreground hover:border-primary/30 transition-colors cursor-default">
                       {name}
                     </div>
                   ))}
@@ -347,28 +436,6 @@ const Index = () => {
           </div>
         </div>
       </div>
-
-      {/* Footer Navigation */}
-      <footer className="shrink-0 bg-secondary/90 backdrop-blur border-t border-border z-50">
-        <div className="flex justify-around">
-          {[
-            { id: 'aulas' as const, icon: '📚', label: 'Aulas' },
-            { id: 'roleta' as const, icon: '🎰', label: 'Roleta' },
-            { id: 'bacbo' as const, icon: '🎲', label: 'BacBo' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex flex-col items-center py-1 text-[9px] transition-colors ${
-                activeTab === tab.id ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              <span className="text-sm">{tab.icon}</span>
-              <span className="font-medium">{tab.label}</span>
-            </button>
-          ))}
-        </div>
-      </footer>
 
       <DebugModal />
     </div>
