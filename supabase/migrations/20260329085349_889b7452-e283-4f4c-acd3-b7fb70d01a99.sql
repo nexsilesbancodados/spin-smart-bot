@@ -1,0 +1,1 @@
+CREATE POLICY "Anyone can delete prediction_history" ON public.prediction_history FOR DELETE TO anon, authenticated USING (true);
