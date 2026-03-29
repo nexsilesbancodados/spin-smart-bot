@@ -2723,6 +2723,8 @@ serve(async (req) => {
       noiseFiltered: noiseCount,
       dealerChaos: chaoticDealer,
       selfCorrection: strategyWeightAdjust,
+      errorAnalysis: { categories: errorCategories, topError: topError?.[0] || null, consecutiveBoosts: consecutiveHitBoost },
+      timeAwareness,
       randomnessIndex,
       diamondDeflection: diamondDeflection.slice(0, 4),
       kellyBetting,
