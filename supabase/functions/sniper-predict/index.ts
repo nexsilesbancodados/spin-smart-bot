@@ -4330,8 +4330,11 @@ serve(async (req) => {
     }
 
     strategies.forEach(st => {
-      // Bonus for high payout low coverage (more profitable if hits)
-      st.score += (st.payout > 10 ? 3 : st.payout > 3 ? 1 : 0);
+      // Bonus for high payout (more profitable if hits) — REFORÇADO para competir com fusão
+      if (st.payout >= 17) st.score += 12;       // cavalos/splits pay 17:1
+      else if (st.payout >= 8) st.score += 8;     // small groups pay 8:1+
+      else if (st.payout >= 5) st.score += 5;     // jeu zero etc
+      else if (st.payout >= 2) st.score += 2;     // dozens/columns
       // Physical mode bonus for sector-based strategies
       if (mesaMode === 'fisico' && ['sniper', 'voisins'].includes(st.type)) st.score += 5;
       // Mathematical mode bonus for terminal-based strategies
