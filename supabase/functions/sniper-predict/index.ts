@@ -5620,7 +5620,7 @@ serve(async (req) => {
         cor: ['cor','cor_alternancia','cor_reversa'],
         paridade: ['paridade','paridade_reversa'],
         alto_baixo: ['alto_baixo','alto_baixo_reversa'],
-        fusao: ['fusao_suprema','convergencia_absoluta','matrix_fusion','archetype_fusion','combo_ouro','combo_prata'],
+        fusao: ['fusao_suprema','convergencia_absoluta','matrix_fusion','archetype_fusion','combo_ouro','combo_prata','ensemble_supremo'],
         puxada: ['numeros_puxam'],
         zero: ['pressao_zero','jeu_zero'],
         rua: ['rua'],
@@ -6346,6 +6346,12 @@ serve(async (req) => {
       dealerShift: { detected: isNewDealer, oldArc: +olderMean20.toFixed(1), newArc: +recentMean5.toFixed(1) },
       ultraConservadorMode: ultraConservador,
       recentWinRate: +recent10WR.toFixed(2),
+      ensemble: ensembleResult,
+      matrizNumerica: {
+        top6: Object.entries(matrizCombinado).sort(([,a],[,b])=>(b as number)-(a as number)).slice(0,6).map(([n])=>({num:Number(n),prob:+((matrizProb[Number(n)]||0)*100).toFixed(1)})),
+        observacoes: matrizTotal,
+        ultimoNumero: lastNum0,
+      },
     });
 
   } catch (e) {
