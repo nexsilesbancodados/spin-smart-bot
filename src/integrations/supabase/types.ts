@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_learned_patterns: {
+        Row: {
+          accuracy: number | null
+          data_points: number | null
+          id: string
+          knowledge: string
+          learned_at: string
+          learning_type: string
+          metadata: Json | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          accuracy?: number | null
+          data_points?: number | null
+          id?: string
+          knowledge: string
+          learned_at?: string
+          learning_type: string
+          metadata?: Json | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          accuracy?: number | null
+          data_points?: number | null
+          id?: string
+          knowledge?: string
+          learned_at?: string
+          learning_type?: string
+          metadata?: Json | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       historico_roleta: {
         Row: {
           color: string
@@ -92,6 +128,27 @@ export type Database = {
           mesa?: string | null
           numero?: string
           provedor?: string | null
+        }
+        Relationships: []
+      }
+      roulette_numbers: {
+        Row: {
+          color: string
+          fetched_at: string
+          id: string
+          number: number
+        }
+        Insert: {
+          color: string
+          fetched_at?: string
+          id?: string
+          number: number
+        }
+        Update: {
+          color?: string
+          fetched_at?: string
+          id?: string
+          number?: number
         }
         Relationships: []
       }
