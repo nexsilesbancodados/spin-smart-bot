@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode } from 'react';
 import { type RouletteNumber, type BotState, getNumberColor, generateRandomNumber, getHotNumbers, getColdNumbers } from '@/lib/roulette';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Alert {
   id: string;
