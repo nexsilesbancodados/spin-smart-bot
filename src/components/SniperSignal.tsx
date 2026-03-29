@@ -54,6 +54,8 @@ const getBetTypeLabel = (type: string) => {
     case 'diferenca_const': return '📏 DIFERENÇA CONSTANTE';
     case 'combo_ouro': return '👑 COMBO OURO';
     case 'combo_prata': return '🥈 COMBO PRATA';
+    case 'ensemble_supremo': return '🌟 ENSEMBLE SUPREMO';
+    case 'matriz_numerica': return '🔢 MATRIZ NUMÉRICA';
     default: return `📌 ${type.replace(/_/g, ' ').toUpperCase()}`;
   }
 };
@@ -115,7 +117,8 @@ const getBetTypeCategory = (type: string): string => {
   if (['cor', 'cor_alternancia', 'cor_reversa'].includes(type)) return 'cor';
   if (['paridade', 'paridade_reversa'].includes(type)) return 'paridade';
   if (['alto_baixo', 'alto_baixo_reversa'].includes(type)) return 'alto_baixo';
-  if (['fusao_suprema', 'convergencia_absoluta', 'matrix_fusion', 'archetype_fusion', 'combo_ouro', 'combo_prata'].includes(type)) return 'fusao';
+  if (['fusao_suprema', 'convergencia_absoluta', 'matrix_fusion', 'archetype_fusion', 'combo_ouro', 'combo_prata', 'ensemble_supremo'].includes(type)) return 'fusao';
+  if (['matriz_numerica'].includes(type)) return 'outro';
   if (['numeros_puxam'].includes(type)) return 'puxada';
   if (['pressao_zero'].includes(type)) return 'zero';
   if (['rua'].includes(type)) return 'rua';
@@ -488,6 +491,62 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                             <span className={`text-[6px] font-mono font-bold ${i === 0 ? 'text-yellow-400' : 'text-muted-foreground'}`}>
                               {c.score.toFixed(0)}
                             </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ENSEMBLE SUPREMO */}
+                  {sniperData?.ensemble?.top1 !== null && sniperData?.ensemble?.top1 !== undefined && (
+                    <div className="px-4 py-2.5 border-t border-yellow-500/20 bg-yellow-500/5">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-xs">👑</span>
+                        <span className="text-[9px] font-black text-yellow-400 tracking-widest">ENSEMBLE SUPREMO</span>
+                        <span className="text-[7px] text-muted-foreground ml-auto">{sniperData.ensemble.sources?.length || 0} fontes</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-black ring-2 ring-yellow-400/60 shadow-lg shadow-yellow-400/20 flex-shrink-0 ${
+                          sniperData.ensemble.top1 === 0 ? 'bg-emerald-600 text-white' :
+                          RED_NUMBERS.includes(sniperData.ensemble.top1) ? 'bg-red-600 text-white' :
+                          'bg-zinc-800 text-white'
+                        }`}>{sniperData.ensemble.top1}</div>
+                        <div className="flex-1">
+                          <p className="text-[8px] text-yellow-400 font-bold mb-0.5">Número #1 por todas as fontes</p>
+                          <div className="flex flex-wrap gap-1">
+                            {sniperData.ensemble.sources?.slice(0,4).map((src: string, i: number) => (
+                              <span key={i} className="text-[6px] px-1 py-0.5 rounded bg-yellow-500/15 text-yellow-400/80 border border-yellow-500/20 font-mono">{src}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex gap-0.5">
+                          {sniperData.ensemble.top5?.slice(1,5).map((n: number) => (
+                            <div key={n} className={`w-6 h-6 rounded-full flex items-center justify-center text-[7px] font-bold border border-white/10 opacity-70 ${
+                              n === 0 ? 'bg-emerald-600 text-white' : RED_NUMBERS.includes(n) ? 'bg-red-600 text-white' : 'bg-zinc-800 text-white'
+                            }`}>{n}</div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* MATRIZ NUMÉRICA */}
+                  {sniperData?.matrizNumerica?.observacoes >= 15 && (
+                    <div className="px-4 py-2 border-t border-blue-500/15">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[9px] font-bold text-blue-400">
+                          🔢 Após {sniperData.matrizNumerica.ultimoNumero} ({sniperData.matrizNumerica.observacoes} obs):
+                        </span>
+                      </div>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {sniperData.matrizNumerica.top6?.map((item: any) => (
+                          <div key={item.num} className="flex flex-col items-center">
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold border border-white/10 ${
+                              item.num === 0 ? 'bg-emerald-600 text-white' :
+                              RED_NUMBERS.includes(item.num) ? 'bg-red-600 text-white' :
+                              'bg-zinc-800 text-white'
+                            } ${item.prob > 10 ? 'ring-1 ring-blue-400/50' : ''}`}>{item.num}</div>
+                            <span className="text-[6px] font-mono text-blue-400 mt-0.5">{item.prob}%</span>
                           </div>
                         ))}
                       </div>

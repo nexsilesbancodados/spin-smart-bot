@@ -1335,6 +1335,86 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
       }
     }
 
+    // ── TREINAR MATRIZ 37×37 NO BANCO ─────────────────────────────
+    const matrixTrain: Record<number, Record<number, number>> = {};
+    for (let a = 0; a <= 36; a++) { matrixTrain[a] = {}; for (let b = 0; b <= 36; b++) matrixTrain[a][b] = 0; }
+    const trainNums = Math.min(500, numbers.length);
+    for (let i = 0; i < trainNums - 1; i++) {
+      matrixTrain[numbers[i + 1]][numbers[i]]++;
+    }
+    const topPairs: {source: number; target: number; count: number; prob: number}[] = [];
+    for (let src = 0; src <= 36; src++) {
+      const row = matrixTrain[src];
+      const total = Object.values(row).reduce((a: number,b: number)=>a+b,0);
+      if (total < 8) continue;
+      Object.entries(row)
+        .sort(([,a],[,b])=>(b as number)-(a as number))
+        .slice(0, 3)
+        .forEach(([tgt, cnt]) => {
+          const prob = (cnt as number) / total;
+          if (prob > 0.10) {
+            topPairs.push({source: src, target: Number(tgt), count: cnt as number, prob});
+          }
+        });
+    }
+    topPairs.sort((a,b) => b.prob - a.prob);
+    for (const pair of topPairs.slice(0, 20)) {
+      const titulo = `Matriz: ${pair.source}→${pair.target}`;
+      const { data: exM } = await supabase
+        .from('ai_learned_patterns')
+        .select('id, data_points, accuracy')
+        .eq('learning_type', 'matrix_transition')
+        .eq('title', titulo)
+        .maybeSingle();
+
+      const prevCount = (exM as any)?.data_points || 0;
+      const prevProb = ((exM as any)?.accuracy || 0) / 100;
+      const newCount = prevCount + pair.count;
+      const newProb = prevCount > 0
+        ? (prevProb * prevCount + pair.prob * pair.count) / newCount
+        : pair.prob;
+
+      const rowM = {
+        knowledge: `Após ${pair.source} sair, ${pair.target} aparece ${(newProb*100).toFixed(1)}% das vezes (${newCount} obs).`,
+        data_points: newCount,
+        accuracy: Math.min(95, newProb * 100),
+        metadata: {
+          source: pair.source, target: pair.target, prob: newProb, count: newCount,
+          hotNumbers: [pair.target], key_numbers: [pair.target],
+          lastSeen: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString(),
+      };
+
+      if ((exM as any)?.id) {
+        await supabase.from('ai_learned_patterns').update(rowM).eq('id', (exM as any).id).catch(()=>{});
+      } else {
+        await supabase.from('ai_learned_patterns').insert({
+          learning_type: 'matrix_transition', title: titulo, ...rowM
+        }).catch(()=>{});
+      }
+    }
+
+    // ── LIMPEZA INTELIGENTE DO BANCO ──────────────────────────────
+    const LIMITS_PER_TYPE: Record<string, number> = {
+      'pull_confirmed': 37, 'matrix_transition': 100, 'terminal_dominance': 15,
+      'session_spin': 50, 'hit_pattern': 5, 'error_pattern': 5,
+    };
+    for (const [lType, limit] of Object.entries(LIMITS_PER_TYPE)) {
+      const { data: allOfType } = await supabase
+        .from('ai_learned_patterns')
+        .select('id, updated_at, accuracy')
+        .eq('learning_type', lType)
+        .order('accuracy', { ascending: false });
+      if (allOfType && allOfType.length > limit) {
+        const toDelete = allOfType.slice(limit).map((r: any) => r.id);
+        if (toDelete.length > 0) {
+          await supabase.from('ai_learned_patterns').delete().in('id', toDelete).catch(()=>{});
+        }
+      }
+    }
+    await supabase.from('ai_learned_patterns').delete().lt('accuracy', 15).catch(()=>{});
+
     return new Response(JSON.stringify({
       status: "success",
       learnings: learnings.length,

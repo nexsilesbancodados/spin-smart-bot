@@ -2793,6 +2793,45 @@ serve(async (req) => {
         transitionMatrix.terminalMatrix[termSeq200[i]][termSeq200[i + 1]]++;
       }
 
+      // ── MATRIZ 37×37: número→número (histórico completo) ──────────
+      const numMatrix: Record<number, Record<number, number>> = {};
+      for (let a = 0; a <= 36; a++) {
+        numMatrix[a] = {};
+        for (let b = 0; b <= 36; b++) numMatrix[a][b] = 0;
+      }
+      const numMatrixN = Math.min(500, numbers.length);
+      for (let i = 0; i < numMatrixN - 1; i++) {
+        numMatrix[numbers[i + 1]][numbers[i]]++;
+      }
+      const lastNum0 = numbers[0];
+      const matrizRow = numMatrix[lastNum0] || {};
+      const matrizTotal = Object.values(matrizRow).reduce((a, b) => a + b, 0);
+      const matrizProb: Record<number, number> = {};
+      if (matrizTotal >= 10) {
+        for (let n = 0; n <= 36; n++) {
+          matrizProb[n] = (matrizRow[n] || 0) / matrizTotal;
+        }
+      }
+      const matrizProb2: Record<number, number> = {};
+      const matrizProb3: Record<number, number> = {};
+      if (numbers.length >= 2) {
+        const row2 = numMatrix[numbers[1]] || {};
+        const total2 = Object.values(row2).reduce((a, b) => a + b, 0);
+        if (total2 >= 8) for (let n = 0; n <= 36; n++) matrizProb2[n] = (row2[n] || 0) / total2;
+      }
+      if (numbers.length >= 3) {
+        const row3 = numMatrix[numbers[2]] || {};
+        const total3 = Object.values(row3).reduce((a, b) => a + b, 0);
+        if (total3 >= 8) for (let n = 0; n <= 36; n++) matrizProb3[n] = (row3[n] || 0) / total3;
+      }
+      const matrizCombinado: Record<number, number> = {};
+      for (let n = 0; n <= 36; n++) {
+        matrizCombinado[n] = (matrizProb[n] || 0) * 3 +
+                              (matrizProb2[n] || 0) * 2 +
+                              (matrizProb3[n] || 0) * 1;
+      }
+      const maxMatriz = Math.max(...Object.values(matrizCombinado), 0.001);
+
       // PREDICT next sector from transition matrix
       const lastSector = getSector(numbers[0]);
       if (lastSector !== 'Zero' && transitionMatrix.sectorMatrix[lastSector]) {
@@ -3571,8 +3610,28 @@ serve(async (req) => {
         const source = (l.metadata as any)?.source;
         const target = (l.metadata as any)?.target;
         if (typeof source === 'number' && source === numbers[0] && typeof target === 'number') {
-          learnedBonus[target] += 3.0; // Directly confirmed pull from current number
+          learnedBonus[target] += 3.0;
           learnedReasons[target].push('IA Pull Confirmado!');
+        }
+      }
+      // MATRIX TRANSITION: usar pares aprendidos como boost direto
+      if (l.learning_type === 'matrix_transition') {
+        const meta = l.metadata as any;
+        if (meta?.source === numbers[0] && meta?.target >= 0 && meta?.target <= 36) {
+          const boost = ((l.accuracy || 50) / 100) * 6;
+          learnedBonus[meta.target] = (learnedBonus[meta.target] || 0) + boost;
+          learnedReasons[meta.target].push(`🔢 Matriz(${(l.accuracy || 50).toFixed(0)}%)`);
+        }
+      }
+      // HIT PATTERN: acertos recentes têm muito peso
+      if (l.learning_type === 'hit_pattern') {
+        const recencyBoostHit = 2.5;
+        const keyNums: number[] = (l.metadata as any)?.key_numbers || [];
+        for (const kn of keyNums) {
+          if (kn >= 0 && kn <= 36) {
+            learnedBonus[kn] += ((l.accuracy || 50) / 100) * recencyBoostHit;
+            learnedReasons[kn].push(`✅ hit_pattern`);
+          }
         }
       }
     }
@@ -4002,6 +4061,16 @@ serve(async (req) => {
       }
       if (transitionMatrix.predictedTerminal !== null && n % 10 === transitionMatrix.predictedTerminal) {
         s += 2; r.push(`📊 Matriz→T${transitionMatrix.predictedTerminal}`);
+      }
+      // MATRIZ 37×37: boost proporcional à probabilidade histórica
+      if (matrizCombinado[n] > 0 && matrizTotal >= 10) {
+        const matrizNorm = matrizCombinado[n] / maxMatriz;
+        if (matrizNorm > 0.15) {
+          const boost = matrizNorm * 8;
+          s += boost;
+          r.push(`📊 Matriz(${((matrizProb[n]||0)*100).toFixed(0)}%)`);
+          signalFlags['MATRIZ_NUM'] = true;
+        }
       }
       // DOZEN PRESSURE TRIGGER
       if (transitionMatrix.dozenPressureTrigger?.active && getDozen(n) === transitionMatrix.dozenPressureTrigger.dozen) {
@@ -5353,6 +5422,29 @@ serve(async (req) => {
       }
     }
 
+    // ESTRATÉGIA: TOP NÚMEROS PELA MATRIZ 37×37
+    if (matrizTotal >= 20) {
+      const topMatriz = Object.entries(matrizCombinado)
+        .sort(([,a],[,b]) => (b as number) - (a as number))
+        .slice(0, 6)
+        .filter(([,v]) => (v as number) > maxMatriz * 0.3)
+        .map(([n]) => Number(n));
+
+      if (topMatriz.length >= 3) {
+        const mScore = sumScores(topMatriz) + matrizTotal * 0.1;
+        const mBt = backtestSet(topMatriz);
+        strategies.push({
+          type: 'matriz_numerica', label: `🔢 Matriz Numérica (${matrizTotal} obs)`, emoji: '🔢',
+          numbers: topMatriz,
+          coverage: (topMatriz.length / 37) * 100,
+          payout: 36 - topMatriz.length,
+          score: mScore + mBt * 30 + (matrizTotal > 100 ? 15 : matrizTotal > 50 ? 8 : 0),
+          probability: Math.min(95, Math.round(40 + mScore * 2 + mBt * 35 + (matrizTotal > 100 ? 10 : 0))),
+          justification: `Matriz histórica 37×37: números mais frequentes após ${lastNum0}. ${matrizTotal} observações. Top: ${topMatriz.join(',')}.`,
+        });
+      }
+    }
+
     // REED TRACKING: suppress strategies that failed 4+ consecutive times
     const reedPenalty: Record<string, number> = {};
     for (const st of Object.keys(strategyPerformance)) {
@@ -5528,7 +5620,7 @@ serve(async (req) => {
         cor: ['cor','cor_alternancia','cor_reversa'],
         paridade: ['paridade','paridade_reversa'],
         alto_baixo: ['alto_baixo','alto_baixo_reversa'],
-        fusao: ['fusao_suprema','convergencia_absoluta','matrix_fusion','archetype_fusion','combo_ouro','combo_prata'],
+        fusao: ['fusao_suprema','convergencia_absoluta','matrix_fusion','archetype_fusion','combo_ouro','combo_prata','ensemble_supremo'],
         puxada: ['numeros_puxam'],
         zero: ['pressao_zero','jeu_zero'],
         rua: ['rua'],
@@ -5548,6 +5640,79 @@ serve(async (req) => {
     strategies.sort((a, b) => b.score - a.score || b.payout - a.payout);
 
     const winner = strategies[0];
+
+    // ── ENSEMBLE SUPREMO: eleger o número #1 de todas as fontes ──
+    const ensembleScore: Record<number, number> = {};
+    const ensembleSources: Record<number, string[]> = {};
+    for (let n = 0; n <= 36; n++) { ensembleScore[n] = 0; ensembleSources[n] = []; }
+    numScores.slice(0, 10).forEach((ns: any, i: number) => {
+      const w = (10 - i) / 10;
+      ensembleScore[ns.num] += ns.score * w;
+      ensembleSources[ns.num].push(`Score(${ns.score.toFixed(0)})`);
+    });
+    strategies.slice(0, 15).forEach((st: any) => {
+      const stWeight = (st.score / (strategies[0]?.score || 1)) * 5;
+      st.numbers.slice(0, 5).forEach((n: number, j: number) => {
+        ensembleScore[n] += stWeight * (1 - j * 0.15);
+        if (j === 0) ensembleSources[n].push(`${st.emoji}${st.type}`);
+      });
+    });
+    if (matrizTotal >= 15) {
+      for (let n = 0; n <= 36; n++) {
+        if ((matrizProb[n] || 0) > 0.05) {
+          ensembleScore[n] += (matrizProb[n] || 0) * 50;
+          ensembleSources[n].push(`Matriz(${((matrizProb[n]||0)*100).toFixed(0)}%)`);
+        }
+      }
+    }
+    for (let n = 0; n <= 36; n++) {
+      if (learnedBonus[n] > 0) { ensembleScore[n] += learnedBonus[n] * 3; ensembleSources[n].push('IA'); }
+    }
+    for (let n = 0; n <= 36; n++) {
+      if (deepPullChain[n] >= 5) { ensembleScore[n] += deepPullChain[n] * 0.8; ensembleSources[n].push(`Chain(${deepPullChain[n].toFixed(0)})`); }
+    }
+    const ensembleRanking = Object.entries(ensembleScore)
+      .map(([n, s]) => ({ num: Number(n), score: s, sources: ensembleSources[Number(n)] }))
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score);
+    const ensembleTop1 = ensembleRanking[0] || null;
+    const ensembleTop5 = ensembleRanking.slice(0, 5).map(e => e.num);
+
+    // ESTRATÉGIA ENSEMBLE SUPREMO
+    if (ensembleTop5.length >= 3 && ensembleTop1) {
+      const ensNums = [...new Set([...ensembleTop5, ...PROTECTION_NUMBERS])];
+      const ensScore = sumScores(ensNums) + ensembleTop1.score * 0.5;
+      const ensBt = backtestSet(ensNums);
+      strategies.push({
+        type: 'ensemble_supremo',
+        label: `🌟 Ensemble Supremo → ${ensembleTop1.num}`,
+        emoji: '🌟',
+        numbers: ensNums,
+        coverage: (ensNums.length / 37) * 100,
+        payout: 36 - ensNums.length,
+        score: ensScore + ensBt * 40 + ensembleRanking[0].sources.length * 5,
+        probability: Math.min(95, Math.round(
+          45 + ensBt * 35 + ensembleRanking[0].sources.length * 4 + (matrizTotal > 50 ? 8 : 0)
+        )),
+        justification: `ENSEMBLE de ${ensembleRanking.length} candidatos × ${strategies.length} estratégias × Matriz 37×37 (${matrizTotal} obs). Convergência máxima em ${ensembleTop1.num}: ${ensembleTop1.sources.slice(0,3).join(', ')}.`,
+      });
+      // Re-sort after adding ensemble
+      strategies.sort((a, b) => b.score - a.score || b.payout - a.payout);
+    }
+
+    // Se o ensemble top1 não está nos números do winner, adicionar como proteção
+    if (ensembleTop1 && !winner.numbers.includes(ensembleTop1.num)) {
+      winner.numbers.unshift(ensembleTop1.num);
+      aiLearnings.push(`🎯 ENSEMBLE: nº${ensembleTop1.num} eleito por ${ensembleTop1.sources.length} fontes independentes`);
+    }
+
+    const ensembleResult = {
+      top1: ensembleTop1?.num ?? null,
+      top5: ensembleTop5,
+      topScore: ensembleTop1?.score ?? 0,
+      sources: ensembleTop1?.sources?.slice(0, 5) ?? [],
+    };
+
     const allStrategies = strategies.map(s => ({
       type: s.type, label: s.label, emoji: s.emoji,
       numbers: s.numbers, coverage: +s.coverage.toFixed(1), payout: s.payout,
@@ -6181,6 +6346,12 @@ serve(async (req) => {
       dealerShift: { detected: isNewDealer, oldArc: +olderMean20.toFixed(1), newArc: +recentMean5.toFixed(1) },
       ultraConservadorMode: ultraConservador,
       recentWinRate: +recent10WR.toFixed(2),
+      ensemble: ensembleResult,
+      matrizNumerica: {
+        top6: Object.entries(matrizCombinado).sort(([,a],[,b])=>(b as number)-(a as number)).slice(0,6).map(([n])=>({num:Number(n),prob:+((matrizProb[Number(n)]||0)*100).toFixed(1)})),
+        observacoes: matrizTotal,
+        ultimoNumero: lastNum0,
+      },
     });
 
   } catch (e) {

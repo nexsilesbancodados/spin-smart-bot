@@ -680,6 +680,40 @@ Deno.serve(async (req) => {
       };
     }
 
+    // DETECTOR: Matriz Numérica 37×37
+    function detectMatrizNumerica(numbers: number[]): PatternResult {
+      if (numbers.length < 30) return { found:false, pattern_type:'matriz_numerica', description:'', confidence:0, numbers_involved:[], recommendation:'' };
+      const last = numbers[0];
+      const src100 = numbers.slice(0, Math.min(100, numbers.length));
+      const freq: Record<number,number> = {};
+      let total = 0;
+      for (let i = 1; i < src100.length; i++) {
+        if (src100[i] === last) {
+          const next = src100[i - 1];
+          if (next !== undefined && next >= 0 && next <= 36) {
+            freq[next] = (freq[next] || 0) + 1;
+            total++;
+          }
+        }
+      }
+      if (total < 5) return { found:false, pattern_type:'matriz_numerica', description:'', confidence:0, numbers_involved:[], recommendation:'' };
+      const topNums = Object.entries(freq)
+        .sort(([,a],[,b]) => (b as number) - (a as number))
+        .slice(0, 4)
+        .filter(([,c]) => (c as number) / total > 0.12)
+        .map(([n]) => Number(n));
+      if (topNums.length === 0) return { found:false, pattern_type:'matriz_numerica', description:'', confidence:0, numbers_involved:[], recommendation:'' };
+      const topProb = ((freq[topNums[0]] || 0) as number) / total;
+      return {
+        found: true, pattern_type: 'matriz_numerica',
+        description: `Após ${last}: [${topNums.join(',')}] aparecem em ${(topProb*100).toFixed(0)}% dos casos (${total} obs)`,
+        confidence: Math.min(90, 45 + topProb * 200),
+        numbers_involved: topNums,
+        recommendation: `Após ${last} sair → apostar [${topNums.join(',')}] — ${(topProb*100).toFixed(0)}% histórico`,
+        backtestRate: topProb,
+      };
+    }
+
     const allDetectors = [
       detectTerminalAscending,
       detectTerminalDescending,
@@ -713,6 +747,7 @@ Deno.serve(async (req) => {
       detectSetorDominante5,
       detectAlternanciaPerfeita,
       detectComplementarAtivo,
+      detectMatrizNumerica,
     ];
 
     const detectedPatterns: PatternResult[] = [];
