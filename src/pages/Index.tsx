@@ -1207,10 +1207,20 @@ const Index = () => {
                   const nextFreq: Record<number, number> = {};
                   nextNums.forEach(n => { nextFreq[n] = (nextFreq[n] || 0) + 1; });
                   const topNext = Object.entries(nextFreq).sort(([, a], [, b]) => b - a).slice(0, 5);
+                  // Previous numbers before each occurrence
+                  const prevNums: number[] = [];
+                  positions.forEach(p => { if (p - 1 >= 0) prevNums.push(historySlice[p - 1]); });
+                  const prevFreq: Record<number, number> = {};
+                  prevNums.forEach(n => { prevFreq[n] = (prevFreq[n] || 0) + 1; });
+                  const topPrev = Object.entries(prevFreq).sort(([, a], [, b]) => b - a).slice(0, 5);
                   // Sector distribution of next numbers
                   const nextSectors: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0, Zero: 0 };
                   nextNums.forEach(n => { nextSectors[getSectorName(n)]++; });
                   const totalNextSectors = Object.values(nextSectors).reduce((a, b) => a + b, 0);
+                  // Sector distribution of previous numbers
+                  const prevSectors: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0, Zero: 0 };
+                  prevNums.forEach(n => { prevSectors[getSectorName(n)]++; });
+                  const totalPrevSectors = Object.values(prevSectors).reduce((a, b) => a + b, 0);
                   // Regularity check
                   const isRegular = delays.length >= 3 && delays.every(d => Math.abs(d - delays[0]) <= 2);
 
