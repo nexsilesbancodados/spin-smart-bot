@@ -685,6 +685,45 @@ Deno.serve(async (req) => {
       await supabase.from("pattern_insights").delete().in("id", oldIds);
     }
 
+    // ── MEMÓRIA EVOLUTIVA: reforçar padrões confirmados ──
+    const { data: memoriaAtual } = await supabase
+      .from('pattern_insights')
+      .select('id, pattern_type, description, confidence')
+      .gt('confidence', 30)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    for (const mem of (memoriaAtual || [])) {
+      const redetected = validatedPatterns.find(
+        p => p.pattern_type === mem.pattern_type &&
+             p.description?.slice(0,30) === (mem.description as string)?.slice(0,30)
+      );
+      if (redetected) {
+        await supabase
+          .from('pattern_insights')
+          .update({ confidence: Math.min(95, ((mem.confidence as number) || 50) + 3) })
+          .eq('id', mem.id);
+      }
+    }
+
+    // Penalizar padrões não vistos nas últimas 15min
+    const staleTime = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { data: stalePatterns } = await supabase
+      .from('pattern_insights')
+      .select('id, confidence')
+      .lt('created_at', staleTime)
+      .gt('confidence', 15);
+
+    for (const s of ((stalePatterns || []) as any[]).slice(0, 30)) {
+      await supabase
+        .from('pattern_insights')
+        .update({ confidence: Math.max(10, ((s.confidence as number) || 30) - 2) })
+        .eq('id', s.id);
+    }
+
+    // Remover padrões mortos (confiança < 10)
+    await supabase.from('pattern_insights').delete().lt('confidence', 10);
+
     return new Response(JSON.stringify({
       status: "success",
       patterns_detected: detectedPatterns.length,
