@@ -469,6 +469,103 @@ function detectHighLowAlternation(numbers: number[]): PatternResult {
   return { found: false, pattern_type: 'highlow_alt', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
 }
 
+// ========================
+// 6 NEW DETECTORS
+// ========================
+const PULL_MAP_AA: Record<number, number[]> = {
+  0:[10,20,30,32,15,26,3,33,31],1:[11,35,16,4,18,28,27,29,33],
+  2:[14,1,13,18,35,29],3:[13,27,6,11,30,8],4:[26,15,18,32,33,16,8],
+  5:[3,33,16,24,10,18],6:[8,15,31,21,22,23],7:[16,18,17,30,31],
+  8:[11,9,10],9:[34,35,36,3,16,26,23,24,32,31],10:[20,5,18,11,14,24],
+  20:[4,14],27:[28,29,24,22,26,33,31,34,35,36],30:[4,8,16,9,18,22,5,25,3],36:[3,10,27]
+};
+const TERMINALS_AA: Record<number,number[]> = {
+  0:[10,20,30],1:[1,11,21,31],2:[2,12,22,32],3:[3,13,23,33],
+  4:[4,14,24,34],5:[5,15,25,35],6:[6,16,26,36],7:[7,17,27],8:[8,18,28],9:[9,19,29]
+};
+const DUPLAS_AA: Record<string,number[]> = {
+  'DG1':[1,11,21,31,6,16,26,36],'DG2':[2,12,22,32,7,17,27],
+  'DG3':[3,13,23,33,8,18,28],'DG4':[4,14,24,34,9,19,29],'DG5':[10,20,30,5,15,25,35]
+};
+const T_TO_DG: Record<number,string> = {1:'DG1',6:'DG1',2:'DG2',7:'DG2',3:'DG3',8:'DG3',4:'DG4',9:'DG4',0:'DG5',5:'DG5'};
+
+function detectDuplaDaniGreen(numbers: number[]): PatternResult {
+  const last15 = numbers.slice(0,15);
+  const tf: Record<number,number> = {};
+  last15.forEach(n => { const t=n%10; tf[t]=(tf[t]||0)+1; });
+  const sorted = Object.entries(tf).sort(([,a],[,b])=>b-a);
+  const hotT = Number(sorted[0]?.[0] ?? -1);
+  const hotC = Number(sorted[0]?.[1] ?? 0);
+  if (hotT < 0 || hotC < 3) return { found:false, pattern_type:'dupla_dani_green', description:'', confidence:0, numbers_involved:[], recommendation:'' };
+  const dgKey = T_TO_DG[hotT];
+  const dgNums = DUPLAS_AA[dgKey] || [];
+  const bt = backtestPattern(numbers,(w)=>{const tf2:Record<number,number>={};w.forEach(n=>{const t=n%10;tf2[t]=(tf2[t]||0)+1;});const ht=Number(Object.entries(tf2).sort(([,a],[,b])=>b-a)[0]?.[0]??0);return DUPLAS_AA[T_TO_DG[ht]]||[];},15,60);
+  return { found:true, pattern_type:'dupla_dani_green', description:`${dgKey}: T${hotT} domina ${hotC}x em 15`, confidence:Math.min(92,55+hotC*7+bt.winRate*18), numbers_involved:dgNums, recommendation:`Aposte ${dgKey}: [${dgNums.join(',')}] — 7-8 fichas`, backtestRate:bt.winRate };
+}
+
+function detectZeroCritical(numbers: number[]): PatternResult {
+  const idx = numbers.indexOf(0);
+  const delay = idx===-1 ? numbers.length : idx;
+  if (delay < 15) return { found:false, pattern_type:'pressao_zero', description:'', confidence:0, numbers_involved:[], recommendation:'' };
+  const JZ=[12,35,3,26,0,32,15], VZ=[22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25];
+  const level = delay>40?'CRÍTICA':delay>25?'ALTA':'MÉDIA';
+  const nums = delay>40?VZ:JZ;
+  const fichas = delay>40?'Vizinhos do Zero (9 fichas)':delay>25?'Jeu Zero (4 fichas)':'1 ficha no zero';
+  return { found:true, pattern_type:'pressao_zero', description:`Pressão ${level}: zero ausente ${delay} rodadas`, confidence:Math.min(90,40+delay*1.1), numbers_involved:nums, recommendation:`Zero ${level} — ${fichas}: [${nums.slice(0,7).join(',')}]`, backtestRate:0.37 };
+}
+
+function detectEntropiaBaixa(numbers: number[]): PatternResult {
+  const last15 = numbers.slice(0,15);
+  const distintos = new Set(last15.map(n=>n%10)).size;
+  if (distintos > 5) return { found:false, pattern_type:'entropia_baixa', description:'', confidence:0, numbers_involved:[], recommendation:'' };
+  const tf: Record<number,number> = {};
+  last15.forEach(n => { const t=n%10; tf[t]=(tf[t]||0)+1; });
+  const hotT = Number(Object.entries(tf).sort(([,a],[,b])=>b-a)[0]?.[0]??0);
+  const nums = TERMINALS_AA[hotT] || [];
+  return { found:true, pattern_type:'entropia_baixa', description:`Entropia baixa: ${distintos} terminais distintos em 15. T${hotT} domina.`, confidence:Math.min(88,42+(6-distintos)*11), numbers_involved:nums, recommendation:`Sessão concentrada — T${hotT}: [${nums.join(',')}] — 5-7 fichas`, backtestRate:0.42 };
+}
+
+function detectNearMissConsecutivo(numbers: number[]): PatternResult {
+  const last5 = numbers.slice(0,5);
+  let cnt = 0;
+  for (let i=0;i<last5.length-1;i++){const ia=WHEEL.indexOf(last5[i]),ib=WHEEL.indexOf(last5[i+1]);if(ia!==-1&&ib!==-1&&Math.min(Math.abs(ia-ib),WL-Math.abs(ia-ib))<=3)cnt++;}
+  if (cnt < 3) return { found:false, pattern_type:'near_miss_consecutivo', description:'', confidence:0, numbers_involved:[], recommendation:'' };
+  const li=WHEEL.indexOf(numbers[0]);
+  const viz=li!==-1?[-2,-1,0,1,2].map(d=>WHEEL[(li+d+WL)%WL]):[];
+  return { found:true, pattern_type:'near_miss_consecutivo', description:`${cnt} near-misses na roda. Clustering físico detectado.`, confidence:Math.min(85,50+cnt*10), numbers_involved:viz, recommendation:`Clustering roda — Vizinhos do ${numbers[0]}: [${viz.join(',')}]`, backtestRate:0.38 };
+}
+
+function detectDuziaCiclo(numbers: number[]): PatternResult {
+  const dz = numbers.slice(0,6).map(n=>n===0?0:n<=12?1:n<=24?2:3).filter(d=>d>0);
+  if (dz.length<4) return { found:false, pattern_type:'duzia_ciclo', description:'', confidence:0, numbers_involved:[], recommendation:'' };
+  let asc=0,desc=0;
+  const ascSeq=[1,2,3,1,2,3],descSeq=[3,2,1,3,2,1];
+  for(let i=0;i<Math.min(dz.length,4);i++){if(dz[i]===ascSeq[i])asc++;if(dz[i]===descSeq[i])desc++;}
+  if(asc<3&&desc<3) return { found:false, pattern_type:'duzia_ciclo', description:'', confidence:0, numbers_involved:[], recommendation:'' };
+  const isAsc=asc>=desc;
+  const last=dz[dz.length-1];
+  const next=isAsc?(last%3)+1:last===1?3:last-1;
+  const nums=next===1?Array.from({length:12},(_,i)=>i+1):next===2?Array.from({length:12},(_,i)=>i+13):Array.from({length:12},(_,i)=>i+25);
+  return { found:true, pattern_type:'duzia_ciclo', description:`Ciclo ${isAsc?'ascendente':'descendente'} de dúzias → próxima D${next}`, confidence:72, numbers_involved:nums, recommendation:`Aposte Dúzia ${next} (2:1): [${nums.join(',')}]`, backtestRate:0.35 };
+}
+
+function detectComboOuro(numbers: number[]): PatternResult {
+  const last15=numbers.slice(0,15);
+  const tf: Record<number,number>={};
+  last15.forEach(n=>{const t=n%10;tf[t]=(tf[t]||0)+1;});
+  const sorted = Object.entries(tf).sort(([,a],[,b])=>b-a);
+  const hotT = Number(sorted[0]?.[0] ?? -1);
+  const hotC = Number(sorted[0]?.[1] ?? 0);
+  if(hotT<0||hotC<3) return { found:false, pattern_type:'combo_ouro', description:'', confidence:0, numbers_involved:[], recommendation:'' };
+  const distintos=new Set(last15.map(n=>n%10)).size;
+  const puxados=PULL_MAP_AA[numbers[0]]||[];
+  const dgKey=T_TO_DG[hotT];
+  const dgNums=DUPLAS_AA[dgKey]||[];
+  const puxadoConfirma=puxados.some(p=>dgNums.includes(p));
+  if(hotC<3||distintos>5||!puxadoConfirma) return { found:false, pattern_type:'combo_ouro', description:'', confidence:0, numbers_involved:[], recommendation:'' };
+  return { found:true, pattern_type:'combo_ouro', description:`COMBO OURO: T${hotT}(${hotC}x)+puxados confirmados+entropia baixa(${distintos})`, confidence:Math.min(95,78+hotC*3), numbers_involved:dgNums, recommendation:`👑 COMBO OURO — ${dgKey}: [${dgNums.join(',')}] — 10-12 fichas`, backtestRate:0.51 };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -516,6 +613,12 @@ Deno.serve(async (req) => {
       detectSequenceRepeat,
       detectPullPattern,
       detectHighLowAlternation,
+      detectDuplaDaniGreen,
+      detectZeroCritical,
+      detectEntropiaBaixa,
+      detectNearMissConsecutivo,
+      detectDuziaCiclo,
+      detectComboOuro,
     ];
 
     const detectedPatterns: PatternResult[] = [];
@@ -581,6 +684,45 @@ Deno.serve(async (req) => {
       const oldIds = oldData.map((r: any) => r.id);
       await supabase.from("pattern_insights").delete().in("id", oldIds);
     }
+
+    // ── MEMÓRIA EVOLUTIVA: reforçar padrões confirmados ──
+    const { data: memoriaAtual } = await supabase
+      .from('pattern_insights')
+      .select('id, pattern_type, description, confidence')
+      .gt('confidence', 30)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    for (const mem of (memoriaAtual || [])) {
+      const redetected = validatedPatterns.find(
+        p => p.pattern_type === mem.pattern_type &&
+             p.description?.slice(0,30) === (mem.description as string)?.slice(0,30)
+      );
+      if (redetected) {
+        await supabase
+          .from('pattern_insights')
+          .update({ confidence: Math.min(95, ((mem.confidence as number) || 50) + 3) })
+          .eq('id', mem.id);
+      }
+    }
+
+    // Penalizar padrões não vistos nas últimas 15min
+    const staleTime = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { data: stalePatterns } = await supabase
+      .from('pattern_insights')
+      .select('id, confidence')
+      .lt('created_at', staleTime)
+      .gt('confidence', 15);
+
+    for (const s of ((stalePatterns || []) as any[]).slice(0, 30)) {
+      await supabase
+        .from('pattern_insights')
+        .update({ confidence: Math.max(10, ((s.confidence as number) || 30) - 2) })
+        .eq('id', s.id);
+    }
+
+    // Remover padrões mortos (confiança < 10)
+    await supabase.from('pattern_insights').delete().lt('confidence', 10);
 
     return new Response(JSON.stringify({
       status: "success",

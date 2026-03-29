@@ -106,6 +106,32 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus }: Props) => {
       }
     }, 1300));
 
+    // Análise de puxados em tempo real
+    timers.push(setTimeout(() => {
+      const PULL_UI: Record<number,number[]> = {
+        0:[10,20,30,32,15],1:[11,35,16,4,18],2:[14,1,13,18,35],3:[13,27,6,11,30],
+        4:[26,15,18,32,33],5:[3,33,16,24,10],6:[8,15,31,21,22],7:[16,18,17,30,31],
+        8:[11,9,10],9:[34,35,36,3,16],10:[20,5,18,11,14],20:[4,14],27:[28,29,24,22],36:[3,10,27]
+      };
+      const puxados = PULL_UI[latest] || [];
+      if (puxados.length > 0) {
+        setScanProgress(prev => Math.min(prev + 15, 85));
+        addLog(`🧲 ${latest} puxa → [${puxados.slice(0,5).join(',')}...] — próximas 4 rodadas`, 'pattern');
+      }
+    }, 850));
+
+    // Análise de entropia
+    timers.push(setTimeout(() => {
+      if (allNumbers.length >= 15) {
+        setScanProgress(prev => Math.min(prev + 8, 93));
+        const last15 = allNumbers.slice(0,15);
+        const distintos = new Set(last15.map(n => n%10)).size;
+        const label = distintos <= 4 ? '🎯 BAIXA — Entrar forte!' : distintos <= 6 ? '⚠️ Média — Cautela' : '🔀 Alta — Aguardar';
+        const type: LogEntry['type'] = distintos <= 4 ? 'alert' : 'info';
+        addLog(`📊 Entropia: ${distintos}/10 terminais distintos → ${label}`, type);
+      }
+    }, 1050));
+
     // Phase 5 - Streak/entropy check
     timers.push(setTimeout(() => {
       setScanProgress(90);
@@ -135,10 +161,13 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus }: Props) => {
       }
     }, 1700));
 
-    // Complete
+    // Score final da rodada
     timers.push(setTimeout(() => {
       setScanProgress(100);
-      addLog(`Analisando ${Math.min(500, allNumbers.length)} rodadas... OK.`, 'info');
+      const score = sniperData?.signal?.probability || 0;
+      const action = score >= 75 ? '⚡ ENTRAR FORTE' : score >= 50 ? '✅ ENTRAR' : score >= 25 ? '⚠️ AGUARDAR' : '⏸ NÃO ENTRAR';
+      const fichas = score >= 75 ? ` (${Math.round(8 + (score-75)/5)} fichas)` : '';
+      addLog(`🎯 Score: ${score}% → ${action}${fichas}`, score >= 60 ? 'alert' : 'info');
       setScanning(false);
     }, 2000));
 
@@ -214,7 +243,12 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus }: Props) => {
               <span className="text-[7px] font-mono text-muted-foreground/60 shrink-0 mt-0.5">
                 {log.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
-              <span className={`text-[9px] leading-tight ${typeStyles[log.type]}`}>
+              <span className={`text-[9px] leading-tight ${
+                log.type === 'alert' ? 'text-yellow-300 font-semibold' :
+                log.type === 'pattern' ? 'text-cyan-400' :
+                log.type === 'calibration' ? 'text-purple-400' :
+                'text-muted-foreground'
+              }`}>
                 "{log.text}"
               </span>
             </motion.div>

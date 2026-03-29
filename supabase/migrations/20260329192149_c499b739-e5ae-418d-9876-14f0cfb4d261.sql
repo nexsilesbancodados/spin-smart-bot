@@ -1,0 +1,1 @@
+CREATE POLICY "Service role can update pattern_insights" ON public.pattern_insights FOR UPDATE TO service_role USING (true) WITH CHECK (true);
