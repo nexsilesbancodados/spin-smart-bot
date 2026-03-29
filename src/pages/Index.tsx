@@ -15,6 +15,29 @@ import { motion, AnimatePresence } from 'framer-motion';
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
 const CAVALOS_258 = [2, 5, 8, 12, 15, 18, 22, 25, 28, 32, 35];
 
+const WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const WL = WHEEL.length;
+const VOISINS_NUMS = [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25];
+const TIERS_NUMS = [27,13,36,11,30,8,23,10,5,24,16,33];
+const ORPHELINS_NUMS = [1,20,14,31,9,17,34,6];
+
+const CAVALOS_GROUPS: Record<string, number[]> = {
+  '258': [2,5,8,12,15,18,22,25,28,32,35],
+  '147': [1,4,7,11,14,17,21,24,27,31,34],
+  '03': [0,3,10,13,20,23,30,33],
+  '69': [6,9,16,19,26,29,36],
+};
+
+const wheelIdx = (n: number) => WHEEL.indexOf(n);
+const wheelDist = (a: number, b: number) => {
+  const ia = wheelIdx(a), ib = wheelIdx(b);
+  if (ia === -1 || ib === -1) return 99;
+  const d = Math.abs(ia - ib);
+  return Math.min(d, WL - d);
+};
+const getSectorName = (n: number) => VOISINS_NUMS.includes(n) ? 'Voisins' : TIERS_NUMS.includes(n) ? 'Tiers' : ORPHELINS_NUMS.includes(n) ? 'Orphelins' : 'Zero';
+const getCavaloGroup = (n: number) => { for (const [k, v] of Object.entries(CAVALOS_GROUPS)) if (v.includes(n)) return k; return null; };
+
 const getColor = (n: number): 'red' | 'black' | 'green' => {
   if (n === 0) return 'green';
   return RED_NUMBERS.includes(n) ? 'red' : 'black';
@@ -238,6 +261,43 @@ const Index = () => {
     const t = n % 10; acc[t] = (acc[t] || 0) + 1; return acc;
   }, {});
   const maxTerminalFreq = Math.max(...Object.values(terminalFreq), 1);
+
+  // === REAL computed stats from allNumbers ===
+  const computedDealer = (() => {
+    if (allNumbers.length < 10) return null;
+    const arcs: number[] = [];
+    for (let i = 0; i < Math.min(50, allNumbers.length - 1); i++) arcs.push(wheelDist(allNumbers[i], allNumbers[i + 1]));
+    const mean = arcs.length > 0 ? arcs.reduce((a, b) => a + b, 0) / arcs.length : 0;
+    const stdDev = Math.sqrt(arcs.length > 0 ? arcs.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / arcs.length : 99);
+    const last3 = arcs.slice(0, 3);
+    const range3 = last3.length === 3 ? Math.max(...last3) - Math.min(...last3) : 99;
+    const recentMean = arcs.slice(0, 10).reduce((a, b) => a + b, 0) / Math.max(arcs.slice(0, 10).length, 1);
+    const olderMean = arcs.slice(10, 20).reduce((a, b) => a + b, 0) / Math.max(arcs.slice(10, 20).length, 1);
+    const changed = arcs.length >= 20 && Math.abs(recentMean - olderMean) > 5;
+    return {
+      arcMean: +mean.toFixed(1),
+      arcStdDev: +stdDev.toFixed(1),
+      consistency: stdDev < 2.5 ? 'alta' : stdDev < 4 ? 'média' : 'baixa',
+      maoViciada: range3 <= 2,
+      dealerChanged: changed,
+    };
+  })();
+
+  const computedCavalos = (() => {
+    const slice = allNumbers.slice(0, 50);
+    if (slice.length < 5) return [];
+    const freq: Record<string, number> = { '258': 0, '147': 0, '03': 0, '69': 0 };
+    slice.forEach(n => { const g = getCavaloGroup(n); if (g) freq[g]++; });
+    return Object.entries(freq).sort(([, a], [, b]) => b - a);
+  })();
+
+  const computedSectors = (() => {
+    const slice = allNumbers.slice(0, 100);
+    if (slice.length < 5) return {};
+    const freq: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0, Zero: 0 };
+    slice.forEach(n => { freq[getSectorName(n)]++; });
+    return freq;
+  })();
 
   const rows: number[][] = [];
   for (let i = 0; i < displayNumbers.length; i += 20) rows.push(displayNumbers.slice(i, i + 20));
@@ -487,99 +547,110 @@ const Index = () => {
             </div>
           </motion.div>
 
-          {/* DEALER + TERMINAIS + SETOR — compact row */}
-          {sniperData && (
+          {/* DEALER + CAVALOS + SETOR — always real data */}
+          {allNumbers.length >= 10 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* DEALER */}
               <div className="bg-card rounded-xl border border-border p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Activity className="w-3.5 h-3.5 text-purple-400" />
                   <span className="font-display text-[9px] tracking-[0.15em] font-bold text-purple-400">DEALER</span>
-                  {sniperData.dealerSignature?.dealerChanged && (
+                  {(sniperData?.dealerSignature?.dealerChanged || computedDealer?.dealerChanged) && (
                     <span className="text-[7px] px-1 py-0.5 rounded bg-destructive/20 text-destructive font-bold animate-pulse ml-auto">NOVO</span>
                   )}
                 </div>
-                {sniperData.dealerSignature ? (
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-muted-foreground">Arco</span>
-                      <span className="font-mono font-bold text-foreground">{sniperData.dealerSignature.arcMean}</span>
-                    </div>
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-muted-foreground">Desvio</span>
-                      <span className="font-mono font-bold text-foreground">±{sniperData.dealerSignature.arcStdDev}</span>
-                    </div>
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-muted-foreground">Consistência</span>
-                      <span className={`font-bold text-[8px] px-1.5 py-0.5 rounded ${
-                        sniperData.dealerSignature.consistency === 'alta' ? 'bg-green-500/20 text-green-400' :
-                        sniperData.dealerSignature.consistency === 'média' ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-destructive/20 text-destructive'
-                      }`}>{sniperData.dealerSignature.consistency}</span>
-                    </div>
-                    {sniperData.dealerSignature.maoViciada && (
-                      <div className="bg-primary/10 border border-primary/30 rounded p-1.5 text-center mt-1">
-                        <span className="text-[9px] font-bold text-primary">🎯 MÃO VICIADA</span>
+                {(() => {
+                  const d = sniperData?.dealerSignature || computedDealer;
+                  if (!d) return <p className="text-[10px] text-muted-foreground">Calibrando...</p>;
+                  return (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-muted-foreground">Arco</span>
+                        <span className="font-mono font-bold text-foreground">{d.arcMean}</span>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-[10px] text-muted-foreground">Calibrando...</p>
-                )}
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-muted-foreground">Desvio</span>
+                        <span className="font-mono font-bold text-foreground">±{d.arcStdDev}</span>
+                      </div>
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-muted-foreground">Consistência</span>
+                        <span className={`font-bold text-[8px] px-1.5 py-0.5 rounded ${
+                          d.consistency === 'alta' ? 'bg-green-500/20 text-green-400' :
+                          d.consistency === 'média' ? 'bg-yellow-500/20 text-yellow-400' :
+                          'bg-destructive/20 text-destructive'
+                        }`}>{d.consistency}</span>
+                      </div>
+                      {d.maoViciada && (
+                        <div className="bg-primary/10 border border-primary/30 rounded p-1.5 text-center mt-1">
+                          <span className="text-[9px] font-bold text-primary">🎯 MÃO VICIADA</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* CAVALOS DO MOMENTO */}
+              {/* CAVALOS QUENTES */}
               <div className="bg-card rounded-xl border border-border p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Flame className="w-3.5 h-3.5 text-orange-400" />
                   <span className="font-display text-[9px] tracking-[0.15em] font-bold text-orange-400">CAVALOS QUENTES</span>
                 </div>
-                {sniperData.hotTerminals ? (
-                  <div className="space-y-1">
-                    {sniperData.hotTerminals.cavalos?.slice(0, 4).map(([group, count]: [string, number], i: number) => {
-                      const max = sniperData.hotTerminals.cavalos[0]?.[1] || 1;
-                      const pct = (count / max) * 100;
-                      return (
-                        <div key={group} className="space-y-0.5">
-                          <div className="flex justify-between text-[10px]">
-                            <span className={`font-bold ${i === 0 ? 'text-orange-400' : 'text-muted-foreground'}`}>C {group}</span>
-                            <span className="font-mono font-bold text-foreground">{count}x</span>
+                {(() => {
+                  const cavalos = sniperData?.hotTerminals?.cavalos || computedCavalos;
+                  if (!cavalos || cavalos.length === 0) return <p className="text-[10px] text-muted-foreground">Coletando...</p>;
+                  const maxCount = cavalos[0]?.[1] || 1;
+                  return (
+                    <div className="space-y-1">
+                      {cavalos.slice(0, 4).map(([group, count]: [string, number], i: number) => {
+                        const pct = (count / maxCount) * 100;
+                        return (
+                          <div key={group} className="space-y-0.5">
+                            <div className="flex justify-between text-[10px]">
+                              <span className={`font-bold ${i === 0 ? 'text-orange-400' : 'text-muted-foreground'}`}>C {group}</span>
+                              <span className="font-mono font-bold text-foreground">{count}x</span>
+                            </div>
+                            <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full ${i === 0 ? 'bg-orange-400' : 'bg-muted-foreground/30'}`} style={{ width: `${pct}%` }} />
+                            </div>
                           </div>
-                          <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${i === 0 ? 'bg-orange-400' : 'bg-muted-foreground/30'}`} style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : <p className="text-[10px] text-muted-foreground">Coletando...</p>}
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* SETOR */}
+              {/* SETORES */}
               <div className="bg-card rounded-xl border border-border p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Target className="w-3.5 h-3.5 text-cyan-400" />
                   <span className="font-display text-[9px] tracking-[0.15em] font-bold text-cyan-400">SETORES</span>
                 </div>
-                {sniperData.sectorFreq ? (
-                  <div className="space-y-1">
-                    {Object.entries(sniperData.sectorFreq as Record<string, number>).sort(([,a],[,b]) => (b as number) - (a as number)).slice(0, 4).map(([sector, count], i) => {
-                      const total = Object.values(sniperData.sectorFreq as Record<string, number>).reduce((a: number, b: number) => a + b, 0);
-                      const pct = total > 0 ? ((count as number) / total) * 100 : 0;
-                      return (
-                        <div key={sector} className="space-y-0.5">
-                          <div className="flex justify-between text-[10px]">
-                            <span className={`font-bold truncate ${i === 0 ? 'text-cyan-400' : 'text-muted-foreground'}`}>{sector}</span>
-                            <span className="font-mono text-foreground">{pct.toFixed(0)}%</span>
+                {(() => {
+                  const sectors = sniperData?.sectorFreq || computedSectors;
+                  const entries = Object.entries(sectors as Record<string, number>);
+                  if (entries.length === 0) return <p className="text-[10px] text-muted-foreground">Analisando...</p>;
+                  const total = entries.reduce((a, [, b]) => a + (b as number), 0);
+                  return (
+                    <div className="space-y-1">
+                      {entries.sort(([, a], [, b]) => (b as number) - (a as number)).slice(0, 4).map(([sector, count], i) => {
+                        const pct = total > 0 ? ((count as number) / total) * 100 : 0;
+                        return (
+                          <div key={sector} className="space-y-0.5">
+                            <div className="flex justify-between text-[10px]">
+                              <span className={`font-bold truncate ${i === 0 ? 'text-cyan-400' : 'text-muted-foreground'}`}>{sector}</span>
+                              <span className="font-mono text-foreground">{pct.toFixed(0)}%</span>
+                            </div>
+                            <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full ${i === 0 ? 'bg-cyan-400' : 'bg-muted-foreground/30'}`} style={{ width: `${pct}%` }} />
+                            </div>
                           </div>
-                          <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${i === 0 ? 'bg-cyan-400' : 'bg-muted-foreground/30'}`} style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : <p className="text-[10px] text-muted-foreground">Analisando...</p>}
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
