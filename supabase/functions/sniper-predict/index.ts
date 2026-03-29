@@ -1060,8 +1060,11 @@ serve(async (req) => {
         if (idx0 !== -1 && wheelDist(actual, WHEEL[(idx0 + Math.round(arcMean)) % WL]) <= 4) physicalHits++;
         // Math: was it in the hot terminal?
         if (delayedTerminals.includes(actual % 10)) mathHits++;
-        // Sector: was it in the hot sector?
-        if (getSector(actual) === (hotSector?.[0] || '')) sectorHits++;
+        // Sector: was it in the hot sector? (compute inline to avoid forward-reference)
+        const sectorFreqBP: Record<string, number> = { Voisins:0, Tiers:0, Orphelins:0 };
+        last30.forEach(n => { const s = getSector(n); if (sectorFreqBP[s] !== undefined) sectorFreqBP[s]++; });
+        const hotSectorBP = Object.entries(sectorFreqBP).sort(([,a],[,b]) => b - a)[0];
+        if (getSector(actual) === (hotSectorBP?.[0] || '')) sectorHits++;
       }
       const totalActual = actualNumbers.length || 1;
       backpropWeights['physical'] = physicalHits / totalActual;
