@@ -273,6 +273,7 @@ const Index = () => {
         const label = row.strategy_label || row.strategy_type || 'Previsão';
         const predicted = row.predicted_main;
         const actual = row.actual_number;
+        setLastPredResult({ hit: isHit, hitType, predicted, actual, label });
         if (isHit) {
           toast.success(
             `${hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO VIZINHO!'} ${label} — Previsto: ${predicted}, Saiu: ${actual}`,
