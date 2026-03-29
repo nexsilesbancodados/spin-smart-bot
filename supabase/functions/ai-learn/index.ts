@@ -106,7 +106,7 @@ function safeParseJson(raw: string): any {
     return out.replace(/,\s*([}\]])/g, "$1");
   };
 
-  for (let trim = 0; trim < Math.min(600, cleaned.length); trim++) {
+  for (let trim = 0; trim < Math.min(3000, cleaned.length); trim++) {
     const candidate = cleaned.slice(0, cleaned.length - trim).trimEnd();
     if (!candidate) break;
 
