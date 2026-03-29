@@ -134,6 +134,34 @@ Em 37 rodadas: ~12 números não saem (ausentes), ~12 saem 1x, ~12 se repetem (2
 ### Vizinhos no Cilindro
 Cada número tem vizinhos à esquerda e direita no cilindro físico.
 Se receber 17 → vizinhos imediatos: 25 (esq) e 34 (dir).
+
+### Assinatura de Dealer (Viciação de Lançamento)
+- Arco de Lançamento: distância em casas no cilindro entre resultado N e N-1
+- Se o arco se repete (ex: sempre ~12 casas), indica memória muscular do crupiê
+- Detecte se o dealer joga para o lado oposto (180°) ou mesmo setor (Vizinhos)
+- Calcule média e desvio padrão do arco para detectar consistência
+
+### Clusters de Calor (Teoria do Caos)
+- Quando 3+ números vizinhos físicos saem em janela de 10 rodadas (independente da ordem)
+- Indica "nuvem" de resultados concentrada em setor do cilindro
+- Mesmo números não consecutivos revelam cluster ativo (ex: 17 e 2 = Cluster Órfãos)
+
+### Entropia de Sequência
+- Entropia BAIXA: sequência limpa/previsível (ex: P-V-P-V = Xadrez)
+- Entropia ALTA: resultados caóticos sem padrão
+- REGRA: quando entropia está BAIXA por muitas rodadas, QUEBRA DE PADRÃO é iminente
+- Calcule: alternâncias de cor / total = taxa de entropia (0.0 = tendência pura, 1.0 = caos)
+
+### Atração do Zero (Efeito Gangorra)
+- O cilindro tem 2 semicírculos: lado do Zero (0,32,15...26) e lado oposto (27,13...3)
+- Se um lado acumula resultados excessivos, o outro tende a compensar (Efeito Gangorra)
+- Após grandes sequências no Tiers, a bola tende a retornar ao Jeu Zéro
+- Monitore o balanço entre semicírculos
+
+### Probabilidade Residual (Caça ao Atraso)
+- Atraso simples: número/grupo ausente há muitas rodadas
+- Atraso cruzado: quando um número pertence a DOIS grupos atrasados simultaneamente (ex: Terminal 5 + 3ª Dúzia), ele é ALVO DE ALTA PRIORIDADE
+- Quanto maior o atraso cruzado, maior a probabilidade de explosão (saídas múltiplas seguidas)
 `;
 
 const getColor = (n: number) => n === 0 ? 'green' : RED.includes(n) ? 'red' : 'black';
@@ -384,6 +412,73 @@ Deno.serve(async (req) => {
       if (t1 === t2 && t2 === t3) activePatterns.push(`Terminal ${t1} 3x@pos${i}`);
     }
 
+    // === ELITE ALGORITHMS ===
+
+    // 9. Dealer Signature (arc consistency)
+    const arcDistances = skips.slice(0, 30);
+    const arcMean = arcDistances.length > 0 ? arcDistances.reduce((a,b) => a+b, 0) / arcDistances.length : 0;
+    const arcVariance = arcDistances.length > 0 ? arcDistances.reduce((a,b) => a + Math.pow(b - arcMean, 2), 0) / arcDistances.length : 0;
+    const arcStdDev = Math.sqrt(arcVariance);
+    const dealerSignature = arcStdDev < 3 ? `VÍCIO DETECTADO (arco médio: ${arcMean.toFixed(1)}, desvio: ${arcStdDev.toFixed(1)})` : `Normal (arco médio: ${arcMean.toFixed(1)}, desvio: ${arcStdDev.toFixed(1)})`;
+
+    // 10. Heat Clusters (3+ wheel neighbors in 10 spins window)
+    const clusters: string[] = [];
+    for (let w = 0; w < Math.min(numbers.length - 10, 40); w += 5) {
+      const window = numbers.slice(w, w + 10);
+      const wheelPositions = window.map(n => WHEEL_ORDER.indexOf(n)).filter(i => i !== -1).sort((a,b) => a - b);
+      for (let i = 0; i < wheelPositions.length - 2; i++) {
+        const span = wheelPositions[i+2] - wheelPositions[i];
+        if (span <= 4) {
+          const clusterNums = window.filter(n => {
+            const idx = WHEEL_ORDER.indexOf(n);
+            return idx >= wheelPositions[i] && idx <= wheelPositions[i] + 4;
+          });
+          if (clusterNums.length >= 3) clusters.push(`[${clusterNums.join(',')}]@w${w}`);
+        }
+      }
+    }
+
+    // 11. Entropy calculation (color alternation rate)
+    let colorChanges = 0, colorTotal = 0;
+    for (let i = 1; i < Math.min(30, numbers.length); i++) {
+      const prev = getColor(numbers[i-1]), curr = getColor(numbers[i]);
+      if (prev !== 'green' && curr !== 'green') {
+        colorTotal++;
+        if (prev !== curr) colorChanges++;
+      }
+    }
+    const entropy = colorTotal > 0 ? (colorChanges / colorTotal) : 0.5;
+    const entropyLabel = entropy < 0.3 ? 'MUITO BAIXA (tendência forte, QUEBRA iminente)' : entropy < 0.45 ? 'BAIXA (tendência)' : entropy > 0.7 ? 'MUITO ALTA (caos)' : entropy > 0.55 ? 'ALTA (volátil)' : 'NORMAL';
+
+    // 12. Zero Attraction (Seesaw Effect - semicircle balance)
+    const semiZero = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10]; // first half of wheel
+    const semiOpposite = [5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26]; // second half
+    const last50nums = numbers.slice(0, 50);
+    const zeroSideCount = last50nums.filter(n => semiZero.includes(n)).length;
+    const oppSideCount = last50nums.filter(n => semiOpposite.includes(n)).length;
+    const seesawRatio = zeroSideCount / (oppSideCount || 1);
+    const seesawAlert = seesawRatio > 1.6 ? 'LADO ZERO sobrecarregado → espere RETORNO ao lado oposto' : seesawRatio < 0.625 ? 'LADO OPOSTO sobrecarregado → espere RETORNO ao Zero/Jeu Zéro' : 'Equilibrado';
+
+    // 13. Residual Probability (cross-delay targets)
+    const terminalDelay: Record<number, number> = {};
+    const dozenDelay: Record<number, number> = {};
+    for (let t = 0; t <= 9; t++) terminalDelay[t] = 999;
+    for (let d = 1; d <= 3; d++) dozenDelay[d] = 999;
+    for (let i = 0; i < numbers.length; i++) {
+      const t = numbers[i] % 10;
+      if (terminalDelay[t] === 999) terminalDelay[t] = i;
+      const d = numbers[i] === 0 ? 0 : numbers[i] <= 12 ? 1 : numbers[i] <= 24 ? 2 : 3;
+      if (d > 0 && dozenDelay[d] === 999) dozenDelay[d] = i;
+    }
+    const highPriorityTargets: string[] = [];
+    for (let n = 0; n <= 36; n++) {
+      const t = n % 10;
+      const d = n === 0 ? 0 : n <= 12 ? 1 : n <= 24 ? 2 : 3;
+      if (d > 0 && terminalDelay[t] > 25 && dozenDelay[d] > 20) {
+        highPriorityTargets.push(`${n}(T${t}:${terminalDelay[t]}+D${d}:${dozenDelay[d]})`);
+      }
+    }
+
     const prompt = `${KNOWLEDGE_PROMPT}
 
 ## DADOS DAS ÚLTIMAS 24 HORAS (${numbers.length} números)
@@ -424,29 +519,41 @@ Deno.serve(async (req) => {
 - Espelhamento/Repetição (últ 30): ${mirrorPatterns.slice(0, 8).join(', ') || 'nenhum'}
 - ⚠️ PADRÕES ATIVOS (3x consecutivos): ${activePatterns.length > 0 ? [...new Set(activePatterns)].join(', ') : 'nenhum'}
 
+### 🧠 ALGORITMOS DE ELITE:
+- 🎯 Assinatura do Dealer: ${dealerSignature}
+- 🔥 Clusters de Calor: ${clusters.length > 0 ? clusters.slice(0, 5).join(', ') : 'nenhum cluster ativo'}
+- 📊 Entropia de Sequência: ${entropy.toFixed(3)} → ${entropyLabel}
+- ⚖️ Efeito Gangorra (Zero): Lado Zero ${zeroSideCount}/50, Lado Oposto ${oppSideCount}/50, Ratio ${seesawRatio.toFixed(2)} → ${seesawAlert}
+- 🎯 Alvos de Alta Prioridade (atraso cruzado): ${highPriorityTargets.length > 0 ? highPriorityTargets.join(', ') : 'nenhum'}
+
 ### CONHECIMENTO PRÉVIO:
 ${prevStr || 'Primeiro aprendizado.'}
 
 ## MISSÃO:
-Realize uma ANÁLISE TRANSVERSAL DE HISTÓRICO completa. Gere aprendizados profundos sobre:
-1. Viés de frequência com análise de desvio padrão
-2. Padrões de terminais e sua relação com setores do cilindro
-3. Ciclos de dúzias e colunas (qual está "devendo")
-4. Comportamento dos 4 grupos de Cavalos
-5. Concentração em setores físicos e OITAVOS do cilindro
-6. Mapeamento cruzado (cor+paridade) e seus desvios
-7. Padrões horários e temporais
-8. TENDÊNCIA vs ALTERNÂNCIA: o histórico está viciado ou volátil?
-9. Vizinhos no cilindro que saem juntos
-10. Compare com conhecimento prévio: confirme ou refute
-11. Finais em Pleno: diferencie probabilidade de finais 0-6 vs 7-9
-12. DIAMANTES: qual zona de choque está concentrando
-13. LEI DO TERÇO: quais números na zona de repetição continuam saindo
-14. SALTOS: padrão de distância no cilindro
-15. COMPLEMENTARES: pares soma-37 próximos
-16. PADRÕES ATIVOS: valide os padrões 3x consecutivos detectados
-17. QUEBRA DE ATRASO: identifique grupos em fase de recuperação
-18. ESPELHAMENTO: números que se repetem em curto intervalo`;
+Aja como SUPERCOMPUTADOR DE ANALÍTICA PREDITIVA. Realize análise transversal completa:
+1. Viés de frequência com desvio padrão
+2. Padrões de terminais + relação com setores
+3. Ciclos de dúzias/colunas
+4. Comportamento dos Cavalos
+5. Concentração em OITAVOS
+6. Mapeamento cruzado (cor+paridade)
+7. Padrões horários
+8. TENDÊNCIA vs ALTERNÂNCIA
+9. Vizinhos no cilindro
+10. Compare com conhecimento prévio
+11. Finais em Pleno (4 vs 3 números)
+12. DIAMANTES (zonas de choque)
+13. LEI DO TERÇO
+14. SALTOS
+15. COMPLEMENTARES
+16. PADRÕES ATIVOS
+17. QUEBRA DE ATRASO
+18. ESPELHAMENTO
+19. ASSINATURA DO DEALER: analise se há vício no arco de lançamento
+20. CLUSTERS DE CALOR: valide os clusters detectados
+21. ENTROPIA: avalie probabilidade de quebra de padrão
+22. EFEITO GANGORRA: preveja transição entre semicírculos
+23. PROBABILIDADE RESIDUAL: priorize os alvos de atraso cruzado`;
 
     // 4. Call AI
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -455,7 +562,7 @@ Realize uma ANÁLISE TRANSVERSAL DE HISTÓRICO completa. Gere aprendizados profu
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Você é o sistema de IA mais avançado de análise de roleta do mundo. Possui conhecimento COMPLETO: setores, cavalos, terminais, oitavos, diamantes, lei do terço, saltos, complementares, dominância de coluna, espelhos visuais, mapeamento cruzado. Execute ANÁLISE TRANSVERSAL: detecte vício de setor, tendência vs alternância, dominância de terminal, blocos de dúzia, quebra de atraso, padrões de salto e espelhamento. Responda APENAS via tool call. Gere 12-20 aprendizados profundos e acionáveis." },
+          { role: "system", content: "Você é um SUPERCOMPUTADOR DE ANALÍTICA PREDITIVA para roleta. Possui conhecimento TOTAL: setores, cavalos, terminais, oitavos, diamantes, lei do terço, saltos, complementares, dominância de coluna, espelhos visuais, mapeamento cruzado, assinatura de dealer, clusters de calor, entropia de sequência, efeito gangorra e probabilidade residual. Execute análise transversal com todos os algoritmos de elite. Responda APENAS via tool call. Gere 15-25 aprendizados profundos e acionáveis." },
           { role: "user", content: prompt },
         ],
         tools: [{
@@ -471,7 +578,7 @@ Realize uma ANÁLISE TRANSVERSAL DE HISTÓRICO completa. Gere aprendizados profu
                   items: {
                     type: "object",
                     properties: {
-                      learning_type: { type: "string", enum: ["frequency_bias","terminal_pattern","color_tendency","dozen_cycle","cavalos_pattern","timing_pattern","streak_behavior","sector_concentration","column_pattern","sixline_pattern","cross_mapping","wheel_neighbors","parity_pattern","final_pleno","column_color_dominance","visual_mirror","octave_pattern","diamond_concentration","third_law","skip_pattern","complementar_pattern","sector_bias","tendency_mode","delay_break","mirror_pattern","active_pattern","block_pattern"] },
+                      learning_type: { type: "string", enum: ["frequency_bias","terminal_pattern","color_tendency","dozen_cycle","cavalos_pattern","timing_pattern","streak_behavior","sector_concentration","column_pattern","sixline_pattern","cross_mapping","wheel_neighbors","parity_pattern","final_pleno","column_color_dominance","visual_mirror","octave_pattern","diamond_concentration","third_law","skip_pattern","complementar_pattern","sector_bias","tendency_mode","delay_break","mirror_pattern","active_pattern","block_pattern","dealer_signature","heat_cluster","entropy_analysis","seesaw_effect","residual_probability"] },
                       title: { type: "string" },
                       knowledge: { type: "string" },
                       data_points: { type: "integer" },
