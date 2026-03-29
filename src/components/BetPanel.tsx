@@ -63,6 +63,15 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
   const prevNumberRef = useRef<number | null>(null);
   const autoBetRef = useRef(false);
 
+  // Auto-reset waitingResult after 60s to prevent stuck state
+  useEffect(() => {
+    if (!stats.waitingResult) return;
+    const timeout = setTimeout(() => {
+      setStats(prev => prev.waitingResult ? { ...prev, waitingResult: false } : prev);
+    }, 60000);
+    return () => clearTimeout(timeout);
+  }, [stats.waitingResult]);
+
   // Resolve the last bet when a new number comes in
   useEffect(() => {
     if (allNumbers.length === 0) return;
