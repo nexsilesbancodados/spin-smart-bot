@@ -9,7 +9,7 @@ import PremiumTable from '@/components/PremiumTable';
 import QuickNumberPad from '@/components/QuickNumberPad';
 import AIAnalysis from '@/components/AIAnalysis';
 import DebugModal from '@/components/DebugModal';
-import { CircleDot, ChevronDown, MonitorPlay, Flame, Snowflake, Play, Square, Zap, Timer, ExternalLink, Maximize2, Minimize2 } from 'lucide-react';
+import { CircleDot, ChevronDown, MonitorPlay, Flame, Snowflake, Play, Square, Zap, Timer, ExternalLink, Maximize2, Minimize2, Download, Copy, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const PROVIDERS: Record<string, { label: string; tables: { name: string; defaultUrl?: string }[] }> = {
@@ -48,6 +48,31 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<'roleta' | 'aulas' | 'bacbo'>('roleta');
   const [iframeExpanded, setIframeExpanded] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
+
+  const [copiedWebhook, setCopiedWebhook] = useState(false);
+  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-roulette`;
+
+  const downloadExtension = () => {
+    fetch('/roulette-tracker-extension.zip')
+      .then(res => {
+        if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+        return res.blob();
+      })
+      .then(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'roulette-tracker-extension.zip';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      })
+      .catch(err => alert(err.message));
+  };
+
+  const copyWebhook = () => {
+    navigator.clipboard.writeText(webhookUrl);
+    setCopiedWebhook(true);
+    setTimeout(() => setCopiedWebhook(false), 2000);
+  };
 
   const hotNumbers = getHotNumbers(history, 8);
   const coldNumbers = getColdNumbers(history, 8);
@@ -100,6 +125,14 @@ const Index = () => {
                 ))}
               </div>
             )}
+            <button
+              onClick={downloadExtension}
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold bg-accent/20 text-accent hover:bg-accent/30 transition-all"
+              title="Baixar extensão Chrome"
+            >
+              <Download className="w-2.5 h-2.5" />
+              EXT
+            </button>
             <span className="text-[9px] px-1.5 py-0.5 bg-accent/20 rounded text-accent font-bold">PRO</span>
             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
           </div>
@@ -155,6 +188,19 @@ const Index = () => {
                   className="w-3 h-3 accent-primary"
                 />
               </label>
+            </div>
+            {/* Webhook URL for extension */}
+            <div className="px-2 py-1.5 bg-card/50 border-t border-border">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[9px] font-bold text-muted-foreground tracking-wider">WEBHOOK URL</span>
+                <button onClick={copyWebhook} className="flex items-center gap-0.5 text-[9px] text-primary hover:text-primary/80">
+                  {copiedWebhook ? <Check className="w-2.5 h-2.5" /> : <Copy className="w-2.5 h-2.5" />}
+                  {copiedWebhook ? 'Copiado!' : 'Copiar'}
+                </button>
+              </div>
+              <div className="text-[8px] text-muted-foreground bg-secondary/50 rounded px-1.5 py-1 font-mono truncate select-all">
+                {webhookUrl}
+              </div>
             </div>
           </div>
 

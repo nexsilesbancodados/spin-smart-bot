@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Roulette Tracker - Onabet",
+  "version": "1.0.0",
+  "description": "Captura automática de números da roleta da Onabet",
+  "permissions": ["activeTab", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://ona.bet.br/*", "*://*.ona.bet.br/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "icons": {
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}
