@@ -1278,6 +1278,99 @@ serve(async (req) => {
       }).then(() => {}).catch(() => {}); // non-blocking
     }
 
+    // ==========================================
+    // GENERATE SPECIFIC BET INSTRUCTIONS
+    // ==========================================
+    const generateBetInstructions = (strat: typeof winner): { bets: { type: string; label: string; detail: string; emoji: string }[]; summary: string } => {
+      const bets: { type: string; label: string; detail: string; emoji: string }[] = [];
+      const t = strat.type;
+      const nums = strat.numbers;
+
+      if (t === 'cavalos') {
+        const group = nums.length >= 10 ? (
+          CAVALOS['258'].every(n => nums.includes(n)) ? '258' :
+          CAVALOS['147'].every(n => nums.includes(n)) ? '147' :
+          CAVALOS['03'].every(n => nums.includes(n)) ? '03' :
+          CAVALOS['69'].every(n => nums.includes(n)) ? '69' : null
+        ) : null;
+        if (group) {
+          bets.push({ type: 'cavalos', label: `Cavalos ${group}`, detail: `Aposte nos Cavalos ${group}: ${CAVALOS[group].join(', ')}`, emoji: '🐎' });
+        } else {
+          bets.push({ type: 'cavalos', label: 'Cavalos Especiais', detail: `Cubra os números: ${nums.join(', ')}`, emoji: '🐎' });
+        }
+      } else if (t === 'coluna' || t === 'column_cycle') {
+        const col = COL1.every(n => nums.includes(n)) ? 1 : COL2.every(n => nums.includes(n)) ? 2 : COL3.every(n => nums.includes(n)) ? 3 : 0;
+        if (col > 0) {
+          bets.push({ type: 'coluna', label: `Coluna ${col}`, detail: `Aposte na Coluna ${col} (2:1)`, emoji: '📐' });
+        }
+      } else if (t === 'duzia_unica' || t === 'dozen_phase') {
+        const dz = nums[0] <= 12 ? 1 : nums[0] <= 24 ? 2 : 3;
+        bets.push({ type: 'duzia', label: `Dúzia ${dz}`, detail: `Aposte na ${dz}ª Dúzia (${(dz-1)*12+1}-${dz*12}) — paga 2:1`, emoji: '🎲' });
+      } else if (t === 'duzias') {
+        const dzs: number[] = [];
+        if (nums.some((n: number) => n >= 1 && n <= 12)) dzs.push(1);
+        if (nums.some((n: number) => n >= 13 && n <= 24)) dzs.push(2);
+        if (nums.some((n: number) => n >= 25 && n <= 36)) dzs.push(3);
+        dzs.forEach(d => bets.push({ type: 'duzia', label: `Dúzia ${d}`, detail: `${d}ª Dúzia (${(d-1)*12+1}-${d*12})`, emoji: '🎲' }));
+      } else if (t === 'terminal_alternation') {
+        const term = nums.length > 0 ? nums[0] % 10 : 0;
+        const termNums = nums.filter((n: number) => n % 10 === term);
+        bets.push({ type: 'terminal', label: `Terminais ${term}`, detail: `Aposte nos terminais ${term}: ${termNums.join(', ')}`, emoji: '🔢' });
+      } else if (t === 'cor') {
+        const isRed = nums.some((n: number) => RED.includes(n)) && !nums.some((n: number) => !RED.includes(n) && n > 0);
+        bets.push({ type: 'cor', label: isRed ? 'Vermelho' : 'Preto', detail: `Aposte no ${isRed ? 'Vermelho' : 'Preto'} (1:1)`, emoji: isRed ? '🔴' : '⚫' });
+      } else if (t === 'paridade') {
+        const even = nums.every((n: number) => n > 0 && n % 2 === 0);
+        bets.push({ type: 'paridade', label: even ? 'Par' : 'Ímpar', detail: `Aposte no ${even ? 'Par' : 'Ímpar'} (1:1)`, emoji: even ? '2️⃣' : '1️⃣' });
+      } else if (t === 'alto_baixo') {
+        const low = nums.every((n: number) => n >= 1 && n <= 18);
+        bets.push({ type: 'alto_baixo', label: low ? 'Baixo (1-18)' : 'Alto (19-36)', detail: `Aposte no ${low ? 'Baixo (1-18)' : 'Alto (19-36)'} (1:1)`, emoji: low ? '⬇️' : '⬆️' });
+      } else if (t === 'sniper' || t === 'voisins' || t === 'setor_oposto') {
+        const sector = nums.length > 0 ? getSector(nums[0]) : 'Voisins';
+        bets.push({ type: 'setor', label: `Setor ${sector}`, detail: `Cubra o setor ${sector} na roda`, emoji: '🎯' });
+        // Add specific neighbor bets
+        const mainNum = nums[0];
+        bets.push({ type: 'vizinhos', label: `Vizinhos do ${mainNum}`, detail: `Pleno no ${mainNum} + vizinhos: ${nums.slice(1, 5).join(', ')}`, emoji: '🎯' });
+      } else if (t === 'numero_exato') {
+        bets.push({ type: 'pleno', label: `Pleno no ${nums[0]}`, detail: `Aposte Pleno (straight) no ${nums[0]} — paga 35:1`, emoji: '💎' });
+      }
+
+      // Add complementary bets based on number groupings
+      if (!['cor', 'paridade', 'alto_baixo'].includes(t) && nums.length >= 3) {
+        // Check if numbers cluster in a terminal
+        const termCount: Record<number, number> = {};
+        nums.forEach((n: number) => { const term = n % 10; termCount[term] = (termCount[term] || 0) + 1; });
+        const topTerm = Object.entries(termCount).sort(([,a],[,b]) => b - a)[0];
+        if (topTerm && Number(topTerm[1]) >= 3) {
+          const termVal = Number(topTerm[0]);
+          if (!bets.some(b => b.type === 'terminal')) {
+            bets.push({ type: 'terminal_comp', label: `+ Terminais ${termVal}`, detail: `Reforço: cubra terminais ${termVal}`, emoji: '🔢' });
+          }
+        }
+        
+        // Check if numbers are in same column
+        const colCount = [0, 0, 0];
+        nums.filter((n: number) => n > 0).forEach((n: number) => { const c = getColumn(n); if (c > 0) colCount[c-1]++; });
+        const maxCol = colCount.indexOf(Math.max(...colCount)) + 1;
+        if (colCount[maxCol-1] >= Math.ceil(nums.length * 0.5) && !bets.some(b => b.type === 'coluna')) {
+          bets.push({ type: 'coluna_comp', label: `+ Coluna ${maxCol}`, detail: `Reforço: aposte Coluna ${maxCol}`, emoji: '📐' });
+        }
+
+        // Check cavalos group concentration
+        const cavCount: Record<string, number> = { '258': 0, '147': 0, '03': 0, '69': 0 };
+        nums.forEach((n: number) => { const g = getCavalo(n); if (g) cavCount[g]++; });
+        const topCav = Object.entries(cavCount).sort(([,a],[,b]) => b - a)[0];
+        if (topCav && Number(topCav[1]) >= 3 && !bets.some(b => b.type === 'cavalos')) {
+          bets.push({ type: 'cavalos_comp', label: `+ Cavalos ${topCav[0]}`, detail: `Reforço: cubra Cavalos ${topCav[0]}`, emoji: '🐎' });
+        }
+      }
+
+      const summary = bets.map(b => `${b.emoji} ${b.label}`).join(' • ');
+      return { bets, summary };
+    };
+
+    const betInstructions = generateBetInstructions(winner);
+
     return json({
       signal: {
         number: winner.numbers[0],
@@ -1297,6 +1390,7 @@ serve(async (req) => {
         probability: finalProbability,
         justification: winner.justification,
       },
+      betInstructions,
       allStrategies,
       mesaMode,
       mode, message,
