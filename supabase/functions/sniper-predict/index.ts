@@ -2986,15 +2986,15 @@ serve(async (req) => {
       aiLearnings.push(`🔑 Assinatura terminal: T${mesaDNA.terminalSignature.join(',T')} consistentes`);
     }
 
-    const mode = totalLayers >= 1250 && finalProbability >= 88 ? 'sniper'
-      : totalLayers >= 1100 && finalProbability >= 80 ? 'alert'
+    const mode = totalLayers >= 1100 && finalProbability >= 82 ? 'sniper'
+      : totalLayers >= 900 && finalProbability >= 70 ? 'alert'
       : 'monitoring';
 
     const message = mode === 'sniper'
-      ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/1500`
+      ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/1700`
       : mode === 'alert'
-      ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/1500`
-      : `👁️ Analisando... ${totalLayers}/1500 — aguardando convergência`;
+      ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/1700`
+      : `👁️ Analisando... ${totalLayers}/1700 — aguardando convergência`;
 
     const diagnostic = mode === 'sniper'
       ? `Convergência Suprema (1500 camadas): ${winner.justification}`
