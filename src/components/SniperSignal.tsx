@@ -187,6 +187,49 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
         </div>
       </div>
 
+      {/* Barra de Score de Confiança */}
+      {sniperData && probability > 0 && (
+        <div className="px-4 pt-2 pb-1 border-b border-border/30">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
+              Score de Confiança
+            </span>
+            <div className="flex items-center gap-2">
+              <span className={`text-[9px] font-bold ${
+                probability >= 75 ? 'text-yellow-400' :
+                probability >= 50 ? 'text-green-400' :
+                probability >= 25 ? 'text-orange-400' : 'text-muted-foreground'
+              }`}>
+                {probability >= 75 ? '⚡ SINAL FORTE' :
+                 probability >= 50 ? '✅ MODERADO' :
+                 probability >= 25 ? '⚠️ FRACO' : '⏸ AGUARDAR'}
+              </span>
+              <span className={`text-sm font-mono font-black ${probColor(probability)}`}>{probability}%</span>
+            </div>
+          </div>
+          <div className="w-full h-2 bg-secondary/60 rounded-full overflow-hidden">
+            <motion.div
+              className={`h-full rounded-full ${
+                probability >= 75 ? 'bg-gradient-to-r from-yellow-500 to-amber-400 shadow-[0_0_8px_rgba(234,179,8,0.4)]' :
+                probability >= 50 ? 'bg-gradient-to-r from-green-500 to-emerald-400' :
+                probability >= 25 ? 'bg-gradient-to-r from-orange-500 to-amber-400' :
+                'bg-gradient-to-r from-muted-foreground/40 to-muted-foreground/20'
+              }`}
+              animate={{ width: `${probability}%` }}
+              transition={{ duration: 0.7, ease: 'easeOut' }}
+            />
+          </div>
+          <div className="flex items-center justify-between mt-0.5">
+            <span className="text-[7px] text-muted-foreground">Fichas sugeridas:</span>
+            <span className="text-[8px] font-bold text-foreground">
+              {probability >= 75 ? '8-12 fichas' :
+               probability >= 50 ? '5-7 fichas' :
+               probability >= 25 ? '3-4 fichas' : 'Não entrar'}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* REED STOP warning */}
       {reedStopped && (
         <div className="mx-4 mt-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-center animate-pulse">
