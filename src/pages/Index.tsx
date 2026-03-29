@@ -344,8 +344,9 @@ const Index = () => {
                       </span>
                     )}
                     <div className="ml-auto flex items-center gap-2">
+                      <span className="text-[7px] text-muted-foreground font-mono">~{spinCycleEstimate.current}s/giro</span>
                       <div className={`flex items-center gap-1 px-2 py-1 rounded-lg font-mono text-xs font-bold ${
-                        sniperCountdown <= 3 ? 'bg-destructive/20 text-destructive animate-pulse' : sniperCountdown <= 7 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-secondary text-muted-foreground'
+                        sniperCountdown <= 5 ? 'bg-destructive/20 text-destructive animate-pulse' : sniperCountdown <= 15 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-secondary text-muted-foreground'
                       }`}>
                         <Clock className="w-3 h-3" />
                         {sniperCountdown}s
