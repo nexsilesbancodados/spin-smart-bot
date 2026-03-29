@@ -15,6 +15,29 @@ import { motion, AnimatePresence } from 'framer-motion';
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
 const CAVALOS_258 = [2, 5, 8, 12, 15, 18, 22, 25, 28, 32, 35];
 
+const WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const WL = WHEEL.length;
+const VOISINS_NUMS = [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25];
+const TIERS_NUMS = [27,13,36,11,30,8,23,10,5,24,16,33];
+const ORPHELINS_NUMS = [1,20,14,31,9,17,34,6];
+
+const CAVALOS_GROUPS: Record<string, number[]> = {
+  '258': [2,5,8,12,15,18,22,25,28,32,35],
+  '147': [1,4,7,11,14,17,21,24,27,31,34],
+  '03': [0,3,10,13,20,23,30,33],
+  '69': [6,9,16,19,26,29,36],
+};
+
+const wheelIdx = (n: number) => WHEEL.indexOf(n);
+const wheelDist = (a: number, b: number) => {
+  const ia = wheelIdx(a), ib = wheelIdx(b);
+  if (ia === -1 || ib === -1) return 99;
+  const d = Math.abs(ia - ib);
+  return Math.min(d, WL - d);
+};
+const getSectorName = (n: number) => VOISINS_NUMS.includes(n) ? 'Voisins' : TIERS_NUMS.includes(n) ? 'Tiers' : ORPHELINS_NUMS.includes(n) ? 'Orphelins' : 'Zero';
+const getCavaloGroup = (n: number) => { for (const [k, v] of Object.entries(CAVALOS_GROUPS)) if (v.includes(n)) return k; return null; };
+
 const getColor = (n: number): 'red' | 'black' | 'green' => {
   if (n === 0) return 'green';
   return RED_NUMBERS.includes(n) ? 'red' : 'black';
