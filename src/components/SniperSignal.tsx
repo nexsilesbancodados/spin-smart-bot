@@ -428,11 +428,16 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                       animate={{ opacity: 1, y: 0 }}
                       className="rounded-xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/8 via-card to-card overflow-hidden"
                     >
-                      <div className="flex items-center gap-2 px-3 py-2 bg-yellow-500/10 border-b border-yellow-500/20">
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-yellow-500/10 border-b border-yellow-500/20">
                         <Zap className="w-3.5 h-3.5 text-yellow-400" />
-                        <span className="text-[10px] font-black tracking-wide text-yellow-400">
-                          JOGADA COMBINADA — {strats.length} ESTRATÉGIAS DIVERSAS
-                        </span>
+                        <div>
+                          <span className="text-[10px] font-black tracking-wide text-yellow-400 block">
+                            JOGADA COMBINADA
+                          </span>
+                          <span className="text-[8px] text-yellow-400/60">
+                            {strats.length} análises diferentes concordam nestes números
+                          </span>
+                        </div>
                         <span className={`ml-auto text-sm font-black font-mono ${probColor(cb.avgProbability)}`}>
                           {cb.avgProbability}%
                         </span>
@@ -449,8 +454,9 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
 
                       {/* Números — destacar os que aparecem em 2+ estratégias */}
                       <div className="px-3 py-2.5">
+                        <span className="text-[8px] text-muted-foreground font-bold block mb-1.5">📍 Coloque 1 ficha em cada número:</span>
                         {highlighted.length > 0 && (
-                          <span className="text-[9px] text-yellow-400 font-bold block mb-1">⭐ {highlighted.length} números em múltiplas estratégias:</span>
+                          <span className="text-[9px] text-yellow-400 font-bold block mb-1">⭐ Priorize os {highlighted.length} números com estrela (aparecem em várias análises):</span>
                         )}
                         <div className="flex flex-wrap gap-1">
                           {cb.numbers.map((n: number, i: number) => {
@@ -471,12 +477,12 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 px-3 py-1.5 border-t border-yellow-500/15 text-[9px] text-muted-foreground">
-                        <span><strong className="text-foreground">{cb.numbers.length}</strong> números</span>
+                      <div className="flex items-center gap-2 px-3 py-2 border-t border-yellow-500/15 text-[9px] text-muted-foreground">
+                        <span>💰 Ganho: <strong className="text-foreground">{cb.payout}x</strong></span>
                         <span className="text-border">•</span>
-                        <span><strong className="text-foreground">{cb.coverage}%</strong> cobertura</span>
+                        <span>🎯 <strong className="text-foreground">{cb.numbers.length}</strong> números</span>
                         <span className="text-border">•</span>
-                        <span>Payout: <strong className="text-foreground">{cb.payout}x</strong></span>
+                        <span>📊 <strong className="text-foreground">{cb.coverage}%</strong> mesa</span>
                         {highlighted.length > 0 && (
                           <>
                             <span className="text-border">•</span>
@@ -490,8 +496,8 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
 
                 {/* JUSTIFICATIVA */}
                 <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
-                  <span className="text-[9px] text-muted-foreground font-bold tracking-wide">🧠 POR QUE ESTA JOGADA:</span>
-                  <p className="text-[10px] text-primary/80 italic mt-1 leading-relaxed">{sniperData.strategy.justification}</p>
+                  <span className="text-[9px] text-muted-foreground font-bold tracking-wide">🧠 POR QUE A IA ESCOLHEU ESTA JOGADA:</span>
+                  <p className="text-[10px] text-foreground/80 mt-1 leading-relaxed">{sniperData.strategy.justification}</p>
                 </div>
 
                 {/* CONVERGENCE REASONS */}
