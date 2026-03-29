@@ -2024,10 +2024,10 @@ serve(async (req) => {
       : 'monitoring';
 
     const message = mode === 'sniper'
-      ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/1000`
+      ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/1100`
       : mode === 'alert'
-      ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/1000`
-      : `👁️ Analisando... ${totalLayers}/1000 — aguardando convergência`;
+      ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/1100`
+      : `👁️ Analisando... ${totalLayers}/1100 — aguardando convergência`;
 
     const diagnostic = mode === 'sniper'
       ? `Convergência Milenária (1000 camadas): ${winner.justification}`
