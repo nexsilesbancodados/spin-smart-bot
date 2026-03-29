@@ -993,6 +993,125 @@ serve(async (req) => {
       });
     }
 
+    // 11. TERMINAL ALTERNATION — detect terminal cycling patterns (e.g. T2→T8→T2)
+    const termSeq = last15.map(n => n % 10);
+    const termTransPairs: Record<string, number> = {};
+    for (let i = 0; i < termSeq.length - 1; i++) {
+      const key = `${termSeq[i]}->${termSeq[i+1]}`;
+      termTransPairs[key] = (termTransPairs[key] || 0) + 1;
+    }
+    const strongTransitions = Object.entries(termTransPairs).filter(([,c]) => c >= 2).sort(([,a],[,b]) => b - a);
+    if (strongTransitions.length > 0) {
+      const lastTerm = termSeq[0];
+      // Predict next terminal based on most common transition from current terminal
+      const nextTermCandidates = strongTransitions
+        .filter(([k]) => k.startsWith(`${lastTerm}->`))
+        .map(([k, c]) => ({ term: parseInt(k.split('->')[1]), count: c }));
+      if (nextTermCandidates.length > 0) {
+        const predictedTerm = nextTermCandidates[0].term;
+        const termNums = Array.from({length:37}, (_,i) => i).filter(n => n % 10 === predictedTerm);
+        const taScore = sumScores(termNums) + nextTermCandidates[0].count * 5 + strongTransitions.length * 2;
+        const taBt = backtestSet(termNums);
+        strategies.push({
+          type: 'terminal_alternation', label: `🔄 Terminal ${predictedTerm} (Alternância)`, emoji: '🔄',
+          numbers: termNums, coverage: (termNums.length/37)*100, payout: Math.round(36/termNums.length),
+          score: taScore + taBt * 22,
+          probability: Math.min(98, Math.round(40 + taScore * 2 + taBt * 35)),
+          justification: `Alternância de terminais detectada: T${lastTerm}→T${predictedTerm} (${nextTermCandidates[0].count}x). Padrão cíclico ativo.`,
+        });
+      }
+    }
+
+    // 12. COLUMN CYCLING — detect column rotation pattern
+    const colSeq = last15.filter(n => n > 0).map(n => getColumn(n));
+    const colTransPairs: Record<string, number> = {};
+    for (let i = 0; i < colSeq.length - 1; i++) {
+      const key = `${colSeq[i]}->${colSeq[i+1]}`;
+      colTransPairs[key] = (colTransPairs[key] || 0) + 1;
+    }
+    const strongColTrans = Object.entries(colTransPairs).filter(([,c]) => c >= 2).sort(([,a],[,b]) => b - a);
+    if (strongColTrans.length > 0) {
+      const lastCol = colSeq[0];
+      const nextColCandidates = strongColTrans
+        .filter(([k]) => k.startsWith(`${lastCol}->`))
+        .map(([k, c]) => ({ col: parseInt(k.split('->')[1]), count: c }));
+      if (nextColCandidates.length > 0) {
+        const predictedCol = nextColCandidates[0].col;
+        const ccNums = predictedCol === 1 ? COL1 : predictedCol === 2 ? COL2 : COL3;
+        const ccScore = sumScores(ccNums) + nextColCandidates[0].count * 4;
+        const ccBt = backtestSet(ccNums);
+        strategies.push({
+          type: 'column_cycle', label: `📐 Coluna ${predictedCol} (Ciclo)`, emoji: '📐',
+          numbers: [...ccNums], coverage: (12/37)*100, payout: 3,
+          score: ccScore + ccBt * 22,
+          probability: Math.min(98, Math.round(35 + ccScore * 1.8 + ccBt * 40)),
+          justification: `Rotação de colunas: Col${lastCol}→Col${predictedCol} (${nextColCandidates[0].count}x). Ciclo previsível.`,
+        });
+      }
+    }
+
+    // 13. DOZEN PHASE — detect dozen phase cycling
+    const dzSeq = last15.filter(n => n > 0).map(n => getDozen(n));
+    const dzTransPairs: Record<string, number> = {};
+    for (let i = 0; i < dzSeq.length - 1; i++) {
+      const key = `${dzSeq[i]}->${dzSeq[i+1]}`;
+      dzTransPairs[key] = (dzTransPairs[key] || 0) + 1;
+    }
+    const strongDzTrans = Object.entries(dzTransPairs).filter(([,c]) => c >= 2).sort(([,a],[,b]) => b - a);
+    if (strongDzTrans.length > 0) {
+      const lastDz = dzSeq[0];
+      const nextDzCandidates = strongDzTrans
+        .filter(([k]) => k.startsWith(`${lastDz}->`))
+        .map(([k, c]) => ({ dz: parseInt(k.split('->')[1]), count: c }));
+      if (nextDzCandidates.length > 0) {
+        const predictedDz = nextDzCandidates[0].dz;
+        const dpNums = Array.from({length:12}, (_,i) => (predictedDz-1)*12 + i + 1);
+        const dpScore = sumScores(dpNums) + nextDzCandidates[0].count * 4;
+        const dpBt = backtestSet(dpNums);
+        strategies.push({
+          type: 'dozen_phase', label: `🎯 Dúzia ${predictedDz} (Fase)`, emoji: '🎯',
+          numbers: dpNums, coverage: (12/37)*100, payout: 3,
+          score: dpScore + dpBt * 22,
+          probability: Math.min(98, Math.round(35 + dpScore * 1.8 + dpBt * 40)),
+          justification: `Fase de dúzias: D${lastDz}→D${predictedDz} (${nextDzCandidates[0].count}x). Momento cíclico.`,
+        });
+      }
+    }
+
+    // 14. HOT/COLD PHASE — detect whether mesa is in hot (repeating) or cold (spreading) phase
+    const uniqueIn10 = new Set(last10).size;
+    const repeatRatio = 1 - (uniqueIn10 / last10.length);
+    if (repeatRatio > 0.3) {
+      // HOT phase — bet on recently repeated numbers + their neighbors
+      const repeated = last10.filter((n, i) => last10.indexOf(n) !== i);
+      const uniqueRepeated = [...new Set(repeated)];
+      const hotNeighbors: number[] = [];
+      uniqueRepeated.forEach(n => getNeighbors(n, 2).forEach(nb => { if (!uniqueRepeated.includes(nb) && !hotNeighbors.includes(nb)) hotNeighbors.push(nb); }));
+      const hotNums = [...uniqueRepeated, ...hotNeighbors.slice(0, 6)];
+      const hotScore = sumScores(hotNums) + repeatRatio * 20;
+      const hotBt = backtestSet(hotNums);
+      strategies.push({
+        type: 'hot_phase', label: '🔥 Fase Quente (Repetições)', emoji: '🔥',
+        numbers: hotNums, coverage: (hotNums.length/37)*100, payout: Math.round(36/hotNums.length),
+        score: hotScore + hotBt * 20,
+        probability: Math.min(98, Math.round(45 + hotScore * 1.5 + hotBt * 30)),
+        justification: `Mesa em fase quente: ${uniqueRepeated.join(',')} repetidos. Taxa repetição: ${(repeatRatio*100).toFixed(0)}%.`,
+      });
+    } else if (uniqueIn10 >= 9) {
+      // COLD phase — bet on numbers NOT seen recently (spreading pattern)
+      const coldNums = Array.from({length:37}, (_,i) => i).filter(n => !last10.includes(n));
+      const topCold = coldNums.sort((a, b) => (numScores.find(s => s.num === b)?.score || 0) - (numScores.find(s => s.num === a)?.score || 0)).slice(0, 12);
+      const coldScore = sumScores(topCold) + (uniqueIn10 / 10) * 15;
+      const coldBt = backtestSet(topCold);
+      strategies.push({
+        type: 'cold_phase', label: '❄️ Fase Fria (Dispersão)', emoji: '❄️',
+        numbers: topCold, coverage: (topCold.length/37)*100, payout: Math.round(36/topCold.length),
+        score: coldScore + coldBt * 20,
+        probability: Math.min(98, Math.round(42 + coldScore * 1.5 + coldBt * 30)),
+        justification: `Mesa dispersando: ${uniqueIn10}/10 únicos. Top alvos frios: ${topCold.slice(0,5).join(',')}.`,
+      });
+    }
+
     // 10. HISTORICAL WINNERS — numbers that historically hit when predicted
     const histWinners = Object.entries(numberHitFreq)
       .filter(([, c]) => c >= 2)
