@@ -381,7 +381,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Navbar */}
+      {/* ═══════ NAVBAR ═══════ */}
       <Navbar
         isPolling={isPolling} setIsPolling={setIsPolling}
         isAnalyzing={isAnalyzing} triggerLearn={triggerLearn}
@@ -391,10 +391,10 @@ const Index = () => {
         onShowHistory={() => setShowPredHistory(!showPredHistory)}
       />
 
-      {/* Stats Bar - Fixo */}
+      {/* ═══════ STATS BAR ═══════ */}
       <StatsBar predStats={predStats} setPredStats={setPredStats} />
 
-      {/* Prediction History Panel */}
+      {/* ═══════ PREDICTION HISTORY (COLLAPSIBLE) ═══════ */}
       <AnimatePresence>
         {showPredHistory && (
           <motion.div
@@ -410,32 +410,33 @@ const Index = () => {
         )}
       </AnimatePresence>
 
+      {/* ═══════ MAIN CONTENT ═══════ */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-[1400px] mx-auto p-3 space-y-3">
+        <div className="max-w-[1400px] mx-auto p-3 space-y-4">
 
-          {/* Últimos 12 */}
-          <Last12Numbers allNumbers={allNumbers} />
+          {/* ─── SEÇÃO 1: Últimos 12 + Pressão do Zero ─── */}
+          <div className="space-y-3">
+            <Last12Numbers allNumbers={allNumbers} />
+            <ZeroPressure allNumbers={allNumbers} />
+          </div>
 
-          {/* Pressão do Zero */}
-          <ZeroPressure allNumbers={allNumbers} />
-
-          {/* SNIPER + MAPA DA RODA */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <div className="lg:col-span-2 space-y-2">
-              {/* Sample Size Selector */}
+          {/* ─── SEÇÃO 2: SNIPER + MAPA DA RODA + BET PANEL ─── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Coluna Principal — Sniper */}
+            <div className="lg:col-span-2 space-y-3">
+              {/* Sample Size */}
               <div className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
                 <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">📊 Base de Análise:</span>
                 <input
-                  type="range"
-                  min={10}
-                  max={500}
-                  step={10}
+                  type="range" min={10} max={500} step={10}
                   value={sampleSize}
                   onChange={e => setSampleSize(Number(e.target.value))}
                   className="flex-1 accent-primary h-2 cursor-pointer"
                 />
                 <span className="text-sm font-bold text-primary min-w-[60px] text-right">{sampleSize} jogadas</span>
               </div>
+
+              {/* Sniper Signal */}
               <SniperSignal
                 sniperData={sniperData}
                 sniperCountdown={sniperCountdown}
@@ -445,9 +446,8 @@ const Index = () => {
               />
             </div>
 
-            {/* COLUNA DIREITA: Mapa + Bet Panel */}
+            {/* Coluna Lateral — Mapa + Bet */}
             <div className="lg:col-span-1 space-y-3">
-              {/* MAPA DA RODA — Colapsável */}
               <details className="bg-card rounded-xl border border-border overflow-hidden group">
                 <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none text-sm font-bold text-foreground hover:bg-secondary/30 transition-colors">
                   <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180" />
@@ -457,40 +457,38 @@ const Index = () => {
                   <WheelMap allNumbers={allNumbers} sniperData={sniperData} />
                 </div>
               </details>
-
-              {/* BET PANEL */}
               <BetPanel sniperData={sniperData} allNumbers={allNumbers} />
             </div>
           </div>
 
-          {/* TOP ALTERNATIVAS */}
+          {/* ─── SEÇÃO 3: JOGADAS ALTERNATIVAS ─── */}
           {sniperData?.topAlternatives?.length > 0 && (
-            <div className="bg-card/90 rounded-xl border border-border p-3">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-card/90 rounded-xl border border-border p-4">
+              <div className="flex items-center gap-2 mb-3">
                 <BarChart3 className="w-4 h-4 text-cyan-400" />
                 <span className="font-display text-[10px] tracking-[0.15em] font-bold text-cyan-400">JOGADAS ALTERNATIVAS</span>
                 <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold">
                   TOP {sniperData.topAlternatives.length}
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {sniperData.topAlternatives.map((alt: any, i: number) => (
-                  <div key={i} className="bg-secondary/40 rounded-lg p-2.5 border border-border hover:border-primary/30 transition-all">
-                    <div className="flex items-center gap-1.5 mb-1.5">
+                  <div key={i} className="bg-secondary/40 rounded-lg p-3 border border-border hover:border-primary/30 transition-all">
+                    <div className="flex items-center gap-1.5 mb-2">
                       <span className="text-sm">{alt.emoji}</span>
                       <span className="text-[9px] font-bold text-foreground truncate">{alt.label}</span>
                       <span className={`ml-auto text-[10px] font-mono font-bold ${alt.probability >= 80 ? 'text-primary' : alt.probability >= 65 ? 'text-yellow-400' : 'text-muted-foreground'}`}>
                         {alt.probability}%
                       </span>
                     </div>
-                    <div className="flex flex-wrap gap-0.5 mb-1.5">
+                    <div className="flex flex-wrap gap-1 mb-2">
                       {alt.numbers?.slice(0, 8).map((n: number, j: number) => (
                         <div key={j} className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ${colorClass(n)} border border-white/10`}>{n}</div>
                       ))}
                       {alt.numbers?.length > 8 && <span className="text-[7px] text-muted-foreground self-center">+{alt.numbers.length - 8}</span>}
                     </div>
-                    <p className="text-[7px] text-muted-foreground line-clamp-2">{alt.justification}</p>
-                    <div className="flex items-center gap-2 mt-1 text-[7px] text-muted-foreground">
+                    <p className="text-[7px] text-muted-foreground line-clamp-2 mb-1.5">{alt.justification}</p>
+                    <div className="flex items-center gap-2 text-[7px] text-muted-foreground">
                       <span>Payout: {alt.payout}x</span>
                       <span>•</span>
                       <span>{alt.coverage}% cobertura</span>
@@ -501,11 +499,11 @@ const Index = () => {
             </div>
           )}
 
-          {/* ANÁLISE AVANÇADA (COLAPSÁVEL) */}
+          {/* ─── SEÇÃO 4: ANÁLISE AVANÇADA (COLAPSÁVEL) ─── */}
           {sniperData && (
             <div className="bg-card rounded-xl border border-border overflow-hidden">
               <button onClick={() => setShowAdvanced(!showAdvanced)}
-                className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-secondary/50 transition-colors">
+                className="w-full flex items-center gap-2 px-4 py-3 hover:bg-secondary/50 transition-colors">
                 <Brain className="w-4 h-4 text-purple-400" />
                 <span className="font-display text-[10px] tracking-[0.15em] font-bold text-purple-400">ANÁLISE AVANÇADA</span>
                 {sniperData?.aiLearnings?.length > 0 && (
@@ -520,235 +518,227 @@ const Index = () => {
                 )}
                 <ChevronDown className={`w-4 h-4 text-muted-foreground ml-auto transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
               </button>
+
               <AnimatePresence>
                 {showAdvanced && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                    <div className="p-3 space-y-3 border-t border-border">
+                    <div className="p-4 space-y-4 border-t border-border">
 
-          {/* AI LEARNINGS */}
-          {sniperData?.aiLearnings?.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-r from-purple-500/10 via-card to-blue-500/10 rounded-xl border border-purple-500/30 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <GraduationCap className="w-4 h-4 text-purple-400" />
-                <span className="font-display text-[10px] tracking-[0.15em] font-bold text-purple-400">O QUE A IA APRENDEU AGORA</span>
-                {sniperData.noiseFiltered > 0 && (
-                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold ml-auto">
-                    🔇 {sniperData.noiseFiltered} ruídos filtrados
-                  </span>
-                )}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {sniperData.aiLearnings.map((learning: string, i: number) => (
-                  <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-secondary/60 border border-border">
-                    <Sparkles className="w-3 h-3 text-purple-400 mt-0.5 shrink-0" />
-                    <span className="text-[9px] text-foreground/90 leading-tight">{learning}</span>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
+                      {/* AI Learnings */}
+                      {sniperData?.aiLearnings?.length > 0 && (
+                        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+                          className="bg-gradient-to-r from-purple-500/10 via-card to-blue-500/10 rounded-xl border border-purple-500/30 p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <GraduationCap className="w-4 h-4 text-purple-400" />
+                            <span className="font-display text-[10px] tracking-[0.15em] font-bold text-purple-400">O QUE A IA APRENDEU AGORA</span>
+                            {sniperData.noiseFiltered > 0 && (
+                              <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold ml-auto">
+                                🔇 {sniperData.noiseFiltered} ruídos filtrados
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {sniperData.aiLearnings.map((learning: string, i: number) => (
+                              <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: i * 0.05 }}
+                                className="flex items-start gap-1.5 px-2.5 py-2 rounded-lg bg-secondary/60 border border-border">
+                                <Sparkles className="w-3 h-3 text-purple-400 mt-0.5 shrink-0" />
+                                <span className="text-[9px] text-foreground/90 leading-tight">{learning}</span>
+                              </motion.div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
 
-          {/* DEEP MEMORY */}
-          {sniperData?.deepMemory && (
-            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-r from-blue-500/10 via-card to-emerald-500/10 rounded-xl border border-blue-500/30 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Eye className="w-4 h-4 text-blue-400" />
-                <span className="font-display text-[10px] tracking-[0.15em] font-bold text-blue-400">MEMÓRIA PROFUNDA</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-                <div className="bg-secondary/40 rounded-lg p-2 border border-border">
-                  <span className="text-[8px] font-bold text-purple-400 block mb-1">👻 ANCESTRAIS</span>
-                  {sniperData.deepMemory.ancestralPatterns?.length > 0 ?
-                    sniperData.deepMemory.ancestralPatterns.map((p: any, i: number) => (
-                      <div key={i} className="text-[8px] text-foreground/80 mb-0.5">
-                        <span className="font-mono">{p.pattern?.slice(0, 5).join(',')}</span>
-                        <span className="text-muted-foreground ml-1">({p.occurrences}x)</span>
-                      </div>
-                    )) : <span className="text-[8px] text-muted-foreground">Coletando...</span>
-                  }
-                </div>
-                <div className="bg-secondary/40 rounded-lg p-2 border border-border">
-                  <span className="text-[8px] font-bold text-emerald-400 block mb-1">🧬 DNA MESA</span>
-                  <div className="text-[8px] text-foreground/80 space-y-0.5">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Equilíbrio</span>
-                      <span className="font-mono font-bold">{((sniperData.deepMemory.mesaDNA?.sectorBalance || 0) * 100).toFixed(0)}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Vício</span>
-                      <span className="font-mono font-bold">{sniperData.deepMemory.mesaDNA?.cylinderBias || 0}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-secondary/40 rounded-lg p-2 border border-border">
-                  <span className="text-[8px] font-bold text-orange-400 block mb-1">🔩 VIBRAÇÃO</span>
-                  <div className="text-[8px] text-foreground/80 space-y-0.5">
-                    {sniperData.deepMemory.cylinderInertia?.biasedNums?.length > 0 && (
-                      <div><span className="text-muted-foreground">Viciados: </span><span className="font-mono font-bold">{sniperData.deepMemory.cylinderInertia.biasedNums.slice(0, 6).join(',')}</span></div>
-                    )}
-                  </div>
-                </div>
-                <div className="bg-secondary/40 rounded-lg p-2 border border-border">
-                  <span className="text-[8px] font-bold text-cyan-400 block mb-1">🧬 GENÉTICOS</span>
-                  {sniperData.deepMemory.geneticPatterns?.length > 0 ?
-                    sniperData.deepMemory.geneticPatterns.map((gp: any, i: number) => (
-                      <div key={i} className="text-[8px] text-foreground/80 mb-0.5">
-                        <span className="font-bold">{gp.name}</span>
-                        <span className="text-muted-foreground ml-1">→ {gp.numbers?.slice(0, 5).join(',')}</span>
-                      </div>
-                    )) : <span className="text-[8px] text-muted-foreground">Evoluindo...</span>
-                  }
-                </div>
-                <div className="bg-secondary/40 rounded-lg p-2 border border-border">
-                  <span className="text-[8px] font-bold text-yellow-400 block mb-1">🌊 FLUXO</span>
-                  <div className="text-[8px] text-foreground/80 space-y-0.5">
-                    {sniperData.deepMemory.flowDynamics?.mesaFlowState && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Modo</span>
-                        <span className={`font-bold ${sniperData.deepMemory.flowDynamics.mesaFlowState.mode === 'concentracao' ? 'text-red-400' : 'text-muted-foreground'}`}>
-                          {sniperData.deepMemory.flowDynamics.mesaFlowState.mode === 'concentracao' ? '🔥' : '⚖️'} {sniperData.deepMemory.flowDynamics.mesaFlowState.mode}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+                      {/* Deep Memory */}
+                      {sniperData?.deepMemory && (
+                        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+                          className="bg-gradient-to-r from-blue-500/10 via-card to-emerald-500/10 rounded-xl border border-blue-500/30 p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Eye className="w-4 h-4 text-blue-400" />
+                            <span className="font-display text-[10px] tracking-[0.15em] font-bold text-blue-400">MEMÓRIA PROFUNDA</span>
+                          </div>
 
-              {/* Extra analysis cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-                {sniperData?.randomnessIndex && (
-                  <div className="bg-secondary/40 rounded-lg p-2 border border-border">
-                    <span className="text-[8px] font-bold text-rose-400 block mb-1">🛡️ RUÍDO</span>
-                    <div className="text-[8px] space-y-0.5">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Índice</span>
-                        <span className={`font-bold ${sniperData.randomnessIndex.overall >= 75 ? 'text-destructive' : 'text-green-400'}`}>{sniperData.randomnessIndex.overall}%</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {sniperData?.kellyBetting && (
-                  <div className="bg-secondary/40 rounded-lg p-2 border border-border">
-                    <span className="text-[8px] font-bold text-emerald-400 block mb-1">💰 KELLY</span>
-                    <div className="text-[8px] space-y-0.5">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Unidade</span>
-                        <span className="font-bold">{sniperData.kellyBetting.unitMultiplier}x</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Risco</span>
-                        <span className="font-bold">{sniperData.kellyBetting.riskLevel}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {sniperData?.dealerBiometrics && (
-                  <div className="bg-secondary/40 rounded-lg p-2 border border-border">
-                    <span className="text-[8px] font-bold text-violet-400 block mb-1">🎭 DEALER</span>
-                    <div className="text-[8px] space-y-0.5">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Perfil</span>
-                        <span className={`font-bold ${sniperData.dealerBiometrics.profileType === 'mecânico' ? 'text-green-400' : 'text-destructive'}`}>
-                          {sniperData.dealerBiometrics.profileType}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {sniperData?.diamondDeflection?.length > 0 && (
-                  <div className="bg-secondary/40 rounded-lg p-2 border border-border">
-                    <span className="text-[8px] font-bold text-sky-400 block mb-1">💎 DEFLETORES</span>
-                    <div className="text-[8px] space-y-0.5">
-                      {sniperData.diamondDeflection.slice(0, 3).map((d: any, i: number) => (
-                        <div key={i} className="flex justify-between">
-                          <span className="text-muted-foreground">D#{d.zone}</span>
-                          <span className="font-mono font-bold">{(d.deflectionRate * 100).toFixed(0)}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                            <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
+                              <span className="text-[8px] font-bold text-purple-400 block mb-1.5">👻 ANCESTRAIS</span>
+                              {sniperData.deepMemory.ancestralPatterns?.length > 0 ?
+                                sniperData.deepMemory.ancestralPatterns.map((p: any, i: number) => (
+                                  <div key={i} className="text-[8px] text-foreground/80 mb-0.5">
+                                    <span className="font-mono">{p.pattern?.slice(0, 5).join(',')}</span>
+                                    <span className="text-muted-foreground ml-1">({p.occurrences}x)</span>
+                                  </div>
+                                )) : <span className="text-[8px] text-muted-foreground">Coletando...</span>
+                              }
+                            </div>
+                            <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
+                              <span className="text-[8px] font-bold text-emerald-400 block mb-1.5">🧬 DNA MESA</span>
+                              <div className="text-[8px] text-foreground/80 space-y-1">
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Equilíbrio</span>
+                                  <span className="font-mono font-bold">{((sniperData.deepMemory.mesaDNA?.sectorBalance || 0) * 100).toFixed(0)}%</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Vício</span>
+                                  <span className="font-mono font-bold">{sniperData.deepMemory.mesaDNA?.cylinderBias || 0}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
+                              <span className="text-[8px] font-bold text-orange-400 block mb-1.5">🔩 VIBRAÇÃO</span>
+                              <div className="text-[8px] text-foreground/80">
+                                {sniperData.deepMemory.cylinderInertia?.biasedNums?.length > 0 && (
+                                  <div><span className="text-muted-foreground">Viciados: </span><span className="font-mono font-bold">{sniperData.deepMemory.cylinderInertia.biasedNums.slice(0, 6).join(',')}</span></div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
+                              <span className="text-[8px] font-bold text-cyan-400 block mb-1.5">🧬 GENÉTICOS</span>
+                              {sniperData.deepMemory.geneticPatterns?.length > 0 ?
+                                sniperData.deepMemory.geneticPatterns.map((gp: any, i: number) => (
+                                  <div key={i} className="text-[8px] text-foreground/80 mb-0.5">
+                                    <span className="font-bold">{gp.name}</span>
+                                    <span className="text-muted-foreground ml-1">→ {gp.numbers?.slice(0, 5).join(',')}</span>
+                                  </div>
+                                )) : <span className="text-[8px] text-muted-foreground">Evoluindo...</span>
+                              }
+                            </div>
+                            <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
+                              <span className="text-[8px] font-bold text-yellow-400 block mb-1.5">🌊 FLUXO</span>
+                              <div className="text-[8px] text-foreground/80">
+                                {sniperData.deepMemory.flowDynamics?.mesaFlowState && (
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Modo</span>
+                                    <span className={`font-bold ${sniperData.deepMemory.flowDynamics.mesaFlowState.mode === 'concentracao' ? 'text-red-400' : 'text-muted-foreground'}`}>
+                                      {sniperData.deepMemory.flowDynamics.mesaFlowState.mode === 'concentracao' ? '🔥' : '⚖️'} {sniperData.deepMemory.flowDynamics.mesaFlowState.mode}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
 
-          {/* ARQUÉTIPOS */}
-          {sniperData?.archetypes?.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
-              className="bg-card rounded-xl border border-border p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Target className="w-4 h-4 text-amber-400" />
-                <span className="font-display text-[10px] tracking-[0.15em] font-bold text-amber-400">ARQUÉTIPOS ATIVOS</span>
-                <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold ml-auto">
-                  {sniperData.archetypes.filter((a: any) => a.active).length}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {sniperData.archetypes.filter((a: any) => a.active).map((arch: any, i: number) => (
-                  <div key={i} className="rounded-lg p-2 border text-[8px] bg-amber-500/10 border-amber-500/30">
-                    <div className="flex items-center gap-1 mb-1">
-                      <span className="text-sm">{arch.emoji}</span>
-                      <span className="font-bold text-amber-400">{arch.name}</span>
-                      <span className="ml-auto font-mono font-bold">{arch.strength}%</span>
-                    </div>
-                    <div className="text-foreground/70 mb-1">{arch.detail}</div>
-                    {arch.predictedNums?.length > 0 && (
-                      <div className="flex flex-wrap gap-0.5 mt-1">
-                        {arch.predictedNums.slice(0, 6).map((n: number) => (
-                          <div key={n} className={`w-4 h-4 rounded-full flex items-center justify-center text-[6px] font-bold ${colorClass(n)} border border-white/20`}>{n}</div>
-                        ))}
+                          {/* Extra analysis cards */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
+                            {sniperData?.randomnessIndex && (
+                              <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
+                                <span className="text-[8px] font-bold text-rose-400 block mb-1">🛡️ RUÍDO</span>
+                                <div className="flex justify-between text-[8px]">
+                                  <span className="text-muted-foreground">Índice</span>
+                                  <span className={`font-bold ${sniperData.randomnessIndex.overall >= 75 ? 'text-destructive' : 'text-green-400'}`}>{sniperData.randomnessIndex.overall}%</span>
+                                </div>
+                              </div>
+                            )}
+                            {sniperData?.kellyBetting && (
+                              <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
+                                <span className="text-[8px] font-bold text-emerald-400 block mb-1">💰 KELLY</span>
+                                <div className="text-[8px] space-y-0.5">
+                                  <div className="flex justify-between"><span className="text-muted-foreground">Unidade</span><span className="font-bold">{sniperData.kellyBetting.unitMultiplier}x</span></div>
+                                  <div className="flex justify-between"><span className="text-muted-foreground">Risco</span><span className="font-bold">{sniperData.kellyBetting.riskLevel}</span></div>
+                                </div>
+                              </div>
+                            )}
+                            {sniperData?.dealerBiometrics && (
+                              <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
+                                <span className="text-[8px] font-bold text-violet-400 block mb-1">🎭 DEALER</span>
+                                <div className="flex justify-between text-[8px]">
+                                  <span className="text-muted-foreground">Perfil</span>
+                                  <span className={`font-bold ${sniperData.dealerBiometrics.profileType === 'mecânico' ? 'text-green-400' : 'text-destructive'}`}>
+                                    {sniperData.dealerBiometrics.profileType}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            {sniperData?.diamondDeflection?.length > 0 && (
+                              <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
+                                <span className="text-[8px] font-bold text-sky-400 block mb-1">💎 DEFLETORES</span>
+                                <div className="text-[8px] space-y-0.5">
+                                  {sniperData.diamondDeflection.slice(0, 3).map((d: any, i: number) => (
+                                    <div key={i} className="flex justify-between">
+                                      <span className="text-muted-foreground">D#{d.zone}</span>
+                                      <span className="font-mono font-bold">{(d.deflectionRate * 100).toFixed(0)}%</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* Archetypes */}
+                      {sniperData?.archetypes?.length > 0 && (
+                        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+                          className="bg-card rounded-xl border border-border p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Target className="w-4 h-4 text-amber-400" />
+                            <span className="font-display text-[10px] tracking-[0.15em] font-bold text-amber-400">ARQUÉTIPOS ATIVOS</span>
+                            <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold ml-auto">
+                              {sniperData.archetypes.filter((a: any) => a.active).length}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {sniperData.archetypes.filter((a: any) => a.active).map((arch: any, i: number) => (
+                              <div key={i} className="rounded-lg p-2.5 border text-[8px] bg-amber-500/10 border-amber-500/30">
+                                <div className="flex items-center gap-1 mb-1">
+                                  <span className="text-sm">{arch.emoji}</span>
+                                  <span className="font-bold text-amber-400">{arch.name}</span>
+                                  <span className="ml-auto font-mono font-bold">{arch.strength}%</span>
+                                </div>
+                                <div className="text-foreground/70 mb-1.5">{arch.detail}</div>
+                                {arch.predictedNums?.length > 0 && (
+                                  <div className="flex flex-wrap gap-0.5">
+                                    {arch.predictedNums.slice(0, 6).map((n: number) => (
+                                      <div key={n} className={`w-4 h-4 rounded-full flex items-center justify-center text-[6px] font-bold ${colorClass(n)} border border-white/20`}>{n}</div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* Pattern 24h + Pull Radar + Error Analysis */}
+                      {sniperData?.transitionMatrix && <PatternPanel24h sniperData={sniperData} />}
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        {sniperData?.deepMemory?.flowDynamics?.pullPatterns && allNumbers.length > 0 && (
+                          <PullRadar pullPatterns={sniperData.deepMemory.flowDynamics.pullPatterns} latestNumber={allNumbers[0]} />
+                        )}
+                        {sniperData?.errorAnalysis && (
+                          <div className="bg-card/90 rounded-xl border border-destructive/20 p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <AlertTriangle className="w-4 h-4 text-destructive" />
+                              <span className="font-display text-[10px] tracking-[0.15em] font-bold text-destructive">ANÁLISE DE ERROS</span>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                              {Object.entries(sniperData.errorAnalysis.categories || {}).map(([cat, cnt]) => {
+                                const labels: Record<string, { icon: string; name: string }> = {
+                                  dealer_change: { icon: '🎭', name: 'Dealer' },
+                                  wrong_sector: { icon: '🗺️', name: 'Setor' },
+                                  wrong_terminal: { icon: '🔢', name: 'Terminal' },
+                                  deflector_bounce: { icon: '💎', name: 'Defletor' },
+                                  entropy_break: { icon: '🔀', name: 'Entropia' },
+                                };
+                                const info = labels[cat] || { icon: '❓', name: cat };
+                                return (
+                                  <div key={cat} className={`rounded-lg p-2 text-center border ${
+                                    (cnt as number) >= 2 ? 'bg-destructive/10 border-destructive/30' : 'bg-secondary/40 border-border'
+                                  }`}>
+                                    <span className="text-sm block">{info.icon}</span>
+                                    <span className={`text-[10px] font-mono font-bold block ${(cnt as number) >= 2 ? 'text-destructive' : 'text-muted-foreground'}`}>{cnt as number}</span>
+                                    <span className="text-[7px] text-muted-foreground block">{info.name}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
 
-          {/* PADRÕES 24H + PULL RADAR + ERROS */}
-          {sniperData?.transitionMatrix && <PatternPanel24h sniperData={sniperData} />}
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {sniperData?.deepMemory?.flowDynamics?.pullPatterns && allNumbers.length > 0 && (
-              <PullRadar pullPatterns={sniperData.deepMemory.flowDynamics.pullPatterns} latestNumber={allNumbers[0]} />
-            )}
-            {sniperData?.errorAnalysis && (
-              <div className="bg-card/90 rounded-xl border border-destructive/20 p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle className="w-4 h-4 text-destructive" />
-                  <span className="font-display text-[10px] tracking-[0.15em] font-bold text-destructive">ANÁLISE DE ERROS</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-                  {Object.entries(sniperData.errorAnalysis.categories || {}).map(([cat, cnt]) => {
-                    const labels: Record<string, { icon: string; name: string }> = {
-                      dealer_change: { icon: '🎭', name: 'Dealer' },
-                      wrong_sector: { icon: '🗺️', name: 'Setor' },
-                      wrong_terminal: { icon: '🔢', name: 'Terminal' },
-                      deflector_bounce: { icon: '💎', name: 'Defletor' },
-                      entropy_break: { icon: '🔀', name: 'Entropia' },
-                    };
-                    const info = labels[cat] || { icon: '❓', name: cat };
-                    return (
-                      <div key={cat} className={`rounded-lg p-1.5 text-center border ${
-                        (cnt as number) >= 2 ? 'bg-destructive/10 border-destructive/30' : 'bg-secondary/40 border-border'
-                      }`}>
-                        <span className="text-sm block">{info.icon}</span>
-                        <span className={`text-[10px] font-mono font-bold block ${(cnt as number) >= 2 ? 'text-destructive' : 'text-muted-foreground'}`}>{cnt as number}</span>
-                        <span className="text-[7px] text-muted-foreground block">{info.name}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* LOG */}
-          <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} />
+                      {/* AI Learning Log */}
+                      <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} />
 
                     </div>
                   </motion.div>
@@ -757,9 +747,9 @@ const Index = () => {
             </div>
           )}
 
-          {/* STATUS BAR */}
+          {/* ─── SEÇÃO 5: STATUS BAR ─── */}
           {(sniperData?.memoryWindows || allNumbers.length >= 10) && (
-            <div className="bg-card/80 rounded-xl border border-border p-2.5">
+            <div className="bg-card/80 rounded-xl border border-border p-3">
               <div className="flex flex-wrap items-center gap-2 text-[8px]">
                 {sniperData?.memoryWindows?.micro && (
                   <>
@@ -804,18 +794,19 @@ const Index = () => {
             </div>
           )}
 
-          {/* HISTÓRICO + TERMINAIS */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+          {/* ─── SEÇÃO 6: HISTÓRICO + TERMINAIS ─── */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            {/* Histórico */}
             <div className="lg:col-span-3 bg-card rounded-xl border border-border p-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-primary" />
                   <span className="font-display text-sm text-primary tracking-widest font-bold">HISTÓRICO</span>
                 </div>
-                <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
                   {[50, 100, 250, 500].map(lim => (
                     <button key={lim} onClick={() => { setHistoryLimit(lim); setSelectedNum(null); }}
-                      className={`text-[9px] px-2 py-1 rounded-lg font-bold transition-all ${
+                      className={`text-[9px] px-2.5 py-1 rounded-lg font-bold transition-all ${
                         historyLimit === lim ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-secondary text-muted-foreground border border-border'
                       }`}>
                       {lim}
@@ -832,30 +823,29 @@ const Index = () => {
                     setStoredNumbers([]);
                     setApiNumbers([]);
                     prevNumbersRef.current = apiSnapshotRef.current.slice(0, 20).join(',');
-                    console.log('Histórico limpo!');
-                  }} className="text-[9px] px-2 py-1 rounded-lg font-bold bg-destructive/20 text-destructive border border-destructive/30 hover:bg-destructive/30 transition-all">
+                  }} className="text-[9px] px-2.5 py-1 rounded-lg font-bold bg-destructive/20 text-destructive border border-destructive/30 hover:bg-destructive/30 transition-all">
                     🗑️ Limpar
                   </button>
                 </div>
               </div>
 
-              {error && <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-2 text-[10px] text-destructive font-semibold mb-2">⚠️ {error}</div>}
+              {error && <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-2 text-[10px] text-destructive font-semibold mb-3">⚠️ {error}</div>}
 
               {selectedNum !== null && (
-                <button onClick={() => setSelectedNum(null)} className="text-[9px] px-2 py-1 rounded-lg font-bold bg-destructive/20 text-destructive border border-destructive/30 mb-2 hover:bg-destructive/30 transition-all">
+                <button onClick={() => setSelectedNum(null)} className="text-[9px] px-2 py-1 rounded-lg font-bold bg-destructive/20 text-destructive border border-destructive/30 mb-3 hover:bg-destructive/30 transition-all">
                   ✕ Limpar filtro (#{selectedNum})
                 </button>
               )}
 
               {historySlice.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground text-sm">Aguardando dados...</div>
+                <div className="text-center py-8 text-muted-foreground text-sm">Aguardando dados...</div>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   {(() => {
                     const hRows: number[][] = [];
                     for (let i = 0; i < historySlice.length; i += 20) hRows.push(historySlice.slice(i, i + 20));
                     return hRows.map((row, rowIdx) => (
-                      <div key={rowIdx} className="flex gap-[3px] flex-wrap">
+                      <div key={rowIdx} className="flex gap-1 flex-wrap">
                         {row.map((n, i) => {
                           const isSelected = selectedNum === n;
                           const isDimmed = selectedNum !== null && selectedNum !== n;
@@ -877,7 +867,7 @@ const Index = () => {
                 </div>
               )}
 
-              {/* ANÁLISE DO NÚMERO SELECIONADO */}
+              {/* Análise do número selecionado */}
               <AnimatePresence>
                 {selectedNum !== null && historySlice.length > 0 && (() => {
                   const positions = historySlice.map((n, i) => n === selectedNum ? i : -1).filter(i => i >= 0);
@@ -899,29 +889,29 @@ const Index = () => {
 
                   return (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                      className="mt-3 bg-gradient-to-r from-primary/10 via-card to-primary/5 border border-primary/30 rounded-xl p-3 overflow-hidden">
-                      <div className="flex items-center gap-2 mb-2">
+                      className="mt-4 bg-gradient-to-r from-primary/10 via-card to-primary/5 border border-primary/30 rounded-xl p-4 overflow-hidden">
+                      <div className="flex items-center gap-2 mb-3">
                         <Crosshair className="w-4 h-4 text-primary" />
                         <span className="font-display text-[10px] tracking-[0.15em] font-bold text-primary">ANÁLISE #{selectedNum}</span>
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${colorClass(selectedNum)} border border-white/20`}>{selectedNum}</div>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
-                        <div className="bg-secondary/50 rounded-lg p-2 text-center border border-border">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                        <div className="bg-secondary/50 rounded-lg p-2.5 text-center border border-border">
                           <span className="text-lg font-bold font-mono text-foreground">{count}</span>
                           <span className="text-[7px] text-muted-foreground block">APARIÇÕES/{historyLimit}</span>
                         </div>
-                        <div className="bg-secondary/50 rounded-lg p-2 text-center border border-border">
+                        <div className="bg-secondary/50 rounded-lg p-2.5 text-center border border-border">
                           <span className="text-lg font-bold font-mono text-foreground">{avgDelay}</span>
                           <span className="text-[7px] text-muted-foreground block">DELAY MÉDIO</span>
                         </div>
-                        <div className={`rounded-lg p-2 text-center border ${lastDelay !== null && lastDelay === 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-secondary/50 border-border'}`}>
+                        <div className={`rounded-lg p-2.5 text-center border ${lastDelay !== null && lastDelay === 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-secondary/50 border-border'}`}>
                           <span className={`text-lg font-bold font-mono ${lastDelay !== null && lastDelay <= 10 ? 'text-green-400' : 'text-foreground'}`}>
                             {lastDelay !== null ? lastDelay : '—'}
                           </span>
                           <span className="text-[7px] text-muted-foreground block">GIROS ATRÁS</span>
                         </div>
-                        <div className={`rounded-lg p-2 text-center border ${isRegular ? 'bg-primary/10 border-primary/30' : 'bg-secondary/50 border-border'}`}>
+                        <div className={`rounded-lg p-2.5 text-center border ${isRegular ? 'bg-primary/10 border-primary/30' : 'bg-secondary/50 border-border'}`}>
                           <span className={`text-lg font-bold font-mono ${isRegular ? 'text-primary' : 'text-foreground'}`}>
                             {isRegular ? '🎯' : '🔀'}
                           </span>
@@ -930,16 +920,16 @@ const Index = () => {
                       </div>
 
                       {isRegular && delays.length >= 3 && (
-                        <div className="bg-primary/10 border border-primary/30 rounded-lg p-2 text-center mb-2">
+                        <div className="bg-primary/10 border border-primary/30 rounded-lg p-2.5 text-center mb-3">
                           <span className="text-[9px] font-bold text-primary">🎯 ASSINATURA DE MÃO — Intervalo ~{delays[0]} rodadas</span>
                         </div>
                       )}
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div className="bg-secondary/40 rounded-lg p-2 border border-border">
-                          <span className="text-[8px] font-bold text-foreground block mb-1">⬅️ NÚMEROS ANTES</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="bg-secondary/40 rounded-lg p-3 border border-border">
+                          <span className="text-[8px] font-bold text-foreground block mb-2">⬅️ NÚMEROS ANTES</span>
                           {topPrev.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
+                            <div className="flex flex-wrap gap-1.5">
                               {topPrev.map(([num, freq]) => (
                                 <div key={num} className="flex items-center gap-0.5">
                                   <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ${colorClass(Number(num))} border border-white/20`}>{num}</div>
@@ -949,10 +939,10 @@ const Index = () => {
                             </div>
                           ) : <span className="text-[8px] text-muted-foreground">Sem dados</span>}
                         </div>
-                        <div className="bg-secondary/40 rounded-lg p-2 border border-border">
-                          <span className="text-[8px] font-bold text-foreground block mb-1">➡️ NÚMEROS DEPOIS</span>
+                        <div className="bg-secondary/40 rounded-lg p-3 border border-border">
+                          <span className="text-[8px] font-bold text-foreground block mb-2">➡️ NÚMEROS DEPOIS</span>
                           {topNext.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
+                            <div className="flex flex-wrap gap-1.5">
                               {topNext.map(([num, freq]) => (
                                 <div key={num} className="flex items-center gap-0.5">
                                   <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ${colorClass(Number(num))} border border-white/20`}>{num}</div>
@@ -968,7 +958,8 @@ const Index = () => {
                 })()}
               </AnimatePresence>
 
-              <div className="flex items-center gap-3 mt-3 pt-2 border-t border-border">
+              {/* Legend */}
+              <div className="flex items-center gap-3 mt-4 pt-3 border-t border-border">
                 {[
                   { cls: 'bg-roulette-red', label: 'Vermelho' },
                   { cls: 'bg-roulette-black', label: 'Preto' },
@@ -984,30 +975,31 @@ const Index = () => {
               </div>
             </div>
 
-            {/* TERMINAIS */}
+            {/* Terminais */}
             <div className="lg:col-span-1 bg-card rounded-xl border border-border p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Hash className="w-4 h-4 text-primary" />
                 <span className="font-display text-xs text-primary tracking-widest font-bold">TERMINAIS</span>
               </div>
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-5 gap-2">
                 {Array.from({ length: 10 }, (_, t) => {
                   const freq = terminalFreq[t] || 0;
                   const pct = maxTerminalFreq > 0 ? (freq / maxTerminalFreq) * 100 : 0;
                   const isHot = pct > 70;
                   return (
                     <div key={t} className="flex flex-col items-center gap-1">
-                      <div className="w-full bg-secondary/50 rounded-lg h-12 flex flex-col-reverse overflow-hidden border border-border/50">
+                      <div className="w-full bg-secondary/50 rounded-lg h-14 flex flex-col-reverse overflow-hidden border border-border/50">
                         <motion.div className={`rounded-lg ${isHot ? 'bg-gradient-to-t from-primary to-primary/60' : 'bg-gradient-to-t from-muted-foreground/40 to-muted-foreground/20'}`}
                           animate={{ height: `${pct}%` }} transition={{ duration: 0.5 }} />
                       </div>
-                      <div className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold border ${
+                      <div className={`w-6 h-6 rounded flex items-center justify-center text-[9px] font-bold border ${
                         isHot ? 'bg-primary/20 border-primary/50 text-primary' : 'bg-secondary border-border text-muted-foreground'}`}>{t}</div>
                       <span className={`text-[7px] font-mono font-bold ${isHot ? 'text-primary' : 'text-muted-foreground'}`}>{freq}x</span>
                     </div>
                   );
                 })}
               </div>
+
               {/* Dupla Dani Green */}
               {(() => {
                 const DUPLAS: Record<string, number[]> = {
@@ -1034,17 +1026,17 @@ const Index = () => {
                 const entropiaColor = distintos <= 4 ? 'text-green-400' : distintos <= 7 ? 'text-yellow-400' : 'text-red-400';
 
                 return (
-                  <div className="mt-3 pt-3 border-t border-border space-y-2">
+                  <div className="mt-4 pt-3 border-t border-border space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wide">Entropia (15)</span>
                       <span className={`text-[8px] font-bold ${entropiaColor}`}>{entropiaLabel}</span>
                     </div>
-                    <div className="bg-primary/10 border border-primary/30 rounded-lg p-2">
-                      <div className="flex items-center gap-1 mb-1.5">
+                    <div className="bg-primary/10 border border-primary/30 rounded-lg p-2.5">
+                      <div className="flex items-center gap-1 mb-2">
                         <span className="text-[8px] font-bold text-primary">🔥 DUPLA DANI GREEN</span>
                         <span className="ml-auto text-[8px] font-mono font-bold text-primary">{dupKey}</span>
                       </div>
-                      <div className="flex flex-wrap gap-0.5">
+                      <div className="flex flex-wrap gap-1">
                         {dupNums.map(n => (
                           <div key={n} className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold border border-white/10 ${colorClass(n)}`}>{n}</div>
                         ))}
@@ -1056,10 +1048,10 @@ const Index = () => {
             </div>
           </div>
 
-          {/* CASSINO */}
+          {/* ─── SEÇÃO 7: CASSINO AO VIVO ─── */}
           <div className="bg-card rounded-xl border border-border overflow-hidden">
             <button onClick={() => setShowCasino(!showCasino)}
-              className="w-full flex items-center gap-2 px-4 py-2.5 border-b border-border hover:bg-secondary/50 transition-colors">
+              className="w-full flex items-center gap-2 px-4 py-3 border-b border-border hover:bg-secondary/50 transition-colors">
               <MonitorPlay className="w-4 h-4 text-primary" />
               <span className="font-display text-sm text-primary tracking-widest font-bold">CASSINO AO VIVO</span>
               <span className="text-[9px] text-muted-foreground ml-1">— {selectedTable.name}</span>
@@ -1073,6 +1065,7 @@ const Index = () => {
               </div>
             )}
           </div>
+
         </div>
       </div>
 
