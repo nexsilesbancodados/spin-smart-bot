@@ -108,6 +108,7 @@ const Index = () => {
   const [dnaNumber, setDnaNumber] = useState<number | null>(null);
   const [dnaOpen, setDnaOpen] = useState(false);
   const [confidenceFilter, setConfidenceFilter] = useState(true);
+  const [sampleSize, setSampleSize] = useState(100);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showPredHistory, setShowPredHistory] = useState(false);
 
@@ -155,7 +156,7 @@ const Index = () => {
     sniperFetchingRef.current = true;
     lastSniperTriggerRef.current = now;
     try {
-      const res = await supabase.functions.invoke('sniper-predict');
+      const res = await supabase.functions.invoke('sniper-predict', { body: { sampleSize } });
       if (res.data) {
         const key = `${res.data.strategy?.type}-${res.data.signal?.number}-${res.data.mode}`;
         if (key !== sniperPrevKey.current) {
@@ -410,7 +411,21 @@ const Index = () => {
 
           {/* SNIPER + BET PANEL */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-2">
+              {/* Sample Size Selector */}
+              <div className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
+                <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">📊 Base de Análise:</span>
+                <input
+                  type="range"
+                  min={10}
+                  max={500}
+                  step={10}
+                  value={sampleSize}
+                  onChange={e => setSampleSize(Number(e.target.value))}
+                  className="flex-1 accent-primary h-2 cursor-pointer"
+                />
+                <span className="text-sm font-bold text-primary min-w-[60px] text-right">{sampleSize} jogadas</span>
+              </div>
               <SniperSignal
                 sniperData={sniperData}
                 sniperCountdown={sniperCountdown}
