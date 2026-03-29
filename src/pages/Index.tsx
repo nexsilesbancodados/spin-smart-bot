@@ -571,7 +571,35 @@ const Index = () => {
                     </div>
                   </div>
 
-                  {sniperData.signal && sniperData.strategy ? (
+                  {/* STALE: show last result instead of repeating same prediction */}
+                  {sniperStale && lastPredResult ? (
+                    <div className="flex flex-col items-center gap-3 py-6">
+                      {lastPredResult.hit === true ? (
+                        <>
+                          <div className="w-14 h-14 rounded-full bg-green-500/20 border-2 border-green-500/50 flex items-center justify-center">
+                            <ShieldCheck className="w-7 h-7 text-green-400" />
+                          </div>
+                          <span className="text-sm font-bold text-green-400">
+                            {lastPredResult.hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO VIZINHO!'}
+                          </span>
+                        </>
+                      ) : lastPredResult.hit === false ? (
+                        <>
+                          <div className="w-14 h-14 rounded-full bg-destructive/20 border-2 border-destructive/50 flex items-center justify-center">
+                            <AlertTriangle className="w-7 h-7 text-destructive" />
+                          </div>
+                          <span className="text-sm font-bold text-destructive">❌ ERRO NA ÚLTIMA PREVISÃO</span>
+                        </>
+                      ) : null}
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>Previsto: <strong className="text-foreground">{lastPredResult.predicted}</strong></span>
+                        <span>•</span>
+                        <span>Saiu: <strong className="text-foreground">{lastPredResult.actual}</strong></span>
+                      </div>
+                      <span className="text-[9px] text-muted-foreground italic">{lastPredResult.label}</span>
+                      <span className="text-[8px] text-muted-foreground/60 mt-1">Aguardando nova jogada...</span>
+                    </div>
+                  ) : sniperData.signal && sniperData.strategy ? (
                     <div className="space-y-3">
                       {/* CONFIDENCE FILTER */}
                       {confidenceFilter && sniperData.signal.probability < 85 && (
