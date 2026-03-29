@@ -128,28 +128,24 @@ const getBetTypeCategory = (type: string): string => {
   return 'outro';
 };
 
-const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult, confidenceFilter }: Props) => {
+const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult, confidenceFilter: confidenceFilterProp }: Props) => {
   const [reedCount, setReedCount] = useState(0);
+  const [confidenceFilter, setConfidenceFilter] = useState(confidenceFilterProp);
   const prevSignalRef = useRef<number | null>(null);
   const prevHitRef = useRef<boolean | null>(null);
 
-  // Track signal changes and hit results for REED
+  useEffect(() => { setConfidenceFilter(confidenceFilterProp); }, [confidenceFilterProp]);
+
   useEffect(() => {
     const currentSignal = sniperData?.signal?.number ?? null;
-    
-    // Reset on new signal
     if (currentSignal !== null && currentSignal !== prevSignalRef.current) {
       prevSignalRef.current = currentSignal;
       setReedCount(0);
       return;
     }
-
     if (!lastPredResult || lastPredResult.hit === null) return;
-    
-    // Only process when hit status changes
     if (lastPredResult.hit === prevHitRef.current) return;
     prevHitRef.current = lastPredResult.hit;
-
     if (lastPredResult.hit === true) {
       setReedCount(0);
     } else if (lastPredResult.hit === false) {
@@ -157,9 +153,6 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
     }
   }, [sniperData?.signal?.number, lastPredResult?.hit]);
 
-  const reedColor = reedCount >= 4 ? 'bg-red-500/20 text-red-400 border-red-500/50' 
-    : reedCount >= 2 ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/40' 
-    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40';
   const reedStopped = reedCount >= 4;
 
   if (!sniperData) {
@@ -173,566 +166,314 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
     );
   }
 
-  const probColor = (p: number) => p >= 85 ? 'text-primary' : p >= 70 ? 'text-yellow-400' : 'text-orange-400';
-  const primaryBet = sniperData.betInstructions?.bets?.find((b: any) => b.type !== 'protecao');
-  const mainNumber = sniperData.signal?.number;
-  const probability = sniperData.signal?.probability || 0;
-
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: -10 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border-2 h-full transition-all overflow-hidden"
-      style={{
-        background: sniperData.mode === 'sniper'
-          ? 'linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--primary) / 0.08) 100%)'
-          : 'hsl(var(--card))',
-        borderColor: sniperData.mode === 'sniper'
-          ? 'hsl(var(--primary) / 0.5)'
-          : sniperData.mode === 'alert'
-          ? 'hsl(45 100% 50% / 0.4)'
-          : 'hsl(var(--border))',
-      }}
+      className="rounded-2xl border border-border bg-card overflow-hidden"
     >
-      {/* Header Bar */}
-      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border/50">
-        {sniperData.mode === 'sniper' ? (
-          <Crosshair className="w-4 h-4 text-primary animate-pulse" />
-        ) : sniperData.mode === 'alert' ? (
-          <AlertTriangle className="w-4 h-4 text-yellow-400" />
-        ) : (
-          <Eye className="w-4 h-4 text-muted-foreground" />
-        )}
-        <Sparkles className="w-3.5 h-3.5 text-primary/60" />
-        <span className="font-bold text-xs tracking-wide text-foreground">
-          ANÁLISE MULTI-JOGADA
-        </span>
-        
-        {/* Ultra Conservador Badge */}
-        {sniperData?.ultraConservadorMode && (
-          <span className="text-[7px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold">
-            🛡️ CONSERVADOR
+      {/* ── HEADER ─────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card/80">
+        <div className="flex items-center gap-2">
+          <Crosshair className="w-4 h-4 text-primary" />
+          <span className="font-display text-[11px] tracking-[0.2em] font-black text-primary uppercase">
+            Sniper IA
           </span>
-        )}
-
-        {/* REED Badge */}
-        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] font-black ${reedColor} ${reedStopped ? 'animate-pulse' : ''}`}>
-          <span>REED: {reedCount}/4</span>
-          {reedStopped && <span>⛔</span>}
-          {reedCount > 0 && (
-            <button 
-              onClick={() => setReedCount(0)} 
-              className="ml-1 text-[9px] opacity-70 hover:opacity-100 transition-opacity"
-              title="Reset REED"
-            >↺</button>
+          {sniperData?.trendEngine && Number(sniperData.trendEngine.confidence) > 30 && (
+            <div className="flex gap-1 ml-1">
+              {sniperData.trendEngine.colorTrend?.direction && (
+                <span className={`text-[7px] px-1.5 py-0.5 rounded font-bold border ${
+                  sniperData.trendEngine.colorTrend.direction === 'red'
+                    ? 'bg-red-500/15 text-red-400 border-red-500/20'
+                    : 'bg-secondary text-muted-foreground border-border'
+                }`}>
+                  {sniperData.trendEngine.colorTrend.direction === 'red' ? '🔴' : '⚫'}
+                </span>
+              )}
+              {sniperData.trendEngine.dozenTrend?.direction && (
+                <span className="text-[7px] px-1.5 py-0.5 rounded font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                  D{sniperData.trendEngine.dozenTrend.direction}
+                </span>
+              )}
+            </div>
           )}
         </div>
-
-        <div className="ml-auto">
-          {sniperCountdown > 0 ? (
-            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono text-xs font-bold ${
-              sniperCountdown <= 3 ? 'bg-destructive/20 text-destructive animate-pulse' : sniperCountdown <= 7 ? 'bg-yellow-500/15 text-yellow-400' : 'bg-secondary text-muted-foreground'
-            }`}>
-              <Clock className="w-3 h-3" />
-              {sniperCountdown}s
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono text-[9px] font-bold bg-secondary/80 text-muted-foreground border border-border/50">
-              <Clock className="w-3 h-3" />
-              Aguardando giro...
-            </div>
+        <div className="flex items-center gap-2">
+          {sniperData?.ultraConservadorMode && (
+            <span className="text-[7px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold">🛡️ CONSERVADOR</span>
           )}
+          {sniperData?.dealerShift?.detected && (
+            <span className="text-[7px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 font-bold">🎭 NOVO DEALER</span>
+          )}
+          <button onClick={() => setConfidenceFilter(f => !f)}
+            className={`text-[8px] px-2 py-1 rounded-lg border font-bold transition-all ${
+              confidenceFilter
+                ? 'bg-primary/15 text-primary border-primary/30'
+                : 'bg-secondary text-muted-foreground border-border'
+            }`}>
+            {confidenceFilter ? '🔒 Filtro ON' : '🔓 Filtro OFF'}
+          </button>
         </div>
       </div>
 
-      {/* Barra de Score de Confiança */}
-      {sniperData && probability > 0 && (
-        <div className="px-4 pt-2 pb-1 border-b border-border/30">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
-              Score de Confiança
-            </span>
-            <div className="flex items-center gap-2">
-              <span className={`text-[9px] font-bold ${
-                probability >= 75 ? 'text-yellow-400' :
-                probability >= 50 ? 'text-green-400' :
-                probability >= 25 ? 'text-orange-400' : 'text-muted-foreground'
-              }`}>
-                {probability >= 75 ? '⚡ SINAL FORTE' :
-                 probability >= 50 ? '✅ MODERADO' :
-                 probability >= 25 ? '⚠️ FRACO' : '⏸ AGUARDAR'}
-              </span>
-              <span className={`text-sm font-mono font-black ${probColor(probability)}`}>{probability}%</span>
-            </div>
-          </div>
-          <div className="w-full h-2 bg-secondary/60 rounded-full overflow-hidden">
-            <motion.div
-              className={`h-full rounded-full ${
-                probability >= 75 ? 'bg-gradient-to-r from-yellow-500 to-amber-400 shadow-[0_0_8px_rgba(234,179,8,0.4)]' :
-                probability >= 50 ? 'bg-gradient-to-r from-green-500 to-emerald-400' :
-                probability >= 25 ? 'bg-gradient-to-r from-orange-500 to-amber-400' :
-                'bg-gradient-to-r from-muted-foreground/40 to-muted-foreground/20'
-              }`}
-              animate={{ width: `${probability}%` }}
-              transition={{ duration: 0.7, ease: 'easeOut' }}
-            />
-          </div>
-          <div className="flex items-center justify-between mt-0.5">
-            <span className="text-[7px] text-muted-foreground">Fichas sugeridas:</span>
-            <span className="text-[8px] font-bold text-foreground">
-              {probability >= 75 ? '8-12 fichas' :
-               probability >= 50 ? '5-7 fichas' :
-               probability >= 25 ? '3-4 fichas' : 'Não entrar'}
-            </span>
-          </div>
-          {/* Win Rate Recente */}
-          {sniperData?.recentWinRate !== undefined && (
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-[7px] text-muted-foreground">Win rate recente (10):</span>
-              <span className={`text-[8px] font-mono font-bold ${
-                sniperData.recentWinRate >= 0.5 ? 'text-green-400' :
-                sniperData.recentWinRate >= 0.3 ? 'text-yellow-400' :
-                'text-red-400'
-              }`}>
-                {(sniperData.recentWinRate * 100).toFixed(0)}%
-                {sniperData.recentWinRate >= 0.5 ? ' 🔥' :
-                 sniperData.recentWinRate < 0.25 ? ' 🛡️' : ''}
-              </span>
-            </div>
-          )}
+      {/* ── REED STOP ───────────────────────────────────── */}
+      {reedStopped && (
+        <div className="mx-4 mt-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-center animate-pulse">
+          <span className="text-xs font-black text-red-400">⛔ REED STOP — Pause e reanalise</span>
         </div>
       )}
 
-      {/* TREND ENGINE */}
-      {sniperData?.trendEngine && Number(sniperData.trendEngine.confidence) > 30 && (
-        <div className="px-4 py-2 border-b border-border/30">
-          <div className="flex items-center gap-2 mb-1.5">
-            <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-[9px] font-bold text-cyan-400 tracking-widest uppercase">
-              Tendências Ativas
-            </span>
-            <span className={`ml-auto text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border ${
-              sniperData.trendEngine.confidence >= 70 ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' :
-              'bg-secondary text-muted-foreground border-border'
-            }`}>{Number(sniperData.trendEngine.confidence)}%</span>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {sniperData.trendEngine.colorTrend?.direction && (
-              <span className={`text-[8px] px-1.5 py-0.5 rounded-full border font-bold ${
-                sniperData.trendEngine.colorTrend.direction === 'red'
-                  ? 'bg-red-500/15 text-red-400 border-red-500/30'
-                  : 'bg-secondary/60 text-muted-foreground border-border'
-              }`}>
-                {sniperData.trendEngine.colorTrend.direction === 'red' ? '🔴 Vermelho' : '⚫ Preto'}
-              </span>
-            )}
-            {sniperData.trendEngine.parityTrend?.direction && (
-              <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-purple-500/15 text-purple-400 border-purple-500/30">
-                {sniperData.trendEngine.parityTrend.direction === 'par' ? 'PAR' : 'ÍMPAR'}
-              </span>
-            )}
-            {sniperData.trendEngine.highLowTrend?.direction && (
-              <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-blue-500/15 text-blue-400 border-blue-500/30">
-                {sniperData.trendEngine.highLowTrend.direction === 'alto' ? '↑ ALTO' : '↓ BAIXO'}
-              </span>
-            )}
-            {sniperData.trendEngine.dozenTrend?.direction && (
-              <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-amber-500/15 text-amber-400 border-amber-500/30">
-                D{sniperData.trendEngine.dozenTrend.direction}
-              </span>
-            )}
-            {sniperData.trendEngine.sectorTrend?.direction && (
-              <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-green-500/15 text-green-400 border-green-500/30">
-                {sniperData.trendEngine.sectorTrend.direction}
-              </span>
-            )}
-            {sniperData.trendEngine.mode && sniperData.trendEngine.mode !== 'NEUTRO' && (
-              <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-primary/15 text-primary border-primary/30">
-                {sniperData.trendEngine.mode === 'TENDENCIA' ? '🔁 Tendência' :
-                 sniperData.trendEngine.mode === 'REVERSAO' ? '🔄 Reversão' : ''}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Dealer Shift Alert */}
+      {/* ── DEALER SHIFT ───────────────────────────────── */}
       {sniperData?.dealerShift?.detected && (
         <div className="mx-4 mt-2 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center gap-2">
-          <span className="text-sm">🎭</span>
           <span className="text-[8px] text-purple-400 font-bold">
-            DEALER SHIFT — Arco {sniperData.dealerShift.oldArc} → {sniperData.dealerShift.newArc} | Padrão reiniciando
+            🎭 Arco mudou {sniperData.dealerShift.oldArc} → {sniperData.dealerShift.newArc} — padrão reiniciando
           </span>
         </div>
       )}
 
-      {/* REED STOP warning */}
-      {reedStopped && (
-        <div className="mx-4 mt-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-center animate-pulse">
-          <span className="text-xs font-black text-red-400">⛔ REED — Pause e reanalise</span>
-        </div>
-      )}
+      <div className={`p-4 transition-opacity ${reedStopped ? 'opacity-40 pointer-events-none' : ''}`}>
 
-      <div className={`p-4 transition-opacity ${reedStopped ? 'opacity-50 pointer-events-none' : ''}`}>
-        {/* STALE RESULT */}
+        {/* ── AGUARDANDO RESULTADO ───────────────────────── */}
         {sniperStale && lastPredResult ? (
-          <div className="flex flex-col items-center gap-3 py-8">
-            {lastPredResult.hit === true ? (
-              <>
-                <div className="w-16 h-16 rounded-full bg-green-500/15 border-2 border-green-500/40 flex items-center justify-center shadow-lg shadow-green-500/10">
-                  <ShieldCheck className="w-8 h-8 text-green-400" />
-                </div>
-                <span className="text-sm font-bold text-green-400">
-                  {lastPredResult.hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO VIZINHO!'}
-                </span>
-              </>
-            ) : lastPredResult.hit === false ? (
-              <>
-                <div className="w-16 h-16 rounded-full bg-destructive/15 border-2 border-destructive/40 flex items-center justify-center">
-                  <AlertTriangle className="w-8 h-8 text-destructive" />
-                </div>
-                <span className="text-sm font-bold text-destructive">❌ ERRO NA ÚLTIMA</span>
-              </>
-            ) : null}
+          <div className="flex flex-col items-center gap-3 py-6">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg border-2 ${
+              lastPredResult.hit
+                ? 'bg-green-500/15 border-green-500/40 shadow-green-500/10'
+                : 'bg-destructive/15 border-destructive/40'
+            }`}>
+              {lastPredResult.hit
+                ? <ShieldCheck className="w-8 h-8 text-green-400" />
+                : <AlertTriangle className="w-8 h-8 text-destructive" />}
+            </div>
+            <span className={`text-sm font-bold ${lastPredResult.hit ? 'text-green-400' : 'text-destructive'}`}>
+              {lastPredResult.hit
+                ? (lastPredResult.hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO!')
+                : '❌ ERRO'}
+            </span>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span>Previsto: <strong className="text-foreground">{lastPredResult.predicted}</strong></span>
-              <span className="text-border">|</span>
+              <span>|</span>
               <span>Saiu: <strong className="text-foreground">{lastPredResult.actual}</strong></span>
             </div>
-            <span className="text-[9px] text-muted-foreground/50 mt-1">Aguardando nova jogada...</span>
+            <span className="text-[9px] text-muted-foreground/50">Aguardando nova jogada...</span>
           </div>
-        ) : sniperData.signal && sniperData.strategy ? (
-          <div className="space-y-3">
-            {/* CONFIDENCE FILTER */}
-            {confidenceFilter && probability < 70 && (
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-center">
-                <Shield className="w-5 h-5 text-amber-400 mx-auto mb-1.5" />
-                <span className="text-[10px] font-bold text-amber-400 block">FILTRO DE SEGURANÇA ATIVO</span>
-                <span className="text-[9px] text-muted-foreground">Convergência {probability}% — abaixo do limiar 70%. AGUARDAR.</span>
-              </div>
+
+        ) : !sniperData?.signal || !sniperData?.strategy ? (
+          <div className="flex flex-col items-center gap-2 py-8 text-center">
+            <Clock className="w-8 h-8 text-muted-foreground/40" />
+            <p className="text-sm font-semibold text-muted-foreground">
+              {sniperData?.message || 'Aguardando dados...'}
+            </p>
+            {sniperData?.mode === 'calibrating' && (
+              <span className="text-[9px] text-blue-400">🔄 Calibrando padrões...</span>
             )}
+          </div>
 
-            {/* ===== JOGADA #1 — MELHOR ===== */}
-            {(!confidenceFilter || probability >= 70) && (
-              <>
-                {/* MAIN BET */}
-                <div className="rounded-xl overflow-hidden border-2 border-primary/40 bg-gradient-to-br from-primary/15 via-primary/8 to-transparent shadow-lg shadow-primary/10">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border-b border-primary/20">
-                    <span className="text-[9px] font-black tracking-[0.2em] text-primary bg-primary/15 px-2 py-0.5 rounded">
-                      #1 MELHOR JOGADA
-                    </span>
-                    <span className="text-[10px] font-bold text-primary/80">
-                      {getBetTypeLabel(sniperData.strategy.type)}
-                    </span>
-                  </div>
+        ) : (() => {
+          const ensTop1: number = sniperData.ensemble?.top1 ?? sniperData.topCandidates?.[0]?.num ?? sniperData.strategy.numbers[0];
 
-                  <div className="flex items-center gap-4 px-4 py-4">
-                    {/* Número principal */}
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center text-xl font-black shadow-xl ring-4 flex-shrink-0 ${
-                      mainNumber === 0 ? 'bg-green-600 text-white ring-green-400/50 shadow-green-500/30'
-                      : RED_NUMBERS.includes(mainNumber) ? 'bg-red-600 text-white ring-red-400/50 shadow-red-500/30'
-                      : 'bg-zinc-800 text-white ring-zinc-500/50 shadow-zinc-600/30'
+          const supportPool: number[] = [
+            ...(sniperData.ensemble?.top5 || []),
+            ...(sniperData.strategy.numbers || []),
+            ...(sniperData.topCandidates?.slice(0, 5).map((c: any) => c.num) || []),
+          ].filter((n: number) => n !== ensTop1 && n >= 0 && n <= 36);
+
+          const scoreCount: Record<number, number> = {};
+          supportPool.forEach((n: number) => { scoreCount[n] = (scoreCount[n] || 0) + 1; });
+          const sortedSupport = [...new Set(supportPool)].sort((a, b) => (scoreCount[b] || 0) - (scoreCount[a] || 0));
+
+          const PROT = PROTECTION_NUMBERS.filter(n => n !== ensTop1);
+          const support = sortedSupport.slice(0, 8);
+          const finalNumbers: number[] = [...new Set([ensTop1, ...support, ...PROT])].slice(0, 12);
+
+          const highConviction: number[] = finalNumbers.filter(n => {
+            const inEnsemble = (sniperData.ensemble?.top5 || []).includes(n);
+            const inWinner = (sniperData.strategy.numbers || []).includes(n);
+            const inCandidates = (sniperData.topCandidates || []).slice(0, 3).some((c: any) => c.num === n);
+            return (inEnsemble ? 1 : 0) + (inWinner ? 1 : 0) + (inCandidates ? 1 : 0) >= 2;
+          });
+
+          const rawProb = sniperData.signal.probability || 0;
+          const coverage = (finalNumbers.length / 37) * 100;
+          const displayProb = Math.min(rawProb, Math.round(coverage + 20));
+
+          const isHot = displayProb >= 65;
+          const isMed = displayProb >= 45;
+
+          return (
+            <div className="space-y-4">
+
+              {confidenceFilter && displayProb < 50 && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center">
+                  <Shield className="w-5 h-5 text-amber-400 mx-auto mb-1" />
+                  <span className="text-[10px] font-bold text-amber-400 block">SINAL FRACO — AGUARDAR</span>
+                  <span className="text-[9px] text-muted-foreground">{displayProb}% — abaixo de 50%. Não entrar.</span>
+                </div>
+              )}
+
+              {(!confidenceFilter || displayProb >= 50) && (
+                <div className={`rounded-2xl overflow-hidden border-2 shadow-lg ${
+                  isHot
+                    ? 'border-green-500/50 shadow-green-500/10 bg-gradient-to-br from-green-500/10 via-card to-card'
+                    : isMed
+                    ? 'border-primary/40 shadow-primary/10 bg-gradient-to-br from-primary/10 via-card to-card'
+                    : 'border-border bg-card'
+                }`}>
+
+                  <div className={`flex items-center gap-3 px-4 py-3 border-b ${
+                    isHot ? 'border-green-500/20 bg-green-500/8' : 'border-primary/15 bg-primary/5'
+                  }`}>
+                    <span className="text-[9px] font-black tracking-[0.2em] text-muted-foreground uppercase">
+                      JOGAR AGORA
+                    </span>
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${
+                      isHot
+                        ? 'bg-green-500/15 text-green-400 border-green-500/30'
+                        : 'bg-primary/10 text-primary border-primary/20'
                     }`}>
-                      {mainNumber}
+                      {sniperData.strategy.emoji} {sniperData.strategy.label}
+                    </span>
+                    {sniperData?.recentWinRate !== undefined && (
+                      <span className={`ml-auto text-[7px] font-bold font-mono ${
+                        sniperData.recentWinRate >= 0.5 ? 'text-green-400' :
+                        sniperData.recentWinRate < 0.25 ? 'text-red-400' : 'text-muted-foreground'
+                      }`}>
+                        WR {(sniperData.recentWinRate * 100).toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-5 px-5 py-5">
+                    <div className="relative flex-shrink-0">
+                      <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-black shadow-2xl ring-4 ${
+                        ensTop1 === 0
+                          ? 'bg-emerald-600 text-white ring-emerald-400/50 shadow-emerald-500/30'
+                          : RED_NUMBERS.includes(ensTop1)
+                          ? 'bg-red-600 text-white ring-red-400/60 shadow-red-500/30'
+                          : 'bg-zinc-800 text-white ring-zinc-500/50 shadow-zinc-600/30'
+                      } ${isHot ? 'animate-pulse' : ''}`}>
+                        {ensTop1}
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 bg-card border border-border rounded-full px-1.5 py-0.5">
+                        <span className="text-[8px] font-black text-primary">#1</span>
+                      </div>
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-2xl font-black font-mono ${probColor(probability)}`}>
-                          {probability}%
+                    <div className="flex-1">
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <span className={`text-4xl font-black font-mono leading-none ${
+                          isHot ? 'text-green-400' : isMed ? 'text-primary' : 'text-muted-foreground'
+                        }`}>
+                          {displayProb}%
                         </span>
-                        <span className="text-[9px] text-muted-foreground">conv.</span>
+                        <span className="text-[9px] text-muted-foreground font-bold">confiança</span>
                       </div>
-                      <span className="text-sm font-bold text-primary block truncate">
-                        {sniperData.strategy.emoji} {sniperData.strategy.label}
-                      </span>
-                      {primaryBet && (
-                        <p className="text-[10px] text-muted-foreground truncate">{primaryBet.detail}</p>
-                      )}
+
+                      <div className="w-full h-2 bg-secondary/60 rounded-full overflow-hidden mb-2">
+                        <motion.div
+                          className={`h-full rounded-full ${
+                            isHot ? 'bg-gradient-to-r from-green-500 to-emerald-400'
+                            : isMed ? 'bg-gradient-to-r from-primary to-primary/70'
+                            : 'bg-muted-foreground/40'
+                          }`}
+                          animate={{ width: `${displayProb}%` }}
+                          transition={{ duration: 0.8, ease: 'easeOut' }}
+                        />
+                      </div>
+
+                      <div className={`text-[11px] font-black ${
+                        isHot ? 'text-green-400' : isMed ? 'text-primary' : 'text-muted-foreground'
+                      }`}>
+                        {displayProb >= 65 ? '⚡ ENTRAR FORTE — 8-12 fichas'
+                         : displayProb >= 50 ? '✅ ENTRAR — 5-7 fichas'
+                         : displayProb >= 35 ? '⚠️ ENTRAR LEVE — 3 fichas'
+                         : '⏸ AGUARDAR'}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Números cobertos */}
-                  <div className="px-4 py-2.5 border-t border-primary/15">
-                    <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider block mb-1.5">📍 Números para apostar:</span>
-                    <div className="flex flex-wrap gap-1">
-                      {sniperData.strategy.numbers.slice(0, 14).map((n: number, i: number) => {
-                        const isProt = PROTECTION_NUMBERS.includes(n);
+                  <div className="px-4 pb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-wider">
+                        👆 Apostar nestes {finalNumbers.length} números:
+                      </span>
+                      <span className="text-[7px] text-muted-foreground">
+                        {(finalNumbers.length / 37 * 100).toFixed(0)}% da mesa · paga {36 - finalNumbers.length}x
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {finalNumbers.map((n: number) => {
+                        const isMain = n === ensTop1;
+                        const isHC = highConviction.includes(n) && !isMain;
+                        const isProt = PROTECTION_NUMBERS.includes(n) && !isMain && !isHC;
                         return (
-                          <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold ring-1 relative ${
-                            n === mainNumber
-                              ? 'bg-primary text-primary-foreground ring-primary/50 ring-2 shadow-lg shadow-primary/30'
-                              : colorClass(n, isProt)
-                          }`}>
+                          <motion.div
+                            key={n}
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className={`relative flex items-center justify-center rounded-full font-black
+                              ${isMain ? 'w-10 h-10 text-sm ring-2 shadow-lg' : 'w-8 h-8 text-[10px] ring-1'}
+                              ${n === 0 ? 'bg-emerald-600 text-white'
+                                : RED_NUMBERS.includes(n) ? 'bg-red-600 text-white'
+                                : 'bg-zinc-800 text-white'}
+                              ${isMain ? (isHot ? 'ring-green-400 shadow-green-400/30' : 'ring-primary shadow-primary/20')
+                                : isHC ? 'ring-yellow-400/60'
+                                : isProt ? 'ring-yellow-600/40 opacity-70'
+                                : 'ring-white/10 opacity-85'}
+                            `}
+                          >
                             {n}
-                            {isProt && n !== mainNumber && <span className="absolute -top-0.5 -right-0.5 text-[6px]">🛡️</span>}
-                          </div>
+                            {isMain && (
+                              <span className="absolute -top-1 -right-1 text-[7px] bg-primary text-primary-foreground rounded-full w-3.5 h-3.5 flex items-center justify-center font-black">1</span>
+                            )}
+                            {isHC && !isMain && (
+                              <span className="absolute -top-0.5 -right-0.5 text-[5px]">⭐</span>
+                            )}
+                            {isProt && (
+                              <span className="absolute -top-0.5 -right-0.5 text-[5px]">🛡️</span>
+                            )}
+                          </motion.div>
                         );
                       })}
                     </div>
-                  </div>
 
-                  {/* TOP CANDIDATOS */}
-                  {sniperData?.topCandidates?.length > 0 && (
-                    <div className="px-4 py-2 border-t border-primary/10">
-                      <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wide block mb-1">
-                        🏆 Top Candidatos (Score IA)
+                    <div className="flex gap-3 mt-2">
+                      <span className="text-[7px] text-muted-foreground flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-primary inline-block" /> Principal
                       </span>
-                      <div className="flex gap-1.5 flex-wrap">
-                        {sniperData.topCandidates.slice(0, 5).map((c: any, i: number) => (
-                          <div key={c.num} className={`flex flex-col items-center gap-0.5 ${i === 0 ? 'opacity-100' : 'opacity-70'}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold border-2 ${
-                              c.num === 0 ? 'bg-emerald-600 text-white border-emerald-400/50' :
-                              RED_NUMBERS.includes(c.num) ? 'bg-red-600 text-white border-red-400/50' :
-                              'bg-zinc-800 text-white border-zinc-500/50'
-                            } ${i === 0 ? 'ring-2 ring-yellow-400/50 shadow-md shadow-yellow-400/20' : ''}`}>
-                              {c.num}
-                            </div>
-                            <span className={`text-[6px] font-mono font-bold ${i === 0 ? 'text-yellow-400' : 'text-muted-foreground'}`}>
-                              {c.score.toFixed(0)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Alerta de Auto-Repetição */}
-                  {sniperData?.signal?.reasons?.some((r: string) => r.includes('AUTO-REP') || r.includes('TRIPLE')) && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="mx-4 mb-2 p-2.5 rounded-xl bg-orange-500/15 border border-orange-500/40"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">🔁</span>
-                        <div>
-                          <p className="text-[9px] font-black text-orange-400">AUTO-REPETIÇÃO DETECTADA</p>
-                          <p className="text-[7px] text-orange-300/80">
-                            Padrão confirmado: {sniperData.signal.number} se repetindo — apostar forte
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* ENSEMBLE SUPREMO */}
-                  {sniperData?.ensemble?.top1 !== null && sniperData?.ensemble?.top1 !== undefined && (
-                    <div className="px-4 py-2.5 border-t border-yellow-500/20 bg-yellow-500/5">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-xs">👑</span>
-                        <span className="text-[9px] font-black text-yellow-400 tracking-widest">ENSEMBLE SUPREMO</span>
-                        <span className="text-[7px] text-muted-foreground ml-auto">{sniperData.ensemble.sources?.length || 0} fontes</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-black ring-2 ring-yellow-400/60 shadow-lg shadow-yellow-400/20 flex-shrink-0 ${
-                          sniperData.ensemble.top1 === 0 ? 'bg-emerald-600 text-white' :
-                          RED_NUMBERS.includes(sniperData.ensemble.top1) ? 'bg-red-600 text-white' :
-                          'bg-zinc-800 text-white'
-                        }`}>{sniperData.ensemble.top1}</div>
-                        <div className="flex-1">
-                          <p className="text-[8px] text-yellow-400 font-bold mb-0.5">Número #1 por todas as fontes</p>
-                          <div className="flex flex-wrap gap-1">
-                            {sniperData.ensemble.sources?.slice(0,4).map((src: string, i: number) => (
-                              <span key={i} className="text-[6px] px-1 py-0.5 rounded bg-yellow-500/15 text-yellow-400/80 border border-yellow-500/20 font-mono">{src}</span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="flex gap-0.5">
-                          {sniperData.ensemble.top5?.slice(1,5).map((n: number) => (
-                            <div key={n} className={`w-6 h-6 rounded-full flex items-center justify-center text-[7px] font-bold border border-white/10 opacity-70 ${
-                              n === 0 ? 'bg-emerald-600 text-white' : RED_NUMBERS.includes(n) ? 'bg-red-600 text-white' : 'bg-zinc-800 text-white'
-                            }`}>{n}</div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* MATRIZ NUMÉRICA */}
-                  {sniperData?.matrizNumerica?.observacoes >= 15 && (
-                    <div className="px-4 py-2 border-t border-blue-500/15">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[9px] font-bold text-blue-400">
-                          🔢 Após {sniperData.matrizNumerica.ultimoNumero} ({sniperData.matrizNumerica.observacoes} obs):
-                        </span>
-                      </div>
-                      <div className="flex gap-1.5 flex-wrap">
-                        {sniperData.matrizNumerica.top6?.map((item: any) => (
-                          <div key={item.num} className="flex flex-col items-center">
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold border border-white/10 ${
-                              item.num === 0 ? 'bg-emerald-600 text-white' :
-                              RED_NUMBERS.includes(item.num) ? 'bg-red-600 text-white' :
-                              'bg-zinc-800 text-white'
-                            } ${item.prob > 10 ? 'ring-1 ring-blue-400/50' : ''}`}>{item.num}</div>
-                            <span className="text-[6px] font-mono text-blue-400 mt-0.5">{item.prob}%</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* COMO APOSTAR — Instrução clara */}
-                  <div className="px-4 py-2.5 border-t border-primary/15 bg-primary/5">
-                    <div className="flex items-start gap-2">
-                      <span className="text-base mt-0.5">👆</span>
-                      <div>
-                        <span className="text-[9px] font-black text-primary tracking-wide block mb-0.5">COMO APOSTAR:</span>
-                        <p className="text-[10px] text-foreground/90 leading-relaxed">
-                          {getHowToBet(sniperData.strategy.type, sniperData.strategy.numbers, mainNumber)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Stats compactos */}
-                  <div className="flex items-center gap-2 px-4 py-2 border-t border-primary/15 text-[9px] text-muted-foreground">
-                    <span>💰 Ganho: <strong className="text-primary">{sniperData.strategy.payout}x</strong> sua aposta</span>
-                    <span className="text-border">•</span>
-                    <span>🎯 <strong className="text-foreground">{sniperData.strategy.numbers.length}</strong> números</span>
-                    <span className="text-border">•</span>
-                    <span>📊 <strong className="text-foreground">{sniperData.strategy.coverage}%</strong> da mesa</span>
-                    {sniperData.mesaMode && (
-                      <>
-                        <span className="text-border">•</span>
-                        <span className={`font-bold ${sniperData.mesaMode === 'fisico' ? 'text-purple-400' : 'text-blue-400'}`}>
-                          {sniperData.mesaMode === 'fisico' ? '🎰 Físico' : '🧮 Matemático'}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* ===== JOGADA COMBINADA — Fusão das alternativas ===== */}
-                {(() => {
-                  const cb = sniperData.combinedBet;
-                  if (!cb || !cb.numbers?.length) return null;
-                  const highlighted: number[] = cb.highlighted || [];
-                  const strats: any[] = cb.strategiesUsed || [];
-
-                  return (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="rounded-xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/8 via-card to-card overflow-hidden"
-                    >
-                      <div className="flex items-center gap-2 px-3 py-2.5 bg-yellow-500/10 border-b border-yellow-500/20">
-                        <Zap className="w-3.5 h-3.5 text-yellow-400" />
-                        <div>
-                          <span className="text-[10px] font-black tracking-wide text-yellow-400 block">
-                            JOGADA COMBINADA
-                          </span>
-                          <span className="text-[8px] text-yellow-400/60">
-                            {strats.length} análises diferentes concordam nestes números
-                          </span>
-                        </div>
-                        <span className={`ml-auto text-sm font-black font-mono ${probColor(cb.avgProbability)}`}>
-                          {cb.avgProbability}%
-                        </span>
-                      </div>
-
-                      {/* Tags das estratégias */}
-                      <div className="flex flex-wrap gap-1.5 px-3 pt-2.5">
-                        {strats.map((s: any, i: number) => (
-                          <span key={i} className="text-[8px] px-2 py-0.5 rounded-md bg-secondary/60 text-foreground/80 border border-border/40 font-bold">
-                            {s.emoji} {s.label}
-                          </span>
-                        ))}
-                      </div>
-
-                      {/* Números — destacar os que aparecem em 2+ estratégias */}
-                      <div className="px-3 py-2.5">
-                        <span className="text-[8px] text-muted-foreground font-bold block mb-1.5">📍 Coloque 1 ficha em cada número:</span>
-                        {highlighted.length > 0 && (
-                          <span className="text-[9px] text-yellow-400 font-bold block mb-1">⭐ Priorize os {highlighted.length} números com estrela (aparecem em várias análises):</span>
-                        )}
-                        <div className="flex flex-wrap gap-1">
-                          {cb.numbers.map((n: number, i: number) => {
-                            const isProt = PROTECTION_NUMBERS.includes(n);
-                            const isHighlighted = highlighted.includes(n);
-                            return (
-                              <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold ring-1 relative ${
-                                isHighlighted
-                                  ? 'ring-2 ring-yellow-400 shadow-md shadow-yellow-400/30 ' + (n === 0 ? 'bg-green-600 text-white' : RED_NUMBERS.includes(n) ? 'bg-red-600 text-white' : 'bg-zinc-800 text-white')
-                                  : colorClass(n, isProt)
-                              }`}>
-                                {n}
-                                {isProt && !isHighlighted && <span className="absolute -top-0.5 -right-0.5 text-[6px]">🛡️</span>}
-                                {isHighlighted && <span className="absolute -top-0.5 -right-0.5 text-[6px]">⭐</span>}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 px-3 py-2 border-t border-yellow-500/15 text-[9px] text-muted-foreground">
-                        <span>💰 Ganho: <strong className="text-foreground">{cb.payout}x</strong></span>
-                        <span className="text-border">•</span>
-                        <span>🎯 <strong className="text-foreground">{cb.numbers.length}</strong> números</span>
-                        <span className="text-border">•</span>
-                        <span>📊 <strong className="text-foreground">{cb.coverage}%</strong> mesa</span>
-                        {highlighted.length > 0 && (
-                          <>
-                            <span className="text-border">•</span>
-                            <span className="text-yellow-400 font-bold">⭐ {highlighted.length} convergentes</span>
-                          </>
-                        )}
-                      </div>
-                    </motion.div>
-                  );
-                })()}
-
-                {/* JUSTIFICATIVA */}
-                <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
-                  <span className="text-[9px] text-muted-foreground font-bold tracking-wide">🧠 POR QUE A IA ESCOLHEU ESTA JOGADA:</span>
-                  <p className="text-[10px] text-foreground/80 mt-1 leading-relaxed">{sniperData.strategy.justification}</p>
-                </div>
-
-                {/* CONVERGENCE REASONS */}
-                {sniperData.signal.convergenceReasons?.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {sniperData.signal.convergenceReasons.slice(0, 5).map((r: string, i: number) => (
-                      <span key={i} className="text-[8px] px-2 py-1 rounded-md bg-primary/8 text-primary border border-primary/15 font-semibold">
-                        {r}
+                      <span className="text-[7px] text-muted-foreground flex items-center gap-1">
+                        ⭐ Alta convicção
                       </span>
-                    ))}
+                      <span className="text-[7px] text-muted-foreground flex items-center gap-1">
+                        🛡️ Proteção
+                      </span>
+                    </div>
                   </div>
-                )}
 
-                {/* Proteção */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[8px]">🛡️</span>
-                  <span className="text-[8px] text-yellow-400/80 font-semibold">Proteção em TODAS jogadas: 24, 29, 35, 11</span>
+                  <div className="px-4 pb-3 border-t border-border/30 pt-2">
+                    <p className="text-[9px] text-muted-foreground/80 leading-relaxed line-clamp-2">
+                      🧠 {sniperData.strategy.justification}
+                    </p>
+                  </div>
+
                 </div>
+              )}
 
-                {/* TOP CANDIDATES */}
-                {sniperData.topCandidates?.length > 1 && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <TrendingUp className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-[8px] text-muted-foreground font-bold">TOP ALVOS:</span>
-                    {sniperData.topCandidates.slice(0, 4).map((c: any, i: number) => (
-                      <div key={i} className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[9px] font-bold ${
-                        i === 0 ? 'border-primary/30 text-primary bg-primary/5' : 'border-border/50 text-muted-foreground bg-secondary/30'
-                      }`}>
-                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold ${
-                          c.num === 0 ? 'bg-green-600 text-white' : RED_NUMBERS.includes(c.num) ? 'bg-red-600 text-white' : 'bg-zinc-700 text-white'
-                        }`}>{c.num}</span>
-                        <span className="font-mono">{c.score.toFixed(0)}pts</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="flex items-center gap-3 py-6">
-            <p className={`text-sm font-semibold ${sniperData.mode === 'observing' ? 'text-orange-400' : 'text-muted-foreground'}`}>
-              {sniperData.message}
-            </p>
-          </div>
-        )}
+              {sniperData.signal.convergenceReasons?.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {sniperData.signal.convergenceReasons.slice(0, 4).map((r: string, i: number) => (
+                    <span key={i} className="text-[7px] px-2 py-0.5 rounded bg-primary/8 text-primary border border-primary/15 font-semibold">
+                      {r}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+            </div>
+          );
+        })()}
       </div>
     </motion.div>
   );
