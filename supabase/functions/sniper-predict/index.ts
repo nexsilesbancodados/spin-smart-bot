@@ -1134,28 +1134,50 @@ serve(async (req) => {
     }
 
     // ==========================================
-    // DUEL: Pick the best strategy with performance-based weighting
+    // DUEL: Pick the best strategy with performance-based weighting + diversity
     // ==========================================
+    
+    // DIVERSITY: penalize strategies that were recently used (last 5 predictions)
+    const recentStratTypes = resolvedHistory.slice(0, 5).map(p => p.strategy_type);
+    const stratTypeCount: Record<string, number> = {};
+    recentStratTypes.forEach(t => { stratTypeCount[t] = (stratTypeCount[t] || 0) + 1; });
+
     strategies.forEach(st => {
       // Bonus for high payout low coverage (more profitable if hits)
       st.score += (st.payout > 10 ? 3 : st.payout > 3 ? 1 : 0);
       // Physical mode bonus for sector-based strategies
       if (mesaMode === 'fisico' && ['sniper', 'voisins'].includes(st.type)) st.score += 5;
       // Mathematical mode bonus for terminal-based strategies
-      if (mesaMode === 'matematico' && ['cavalos', 'duzias'].includes(st.type)) st.score += 5;
+      if (mesaMode === 'matematico' && ['cavalos', 'duzias', 'terminal_alternation'].includes(st.type)) st.score += 5;
 
       // PERFORMANCE-BASED WEIGHT: boost strategies that historically perform well
       const perf = strategyPerformance[st.type];
       if (perf && perf.total >= 5) {
-        // Reward winning strategies, penalize losing ones
-        const winBonus = (perf.winRate - 0.3) * 30; // baseline 30% hit rate
+        const winBonus = (perf.winRate - 0.3) * 30;
         st.score += winBonus;
-        // Recent trend matters more than overall
         const trendBonus = (perf.recentTrend - 0.3) * 20;
         st.score += trendBonus;
-        // Calibration: if high-prob predictions aren't hitting, lower score
         if (perf.avgProb > 80 && perf.winRate < 0.25) st.score -= 10;
       }
+
+      // DIVERSITY PENALTY: reduce score for strategies used too often recently
+      const recentUseCount = stratTypeCount[st.type] || 0;
+      if (recentUseCount >= 3) st.score -= 8; // heavily penalize if used 3+ of last 5
+      else if (recentUseCount >= 2) st.score -= 4;
+      
+      // CATEGORY DIVERSITY: group types into categories, penalize if same category repeated
+      const category = ['cor', 'paridade', 'alto_baixo'].includes(st.type) ? 'simple_bet'
+        : ['coluna', 'duzia_unica', 'duzias', 'column_cycle', 'dozen_phase'].includes(st.type) ? 'group_bet'
+        : ['sniper', 'voisins', 'setor_oposto'].includes(st.type) ? 'sector_bet'
+        : 'special_bet';
+      const categoryUsed = recentStratTypes.filter(t => {
+        const cat = ['cor', 'paridade', 'alto_baixo'].includes(t) ? 'simple_bet'
+          : ['coluna', 'duzia_unica', 'duzias', 'column_cycle', 'dozen_phase'].includes(t) ? 'group_bet'
+          : ['sniper', 'voisins', 'setor_oposto'].includes(t) ? 'sector_bet'
+          : 'special_bet';
+        return cat === category;
+      }).length;
+      if (categoryUsed >= 3) st.score -= 5;
     });
 
     // If two strategies tie, prefer higher payout
