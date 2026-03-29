@@ -58,6 +58,43 @@ const isLow = (n: number) => n >= 1 && n <= 18;
 const isEven = (n: number) => n > 0 && n % 2 === 0;
 const isOdd = (n: number) => n > 0 && n % 2 === 1;
 
+// ========================================================
+// COMMUNITY PULL MAP — Roleta Brasileira Playtech
+// Documented correlations: number X frequently pulls Y
+// ========================================================
+const PULL_MAP: Record<number, number[]> = {
+  1: [11,35,16,4,18,28,27,29,33],
+  4: [26,15,18,32,33,16,8],
+  6: [8,15,31,21,22,23],
+  7: [30,31,16,18,17],
+  9: [34,35,36,3,16,26,1,23,24,32,31],
+  10: [20,5,18,11,14,24],
+  14: [22,33,2],
+  16: [24,21,18,14],
+  20: [4,14],
+  27: [28,29,24,22,26,33,31,34,35,36],
+  30: [4,8,16,9,18,22,5,25,3],
+};
+
+const PULL_TERMINALS: Record<number, number[]> = {
+  1: [6,1], 7: [7,9,4,0,3], 9: [8,0], 10: [0,5,8,3,4],
+  14: [5], 16: [6,9,4], 20: [5,6,0], 27: [5,6], 30: [6,5],
+  4: [8,0,4], 6: [4,2,6,0],
+};
+
+const PULL_CAVALOS: Record<number, string[]> = {
+  7: ['258'], 9: ['69'], 14: ['147','258'], 20: ['69'],
+  27: ['147'], 30: ['147'], 4: ['69','258'], 6: ['147','258'],
+};
+
+const TERMINALS_MAP: Record<number, number[]> = {
+  0:[0,10,20,30], 1:[1,11,21,31], 2:[2,12,22,32], 3:[3,13,23,33],
+  4:[4,14,24,34], 5:[5,15,25,35], 6:[6,16,26,36], 7:[7,17,27],
+  8:[8,18,28], 9:[9,19,29],
+};
+
+const FINALES_WEIGHT: Record<number, number> = {0:4,1:4,2:4,3:4,4:4,5:4,6:4,7:3,8:3,9:3};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -2243,6 +2280,31 @@ serve(async (req) => {
           if (getSector(n) === pp.dominantSector) { s += 1; r.push(`🧲 Setor puxado`); }
         }
       }
+      // COMMUNITY PULL MAP: static documented correlations from Playtech BR community
+      const lastNum = numbers[0];
+      const pullTargets = PULL_MAP[lastNum];
+      if (pullTargets && pullTargets.includes(n)) {
+        s += 4; r.push(`📚 Puxa(${lastNum}→${n})`);
+      }
+      // COMMUNITY PULL TERMINALS: boost all numbers of pulled terminal
+      const pullTerms = PULL_TERMINALS[lastNum];
+      if (pullTerms) {
+        const nTerm = n % 10;
+        if (pullTerms.includes(nTerm)) {
+          s += 2.5; r.push(`📚 PuxaT${nTerm}`);
+        }
+      }
+      // COMMUNITY PULL CAVALOS: boost cavalos groups pulled by last number
+      const pullCav = PULL_CAVALOS[lastNum];
+      if (pullCav) {
+        const nCav = getCavalo(n);
+        if (nCav && pullCav.includes(nCav)) {
+          s += 2; r.push(`📚 PuxaC${nCav}`);
+        }
+      }
+      // FINALES WEIGHT: terminals 0-6 have 4 numbers (higher probability) vs 7-9 with 3
+      const nFinal = n % 10;
+      if (FINALES_WEIGHT[nFinal] === 4) { s += 0.5; } // slight boost for more probable finals
       // TERMINAL PROGRESSION: predicted next terminal from escalation
       if (terminalProgression.predictedNext !== null && n % 10 === terminalProgression.predictedNext) { s += 2.5; r.push(`🐎 Escada T${terminalProgression.predictedNext}`); }
       // DIAMOND DEFLECTORS: if current diamond zone predicts a sector, boost numbers in that sector
