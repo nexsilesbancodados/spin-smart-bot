@@ -273,6 +273,9 @@ const Index = () => {
             {/* Live Stats */}
             <LiveStats />
 
+            {/* AI Analysis Panel */}
+            <AIAnalysis />
+
             {/* Premium Table */}
             <PremiumTable history={history} />
           </div>
