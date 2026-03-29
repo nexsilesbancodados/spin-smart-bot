@@ -377,6 +377,13 @@ const Index = () => {
               <Brain className={`w-3 h-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">{isAnalyzing ? 'APRENDENDO...' : 'IA APRENDER'}</span>
             </button>
+            <button onClick={() => setConfidenceFilter(!confidenceFilter)}
+              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
+                confidenceFilter ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-secondary text-muted-foreground border border-border'
+              }`}>
+              <Shield className="w-3 h-3" />
+              <span className="hidden sm:inline">{confidenceFilter ? '85%+' : 'TODOS'}</span>
+            </button>
             <button onClick={() => setIsPolling(!isPolling)}
               className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
                 isPolling ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-destructive/20 text-destructive border border-destructive/30'
