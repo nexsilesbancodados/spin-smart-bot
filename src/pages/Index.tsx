@@ -6,6 +6,7 @@ import StatsPanel from '@/components/StatsPanel';
 import BotControls from '@/components/BotControls';
 import ProfitChart from '@/components/ProfitChart';
 import ManualInput from '@/components/ManualInput';
+import BetSuggestion from '@/components/BetSuggestion';
 import { CircleDot } from 'lucide-react';
 
 const INITIAL_BOT: BotState = {
