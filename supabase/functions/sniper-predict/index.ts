@@ -695,10 +695,11 @@ serve(async (req) => {
       return total;
     };
 
-    // Helper: backtest a set of numbers against recent history
+    // Helper: backtest a set of numbers against deep history (up to 1000)
     const backtestSet = (nums: number[]) => {
       let hits = 0, tests = 0;
-      for (let w = 0; w < Math.min(8, numbers.length - 10); w++) {
+      const maxTests = Math.min(100, numbers.length - 10);
+      for (let w = 0; w < maxTests; w++) {
         tests++;
         if (nums.includes(numbers[w + 5])) hits++;
       }
