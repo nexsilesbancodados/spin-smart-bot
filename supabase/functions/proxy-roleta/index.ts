@@ -13,9 +13,20 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
+    // Fetch specifically from Roleta Brasileira source
     const response = await fetch('https://www.iamonstro.com.br/apicurso/roleta.php');
     const data = await response.json();
     const numbers: number[] = (data.results || []).map(Number).filter((n: number) => !isNaN(n) && n >= 0 && n <= 36);
+
+    // Validate source is Roleta Brasileira
+    const mesa = data.mesa || data.table || 'Roleta Brasileira';
+    const isRoletaBrasileira = /brasil|brazilian/i.test(String(mesa)) || !data.mesa; // default source is Roleta Brasileira
+
+    if (!isRoletaBrasileira) {
+      return new Response(JSON.stringify({ error: 'Fonte não é Roleta Brasileira', results: [] }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Store new numbers in DB (deduplicate by checking latest stored)
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -34,10 +45,8 @@ Deno.serve(async (req) => {
     // Find new numbers (ones at the start that don't match recent stored)
     let newNumbers: number[] = [];
     if (lastStoredNums.length === 0) {
-      // First run: store all
       newNumbers = numbers.slice(0, 100);
     } else {
-      // Find where the overlap starts
       for (let i = 0; i < Math.min(numbers.length, 20); i++) {
         if (numbers[i] === lastStoredNums[0] && 
             (i + 1 >= numbers.length || numbers[i + 1] === lastStoredNums[1])) {
@@ -53,10 +62,18 @@ Deno.serve(async (req) => {
         color: getColor(n),
       }));
       await supabase.from('roulette_numbers').insert(rows);
+
+      // Also store in resultados_roleta for cross-reference
+      const roletaRows = newNumbers.map(n => ({
+        numero: String(n),
+        mesa: 'Roleta Brasileira',
+        provedor: 'Playtech',
+      }));
+      await supabase.from('resultados_roleta').insert(roletaRows);
     }
 
-    // Return all numbers from API
-    return new Response(JSON.stringify(data), {
+    // Return all numbers from API with mesa tag
+    return new Response(JSON.stringify({ ...data, mesa: 'Roleta Brasileira' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
