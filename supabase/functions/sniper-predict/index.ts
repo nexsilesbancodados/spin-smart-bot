@@ -882,6 +882,17 @@ serve(async (req) => {
     if (daniGreen.mod1Cold.delay >= 10) {
       aiLearnings.push(`❄️ #9 Terminal Frio: T${daniGreen.mod1Cold.terminal} ausente (${daniGreen.mod1Cold.delay} atraso) — combo quente+frio`);
     }
+    // Entropy learnings
+    aiLearnings.push(`🎲 Entropia: ${(sessionEntropy * 100).toFixed(0)}% → Regime ${sessionRegime}`);
+    if (sessionEntropy < 0.5) aiLearnings.push('🎯 SESSÃO CONCENTRADA: padrão claro detectado — momento ideal para entrar');
+    if (sessionEntropy > 0.8) aiLearnings.push('⚠️ SESSÃO DISPERSA: alta entropia — AGUARDAR mais dados');
+    if (isEntropyDroppingConsistently) aiLearnings.push('📉 DRIFT de Entropia: sessão se organizando — bom momento para entrar');
+    if (duplaKey) aiLearnings.push(`🎰 Dupla Terminal ativa: ${duplaKey} — ${DUPLAS_TERMINAIS[duplaKey]?.slice(0,5).join(',')}`);
+    // Zero pressure zones (P3)
+    if (daniGreen.mod4.delay >= 15 && daniGreen.mod4.delay < 25) aiLearnings.push(`🟡 Ciclo Zero LEVE: ${daniGreen.mod4.delay} giros — proteção 1 ficha`);
+    if (daniGreen.mod4.delay >= 26 && daniGreen.mod4.delay < 40) aiLearnings.push(`🟠 Ciclo Zero MÉDIA: ${daniGreen.mod4.delay} giros — Jeu Zero (4 fichas)`);
+    if (daniGreen.mod4.delay >= 41 && daniGreen.mod4.delay < 60) aiLearnings.push(`🔴 Ciclo Zero ALTA: ${daniGreen.mod4.delay} giros — Vizinhos do Zero (9 fichas)`);
+    if (daniGreen.mod4.delay >= 60) aiLearnings.push(`🚨 ANOMALIA ZERO: ${daniGreen.mod4.delay} giros — PRIORIDADE MÁXIMA`);
     // Time awareness
     aiLearnings.push(`🕐 Turno ${timeAwareness.shift}: ${isNightShift ? 'Dealers mecânicos — prioridade física' : isDayShift ? 'Volume alto — prioridade matemática' : 'Turno misto'}`);
     if (microArcStd < 2) aiLearnings.push(`🎯 Dealer com mão viciada: arco ±${microArcStd.toFixed(1)} casas`);
