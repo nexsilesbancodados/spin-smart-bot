@@ -184,7 +184,7 @@ const Index = () => {
       }
     } catch (err) { console.error('Sniper error:', err); }
     finally { sniperFetchingRef.current = false; }
-  }, [sampleSize, aiEnabled, apiNumbers]);
+  }, [sampleSize, aiEnabled, apiNumbers, strategyFilter]);
 
   // === Data Fetching ===
   const fetchNumbers = useCallback(async () => {
