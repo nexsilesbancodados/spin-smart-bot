@@ -1,19 +1,29 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRoulette } from '@/contexts/RouletteContext';
 import { getNumberColor, getHotNumbers, getColdNumbers } from '@/lib/roulette';
 import { getPremiumRow } from '@/lib/roulette-analysis';
-import AnimatedHistory from '@/components/AnimatedHistory';
 import AlertBanner from '@/components/AlertBanner';
 import PremiumTable from '@/components/PremiumTable';
-import QuickNumberPad from '@/components/QuickNumberPad';
 import AIAnalysis from '@/components/AIAnalysis';
 import DebugModal from '@/components/DebugModal';
 import {
-  CircleDot, ChevronDown, MonitorPlay, Flame, Snowflake,
-  Play, Square, ExternalLink, Maximize2, Minimize2,
-  Download, Copy, Check, Layers, Hash, Activity, Zap
+  CircleDot, ChevronDown, Flame, Snowflake,
+  Hash, Activity, Zap, RefreshCw, Wifi, WifiOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '@/integrations/supabase/client';
+
+const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+
+const getColor = (n: number): 'red' | 'black' | 'green' => {
+  if (n === 0) return 'green';
+  return RED_NUMBERS.includes(n) ? 'red' : 'black';
+};
+
+const colorClass = (n: number) => {
+  const c = getColor(n);
+  return c === 'red' ? 'bg-roulette-red' : c === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
+};
 
 const PROVIDERS: Record<string, { label: string; tables: string[] }> = {
   Playtech: {
@@ -24,94 +34,80 @@ const PROVIDERS: Record<string, { label: string; tables: string[] }> = {
     label: 'Evolution',
     tables: ['Roleta Immersiva', 'Roulette Evo', 'Roleta Relâmpago XXXtreme', 'Roleta ao Vivo'],
   },
-  Pragmatic: {
-    label: 'Pragmatic',
-    tables: ['PowerUP Roulette', 'Roulette Macao', 'Brasileira Roleta'],
-  },
 };
 
 const Index = () => {
-  const { history, provider, table, setProvider, setTable, addNumber, autoMode, autoSpeed, toggleAutoMode, setAutoSpeed } = useRoulette();
-  const DEFAULT_IFRAME_URL = 'https://ona.bet.br/live-casino/game/3782786?provider=Playtech&from=%2Flive-casino';
-  const [iframeUrl, setIframeUrl] = useState(DEFAULT_IFRAME_URL);
-  const [urlInput, setUrlInput] = useState(DEFAULT_IFRAME_URL);
-  const [iframeExpanded, setIframeExpanded] = useState(false);
-  const [showPremium, setShowPremium] = useState(false);
-  const [copiedWebhook, setCopiedWebhook] = useState(false);
-  const [copiedScript, setCopiedScript] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(true);
+  const { provider, table, setProvider, setTable, history } = useRoulette();
+  const [apiNumbers, setApiNumbers] = useState<number[]>([]);
+  const [isPolling, setIsPolling] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const prevNumbersRef = useRef<string>('');
 
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-roulette`;
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
-  const hotNumbers = getHotNumbers(history, 8);
-  const coldNumbers = getColdNumbers(history, 8);
-  const redCount = history.filter(h => h.color === 'red').length;
-  const blackCount = history.filter(h => h.color === 'black').length;
-  const greenCount = history.filter(h => h.color === 'green').length;
-  const total = history.length || 1;
-
-  const handleLoadUrl = () => {
-    if (urlInput.trim()) setIframeUrl(urlInput.trim());
-  };
-
-  const downloadExtension = () => {
-    fetch('/roulette-tracker-extension.zip')
-      .then(res => { if (!res.ok) throw new Error(`${res.status}`); return res.blob(); })
-      .then(blob => {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'roulette-tracker-extension.zip';
-        a.click();
-        URL.revokeObjectURL(a.href);
-      })
-      .catch(err => alert(err.message));
-  };
-
-  const copyWebhook = () => {
-    navigator.clipboard.writeText(webhookUrl);
-    setCopiedWebhook(true);
-    setTimeout(() => setCopiedWebhook(false), 2000);
-  };
-
-  const consoleScript = `// Script de Ponte - Cole no Console do navegador na página da Onabet
-(function() {
-  const originalLog = console.log;
-  console.log = function(...args) {
-    if (!isNaN(args[0]) && args[0] !== "") {
-      const n = parseInt(args[0]);
-      if (n >= 0 && n <= 36) {
-        fetch('${supabaseUrl}/rest/v1/resultados_roleta', {
-          method: 'POST',
-          headers: {
-            'apikey': '${anonKey}',
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({ numero: n.toString(), mesa: "Roleta Brasileira" })
-        });
-        originalLog("%c[Tracker] Número enviado: " + n, "color: #00E5FF; font-weight: bold;");
+  const fetchNumbers = useCallback(async () => {
+    try {
+      const res = await supabase.functions.invoke('proxy-roleta');
+      if (res.error) throw new Error(res.error.message);
+      const data = res.data;
+      if (data?.results && Array.isArray(data.results)) {
+        const nums = data.results.slice(0, 100).map((n: unknown) => Number(n)).filter((n: number) => !isNaN(n) && n >= 0 && n <= 36);
+        const key = nums.join(',');
+        if (key !== prevNumbersRef.current) {
+          prevNumbersRef.current = key;
+          setApiNumbers(nums);
+          setLastUpdate(new Date());
+        }
+        setError(null);
       }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao buscar dados');
     }
-    originalLog.apply(console, args);
-  };
-  console.log("%c[Tracker] Ponte ativa!", "color: #FF00E5; font-weight: bold; font-size: 14px;");
-})();`;
+  }, []);
 
-  const copyScript = () => {
-    navigator.clipboard.writeText(consoleScript);
-    setCopiedScript(true);
-    setTimeout(() => setCopiedScript(false), 2000);
-  };
+  useEffect(() => {
+    fetchNumbers();
+    if (!isPolling) return;
+    const interval = setInterval(fetchNumbers, 3000);
+    return () => clearInterval(interval);
+  }, [fetchNumbers, isPolling]);
 
-  // Terminal grouping for "Números Puxados" panel
-  const terminalGroups = history.slice(0, 30).reduce<Record<number, number[]>>((acc, h) => {
-    const t = h.value % 10;
-    if (!acc[t]) acc[t] = [];
-    acc[t].push(h.value);
+  // Terminal analysis for last 100 numbers
+  const terminalFreq = apiNumbers.reduce<Record<number, number>>((acc, n) => {
+    const t = n % 10;
+    acc[t] = (acc[t] || 0) + 1;
     return acc;
   }, {});
+  const maxTerminalFreq = Math.max(...Object.values(terminalFreq), 1);
+
+  const redCount = apiNumbers.filter(n => getColor(n) === 'red').length;
+  const blackCount = apiNumbers.filter(n => getColor(n) === 'black').length;
+  const greenCount = apiNumbers.filter(n => getColor(n) === 'green').length;
+  const total = apiNumbers.length || 1;
+
+  // Group by terminal for "Números Puxados"
+  const terminalGroups = apiNumbers.slice(0, 40).reduce<Record<number, number[]>>((acc, n) => {
+    const t = n % 10;
+    if (!acc[t]) acc[t] = [];
+    acc[t].push(n);
+    return acc;
+  }, {});
+
+  // Hot/Cold from API numbers
+  const freqMap = apiNumbers.reduce<Record<number, number>>((acc, n) => {
+    acc[n] = (acc[n] || 0) + 1;
+    return acc;
+  }, {});
+  const sorted = Object.entries(freqMap).map(([n, f]) => ({ number: Number(n), freq: f })).sort((a, b) => b.freq - a.freq);
+  const hotNums = sorted.slice(0, 8);
+  const coldNums = sorted.slice(-8).reverse();
+
+  // Split 100 numbers into rows of 20
+  const rows: number[][] = [];
+  for (let i = 0; i < apiNumbers.length; i += 20) {
+    rows.push(apiNumbers.slice(i, i + 20));
+  }
 
   return (
     <div className="h-screen bg-gradient-casino flex flex-col overflow-hidden">
@@ -123,40 +119,29 @@ const Index = () => {
             <span className="font-display text-xs tracking-widest text-glow-cyan">ROULETTE ANALYTICS</span>
             <span className="text-[9px] px-2 py-0.5 bg-accent/20 rounded-full text-accent font-bold border border-accent/30">PRO</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <button
-              onClick={toggleAutoMode}
+              onClick={() => setIsPolling(!isPolling)}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-bold transition-all ${
-                autoMode ? 'bg-destructive text-destructive-foreground shadow-lg' : 'bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30'
+                isPolling ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-destructive/20 text-destructive border border-destructive/30'
               }`}
             >
-              {autoMode ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-              {autoMode ? 'PARAR' : 'AUTO'}
+              {isPolling ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+              {isPolling ? 'AO VIVO' : 'PAUSADO'}
             </button>
-            {autoMode && (
-              <div className="flex gap-1">
-                {[3, 5, 8].map(s => (
-                  <button
-                    key={s}
-                    onClick={() => setAutoSpeed(s)}
-                    className={`px-2 py-1 rounded text-[9px] font-semibold transition-all ${
-                      autoSpeed === s ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
-                    }`}
-                  >
-                    {s}s
-                  </button>
-                ))}
-              </div>
-            )}
             <button
-              onClick={downloadExtension}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-bold bg-accent/20 text-accent hover:bg-accent/30 transition-all border border-accent/30"
-              title="Baixar extensão Chrome"
+              onClick={fetchNumbers}
+              className="p-1.5 text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-secondary"
+              title="Atualizar agora"
             >
-              <Download className="w-3 h-3" />
-              EXTENSÃO
+              <RefreshCw className="w-4 h-4" />
             </button>
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-neon-cyan" />
+            {lastUpdate && (
+              <span className="text-[9px] text-muted-foreground font-mono">
+                {lastUpdate.toLocaleTimeString('pt-BR')}
+              </span>
+            )}
+            <div className={`w-2 h-2 rounded-full ${isPolling ? 'bg-primary animate-pulse shadow-neon-cyan' : 'bg-muted'}`} />
           </div>
         </div>
       </nav>
@@ -164,276 +149,209 @@ const Index = () => {
       {/* Main Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* LEFT SIDEBAR */}
-        {showSidebar && (
-          <motion.aside
-            initial={{ x: -300 }}
-            animate={{ x: 0 }}
-            exit={{ x: -300 }}
-            className={`flex flex-col ${iframeExpanded ? 'w-[280px]' : 'w-[360px]'} border-r border-border bg-card/50 backdrop-blur-sm shrink-0 transition-all`}
-          >
-            {/* Provider/Table Selectors */}
-            <div className="shrink-0 border-b border-border">
-              <div className="flex">
-                <div className="flex-1 relative border-r border-border">
-                  <select
-                    value={provider}
-                    onChange={e => {
-                      setProvider(e.target.value);
-                      setTable(PROVIDERS[e.target.value].tables[0]);
-                    }}
-                    className="w-full bg-transparent text-foreground text-[11px] font-semibold px-3 py-2 appearance-none cursor-pointer focus:outline-none"
-                  >
-                    {Object.entries(PROVIDERS).map(([key, p]) => (
-                      <option key={key} value={key} className="bg-card">{p.label}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-                <div className="flex-1 relative">
-                  <select
-                    value={table}
-                    onChange={e => setTable(e.target.value)}
-                    className="w-full bg-transparent text-foreground text-[11px] font-semibold px-3 py-2 appearance-none cursor-pointer focus:outline-none"
-                  >
-                    {PROVIDERS[provider]?.tables.map(t => (
-                      <option key={t} value={t} className="bg-card">{t}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+        <aside className="flex flex-col w-[300px] border-r border-border bg-card/50 backdrop-blur-sm shrink-0">
+          {/* Provider/Table Selectors */}
+          <div className="shrink-0 border-b border-border">
+            <div className="flex">
+              <div className="flex-1 relative border-r border-border">
+                <select
+                  value={provider}
+                  onChange={e => {
+                    setProvider(e.target.value);
+                    setTable(PROVIDERS[e.target.value].tables[0]);
+                  }}
+                  className="w-full bg-transparent text-foreground text-[11px] font-semibold px-3 py-2 appearance-none cursor-pointer focus:outline-none"
+                >
+                  {Object.entries(PROVIDERS).map(([key, p]) => (
+                    <option key={key} value={key} className="bg-card">{p.label}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
-
-              {/* Status bar */}
-              <div className="flex items-center justify-between px-3 py-1.5 bg-primary/5 border-t border-primary/10">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-3 h-3 text-primary" />
-                  <span className="text-[9px] font-bold text-primary tracking-wider font-display">
-                    {PROVIDERS[provider]?.label} • {table}
-                  </span>
-                </div>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <span className="text-[9px] text-muted-foreground">Premium</span>
-                  <div
-                    onClick={() => setShowPremium(!showPremium)}
-                    className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${showPremium ? 'bg-primary' : 'bg-muted'}`}
-                  >
-                    <div className={`w-3 h-3 rounded-full bg-foreground absolute top-0.5 transition-transform ${showPremium ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                  </div>
-                </label>
+              <div className="flex-1 relative">
+                <select
+                  value={table}
+                  onChange={e => setTable(e.target.value)}
+                  className="w-full bg-transparent text-foreground text-[11px] font-semibold px-3 py-2 appearance-none cursor-pointer focus:outline-none"
+                >
+                  {PROVIDERS[provider]?.tables.map(t => (
+                    <option key={t} value={t} className="bg-card">{t}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-primary/5 border-t border-primary/10">
+              <div className="flex items-center gap-2">
+                <Zap className="w-3 h-3 text-primary" />
+                <span className="text-[9px] font-bold text-primary tracking-wider font-display">
+                  {PROVIDERS[provider]?.label} • {table}
+                </span>
+              </div>
+              <span className="text-[9px] text-muted-foreground font-mono">{apiNumbers.length} números</span>
+            </div>
+          </div>
 
-            {/* Scrollable sidebar content */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3">
-              {/* Alerts */}
-              <AlertBanner />
+          {/* Scrollable sidebar content */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-2 text-[10px] text-destructive font-semibold">
+                ⚠️ {error}
+              </div>
+            )}
 
-              {/* History Grid */}
-              <AnimatedHistory />
-
-              {/* Color Distribution */}
-              {history.length > 0 && (
-                <div className="bg-card rounded-lg border border-border p-3">
-                  <div className="flex gap-1 h-3 rounded-full overflow-hidden mb-2">
-                    <motion.div animate={{ width: `${(redCount / total) * 100}%` }} className="bg-roulette-red" transition={{ duration: 0.5 }} />
-                    <motion.div animate={{ width: `${(blackCount / total) * 100}%` }} className="bg-roulette-black" transition={{ duration: 0.5 }} />
-                    <motion.div animate={{ width: `${(greenCount / total) * 100}%` }} className="bg-roulette-green" transition={{ duration: 0.5 }} />
-                  </div>
-                  <div className="flex justify-between text-[9px] font-mono text-muted-foreground">
-                    <span className="text-roulette-red">🔴 {redCount} ({((redCount / total) * 100).toFixed(0)}%)</span>
-                    <span>⚫ {blackCount} ({((blackCount / total) * 100).toFixed(0)}%)</span>
-                    <span className="text-roulette-green">🟢 {greenCount}</span>
-                  </div>
+            {/* Color Distribution */}
+            {apiNumbers.length > 0 && (
+              <div className="bg-card rounded-lg border border-border p-3">
+                <div className="flex gap-1 h-3 rounded-full overflow-hidden mb-2">
+                  <motion.div animate={{ width: `${(redCount / total) * 100}%` }} className="bg-roulette-red" transition={{ duration: 0.5 }} />
+                  <motion.div animate={{ width: `${(blackCount / total) * 100}%` }} className="bg-roulette-black" transition={{ duration: 0.5 }} />
+                  <motion.div animate={{ width: `${(greenCount / total) * 100}%` }} className="bg-roulette-green" transition={{ duration: 0.5 }} />
                 </div>
-              )}
-
-              {/* Hot & Cold Numbers */}
-              {history.length > 0 && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-card rounded-lg border border-border p-2.5">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <Flame className="w-3.5 h-3.5 text-destructive" />
-                      <span className="font-display text-[9px] text-destructive tracking-widest">QUENTES</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {hotNumbers.map(h => {
-                        const color = getNumberColor(h.number);
-                        const cls = color === 'red' ? 'bg-roulette-red' : color === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
-                        return (
-                          <div key={h.number} className={`${cls} w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold text-foreground relative`}>
-                            {h.number}
-                            <span className="absolute -top-1 -right-1 bg-destructive text-foreground text-[7px] rounded-full w-3 h-3 flex items-center justify-center font-bold">
-                              {h.freq}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="bg-card rounded-lg border border-border p-2.5">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <Snowflake className="w-3.5 h-3.5 text-primary" />
-                      <span className="font-display text-[9px] text-primary tracking-widest">FRIOS</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {coldNumbers.map(h => {
-                        const color = getNumberColor(h.number);
-                        const cls = color === 'red' ? 'bg-roulette-red' : color === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
-                        return (
-                          <div key={h.number} className={`${cls} w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold text-foreground opacity-50`}>
-                            {h.number}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                <div className="flex justify-between text-[9px] font-mono text-muted-foreground">
+                  <span className="text-roulette-red">🔴 {redCount} ({((redCount / total) * 100).toFixed(0)}%)</span>
+                  <span>⚫ {blackCount} ({((blackCount / total) * 100).toFixed(0)}%)</span>
+                  <span className="text-roulette-green">🟢 {greenCount}</span>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Números Puxados — Terminal grouping */}
-              {history.length > 0 && (
-                <div className="bg-card rounded-lg border border-border p-3">
+            {/* Hot & Cold Numbers */}
+            {apiNumbers.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-card rounded-lg border border-border p-2.5">
                   <div className="flex items-center gap-1.5 mb-2">
-                    <Hash className="w-3.5 h-3.5 text-accent" />
-                    <span className="font-display text-[9px] text-accent tracking-widest">NÚMEROS PUXADOS</span>
+                    <Flame className="w-3.5 h-3.5 text-destructive" />
+                    <span className="font-display text-[9px] text-destructive tracking-widest">QUENTES</span>
                   </div>
-                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                    {Object.entries(terminalGroups).sort(([a], [b]) => Number(a) - Number(b)).map(([terminal, nums]) => (
-                      <div key={terminal} className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-accent w-8 shrink-0 font-display">T{terminal}</span>
-                        <div className="flex flex-wrap gap-0.5">
-                          {nums.slice(0, 8).map((n, i) => {
-                            const color = getNumberColor(n);
-                            const cls = color === 'red' ? 'bg-roulette-red' : color === 'black' ? 'bg-roulette-black' : 'bg-roulette-green';
-                            return (
-                              <span key={`${n}-${i}`} className={`${cls} w-6 h-6 rounded text-[9px] font-bold text-foreground flex items-center justify-center`}>
-                                {n}
-                              </span>
-                            );
-                          })}
-                        </div>
+                  <div className="flex flex-wrap gap-1">
+                    {hotNums.map(h => (
+                      <div key={h.number} className={`${colorClass(h.number)} w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold text-foreground relative`}>
+                        {h.number}
+                        <span className="absolute -top-1 -right-1 bg-destructive text-foreground text-[7px] rounded-full w-3 h-3 flex items-center justify-center font-bold">
+                          {h.freq}
+                        </span>
                       </div>
                     ))}
                   </div>
                 </div>
-              )}
-
-              {/* Quick Number Pad */}
-              <QuickNumberPad onAddNumber={addNumber} />
-
-              {/* AI Analysis */}
-              <AIAnalysis />
-
-              {/* Premium Table */}
-              {showPremium && <PremiumTable history={history} />}
-
-              {/* Webhook & Script Section */}
-              <div className="bg-card rounded-lg border border-border p-3 space-y-3">
-                <div className="flex items-center gap-1.5">
-                  <Activity className="w-3.5 h-3.5 text-primary" />
-                  <span className="font-display text-[9px] text-primary tracking-widest">INTEGRAÇÃO</span>
-                </div>
-
-                {/* Webhook URL */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[9px] font-semibold text-muted-foreground">WEBHOOK URL</span>
-                    <button onClick={copyWebhook} className="flex items-center gap-1 text-[9px] text-primary hover:text-primary/80 transition-colors">
-                      {copiedWebhook ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      {copiedWebhook ? 'Copiado!' : 'Copiar'}
-                    </button>
+                <div className="bg-card rounded-lg border border-border p-2.5">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Snowflake className="w-3.5 h-3.5 text-primary" />
+                    <span className="font-display text-[9px] text-primary tracking-widest">FRIOS</span>
                   </div>
-                  <div className="text-[8px] text-muted-foreground bg-secondary rounded-md px-2 py-1.5 font-mono truncate select-all border border-border">
-                    {webhookUrl}
+                  <div className="flex flex-wrap gap-1">
+                    {coldNums.map(h => (
+                      <div key={h.number} className={`${colorClass(h.number)} w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold text-foreground opacity-50`}>
+                        {h.number}
+                      </div>
+                    ))}
                   </div>
-                </div>
-
-                {/* Console Script */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[9px] font-semibold text-muted-foreground">SCRIPT CONSOLE</span>
-                    <button onClick={copyScript} className="flex items-center gap-1 text-[9px] text-accent hover:text-accent/80 transition-colors">
-                      {copiedScript ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      {copiedScript ? 'Copiado!' : 'Copiar'}
-                    </button>
-                  </div>
-                  <p className="text-[8px] text-muted-foreground mb-1">
-                    Cole no console do navegador na página da Onabet para captura automática
-                  </p>
                 </div>
               </div>
-            </div>
-          </motion.aside>
-        )}
+            )}
 
-        {/* CENTER - Casino Iframe */}
-        <div className="flex-1 flex flex-col bg-secondary/10 min-h-0">
-          {/* Iframe toolbar */}
-          <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-card/80 border-b border-border backdrop-blur-sm">
-            <button
-              onClick={() => setShowSidebar(!showSidebar)}
-              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-secondary"
-              title={showSidebar ? 'Esconder sidebar' : 'Mostrar sidebar'}
-            >
-              <Layers className="w-4 h-4" />
-            </button>
-            <input
-              type="text"
-              value={urlInput}
-              onChange={e => setUrlInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleLoadUrl()}
-              placeholder="Cole a URL do cassino aqui..."
-              className="flex-1 bg-secondary border border-border rounded-md px-3 py-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            <button
-              onClick={handleLoadUrl}
-              className="px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-[10px] font-bold hover:bg-primary/90 flex items-center gap-1.5 transition-colors"
-            >
-              <ExternalLink className="w-3 h-3" />
-              ABRIR
-            </button>
-            <button
-              onClick={() => setIframeExpanded(!iframeExpanded)}
-              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-secondary"
-            >
-              {iframeExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </button>
-          </div>
-
-          {/* Iframe content */}
-          <div className="flex-1 relative min-h-0">
-            {iframeUrl ? (
-              <iframe
-                src={iframeUrl}
-                className="absolute inset-0 w-full h-full border-0"
-                allowFullScreen
-                allow="autoplay; fullscreen; microphone; camera"
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation"
-              />
-            ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center space-y-6">
-                <div className="relative">
-                  <MonitorPlay className="w-20 h-20 text-primary/20" />
-                  <div className="absolute inset-0 animate-pulse-neon">
-                    <MonitorPlay className="w-20 h-20 text-primary/10" />
-                  </div>
+            {/* Números Puxados */}
+            {apiNumbers.length > 0 && (
+              <div className="bg-card rounded-lg border border-border p-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Hash className="w-3.5 h-3.5 text-accent" />
+                  <span className="font-display text-[9px] text-accent tracking-widest">NÚMEROS PUXADOS</span>
                 </div>
-                <div className="text-center space-y-2">
-                  <p className="text-sm text-foreground/80 font-semibold font-display tracking-wider">Cassino ao Vivo</p>
-                  <p className="text-[11px] text-muted-foreground max-w-sm">
-                    Cole a URL do cassino na barra acima para jogar aqui dentro enquanto acompanha as estatísticas ao lado
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {['🎰 Roleta Brasileira', '⚡ Immersiva', '🔥 XXXtreme'].map(name => (
-                    <div key={name} className="px-4 py-2 bg-card border border-border rounded-lg text-[11px] text-muted-foreground hover:border-primary/30 transition-colors cursor-default">
-                      {name}
+                <div className="space-y-1.5 max-h-44 overflow-y-auto">
+                  {Object.entries(terminalGroups).sort(([a], [b]) => Number(a) - Number(b)).map(([terminal, nums]) => (
+                    <div key={terminal} className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-accent w-8 shrink-0 font-display">T{terminal}</span>
+                      <div className="flex flex-wrap gap-0.5">
+                        {nums.slice(0, 10).map((n, i) => (
+                          <span key={`${n}-${i}`} className={`${colorClass(n)} w-6 h-6 rounded text-[9px] font-bold text-foreground flex items-center justify-center`}>
+                            {n}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
+
+            {/* Alerts */}
+            <AlertBanner />
           </div>
+        </aside>
+
+        {/* CENTER - Main Content */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto p-4 space-y-4">
+          {/* Histórico de Roleta - 100 números em linhas de 20 */}
+          <div className="bg-card rounded-xl border border-border p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-primary" />
+                <span className="font-display text-sm text-primary tracking-widest">HISTÓRICO DE ROLETA</span>
+              </div>
+              <span className="text-[10px] text-muted-foreground font-mono">
+                Últimos {apiNumbers.length} números • Atualização a cada 3s
+              </span>
+            </div>
+
+            {apiNumbers.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                Aguardando dados da API...
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {rows.map((row, rowIdx) => (
+                  <div key={rowIdx} className="flex gap-1 flex-wrap">
+                    <AnimatePresence mode="popLayout">
+                      {row.map((n, i) => (
+                        <motion.div
+                          key={`${rowIdx}-${i}-${n}`}
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          transition={{ duration: 0.2, delay: i * 0.01 }}
+                          className={`${colorClass(n)} w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-foreground shadow-md hover:scale-110 transition-transform cursor-default`}
+                        >
+                          {n}
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Análise de Terminais */}
+          <div className="bg-card rounded-xl border border-border p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Hash className="w-4 h-4 text-accent" />
+              <span className="font-display text-sm text-accent tracking-widest">ANÁLISE DE TERMINAIS</span>
+            </div>
+
+            <div className="grid grid-cols-10 gap-2">
+              {Array.from({ length: 10 }, (_, t) => {
+                const freq = terminalFreq[t] || 0;
+                const pct = maxTerminalFreq > 0 ? (freq / maxTerminalFreq) * 100 : 0;
+                return (
+                  <div key={t} className="flex flex-col items-center gap-1">
+                    <div className="w-full bg-secondary rounded-full h-24 flex flex-col-reverse overflow-hidden relative">
+                      <motion.div
+                        className="bg-gradient-to-t from-primary to-accent rounded-full"
+                        animate={{ height: `${pct}%` }}
+                        transition={{ duration: 0.5 }}
+                      />
+                    </div>
+                    <span className="text-[11px] font-bold text-foreground font-display">{t}</span>
+                    <span className="text-[9px] text-muted-foreground font-mono">{freq}x</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* AI Analysis */}
+          <AIAnalysis />
         </div>
       </div>
 
