@@ -18,6 +18,7 @@ import StatsBar from '@/components/StatsBar';
 import Last12Numbers from '@/components/Last12Numbers';
 import ZeroPressure from '@/components/ZeroPressure';
 import SniperSignal from '@/components/SniperSignal';
+import WheelMap from '@/components/WheelMap';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
@@ -438,6 +439,17 @@ const Index = () => {
                 confidenceFilter={confidenceFilter}
               />
             </div>
+
+            {/* MAPA DA RODA — Colapsável */}
+            <details className="bg-card rounded-xl border border-border overflow-hidden group">
+              <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none text-sm font-bold text-foreground hover:bg-secondary/30 transition-colors">
+                <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                🎡 MAPA DA RODA
+              </summary>
+              <div className="p-4 border-t border-border/50">
+                <WheelMap allNumbers={allNumbers} sniperData={sniperData} />
+              </div>
+            </details>
             <div className="lg:col-span-1">
               <BetPanel sniperData={sniperData} allNumbers={allNumbers} />
             </div>
