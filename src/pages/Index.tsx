@@ -380,7 +380,12 @@ const Index = () => {
   })();
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-gradient-casino flex flex-col relative">
+      {/* Ambient background glow */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/3 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/3 rounded-full blur-[120px]" />
+      </div>
       {/* ═══════ NAVBAR ═══════ */}
       <Navbar
         isPolling={isPolling} setIsPolling={setIsPolling}
@@ -411,8 +416,8 @@ const Index = () => {
       </AnimatePresence>
 
       {/* ═══════ MAIN CONTENT ═══════ */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-[1400px] mx-auto p-3 space-y-4">
+      <div className="flex-1 overflow-y-auto relative z-10">
+        <div className="max-w-[1400px] mx-auto p-4 space-y-4">
 
           {/* ─── SEÇÃO 1: Últimos 12 + Pressão do Zero ─── */}
           <div className="space-y-3">
@@ -425,15 +430,16 @@ const Index = () => {
             {/* Coluna Principal — Sniper */}
             <div className="lg:col-span-2 space-y-3">
               {/* Sample Size */}
-              <div className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
-                <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">📊 Base de Análise:</span>
+              <div className="bg-gradient-card rounded-xl border border-border/60 p-3 flex items-center gap-3 relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+                <span className="text-xs text-muted-foreground font-medium whitespace-nowrap font-display text-[9px] tracking-wider">📊 BASE DE ANÁLISE</span>
                 <input
                   type="range" min={10} max={500} step={10}
                   value={sampleSize}
                   onChange={e => setSampleSize(Number(e.target.value))}
                   className="flex-1 accent-primary h-2 cursor-pointer"
                 />
-                <span className="text-sm font-bold text-primary min-w-[60px] text-right">{sampleSize} jogadas</span>
+                <span className="text-sm font-bold text-primary font-mono min-w-[70px] text-right">{sampleSize} <span className="text-[8px] text-muted-foreground">jogadas</span></span>
               </div>
 
               {/* Sniper Signal */}
@@ -448,12 +454,13 @@ const Index = () => {
 
             {/* Coluna Lateral — Mapa + Bet */}
             <div className="lg:col-span-1 space-y-3">
-              <details className="bg-card rounded-xl border border-border overflow-hidden group">
-                <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none text-sm font-bold text-foreground hover:bg-secondary/30 transition-colors">
-                  <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180" />
-                  🎡 MAPA DA RODA
+              <details className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden group relative">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+                <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none text-sm font-bold text-foreground hover:bg-primary/5 transition-colors">
+                  <ChevronDown className="w-4 h-4 text-primary/60 transition-transform group-open:rotate-180" />
+                  <span className="font-display text-[10px] tracking-[0.15em] text-primary">🎡 MAPA DA RODA</span>
                 </summary>
-                <div className="p-4 border-t border-border/50">
+                <div className="p-4 border-t border-border/40">
                   <WheelMap allNumbers={allNumbers} sniperData={sniperData} />
                 </div>
               </details>
