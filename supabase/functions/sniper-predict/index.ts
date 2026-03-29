@@ -451,6 +451,7 @@ serve(async (req) => {
     // Parse request body — accepts sampleSize and optional clientNumbers for instant reaction
     let sampleSize = 100;
     let clientNumbers: number[] | null = null;
+    let strategyFilterParam: string | null = null;
     try {
       const body = await req.json();
       if (body?.sampleSize && typeof body.sampleSize === 'number') {
@@ -459,6 +460,10 @@ serve(async (req) => {
       // Accept client-side numbers for faster response (before DB sync)
       if (body?.numbers && Array.isArray(body.numbers)) {
         clientNumbers = body.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 500);
+      }
+      // Strategy category filter from UI
+      if (body?.strategyFilter && typeof body.strategyFilter === 'string') {
+        strategyFilterParam = body.strategyFilter;
       }
     } catch { /* no body or invalid JSON — use default */ }
 
@@ -4445,6 +4450,34 @@ serve(async (req) => {
     });
 
     // If two strategies tie, prefer higher payout
+    // STRATEGY FILTER — if user selected a category, only keep matching strategies
+    if (strategyFilterParam) {
+      const catMap: Record<string, string[]> = {
+        setor: ['sniper','voisins','setor_oposto','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','jeu_zero','vizinhos','setor'],
+        cavalos: ['cavalos','cavalos_comp','cavalo_split'],
+        terminal: ['terminal','terminal_comp','terminal_alternation','duplo_terminal','terminais_cruzados','duzia_terminal_corr','terminal_alto_baixo'],
+        duzia: ['duzia','duzia_unica','dozen_phase','duzias','pressao_retorno','duzia_progressiva'],
+        coluna: ['coluna','coluna_comp','column_cycle','coluna_fria'],
+        cor: ['cor','cor_alternancia','cor_reversa'],
+        paridade: ['paridade','paridade_reversa'],
+        alto_baixo: ['alto_baixo','alto_baixo_reversa'],
+        fusao: ['fusao_suprema','convergencia_absoluta','matrix_fusion','archetype_fusion','combo_ouro','combo_prata'],
+        puxada: ['numeros_puxam'],
+        zero: ['pressao_zero','jeu_zero'],
+        rua: ['rua'],
+        hiper_quente: ['hiper_quente','hot_phase'],
+        sequencia: ['multiplos_seq','diferenca_const'],
+      };
+      const allowed = catMap[strategyFilterParam];
+      if (allowed) {
+        const filtered = strategies.filter(s => allowed.includes(s.type));
+        if (filtered.length > 0) {
+          strategies.length = 0;
+          strategies.push(...filtered);
+        }
+      }
+    }
+
     strategies.sort((a, b) => b.score - a.score || b.payout - a.payout);
 
     const winner = strategies[0];
