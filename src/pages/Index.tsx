@@ -312,6 +312,27 @@ const Index = () => {
 
                   {sniperData.signal && sniperData.strategy ? (
                     <div className="space-y-3">
+                      {/* BET TYPE BADGE */}
+                      <div className="flex flex-wrap gap-1.5 mb-1">
+                        {(() => {
+                          const type = sniperData.strategy.type;
+                          const betCategory = ['cor', 'paridade', 'alto_baixo'].includes(type) ? { label: 'APOSTA SIMPLES', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' }
+                            : ['coluna', 'duzia_unica', 'duzias', 'column_cycle', 'dozen_phase'].includes(type) ? { label: 'GRUPO/DÚZIA', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' }
+                            : ['sniper', 'voisins', 'setor_oposto'].includes(type) ? { label: 'SETOR/VIZINHOS', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' }
+                            : ['cavalos', 'terminal_alternation'].includes(type) ? { label: 'CAVALOS/TERMINAIS', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' }
+                            : ['numero_exato'].includes(type) ? { label: 'PLENO', color: 'bg-red-500/20 text-red-400 border-red-500/30' }
+                            : { label: 'ESTRATÉGIA IA', color: 'bg-primary/20 text-primary border-primary/30' };
+                          return (
+                            <span className={`text-[8px] px-2 py-0.5 rounded-full font-bold border ${betCategory.color}`}>
+                              {betCategory.label}
+                            </span>
+                          );
+                        })()}
+                        <span className="text-[8px] px-2 py-0.5 rounded-full font-bold bg-secondary text-muted-foreground border border-border">
+                          {sniperData.strategy.numbers.length} números • {sniperData.strategy.coverage}% cobertura
+                        </span>
+                      </div>
+
                       <div className="flex items-start gap-3">
                         <div className="text-center shrink-0">
                           <div className="text-3xl mb-1">{sniperData.strategy.emoji}</div>
@@ -327,7 +348,7 @@ const Index = () => {
                             💡 {sniperData.strategy.label}
                           </p>
                           <p className="text-[9px] text-muted-foreground mb-2">
-                            Cobertura: {sniperData.strategy.coverage}% • Payout: {sniperData.strategy.payout}x
+                            Payout: {sniperData.strategy.payout}x
                           </p>
                           <div className="mb-2">
                             <span className="text-[8px] text-muted-foreground block mb-1">🎯 NÚMEROS:</span>
@@ -350,6 +371,22 @@ const Index = () => {
                         <span className="text-[8px] text-muted-foreground">🧠 JUSTIFICATIVA:</span>
                         <p className="text-[9px] text-primary/90 italic mt-0.5">{sniperData.strategy.justification}</p>
                       </div>
+
+                      {/* ALTERNATIVE STRATEGIES */}
+                      {sniperData.allStrategies && sniperData.allStrategies.length > 1 && (
+                        <div>
+                          <span className="text-[8px] text-muted-foreground block mb-1">📋 ALTERNATIVAS:</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {sniperData.allStrategies.slice(1, 5).map((alt: any, i: number) => (
+                              <div key={i} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/70 border border-border text-[8px]">
+                                <span>{alt.emoji}</span>
+                                <span className="font-semibold text-foreground truncate max-w-[100px]">{alt.label}</span>
+                                <span className="font-mono text-muted-foreground">{alt.probability}%</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="flex flex-wrap gap-1">
                         {sniperData.signal.convergenceReasons?.slice(0, 6).map((r: string, i: number) => (
