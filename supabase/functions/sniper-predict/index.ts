@@ -95,6 +95,107 @@ const TERMINALS_MAP: Record<number, number[]> = {
 
 const FINALES_WEIGHT: Record<number, number> = {0:4,1:4,2:4,3:4,4:4,5:4,6:4,7:3,8:3,9:3};
 
+// ========================================================
+// MÓDULOS DANI GREEN — 6 Estratégias Avançadas
+// ========================================================
+
+// MÓD 1: Duplo de Terminais — pares complementares
+const TERMINAL_PAIRS: Record<number, number> = { 1:6, 6:1, 2:7, 7:2, 3:8, 8:3, 4:9, 9:4, 0:5, 5:0 };
+
+// MÓD 4: Zero Pressure — vizinhos do zero na roda
+const ZERO_NEIGHBORS_WHEEL = [32, 15, 26, 3, 35, 12, 28]; // adjacentes ao 0 no cilindro
+const ZERO_TERMINAL_NUMS = [0, 10, 20, 30];
+
+// MÓD 5: Pull Map expandido com dados do módulo do usuário
+const FULL_PULL_MAP: Record<number, number[]> = {
+  0: [10, 20, 30, 32, 15, 26, 3],
+  1: [11, 35, 16, 4, 18, 28, 27, 29, 33],
+  4: [26, 15, 18, 32, 33, 16, 8],
+  6: [8, 15, 31, 21, 22, 23],
+  7: [16, 18, 17, 30],
+  9: [34, 35, 36, 3, 16, 26, 1, 23, 24, 32, 31],
+  10: [20, 5, 18, 11, 14, 24],
+  14: [24, 21, 18, 22, 33, 2],
+  16: [24, 21, 18, 14],
+  20: [4, 14],
+  27: [28, 29, 24, 22, 26, 33, 31, 34, 35, 36],
+  30: [4, 8, 16, 9, 18, 22, 5, 25, 3],
+};
+
+// MÓD 5: Pull Terminals expandido
+const FULL_PULL_TERMINALS: Record<number, number[]> = {
+  0: [0, 2, 3, 5],
+  1: [1, 4, 5, 6],
+  7: [7, 9, 4, 0, 3, 8],
+  9: [8, 0, 6, 4, 9],
+  10: [0, 5, 8, 3, 4],
+  14: [4, 1, 5, 8],
+  16: [6, 9, 4],
+  20: [0, 4, 5, 6],
+  27: [5, 6, 7, 9, 4, 2, 3],
+  30: [0, 8, 6, 9, 2, 5, 3],
+  4: [8, 0, 4],
+  6: [4, 2, 6, 0],
+};
+
+// Detect hot terminal from last N results
+const detectHotTerminal = (nums: number[], window = 15): { terminal: number; count: number; pair: number } => {
+  const freq: Record<number, number> = {};
+  for (let t = 0; t <= 9; t++) freq[t] = 0;
+  nums.slice(0, window).forEach(n => freq[n % 10]++);
+  const sorted = Object.entries(freq).sort(([,a],[,b]) => b - a);
+  const hot = Number(sorted[0][0]);
+  return { terminal: hot, count: sorted[0][1] as number, pair: TERMINAL_PAIRS[hot] };
+};
+
+// Detect high/low bias from last N
+const detectHighLowBias = (nums: number[], window = 10): 'high' | 'low' | null => {
+  const recent = nums.slice(0, window).filter(n => n > 0);
+  const highCount = recent.filter(n => n >= 19).length;
+  const lowCount = recent.filter(n => n <= 18).length;
+  if (highCount >= window * 0.6) return 'high';
+  if (lowCount >= window * 0.6) return 'low';
+  return null;
+};
+
+// Detect zero pressure
+const detectZeroPressure = (nums: number[]): { active: boolean; delay: number; neighborsActive: number } => {
+  let delay = 0;
+  for (let i = 0; i < nums.length; i++) {
+    if (nums[i] === 0) break;
+    delay++;
+  }
+  const recent15 = nums.slice(0, 15);
+  const neighborsActive = ZERO_NEIGHBORS_WHEEL.filter(n => recent15.includes(n)).length;
+  const t0Active = ZERO_TERMINAL_NUMS.filter(n => recent15.includes(n) && n !== 0).length;
+  return { active: delay >= 15 && (neighborsActive >= 2 || t0Active >= 2), delay, neighborsActive: neighborsActive + t0Active };
+};
+
+// Detect ascending terminal sequence (Módulo 6)
+const detectAscendingTerminals = (nums: number[]): { active: boolean; sequence: number[]; nextTerminal: number | null } => {
+  if (nums.length < 3) return { active: false, sequence: [], nextTerminal: null };
+  const terms = nums.slice(0, 5).map(n => n % 10);
+  // Check ascending
+  if (terms.length >= 3 && terms[2] < terms[1] && terms[1] < terms[0]) {
+    const next = (terms[0] + 1) % 10;
+    return { active: true, sequence: [terms[2], terms[1], terms[0]], nextTerminal: next };
+  }
+  // Check descending
+  if (terms.length >= 3 && terms[2] > terms[1] && terms[1] > terms[0]) {
+    const next = (terms[0] - 1 + 10) % 10;
+    return { active: true, sequence: [terms[2], terms[1], terms[0]], nextTerminal: next };
+  }
+  // Check dozen progression
+  const dzs = nums.slice(0, 3).filter(n => n > 0).map(n => n <= 12 ? 1 : n <= 24 ? 2 : 3);
+  if (dzs.length === 3 && dzs[2] === 1 && dzs[1] === 2 && dzs[0] === 3) {
+    return { active: true, sequence: dzs, nextTerminal: null }; // D1→D2→D3 complete, expect D1
+  }
+  return { active: false, sequence: [], nextTerminal: null };
+};
+
+// REED rule: max 4 rounds without hit, then stop
+const REED_MAX = 4;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -233,6 +334,36 @@ serve(async (req) => {
 
     if (numbers.length < 15) {
       return json({ signal: null, mode: 'waiting', message: 'Aguardando dados...', layerResults: null, memoryWindows: null, aiLearnings: [] });
+    }
+
+    // ========================================================
+    // MÓDULOS DANI GREEN — Detecção de Padrões
+    // ========================================================
+    const daniGreen = {
+      mod1: detectHotTerminal(numbers, 15),
+      mod2: detectHighLowBias(numbers, 10),
+      mod4: detectZeroPressure(numbers),
+      mod5LastNum: numbers[0],
+      mod5Pull: FULL_PULL_MAP[numbers[0]] || PULL_MAP[numbers[0]] || [],
+      mod5PullTerminals: FULL_PULL_TERMINALS[numbers[0]] || PULL_TERMINALS[numbers[0]] || [],
+      mod6: detectAscendingTerminals(numbers),
+    };
+
+    // Mod 1 AI learning
+    if (daniGreen.mod1.count >= 4) {
+      aiLearnings.push(`🎰 MÓD1 Duplo Terminal: T${daniGreen.mod1.terminal}+T${daniGreen.mod1.pair} quente (${daniGreen.mod1.count}x em 15)`);
+    }
+    if (daniGreen.mod2) {
+      aiLearnings.push(`📊 MÓD2 Terminais ${daniGreen.mod2 === 'high' ? 'ALTOS' : 'BAIXOS'}: mesa puxando ${daniGreen.mod2 === 'high' ? 'acima de 18' : 'abaixo de 18'}`);
+    }
+    if (daniGreen.mod4.active) {
+      aiLearnings.push(`🟢 MÓD4 Pressão Zero: ${daniGreen.mod4.delay} giros sem zero, ${daniGreen.mod4.neighborsActive} vizinhos ativos`);
+    }
+    if (daniGreen.mod5Pull.length > 0) {
+      aiLearnings.push(`🧲 MÓD5 Puxada: ${daniGreen.mod5LastNum} puxa ${daniGreen.mod5Pull.slice(0,5).join(',')}`);
+    }
+    if (daniGreen.mod6.active) {
+      aiLearnings.push(`📈 MÓD6 Crescente: T${daniGreen.mod6.sequence.join('→T')}${daniGreen.mod6.nextTerminal !== null ? ` → próximo T${daniGreen.mod6.nextTerminal}` : ' → D1 retorno'}`);
     }
 
     // ========================================================
@@ -2282,12 +2413,12 @@ serve(async (req) => {
       }
       // COMMUNITY PULL MAP: static documented correlations from Playtech BR community
       const lastNum = numbers[0];
-      const pullTargets = PULL_MAP[lastNum];
+      const pullTargets = FULL_PULL_MAP[lastNum] || PULL_MAP[lastNum];
       if (pullTargets && pullTargets.includes(n)) {
         s += 4; r.push(`📚 Puxa(${lastNum}→${n})`);
       }
       // COMMUNITY PULL TERMINALS: boost all numbers of pulled terminal
-      const pullTerms = PULL_TERMINALS[lastNum];
+      const pullTerms = FULL_PULL_TERMINALS[lastNum] || PULL_TERMINALS[lastNum];
       if (pullTerms) {
         const nTerm = n % 10;
         if (pullTerms.includes(nTerm)) {
@@ -2307,6 +2438,25 @@ serve(async (req) => {
       if (FINALES_WEIGHT[nFinal] === 4) { s += 0.5; } // slight boost for more probable finals
       // TERMINAL PROGRESSION: predicted next terminal from escalation
       if (terminalProgression.predictedNext !== null && n % 10 === terminalProgression.predictedNext) { s += 2.5; r.push(`🐎 Escada T${terminalProgression.predictedNext}`); }
+      // DANI GREEN MÓD1: Duplo Terminal boost
+      if (n % 10 === daniGreen.mod1.terminal || n % 10 === daniGreen.mod1.pair) {
+        const mod1Boost = daniGreen.mod1.count >= 5 ? 4 : daniGreen.mod1.count >= 3 ? 2.5 : 1.5;
+        s += mod1Boost; r.push(`🎰 DuploT${daniGreen.mod1.terminal}+T${daniGreen.mod1.pair}`);
+      }
+      // DANI GREEN MÓD2: Alto/Baixo terminal bias
+      if (daniGreen.mod2 === 'high' && n >= 19) { s += 1.5; r.push('📊 Mod2 Alto'); }
+      if (daniGreen.mod2 === 'low' && n >= 1 && n <= 18) { s += 1.5; r.push('📊 Mod2 Baixo'); }
+      // DANI GREEN MÓD4: Zero pressure
+      if (daniGreen.mod4.active && (n === 0 || ZERO_NEIGHBORS_WHEEL.includes(n) || ZERO_TERMINAL_NUMS.includes(n))) {
+        s += daniGreen.mod4.delay >= 20 ? 5 : 3; r.push(`🟢 Pressão Zero(${daniGreen.mod4.delay}r)`);
+      }
+      // DANI GREEN MÓD5: Full pull map
+      if (daniGreen.mod5Pull.includes(n)) { s += 3.5; r.push(`🧲 Mod5 Puxa(${daniGreen.mod5LastNum}→${n})`); }
+      if (daniGreen.mod5PullTerminals.includes(n % 10)) { s += 2; r.push(`🧲 Mod5 PuxaT${n%10}`); }
+      // DANI GREEN MÓD6: Crescente
+      if (daniGreen.mod6.active && daniGreen.mod6.nextTerminal !== null && n % 10 === daniGreen.mod6.nextTerminal) {
+        s += 3; r.push(`📈 Mod6 Crescente→T${daniGreen.mod6.nextTerminal}`);
+      }
       // DIAMOND DEFLECTORS: if current diamond zone predicts a sector, boost numbers in that sector
       if (numbers.length >= 2) {
         const dfFromIdx = wheelIdx(numbers[0]);
@@ -2892,6 +3042,116 @@ serve(async (req) => {
     }
 
     // 22. CONVERGÊNCIA MATRICIAL — combines predicted sector + dozen + terminal from transition matrices
+
+    // ==========================================
+    // DANI GREEN STRATEGIES (Módulos 1-6)
+    // ==========================================
+
+    // MÓD 1: Duplo de Terminais
+    if (daniGreen.mod1.count >= 2) {
+      const t1 = daniGreen.mod1.terminal;
+      const t2 = daniGreen.mod1.pair;
+      const mod1Nums = [...(TERMINALS_MAP[t1] || []), ...(TERMINALS_MAP[t2] || [])];
+      const mod1Score = sumScores(mod1Nums) + daniGreen.mod1.count * 3;
+      const mod1Bt = backtestSet(mod1Nums);
+      strategies.push({
+        type: 'duplo_terminal', label: `🎰 Duplo T${t1}+T${t2}`, emoji: '🎰',
+        numbers: mod1Nums, coverage: (mod1Nums.length / 37) * 100, payout: Math.round(36 / mod1Nums.length),
+        score: mod1Score + mod1Bt * 25 + daniGreen.mod1.count * 4,
+        probability: Math.min(98, Math.round(45 + mod1Score * 1.8 + mod1Bt * 30 + daniGreen.mod1.count * 3)),
+        justification: `MÓD1 Dani Green: Terminal ${t1} quente (${daniGreen.mod1.count}x/15) + par T${t2}. Cobertura: ${mod1Nums.length} números. REED: max ${REED_MAX} rodadas.`,
+      });
+    }
+
+    // MÓD 2: Terminais Altos/Baixos
+    if (daniGreen.mod2) {
+      const isHi = daniGreen.mod2 === 'high';
+      const mod2Nums = isHi
+        ? [19, 29, 26, 36, 27, 28, 20, 21, 22, 23, 24, 25, 30, 31, 32, 33, 34, 35]
+        : Array.from({ length: 18 }, (_, i) => i + 1);
+      // Filter to hot terminals within the bias
+      const hotT = daniGreen.mod1.terminal;
+      const pairT = daniGreen.mod1.pair;
+      const mod2Filtered = mod2Nums.filter(n => n % 10 === hotT || n % 10 === pairT);
+      if (mod2Filtered.length >= 3) {
+        const mod2Score = sumScores(mod2Filtered) + 5;
+        const mod2Bt = backtestSet(mod2Filtered);
+        strategies.push({
+          type: 'terminal_alto_baixo', label: `📊 Terminais ${isHi ? 'Altos' : 'Baixos'} T${hotT}+T${pairT}`, emoji: '📊',
+          numbers: mod2Filtered, coverage: (mod2Filtered.length / 37) * 100, payout: Math.round(36 / mod2Filtered.length),
+          score: mod2Score + mod2Bt * 22 + 8,
+          probability: Math.min(98, Math.round(48 + mod2Score * 2 + mod2Bt * 30)),
+          justification: `MÓD2: Mesa puxando ${isHi ? 'ALTO' : 'BAIXO'} + Terminais T${hotT}+T${pairT} filtrados. ${mod2Filtered.length} alvos.`,
+        });
+      }
+    }
+
+    // MÓD 3: Poucas Fichas (Terminal único conservador)
+    {
+      const singleT = daniGreen.mod1.terminal;
+      const mod3Nums = TERMINALS_MAP[singleT] || [];
+      if (mod3Nums.length >= 3) {
+        const mod3Score = sumScores(mod3Nums) + daniGreen.mod1.count * 2;
+        const mod3Bt = backtestSet(mod3Nums);
+        strategies.push({
+          type: 'poucas_fichas', label: `💰 Conservador T${singleT}`, emoji: '💰',
+          numbers: mod3Nums, coverage: (mod3Nums.length / 37) * 100, payout: Math.round(36 / mod3Nums.length),
+          score: mod3Score + mod3Bt * 20 + (daniGreen.mod1.count >= 4 ? 10 : 0),
+          probability: Math.min(98, Math.round(35 + mod3Score * 2.5 + mod3Bt * 35)),
+          justification: `MÓD3 Poucas Fichas: Terminal ${singleT} (${mod3Nums.join(',')}) com ${mod3Nums.length} fichas. Stop loss: 3 rounds. Meta: +12 fichas.`,
+        });
+      }
+    }
+
+    // MÓD 4: Pressão do Zero
+    if (daniGreen.mod4.active) {
+      const mod4Nums = [0, ...ZERO_NEIGHBORS_WHEEL, ...ZERO_TERMINAL_NUMS.filter(n => n !== 0)];
+      const uniqueMod4 = [...new Set(mod4Nums)];
+      const mod4Score = sumScores(uniqueMod4) + daniGreen.mod4.delay * 0.5 + daniGreen.mod4.neighborsActive * 3;
+      const mod4Bt = backtestSet(uniqueMod4);
+      strategies.push({
+        type: 'pressao_zero', label: `🟢 Pressão Zero (${daniGreen.mod4.delay}r)`, emoji: '🟢',
+        numbers: uniqueMod4, coverage: (uniqueMod4.length / 37) * 100, payout: Math.round(36 / uniqueMod4.length),
+        score: mod4Score + mod4Bt * 25 + (daniGreen.mod4.delay >= 20 ? 15 : 8),
+        probability: Math.min(98, Math.round(40 + mod4Score * 1.5 + mod4Bt * 30 + daniGreen.mod4.delay * 0.8)),
+        justification: `MÓD4: Zero ausente há ${daniGreen.mod4.delay} giros. ${daniGreen.mod4.neighborsActive} vizinhos ativos. Gatilho confirmado!`,
+      });
+    }
+
+    // MÓD 5: Números que se Puxam (estratégia dedicada)
+    if (daniGreen.mod5Pull.length >= 3) {
+      const mod5Nums = [...new Set([...daniGreen.mod5Pull])].slice(0, 12);
+      // Also add vizinhos na roda de cada puxado
+      const mod5WithNeighbors: number[] = [...mod5Nums];
+      mod5Nums.slice(0, 4).forEach(n => {
+        getNeighbors(n, 1).forEach(nb => { if (!mod5WithNeighbors.includes(nb)) mod5WithNeighbors.push(nb); });
+      });
+      const finalMod5 = mod5WithNeighbors.slice(0, 15);
+      const mod5Score = sumScores(finalMod5) + daniGreen.mod5Pull.length * 2;
+      const mod5Bt = backtestSet(finalMod5);
+      strategies.push({
+        type: 'numeros_puxam', label: `🧲 Puxada do ${daniGreen.mod5LastNum}`, emoji: '🧲',
+        numbers: finalMod5, coverage: (finalMod5.length / 37) * 100, payout: Math.round(36 / finalMod5.length),
+        score: mod5Score + mod5Bt * 22 + daniGreen.mod5Pull.length * 1.5,
+        probability: Math.min(98, Math.round(45 + mod5Score * 1.5 + mod5Bt * 28)),
+        justification: `MÓD5: ${daniGreen.mod5LastNum} puxa ${daniGreen.mod5Pull.slice(0,6).join(',')} + vizinhos. REED: max ${REED_MAX} rodadas sem acerto.`,
+      });
+    }
+
+    // MÓD 6: Números Crescentes
+    if (daniGreen.mod6.active && daniGreen.mod6.nextTerminal !== null) {
+      const mod6TermNums = TERMINALS_MAP[daniGreen.mod6.nextTerminal] || [];
+      const mod6Score = sumScores(mod6TermNums) + 8;
+      const mod6Bt = backtestSet(mod6TermNums);
+      strategies.push({
+        type: 'crescente', label: `📈 Crescente → T${daniGreen.mod6.nextTerminal}`, emoji: '📈',
+        numbers: mod6TermNums, coverage: (mod6TermNums.length / 37) * 100, payout: Math.round(36 / mod6TermNums.length),
+        score: mod6Score + mod6Bt * 25 + 10,
+        probability: Math.min(98, Math.round(42 + mod6Score * 2 + mod6Bt * 32)),
+        justification: `MÓD6: Sequência crescente T${daniGreen.mod6.sequence.join('→T')} detectada → próximo T${daniGreen.mod6.nextTerminal}. Max 2 tentativas.`,
+      });
+    }
+
     if (transitionMatrix.predictedSector && transitionMatrix.predictedDozen && transitionMatrix.predictedTerminal !== null) {
       const sectorPool = transitionMatrix.predictedSector === 'Voisins' ? VOISINS : transitionMatrix.predictedSector === 'Tiers' ? TIERS : ORPHELINS;
       const dozenPool = Array.from({ length: 12 }, (_, i) => (transitionMatrix.predictedDozen! - 1) * 12 + i + 1);
