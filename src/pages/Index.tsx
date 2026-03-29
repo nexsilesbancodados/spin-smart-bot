@@ -230,21 +230,6 @@ const Index = () => {
             <CircleDot className="w-5 h-5 text-primary animate-spin-slow" />
             <span className="font-display text-sm tracking-[0.15em] text-primary font-bold hidden sm:inline">ROULETTE PRO</span>
             <span className="text-[7px] px-1.5 py-0.5 bg-primary/20 rounded-full text-primary font-bold border border-primary/30">AI 24H</span>
-            {autoLearnStatus !== 'idle' && (
-              <motion.span
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className={`text-[7px] px-1.5 py-0.5 rounded-full font-bold border flex items-center gap-1 ${
-                  autoLearnStatus === 'learning' ? 'bg-primary/20 text-primary border-primary/30' :
-                  autoLearnStatus === 'analyzing' ? 'bg-accent/20 text-accent border-accent/30' :
-                  'bg-accent/20 text-accent border-accent/30'
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                {autoLearnStatus === 'learning' ? '🧠' : autoLearnStatus === 'analyzing' ? '🔍' : '🎯'}
-                {autoLearnStatus === 'learning' ? 'APRENDENDO' : autoLearnStatus === 'analyzing' ? 'ANALISANDO' : 'TESTANDO'}
-              </motion.span>
-            )}
           </div>
 
           <div className="relative shrink-0">
@@ -298,35 +283,7 @@ const Index = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto p-3 space-y-3">
 
-          {/* 🧠 CONTINUOUS LEARNING STATUS BAR */}
-          <div className="flex items-center justify-between bg-card/80 rounded-lg border border-border px-3 py-1.5 text-[9px]">
-            <div className="flex items-center gap-2">
-              <Brain className={`w-3 h-3 text-primary ${autoLearnStatus !== 'idle' ? 'animate-spin' : ''}`} />
-              <span className="text-muted-foreground font-medium">Motor IA Contínuo</span>
-              <span className="text-primary font-bold">Ciclo #{autoLearnCycle}</span>
-              <span className="text-muted-foreground">•</span>
-              <span className={`font-bold ${autoLearnStatus !== 'idle' ? 'text-primary' : 'text-muted-foreground'}`}>
-                {autoLearnStatus === 'idle' ? '⏳ Aguardando próximo ciclo' :
-                 autoLearnStatus === 'learning' ? '🧠 Aprendendo com histórico + erros...' :
-                 autoLearnStatus === 'analyzing' ? '🔍 Analisando padrões na mesa...' :
-                 '🎯 Backtesting previsões...'}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              {lastAutoLearnTime && (
-                <span className="text-muted-foreground font-mono">
-                  Último: {lastAutoLearnTime.toLocaleTimeString('pt-BR')}
-                </span>
-              )}
-              <div className="flex gap-0.5">
-                {[0,1,2].map(i => (
-                  <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${
-                    autoLearnStatus !== 'idle' && autoLearnCycle % 3 === i ? 'bg-primary scale-125' : 'bg-muted-foreground/30'
-                  }`} />
-                ))}
-              </div>
-            </div>
-          </div>
+          {/* Motor IA contínuo rodando internamente — sem UI visível */}
           {/* 🔬 SCANNER 500 */}
           <Scanner500 layerResults={sniperData?.layerResults || null} isScanning={!!sniperData} />
 
