@@ -366,6 +366,7 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
 
                   {/* Números cobertos */}
                   <div className="px-4 py-2.5 border-t border-primary/15">
+                    <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider block mb-1.5">📍 Números para apostar:</span>
                     <div className="flex flex-wrap gap-1">
                       {sniperData.strategy.numbers.slice(0, 14).map((n: number, i: number) => {
                         const isProt = PROTECTION_NUMBERS.includes(n);
@@ -383,13 +384,26 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                     </div>
                   </div>
 
+                  {/* COMO APOSTAR — Instrução clara */}
+                  <div className="px-4 py-2.5 border-t border-primary/15 bg-primary/5">
+                    <div className="flex items-start gap-2">
+                      <span className="text-base mt-0.5">👆</span>
+                      <div>
+                        <span className="text-[9px] font-black text-primary tracking-wide block mb-0.5">COMO APOSTAR:</span>
+                        <p className="text-[10px] text-foreground/90 leading-relaxed">
+                          {getHowToBet(sniperData.strategy.type, sniperData.strategy.numbers, mainNumber)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Stats compactos */}
-                  <div className="flex items-center gap-2 px-4 py-1.5 border-t border-primary/15 text-[9px] text-muted-foreground">
-                    <span>Payout: <strong className="text-foreground">{sniperData.strategy.payout}x</strong></span>
+                  <div className="flex items-center gap-2 px-4 py-2 border-t border-primary/15 text-[9px] text-muted-foreground">
+                    <span>💰 Ganho: <strong className="text-primary">{sniperData.strategy.payout}x</strong> sua aposta</span>
                     <span className="text-border">•</span>
-                    <span><strong className="text-foreground">{sniperData.strategy.numbers.length}</strong> núm.</span>
+                    <span>🎯 <strong className="text-foreground">{sniperData.strategy.numbers.length}</strong> números</span>
                     <span className="text-border">•</span>
-                    <span><strong className="text-foreground">{sniperData.strategy.coverage}%</strong> cob.</span>
+                    <span>📊 <strong className="text-foreground">{sniperData.strategy.coverage}%</strong> da mesa</span>
                     {sniperData.mesaMode && (
                       <>
                         <span className="text-border">•</span>
