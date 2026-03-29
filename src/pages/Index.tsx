@@ -1412,7 +1412,7 @@ const Index = () => {
                     <span className="text-[8px] text-muted-foreground">{l.label}</span>
                   </div>
                 ))}
-                <span className="text-[7px] text-muted-foreground/60 ml-auto">Clique em um número para analisar</span>
+                <span className="text-[7px] text-muted-foreground/60 ml-auto">Clique para filtrar • Duplo-clique para DNA completo</span>
               </div>
             </div>
 
