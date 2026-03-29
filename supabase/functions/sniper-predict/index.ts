@@ -1987,7 +1987,7 @@ serve(async (req) => {
     }));
 
     // Final probability = winner's probability boosted by layer convergence
-    const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 800)));
+    const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 900)));
     
     // Add strategy performance learnings
     const winnerPerf = strategyPerformance[winner.type];
@@ -2030,7 +2030,7 @@ serve(async (req) => {
       : `👁️ Analisando... ${totalLayers}/1100 — aguardando convergência`;
 
     const diagnostic = mode === 'sniper'
-      ? `Convergência Milenária (1000 camadas): ${winner.justification}`
+      ? `Convergência Milenária (1100 camadas): ${winner.justification}`
       : mode === 'alert'
       ? `Quase lá: ${winner.justification}`
       : `Análise em andamento: ${winner.justification}`;
