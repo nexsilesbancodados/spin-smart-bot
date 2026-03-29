@@ -142,22 +142,47 @@ const Index = () => {
 
   useEffect(() => { loadInsights(); loadLearned(); }, [loadInsights, loadLearned]);
 
-  // Auto-learn continuously every 2 minutes (silent, no user action needed)
+  // CONTINUOUS AUTO-LEARNING ENGINE — runs non-stop cycling through different learning tasks
   const autoLearnRef = useRef<NodeJS.Timeout | null>(null);
+  const cycleRef = useRef(0);
   useEffect(() => {
-    const runAutoLearn = async () => {
+    const runContinuousLearn = async () => {
+      const cycle = cycleRef.current;
+      cycleRef.current++;
+      setAutoLearnCycle(cycle);
+
       try {
-        console.log('[AutoLearn] 🧠 Aprendizado automático silencioso...');
-        await supabase.functions.invoke('ai-learn');
+        if (cycle % 3 === 0) {
+          // Cycle 0,3,6,9... → Full AI Learn (deep learning + prediction accuracy analysis)
+          setAutoLearnStatus('learning');
+          console.log(`[AutoLearn] 🧠 Ciclo ${cycle}: Aprendizado profundo...`);
+          await supabase.functions.invoke('ai-learn');
+        } else if (cycle % 3 === 1) {
+          // Cycle 1,4,7,10... → Pattern Analysis (detect new patterns)
+          setAutoLearnStatus('analyzing');
+          console.log(`[AutoLearn] 🔍 Ciclo ${cycle}: Análise de padrões...`);
+          await supabase.functions.invoke('auto-analyze-patterns');
+        } else {
+          // Cycle 2,5,8,11... → Sniper backtesting (test predictions against reality)
+          setAutoLearnStatus('backtesting');
+          console.log(`[AutoLearn] 🎯 Ciclo ${cycle}: Backtesting sniper...`);
+          await supabase.functions.invoke('sniper-predict');
+        }
+
         await Promise.all([loadInsights(), loadLearned()]);
-        console.log('[AutoLearn] ✅ Concluído.');
-      } catch (err) { console.error('[AutoLearn] Erro:', err); }
+        setLastAutoLearnTime(new Date());
+        console.log(`[AutoLearn] ✅ Ciclo ${cycle} concluído.`);
+      } catch (err) {
+        console.error(`[AutoLearn] ❌ Ciclo ${cycle} erro:`, err);
+      } finally {
+        setAutoLearnStatus('idle');
+      }
     };
 
-    // First learn after 15s
-    const initialTimeout = setTimeout(runAutoLearn, 15_000);
-    // Then every 2 minutes (continuous learning)
-    autoLearnRef.current = setInterval(runAutoLearn, 2 * 60 * 1000);
+    // First run after 10s
+    const initialTimeout = setTimeout(runContinuousLearn, 10_000);
+    // Then every 45 seconds (continuous non-stop learning)
+    autoLearnRef.current = setInterval(runContinuousLearn, 45_000);
 
     return () => {
       clearTimeout(initialTimeout);
