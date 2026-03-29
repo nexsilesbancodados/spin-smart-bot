@@ -12,9 +12,9 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+    const deepseekKey = Deno.env.get("DEEPSEEK_API_KEY");
     
-    if (!lovableKey) throw new Error("LOVABLE_API_KEY not configured");
+    if (!deepseekKey) throw new Error("DEEPSEEK_API_KEY not configured");
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -64,15 +64,15 @@ Para cada padrão encontrado, retorne um JSON array com objetos contendo:
 - numbers_involved: array de números relevantes
 - recommendation: sugestão de aposta baseada no padrão`;
 
-    // 3. Call Lovable AI
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // 3. Call DeepSeek AI
+    const aiRes = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${lovableKey}`,
+        Authorization: `Bearer ${deepseekKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "deepseek-chat",
         messages: [
           { role: "system", content: "Você é um analista estatístico especialista em roleta. Responda APENAS com um JSON array válido, sem markdown, sem texto extra. Cada objeto deve ter: pattern_type, description, confidence, numbers_involved, recommendation." },
           { role: "user", content: prompt },
