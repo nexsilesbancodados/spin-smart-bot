@@ -4421,53 +4421,78 @@ serve(async (req) => {
       score: +s.score.toFixed(1), probability: s.probability,
     }));
 
-    // Final probability = ULTRA-CALIBRATED for maximum accuracy
-    // Core: winner probability weighted by convergence ratio
-    let finalProbability = winner.probability * (totalLayers / 1200);
+    // Final probability = ULTRA-CALIBRATED V2 — maximum accuracy
+    // Base: winner probability × convergence ratio (normalized to 1700 layers)
+    let finalProbability = winner.probability * Math.min(1.2, totalLayers / 1100);
     
-    // Calibrate with historical performance (stronger weight)
+    // HISTORICAL PERFORMANCE CALIBRATION — 50% weight on actual win rate (stronger than before)
     const winnerPerfCal = strategyPerformance[winner.type];
     if (winnerPerfCal && winnerPerfCal.total >= 5) {
-      finalProbability = finalProbability * 0.6 + (winnerPerfCal.winRate * 100) * 0.4;
+      const histWeight = Math.min(0.5, winnerPerfCal.total / 40); // more data = more weight on history
+      finalProbability = finalProbability * (1 - histWeight) + (winnerPerfCal.winRate * 100) * histWeight;
+      // Penalize strategies that claim high prob but rarely hit (calibration check)
+      if (winnerPerfCal.winRate < 0.15 && winner.probability > 70) {
+        finalProbability -= 15; // overconfident strategy
+        aiLearnings.push(`⚠️ Calibração: ${winner.label} prometia ${winner.probability}% mas só acerta ${(winnerPerfCal.winRate * 100).toFixed(0)}%`);
+      }
     }
     
-    // CONVERGÊNCIA ABSOLUTA gets special treatment — if it wins, trust the multi-dimensional score
+    // CONVERGÊNCIA ABSOLUTA gets special treatment — multi-dimensional confirmation
     if (winner.type === 'convergencia_absoluta') {
-      // The probability is already based on dimension count, boost further if conditions are pristine
       const dimCount = (winner.justification.match(/(\d+) dimensões/) || [])[1];
       const dims = parseInt(dimCount || '5');
-      if (dims >= 7) finalProbability = Math.max(finalProbability, 92);
-      else if (dims >= 6) finalProbability = Math.max(finalProbability, 85);
-      else if (dims >= 5) finalProbability = Math.max(finalProbability, 78);
+      if (dims >= 8) finalProbability = Math.max(finalProbability, 95);
+      else if (dims >= 7) finalProbability = Math.max(finalProbability, 90);
+      else if (dims >= 6) finalProbability = Math.max(finalProbability, 83);
+      else if (dims >= 5) finalProbability = Math.max(finalProbability, 76);
     }
     
-    // Dealer consistency boost
-    if (arcStdDev < 1.5) finalProbability += 8;
-    else if (arcStdDev < 2) finalProbability += 5;
-    else if (arcStdDev < 3) finalProbability += 3;
+    // COMBO DETECTION BOOST — if winner numbers have combo flags (OURO = max boost)
+    const winnerNumScores = numScores.filter(ns => winner.numbers.includes(ns.num));
+    const hasComboOuro = winnerNumScores.some(ns => ns.reasons.some(r => r.includes('COMBO OURO')));
+    const hasComboPrata = winnerNumScores.some(ns => ns.reasons.some(r => r.includes('COMBO PRATA')));
+    if (hasComboOuro) { finalProbability += 10; aiLearnings.push('👑 COMBO OURO DETECTADO: F5+C1+S3 — confiança máxima'); }
+    else if (hasComboPrata) { finalProbability += 6; aiLearnings.push('🥈 COMBO PRATA: F1+C2+G4 — boa confiança'); }
     
-    // Entropy calibration (stronger)
-    if (sessionEntropy < 0.35) finalProbability += 8; // ultra concentrated
-    else if (sessionEntropy < 0.5) finalProbability += 5;
-    else if (sessionEntropy > 0.85) finalProbability -= 12;
-    else if (sessionEntropy > 0.75) finalProbability -= 6;
+    // Dealer consistency boost (stronger for mechanical dealers)
+    if (arcStdDev < 1.5) finalProbability += 10;
+    else if (arcStdDev < 2) finalProbability += 7;
+    else if (arcStdDev < 3) finalProbability += 4;
+    else if (arcStdDev > 6) finalProbability -= 5; // chaotic dealer penalty
+    
+    // Entropy calibration (stronger gating)
+    if (sessionEntropy < 0.3) finalProbability += 10; // ultra concentrated = ideal
+    else if (sessionEntropy < 0.5) finalProbability += 6;
+    else if (sessionEntropy > 0.85) finalProbability -= 15; // high dispersion = bad
+    else if (sessionEntropy > 0.75) finalProbability -= 8;
+    
+    // Entropy DRIFT bonus — session organizing = great moment
+    if (isEntropyDroppingConsistently) finalProbability += 5;
     
     // Kelly alignment
-    if (kellyBetting.unitMultiplier >= 3) finalProbability += 4;
-    else if (kellyBetting.unitMultiplier <= 0.5) finalProbability -= 5;
+    if (kellyBetting.unitMultiplier >= 3) finalProbability += 5;
+    else if (kellyBetting.unitMultiplier <= 0.5) finalProbability -= 6;
     
-    // Randomness guard
-    if (randomnessIndex.overall >= 70) finalProbability -= 10;
-    else if (randomnessIndex.overall >= 55) finalProbability -= 5;
-    else if (randomnessIndex.overall < 30) finalProbability += 5;
+    // Randomness guard (stronger)
+    if (randomnessIndex.overall >= 75) finalProbability -= 15;
+    else if (randomnessIndex.overall >= 60) finalProbability -= 8;
+    else if (randomnessIndex.overall >= 50) finalProbability -= 4;
+    else if (randomnessIndex.overall < 25) finalProbability += 6; // very stable
     
     // Consecutive hit streak boost
     const winnerChBoost = consecutiveHitBoost[winner.type] || 0;
-    if (winnerChBoost >= 24) finalProbability += 8; // 3+ consecutive hits
-    else if (winnerChBoost >= 16) finalProbability += 5;
+    if (winnerChBoost >= 24) finalProbability += 10; // 3+ consecutive hits
+    else if (winnerChBoost >= 16) finalProbability += 6;
+    
+    // MULTIPLE SIGNAL DENSITY: if top number has 5+ distinct signal categories, boost
+    if (numScores.length > 0) {
+      const topReasonCategories = new Set(numScores[0].reasons.map(r => r.split(':')[0].replace(/[^a-zA-Z]/g, '')));
+      if (topReasonCategories.size >= 6) finalProbability += 6;
+      else if (topReasonCategories.size >= 5) finalProbability += 3;
+    }
     
     // Cap
-    finalProbability = Math.min(99, Math.max(25, Math.round(finalProbability)));
+    finalProbability = Math.min(99, Math.max(20, Math.round(finalProbability)));
     
     // Add strategy performance learnings
     const winnerPerf = strategyPerformance[winner.type];
