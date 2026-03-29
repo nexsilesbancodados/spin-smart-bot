@@ -1558,7 +1558,7 @@ serve(async (req) => {
     };
 
     if (dealerChanged) {
-      return json({ signal: null, mode: 'recalibrating', message: '🔄 Novo Dealer: Recalibrando...', ...baseResponse, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
+      return json({ signal: null, mode: 'recalibrating', message: '🔄 Novo Dealer: Recalibrando...', ...baseResponse, memoryWindows, aiLearnings, randomnessIndex, kellyBetting, dealerBiometrics, diamondDeflection: diamondDeflection.slice(0, 4), deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
     }
 
     // CHAOS AUTO-CALIBRATION: If dealer is chaotic AND dispersing wildly, pause signals

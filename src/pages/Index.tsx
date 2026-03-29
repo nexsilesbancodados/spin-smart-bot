@@ -721,7 +721,7 @@ const Index = () => {
                 <Eye className="w-4 h-4 text-blue-400" />
                 <span className="font-display text-[10px] tracking-[0.15em] font-bold text-blue-400">MEMÓRIA PROFUNDA & FÍSICA AVANÇADA</span>
                 <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold ml-auto">
-                  1100 CAMADAS
+                  1500 CAMADAS
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
