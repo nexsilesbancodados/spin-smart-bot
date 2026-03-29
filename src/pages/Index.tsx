@@ -470,11 +470,14 @@ const Index = () => {
 
           {/* ─── SEÇÃO 3: JOGADAS ALTERNATIVAS ─── */}
           {sniperData?.topAlternatives?.length > 0 && (
-            <div className="bg-card/90 rounded-xl border border-border p-4">
+            <div className="bg-gradient-card rounded-xl border border-border/60 p-4 relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
               <div className="flex items-center gap-2 mb-3">
-                <BarChart3 className="w-4 h-4 text-cyan-400" />
-                <span className="font-display text-[10px] tracking-[0.15em] font-bold text-cyan-400">JOGADAS ALTERNATIVAS</span>
-                <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold">
+                <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
+                  <BarChart3 className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <span className="font-display text-[10px] tracking-[0.2em] font-bold text-primary text-glow-cyan">JOGADAS ALTERNATIVAS</span>
+                <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-bold font-mono">
                   TOP {sniperData.topAlternatives.length}
                 </span>
               </div>
