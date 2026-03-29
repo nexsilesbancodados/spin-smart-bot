@@ -1227,7 +1227,8 @@ const Index = () => {
                             <motion.div key={`${rowIdx}-${i}-${n}`}
                               initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: isDimmed ? 0.25 : 1 }}
                               transition={{ duration: 0.12, delay: i * 0.005 }}
-                              onClick={() => setSelectedNum(selectedNum === n ? null : n)}
+                              onClick={() => { setSelectedNum(selectedNum === n ? null : n); }}
+                              onDoubleClick={() => { setDnaNumber(n); setDnaOpen(true); }}
                               className={`w-[32px] h-[32px] rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm transition-all cursor-pointer border
                                 ${isSelected ? 'ring-2 ring-primary scale-110 bg-primary text-primary-foreground border-primary' : isDimmed ? `${colorClass(n)} border-white/5` : `${colorClass(n)} border-white/10 hover:scale-110`}`}>
                               {n}
