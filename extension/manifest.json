@@ -11,7 +11,7 @@
   "content_scripts": [
     {
       "matches": ["*://ona.bet.br/*", "*://*.ona.bet.br/*"],
-      "js": ["content.js"],
+      "js": ["content.js", "autobet.js"],
       "run_at": "document_idle",
       "all_frames": true
     }

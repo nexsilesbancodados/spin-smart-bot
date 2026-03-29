@@ -5,7 +5,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 340px;
+      width: 380px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: #0a0a0a;
       color: #e0e0e0;
@@ -16,12 +16,28 @@
       text-align: center;
       border-bottom: 1px solid #333;
     }
-    .header h1 {
-      font-size: 16px;
-      color: #00ff88;
-      margin-bottom: 4px;
-    }
+    .header h1 { font-size: 16px; color: #00ff88; margin-bottom: 4px; }
     .header p { font-size: 11px; color: #888; }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #333;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: #111;
+      color: #666;
+      transition: all 0.2s;
+    }
+    .tab.active { color: #00ff88; border-bottom: 2px solid #00ff88; background: #1a1a1a; }
+    .tab:hover { color: #ccc; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
     .status {
       display: flex;
       align-items: center;
@@ -52,7 +68,7 @@
       display: block;
       margin-bottom: 6px;
     }
-    input[type="text"] {
+    input[type="text"], input[type="number"] {
       width: 100%;
       padding: 8px 10px;
       background: #1a1a1a;
@@ -61,8 +77,9 @@
       color: #fff;
       font-size: 12px;
       outline: none;
+      margin-bottom: 6px;
     }
-    input[type="text"]:focus { border-color: #00ff88; }
+    input:focus { border-color: #00ff88; }
     .btn {
       width: 100%;
       padding: 10px;
@@ -78,26 +95,29 @@
     .btn-primary { background: #00ff88; color: #000; }
     .btn-danger { background: #ff4444; color: #fff; }
     .btn-secondary { background: #333; color: #ccc; }
+    .btn-warning { background: #f59e0b; color: #000; }
     .log {
-      max-height: 160px;
+      max-height: 140px;
       overflow-y: auto;
       font-size: 11px;
     }
     .log-item {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       padding: 4px 0;
       border-bottom: 1px solid #1a1a1a;
+      gap: 4px;
     }
     .log-num {
       font-weight: bold;
-      width: 24px;
-      height: 24px;
+      width: 24px; height: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 50%;
       font-size: 11px;
+      flex-shrink: 0;
     }
     .log-num.red { background: #dc2626; color: #fff; }
     .log-num.black { background: #1a1a1a; color: #fff; border: 1px solid #444; }
@@ -105,40 +125,206 @@
     .log-time { color: #666; }
     .empty { color: #555; text-align: center; padding: 16px; font-size: 12px; }
     .count { font-size: 20px; color: #00ff88; font-weight: bold; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .stat-box {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+    .stat-box .label { font-size: 10px; color: #666; text-transform: uppercase; }
+    .stat-box .value { font-size: 18px; font-weight: bold; margin-top: 2px; }
+    .row { display: flex; gap: 8px; }
+    .row > * { flex: 1; }
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+    }
+    .toggle-row label { margin: 0; }
+    .switch {
+      position: relative;
+      width: 40px; height: 20px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #333;
+      border-radius: 20px;
+      transition: 0.3s;
+    }
+    .slider:before {
+      content: '';
+      position: absolute;
+      height: 16px; width: 16px;
+      left: 2px; bottom: 2px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+    .switch input:checked + .slider { background: #00ff88; }
+    .switch input:checked + .slider:before { transform: translateX(20px); }
+    .stop-alert {
+      background: #ff444420;
+      border: 1px solid #ff4444;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #ff6666;
+      margin-bottom: 8px;
+      display: none;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>🎰 Roulette Tracker</h1>
-    <p>Captura automática — Onabet</p>
+    <p>Captura automática + Bot — Onabet</p>
   </div>
 
-  <div class="status">
-    <div class="status-dot" id="statusDot"></div>
-    <span id="statusText" style="font-size:12px;">Verificando...</span>
+  <div class="tabs">
+    <button class="tab active" data-tab="tracker">📡 Tracker</button>
+    <button class="tab" data-tab="autobet">🤖 Auto-Bet</button>
   </div>
 
-  <div class="section">
-    <label>Webhook URL</label>
-    <input type="text" id="webhookInput" placeholder="https://...supabase.co/functions/v1/webhook-roulette" />
-    <button class="btn btn-primary" id="saveBtn">Salvar</button>
-  </div>
-
-  <div class="section">
-    <label>Números Capturados</label>
-    <div style="text-align:center;margin-bottom:8px;">
-      <span class="count" id="totalCount">0</span>
+  <!-- TAB: TRACKER -->
+  <div class="tab-content active" id="tab-tracker">
+    <div class="status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText" style="font-size:12px;">Verificando...</span>
     </div>
-    <div class="log" id="logContainer">
-      <div class="empty">Nenhum número capturado ainda</div>
+
+    <div class="section">
+      <label>Webhook URL</label>
+      <input type="text" id="webhookInput" placeholder="https://...supabase.co/functions/v1/webhook-roulette" />
+      <button class="btn btn-primary" id="saveBtn">Salvar</button>
     </div>
-    <button class="btn btn-secondary" id="clearBtn" style="margin-top:8px;">Limpar Log</button>
+
+    <div class="section">
+      <label>Números Capturados</label>
+      <div style="text-align:center;margin-bottom:8px;">
+        <span class="count" id="totalCount">0</span>
+      </div>
+      <div class="log" id="logContainer">
+        <div class="empty">Nenhum número capturado ainda</div>
+      </div>
+      <button class="btn btn-secondary" id="clearBtn" style="margin-top:8px;">Limpar Log</button>
+    </div>
+
+    <div class="section" style="border:none;">
+      <button class="btn btn-danger" id="testBtn">🧪 Enviar Número Teste</button>
+    </div>
   </div>
 
-  <div class="section" style="border:none;">
-    <button class="btn btn-danger" id="testBtn">🧪 Enviar Número Teste</button>
+  <!-- TAB: AUTO-BET -->
+  <div class="tab-content" id="tab-autobet">
+    <div class="section">
+      <div class="stop-alert" id="ab-stop-reason"></div>
+
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="label">Apostas</div>
+          <div class="value" id="ab-stat-bets">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Lucro</div>
+          <div class="value" id="ab-stat-profit" style="color:#00ff88">R$ 0.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Wins</div>
+          <div class="value" id="ab-stat-wins" style="color:#00ff88">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Losses</div>
+          <div class="value" id="ab-stat-losses" style="color:#ff4444">0</div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="ab-toggle">🤖 Ativar Bot</button>
+    </div>
+
+    <div class="section">
+      <label>API Sniper URL</label>
+      <input type="text" id="ab-apiUrl" placeholder="https://...supabase.co/functions/v1/sniper-predict" />
+
+      <div class="row">
+        <div>
+          <label>Valor Aposta (R$)</label>
+          <input type="number" id="ab-betValue" value="1" min="0.1" step="0.5" />
+        </div>
+        <div>
+          <label>Prob. Mínima (%)</label>
+          <input type="number" id="ab-minProb" value="85" min="50" max="100" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Stop Loss (R$)</label>
+          <input type="number" id="ab-stopLoss" value="-50" max="0" />
+        </div>
+        <div>
+          <label>Stop Win (R$)</label>
+          <input type="number" id="ab-stopWin" value="100" min="1" />
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <label>Gale Inteligente</label>
+        <label class="switch">
+          <input type="checkbox" id="ab-gale" />
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Max Gale Steps</label>
+          <input type="number" id="ab-maxGale" value="3" min="1" max="5" />
+        </div>
+        <div>
+          <label>Fator Gale (x)</label>
+          <input type="number" id="ab-galeFactor" value="2" min="1.5" max="3" step="0.1" />
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="ab-save">Salvar Config</button>
+    </div>
+
+    <div class="section">
+      <label>Log de Apostas</label>
+      <div class="log" id="ab-log">
+        <div class="empty">Nenhuma aposta automática</div>
+      </div>
+      <button class="btn btn-secondary" id="ab-reset" style="margin-top:8px;">🗑️ Resetar Stats</button>
+    </div>
   </div>
 
   <script src="popup.js"></script>
+  <script src="popup-autobet.js"></script>
+  <script>
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+        if (tab.dataset.tab === 'autobet') loadAutobetUI();
+      });
+    });
+    // Init autobet UI
+    setupAutobetEvents();
+    loadAutobetUI();
+  </script>
 </body>
 </html>
