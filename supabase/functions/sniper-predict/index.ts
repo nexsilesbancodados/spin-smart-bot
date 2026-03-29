@@ -2924,6 +2924,8 @@ serve(async (req) => {
       if (transitionMatrix.dozenPressureTrigger?.active && getDozen(n) === transitionMatrix.dozenPressureTrigger.dozen) {
         s += 3; r.push(`🔥 Pressão D${transitionMatrix.dozenPressureTrigger.dozen}`);
       }
+      // AI LEARNED PATTERNS BOOST — knowledge accumulated from history
+      if (learnedBoosts[n] > 0) { s += learnedBoosts[n]; r.push(`🧠 IA Aprendeu(+${learnedBoosts[n].toFixed(1)})`); }
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
