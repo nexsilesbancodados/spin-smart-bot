@@ -5,16 +5,19 @@
   const WEBHOOK_URL_KEY = 'roulette_webhook_url';
   const LAST_NUMBERS_KEY = 'roulette_last_numbers';
   const SENT_LOG_KEY = 'roulette_sent_log';
+  const PAUSED_KEY = 'roulette_tracker_paused';
 
   let webhookUrl = '';
+  let isPaused = false;
   let lastSentNumber = null;
   let lastSentTime = 0;
-  const DEBOUNCE_MS = 3000; // Don't send same number within 3 seconds
+  const DEBOUNCE_MS = 3000;
 
   // Load webhook URL from storage
-  chrome.storage.local.get([WEBHOOK_URL_KEY], (result) => {
+  chrome.storage.local.get([WEBHOOK_URL_KEY, PAUSED_KEY], (result) => {
     webhookUrl = result[WEBHOOK_URL_KEY] || '';
-    console.log('[RouletteTracker] Loaded webhook URL:', webhookUrl ? '✅ Set' : '❌ Not set');
+    isPaused = result[PAUSED_KEY] || false;
+    console.log('[RouletteTracker] Loaded webhook URL:', webhookUrl ? '✅ Set' : '❌ Not set', isPaused ? '⏸️ Paused' : '▶️ Active');
   });
 
   // Listen for config updates
@@ -23,9 +26,18 @@
       webhookUrl = changes[WEBHOOK_URL_KEY].newValue || '';
       console.log('[RouletteTracker] Webhook URL updated');
     }
+    if (changes[PAUSED_KEY]) {
+      isPaused = changes[PAUSED_KEY].newValue || false;
+      console.log('[RouletteTracker]', isPaused ? '⏸️ Paused' : '▶️ Resumed');
+    }
+    }
   });
 
   function sendNumber(num) {
+    if (isPaused) {
+      console.log('[RouletteTracker] ⏸️ Paused, skipping:', num);
+      return;
+    }
     const now = Date.now();
     if (num === lastSentNumber && (now - lastSentTime) < DEBOUNCE_MS) {
       return; // Debounce duplicate

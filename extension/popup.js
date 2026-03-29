@@ -1,5 +1,10 @@
 const WEBHOOK_URL_KEY = 'roulette_webhook_url';
 const SENT_LOG_KEY = 'roulette_sent_log';
+const PAUSED_KEY = 'roulette_tracker_paused';
+
+// Pre-configured defaults
+const DEFAULT_WEBHOOK_URL = 'https://wyhvrblozyblbqogikoz.supabase.co/functions/v1/webhook-roulette';
+const DEFAULT_SNIPER_URL = 'https://wyhvrblozyblbqogikoz.supabase.co/functions/v1/sniper-predict';
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
 
@@ -30,26 +35,81 @@ function renderLog(log) {
     .join('');
 }
 
-// Load saved state
-chrome.storage.local.get([WEBHOOK_URL_KEY, SENT_LOG_KEY], (result) => {
-  const url = result[WEBHOOK_URL_KEY] || '';
+// Load saved state — auto-configure defaults on first run
+chrome.storage.local.get([WEBHOOK_URL_KEY, SENT_LOG_KEY, PAUSED_KEY, 'roulette_first_run'], (result) => {
+  let url = result[WEBHOOK_URL_KEY] || '';
   const log = result[SENT_LOG_KEY] || [];
+  const paused = result[PAUSED_KEY] || false;
+
+  // First run: set defaults
+  if (!result['roulette_first_run']) {
+    if (!url) {
+      url = DEFAULT_WEBHOOK_URL;
+      chrome.storage.local.set({ [WEBHOOK_URL_KEY]: url, 'roulette_first_run': true });
+    }
+    // Also set sniper API default
+    chrome.storage.local.get(['roulette_autobet_config'], (r) => {
+      const cfg = r['roulette_autobet_config'] || {};
+      if (!cfg.apiUrl) {
+        cfg.apiUrl = DEFAULT_SNIPER_URL;
+        chrome.storage.local.set({ 'roulette_autobet_config': cfg });
+      }
+    });
+  }
 
   document.getElementById('webhookInput').value = url;
   renderLog(log);
 
   const statusDot = document.getElementById('statusDot');
   const statusText = document.getElementById('statusText');
+  const pauseBtn = document.getElementById('pauseBtn');
 
-  if (url) {
+  if (paused) {
+    statusDot.classList.add('inactive');
+    statusText.textContent = '⏸️ Pausado';
+    statusText.style.color = '#f59e0b';
+    pauseBtn.textContent = '▶️ Retomar Captura';
+    pauseBtn.className = 'btn btn-primary';
+  } else if (url) {
     statusDot.classList.add('active');
     statusText.textContent = 'Monitorando...';
     statusText.style.color = '#00ff88';
+    pauseBtn.textContent = '⏸️ Pausar Captura';
+    pauseBtn.className = 'btn btn-warning';
   } else {
     statusDot.classList.add('inactive');
     statusText.textContent = 'Configure o webhook';
     statusText.style.color = '#ff4444';
+    pauseBtn.textContent = '⏸️ Pausar Captura';
+    pauseBtn.className = 'btn btn-warning';
   }
+});
+
+// Pause/Resume
+document.getElementById('pauseBtn').addEventListener('click', () => {
+  chrome.storage.local.get([PAUSED_KEY], (result) => {
+    const newPaused = !(result[PAUSED_KEY] || false);
+    chrome.storage.local.set({ [PAUSED_KEY]: newPaused }, () => {
+      const statusDot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+      const pauseBtn = document.getElementById('pauseBtn');
+      statusDot.className = 'status-dot';
+
+      if (newPaused) {
+        statusDot.classList.add('inactive');
+        statusText.textContent = '⏸️ Pausado';
+        statusText.style.color = '#f59e0b';
+        pauseBtn.textContent = '▶️ Retomar Captura';
+        pauseBtn.className = 'btn btn-primary';
+      } else {
+        statusDot.classList.add('active');
+        statusText.textContent = 'Monitorando...';
+        statusText.style.color = '#00ff88';
+        pauseBtn.textContent = '⏸️ Pausar Captura';
+        pauseBtn.className = 'btn btn-warning';
+      }
+    });
+  });
 });
 
 // Save webhook
