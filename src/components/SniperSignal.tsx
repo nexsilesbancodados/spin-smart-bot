@@ -68,7 +68,7 @@ const getBetTypeCategory = (type: string): string => {
 };
 
 const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult, confidenceFilter }: Props) => {
-  const [showAlternatives, setShowAlternatives] = useState(true);
+  
 
   if (!sniperData) {
     return (
