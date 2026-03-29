@@ -52,12 +52,17 @@ const KNOWLEDGE_PROMPT = `
 - Terço do Cilindro (12): ${TIERS.join(', ')}
 - Órfãos (8): ${ORPHELINS.join(', ')}
 - Jogo do Zero (7): ${JEU_ZERO.join(', ')}
-- Ordem física do cilindro: ${WHEEL_ORDER.join(', ')}
+- Ordem física do cilindro (horária): ${WHEEL_ORDER.join(', ')}
 
 ### Terminais (Finais)
 - T0: 0,10,20,30 | T1: 1,11,21,31 | T2: 2,12,22,32 | T3: 3,13,23,33
 - T4: 4,14,24,34 | T5: 5,15,25,35 | T6: 6,16,26,36
 - T7: 7,17,27 | T8: 8,18,28 | T9: 9,19,29
+
+### Finais em Pleno (Finales en Plein)
+- Finais 0-6: 4 números cada (~10.8% prob) — 33% mais prováveis que finais 7-9
+- Finais 7-9: 3 números cada (~8.1% prob)
+- REGRA: ao calcular probabilidades, diferencie sempre finais de 4 vs 3 números
 
 ### Cavalos (Splits por Terminal)
 - Cavalos 2/5/8: ${CAVALOS_258.join(', ')}
@@ -72,14 +77,25 @@ const KNOWLEDGE_PROMPT = `
 - Coluna 3: ${COL3.join(', ')}
 - Seisenas: S1(1-6) S2(7-12) S3(13-18) S4(19-24) S5(25-30) S6(31-36)
 
+### Dominância de Coluna por Cor
+- Coluna 1: 6 pretos, 6 vermelhos (Equilibrada)
+- Coluna 2: 8 pretos, 4 vermelhos (Dominante Preta)
+- Coluna 3: 4 pretos, 8 vermelhos (Dominante Vermelha)
+- REGRA: quando C2 sai acima da média, espere mais pretos; quando C3 sai acima, espere mais vermelhos
+
 ### Mapeamento Cruzado
 - Vermelhos Pares (8): ${RED_EVEN.join(', ')}
 - Vermelhos Ímpares (10): ${RED_ODD.join(', ')}
 - Pretos Pares (10): ${BLACK_EVEN.join(', ')}
 - Pretos Ímpares (8): ${BLACK_ODD.join(', ')}
 
+### Espelhos Visuais (mesma posição em dúzias)
+- Ex: 1,13,25 | 2,14,26 | ... | 12,24,36
+- REGRA: quando 2+ espelhos saem próximos, indica tendência posicional na mesa
+
 ### Vizinhos no Cilindro
-Cada número tem vizinhos à esquerda e direita no cilindro físico. Use a ordem para calcular concentrações em setores.
+Cada número tem vizinhos à esquerda e direita no cilindro físico.
+Se receber 17 → vizinhos imediatos: 25 (esq) e 34 (dir).
 `;
 
 const getColor = (n: number) => n === 0 ? 'green' : RED.includes(n) ? 'red' : 'black';
