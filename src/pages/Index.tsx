@@ -142,22 +142,22 @@ const Index = () => {
 
   useEffect(() => { loadInsights(); loadLearned(); }, [loadInsights, loadLearned]);
 
-  // Auto-learn every 5 minutes
+  // Auto-learn continuously every 2 minutes (silent, no user action needed)
   const autoLearnRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
     const runAutoLearn = async () => {
       try {
-        console.log('[AutoLearn] Iniciando aprendizado automático...');
+        console.log('[AutoLearn] 🧠 Aprendizado automático silencioso...');
         await supabase.functions.invoke('ai-learn');
         await Promise.all([loadInsights(), loadLearned()]);
-        console.log('[AutoLearn] Concluído.');
+        console.log('[AutoLearn] ✅ Concluído.');
       } catch (err) { console.error('[AutoLearn] Erro:', err); }
     };
 
-    // First learn after 30s
-    const initialTimeout = setTimeout(runAutoLearn, 30_000);
-    // Then every 5 minutes
-    autoLearnRef.current = setInterval(runAutoLearn, 5 * 60 * 1000);
+    // First learn after 15s
+    const initialTimeout = setTimeout(runAutoLearn, 15_000);
+    // Then every 2 minutes (continuous learning)
+    autoLearnRef.current = setInterval(runAutoLearn, 2 * 60 * 1000);
 
     return () => {
       clearTimeout(initialTimeout);
