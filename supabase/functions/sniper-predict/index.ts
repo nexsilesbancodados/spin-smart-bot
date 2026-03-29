@@ -3845,6 +3845,374 @@ serve(async (req) => {
       }
     }
 
+    // ==========================================
+    // NEW STRATEGIES FROM KNOWLEDGE SYSTEM v1.0
+    // ==========================================
+
+    // S5: DÚZIA PROGRESSIVA — D1→D2→D3 or D3→D2→D1
+    if (numbers.length >= 3) {
+      const dzSeq = numbers.slice(0, 3).filter(n => n > 0).map(n => n <= 12 ? 1 : n <= 24 ? 2 : 3);
+      let nextDz: number | null = null;
+      if (dzSeq.length === 3 && dzSeq[2] === 1 && dzSeq[1] === 2 && dzSeq[0] === 3) nextDz = 1; // wrap
+      if (dzSeq.length === 3 && dzSeq[2] === 3 && dzSeq[1] === 2 && dzSeq[0] === 1) nextDz = 3; // wrap
+      if (dzSeq.length === 3 && dzSeq[2] === 1 && dzSeq[1] === 2 && dzSeq[0] !== 3) nextDz = 3;
+      if (dzSeq.length === 3 && dzSeq[2] === 2 && dzSeq[1] === 3 && dzSeq[0] !== 1) nextDz = 1;
+      if (dzSeq.length >= 2 && dzSeq[1] === 1 && dzSeq[0] === 2) nextDz = 3;
+      if (dzSeq.length >= 2 && dzSeq[1] === 2 && dzSeq[0] === 3) nextDz = 1;
+      if (dzSeq.length >= 2 && dzSeq[1] === 3 && dzSeq[0] === 2) nextDz = 1;
+      if (nextDz) {
+        const dzNums = Array.from({ length: 12 }, (_, i) => (nextDz! - 1) * 12 + i + 1);
+        const dzScore = sumScores(dzNums) + 8;
+        const dzBt = backtestSet(dzNums);
+        strategies.push({
+          type: 'duzia_progressiva', label: `🎲 Dúzia Progressiva → D${nextDz}`, emoji: '🎲',
+          numbers: dzNums, coverage: (12 / 37) * 100, payout: 2,
+          score: dzScore + dzBt * 20 + 10,
+          probability: Math.min(98, Math.round(40 + dzScore * 1.5 + dzBt * 25)),
+          justification: `S5: Sequência de dúzias D${dzSeq.join('→D')} → próxima D${nextDz}. Cobertura 32,4%. Paga 2:1.`,
+        });
+      }
+    }
+
+    // S6/S7: ALTERNÂNCIA DE COR / STREAK DE COR
+    {
+      const recentColors = numbers.slice(0, 8).filter(n => n > 0).map(n => getColor(n));
+      // Check alternation V-P-V-P
+      let alternating = true;
+      for (let i = 1; i < Math.min(recentColors.length, 5); i++) {
+        if (recentColors[i] === recentColors[i - 1]) { alternating = false; break; }
+      }
+      if (alternating && recentColors.length >= 4) {
+        const nextColor = recentColors[0] === 'red' ? 'black' : 'red';
+        const colorNums = nextColor === 'red' ? RED.filter(n => n > 0) : Array.from({ length: 36 }, (_, i) => i + 1).filter(n => !RED.includes(n));
+        const cScore = sumScores(colorNums) + 5;
+        const cBt = backtestSet(colorNums);
+        strategies.push({
+          type: 'cor_alternancia', label: `🔴⚫ Alternância → ${nextColor === 'red' ? 'Vermelho' : 'Preto'}`, emoji: nextColor === 'red' ? '🔴' : '⚫',
+          numbers: colorNums, coverage: (18 / 37) * 100, payout: 1,
+          score: cScore + cBt * 15 + 8,
+          probability: Math.min(98, Math.round(38 + cScore * 1.2 + cBt * 20)),
+          justification: `S6: Alternância V-P-V-P detectada por ${recentColors.length} rodadas. Próxima: ${nextColor === 'red' ? 'Vermelho' : 'Preto'}. Paga 1:1.`,
+        });
+      }
+      // Streak — 4+ same color → bet opposite
+      let streakCount = 1;
+      for (let i = 1; i < recentColors.length; i++) {
+        if (recentColors[i] === recentColors[0]) streakCount++;
+        else break;
+      }
+      if (streakCount >= 4) {
+        const oppositeColor = recentColors[0] === 'red' ? 'black' : 'red';
+        const oppNums = oppositeColor === 'red' ? RED.filter(n => n > 0) : Array.from({ length: 36 }, (_, i) => i + 1).filter(n => !RED.includes(n));
+        const sScore = sumScores(oppNums) + streakCount * 2;
+        const sBt = backtestSet(oppNums);
+        strategies.push({
+          type: 'cor_reversa', label: `🎨 Reversão → ${oppositeColor === 'red' ? 'Vermelho' : 'Preto'} (${streakCount}x streak)`, emoji: '🎨',
+          numbers: oppNums, coverage: (18 / 37) * 100, payout: 1,
+          score: sScore + sBt * 15 + streakCount * 3,
+          probability: Math.min(98, Math.round(35 + sScore * 1 + sBt * 18 + streakCount * 3)),
+          justification: `S7: ${recentColors[0] === 'red' ? 'Vermelho' : 'Preto'} saiu ${streakCount}x seguidas. Tendência de reversão para ${oppositeColor === 'red' ? 'Vermelho' : 'Preto'}. Paga 1:1.`,
+        });
+      }
+    }
+
+    // S10: MÚLTIPLOS EM SEQUÊNCIA (5→10→15→20 ou 6→12→18→24)
+    if (numbers.length >= 3) {
+      for (const mult of [2, 3, 4, 5, 6]) {
+        const last3 = numbers.slice(0, 3);
+        if (last3[2] > 0 && last3[1] > 0 && last3[0] > 0) {
+          if (last3[2] % mult === 0 && last3[1] % mult === 0 && last3[0] % mult === 0) {
+            const diff1 = last3[0] - last3[1];
+            const diff2 = last3[1] - last3[2];
+            if (diff1 === diff2 && diff1 === mult) {
+              const nextNum = last3[0] + mult;
+              if (nextNum >= 1 && nextNum <= 36) {
+                const mNums = [nextNum, ...getNeighbors(nextNum, 2)];
+                const mScore = sumScores(mNums) + 6;
+                const mBt = backtestSet(mNums);
+                strategies.push({
+                  type: 'multiplos_seq', label: `🔢 Múltiplos ×${mult} → ${nextNum}`, emoji: '🔢',
+                  numbers: mNums, coverage: (mNums.length / 37) * 100, payout: Math.round(36 / mNums.length),
+                  score: mScore + mBt * 20 + 8,
+                  probability: Math.min(98, Math.round(35 + mScore * 2 + mBt * 25)),
+                  justification: `S10: Sequência de múltiplos ×${mult}: ${last3[2]}→${last3[1]}→${last3[0]}→${nextNum}. ${mNums.length} números cobertos.`,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // S12: DIFERENÇA CONSTANTE
+    if (numbers.length >= 3) {
+      const d1 = numbers[0] - numbers[1];
+      const d2 = numbers[1] - numbers[2];
+      if (d1 === d2 && d1 !== 0) {
+        const nextDiff = numbers[0] + d1;
+        if (nextDiff >= 0 && nextDiff <= 36) {
+          const dfNums = [nextDiff, ...getNeighbors(nextDiff, 2)];
+          const dfScore = sumScores(dfNums) + 6;
+          const dfBt = backtestSet(dfNums);
+          strategies.push({
+            type: 'diferenca_const', label: `📏 Diferença +${d1} → ${nextDiff}`, emoji: '📏',
+            numbers: dfNums, coverage: (dfNums.length / 37) * 100, payout: Math.round(36 / dfNums.length),
+            score: dfScore + dfBt * 20 + 6,
+            probability: Math.min(98, Math.round(32 + dfScore * 2 + dfBt * 25)),
+            justification: `S12: Diferença constante ${d1 > 0 ? '+' : ''}${d1}: ${numbers[2]}→${numbers[1]}→${numbers[0]}→${nextDiff}. Vizinhos incluídos.`,
+          });
+        }
+      }
+    }
+
+    // F3: HIPER-QUENTE (mesmo número 2x em ≤5 rodadas)
+    {
+      const recent5 = numbers.slice(0, 5);
+      const seen: Record<number, number> = {};
+      for (const n of recent5) { seen[n] = (seen[n] || 0) + 1; }
+      const hiperHot = Object.entries(seen).filter(([, c]) => c >= 2).map(([n]) => Number(n));
+      if (hiperHot.length > 0) {
+        const hhNum = hiperHot[0];
+        const hhTerminal = hhNum % 10;
+        const hhNums = [...(TERMINALS_MAP[hhTerminal] || []), ...getNeighbors(hhNum, 3)];
+        const unique = [...new Set(hhNums)];
+        const hhScore = sumScores(unique) + 12;
+        const hhBt = backtestSet(unique);
+        strategies.push({
+          type: 'hiper_quente', label: `🔥 Hiper-Quente ${hhNum} (2x/5)`, emoji: '🔥',
+          numbers: unique, coverage: (unique.length / 37) * 100, payout: Math.round(36 / unique.length),
+          score: hhScore + hhBt * 22 + 15,
+          probability: Math.min(98, Math.round(50 + hhScore * 1.8 + hhBt * 28)),
+          justification: `F3: Número ${hhNum} apareceu 2x nas últimas 5 rodadas! Terminal T${hhTerminal} + vizinhos 3. ${unique.length} números.`,
+        });
+      }
+    }
+
+    // F4: CLUSTER REGIONAL (3+ do mesmo setor em 10 rodadas)
+    {
+      const recent10 = numbers.slice(0, 10);
+      const sectorCounts = { Voisins: 0, Tiers: 0, Orphelins: 0, Zero: 0 };
+      recent10.forEach(n => { const s = getSector(n); if (s in sectorCounts) (sectorCounts as any)[s]++; });
+      const hotSector = Object.entries(sectorCounts).sort(([,a],[,b]) => b - a)[0];
+      if (Number(hotSector[1]) >= 4) {
+        const sectorPool = hotSector[0] === 'Voisins' ? VOISINS : hotSector[0] === 'Tiers' ? TIERS : hotSector[0] === 'Zero' ? JEU_ZERO : ORPHELINS;
+        const crScore = sumScores(sectorPool) + Number(hotSector[1]) * 3;
+        const crBt = backtestSet(sectorPool);
+        strategies.push({
+          type: 'cluster_regional', label: `🗺️ Cluster ${hotSector[0]} (${hotSector[1]}x/10)`, emoji: '🗺️',
+          numbers: [...sectorPool], coverage: (sectorPool.length / 37) * 100, payout: Math.round(36 / sectorPool.length),
+          score: crScore + crBt * 20 + Number(hotSector[1]) * 4,
+          probability: Math.min(98, Math.round(42 + crScore * 1.5 + crBt * 22 + Number(hotSector[1]) * 3)),
+          justification: `F4: ${hotSector[1]}x resultados no setor ${hotSector[0]} em 10 rodadas. Concentração forte. ${sectorPool.length} números.`,
+        });
+      }
+    }
+
+    // C4: CORRELAÇÃO DÚZIA-TERMINAL — dúzia dominante indica terminais
+    {
+      const recent15 = numbers.slice(0, 15).filter(n => n > 0);
+      const dzCount = [0, 0, 0];
+      recent15.forEach(n => { if (n <= 12) dzCount[0]++; else if (n <= 24) dzCount[1]++; else dzCount[2]++; });
+      const domDz = dzCount.indexOf(Math.max(...dzCount));
+      if (dzCount[domDz] >= 7) { // dominating dozen
+        // D1→T1-T9 low, D2→T3-T6, D3→T5-T9 high
+        const termFocus = domDz === 0 ? [1,2,3,4,5,6] : domDz === 1 ? [3,4,5,6,7,8] : [5,6,7,8,9,0];
+        const c4Nums: number[] = [];
+        termFocus.forEach(t => (TERMINALS_MAP[t] || []).forEach(n => {
+          const nDz = n <= 12 ? 0 : n <= 24 ? 1 : 2;
+          if (nDz === domDz && !c4Nums.includes(n)) c4Nums.push(n);
+        }));
+        if (c4Nums.length >= 3) {
+          const c4Score = sumScores(c4Nums) + dzCount[domDz] * 2;
+          const c4Bt = backtestSet(c4Nums);
+          strategies.push({
+            type: 'duzia_terminal_corr', label: `📊 D${domDz + 1} × Terminais`, emoji: '📊',
+            numbers: c4Nums, coverage: (c4Nums.length / 37) * 100, payout: Math.round(36 / c4Nums.length),
+            score: c4Score + c4Bt * 20 + 8,
+            probability: Math.min(98, Math.round(40 + c4Score * 1.8 + c4Bt * 25)),
+            justification: `C4: Dúzia ${domDz + 1} domina (${dzCount[domDz]}x/15). Terminais cruzados: ${c4Nums.length} alvos dentro da dúzia.`,
+          });
+        }
+      }
+    }
+
+    // RUA (STREET BET) — 3 números em sequência na mesa (1-3, 4-6, 7-9, etc.)
+    {
+      const recent10 = numbers.slice(0, 10);
+      const streets: number[][] = [];
+      for (let i = 1; i <= 34; i += 3) streets.push([i, i + 1, i + 2]);
+      let bestStreet: number[] | null = null;
+      let bestStreetCount = 0;
+      for (const st of streets) {
+        const count = recent10.filter(n => st.includes(n)).length;
+        if (count >= 2 && count > bestStreetCount) { bestStreet = st; bestStreetCount = count; }
+      }
+      if (bestStreet && bestStreetCount >= 2) {
+        const stScore = sumScores(bestStreet) + bestStreetCount * 4;
+        const stBt = backtestSet(bestStreet);
+        strategies.push({
+          type: 'rua', label: `🛣️ Rua ${bestStreet[0]}-${bestStreet[2]} (${bestStreetCount}x/10)`, emoji: '🛣️',
+          numbers: bestStreet, coverage: (3 / 37) * 100, payout: 11,
+          score: stScore + stBt * 30 + bestStreetCount * 5,
+          probability: Math.min(98, Math.round(30 + stScore * 2.5 + stBt * 35)),
+          justification: `Rua ${bestStreet.join('-')}: ${bestStreetCount} hits em 10 rodadas. Paga 11:1. Alta rentabilidade.`,
+        });
+      }
+    }
+
+    // CAVALO (SPLIT) — pares de números adjacentes na mesa
+    {
+      const recent10 = numbers.slice(0, 10);
+      const splits = [[1,2],[2,3],[4,5],[5,6],[7,8],[8,9],[10,11],[11,12],[13,14],[14,15],[16,17],[17,18],
+                       [19,20],[20,21],[22,23],[23,24],[25,26],[26,27],[28,29],[29,30],[31,32],[32,33],[34,35],[35,36],
+                       [1,4],[2,5],[3,6],[4,7],[5,8],[6,9],[7,10],[8,11],[9,12],[10,13],[11,14],[12,15],
+                       [13,16],[14,17],[15,18],[16,19],[17,20],[18,21],[19,22],[20,23],[21,24],[22,25],[23,26],[24,27],
+                       [25,28],[26,29],[27,30],[28,31],[29,32],[30,33],[31,34],[32,35],[33,36]];
+      let bestSplit: number[] | null = null;
+      let bestSplitScore = 0;
+      for (const sp of splits) {
+        const hitCount = recent10.filter(n => sp.includes(n)).length;
+        if (hitCount >= 2) {
+          const spScore = sumScores(sp) + hitCount * 5;
+          if (spScore > bestSplitScore) { bestSplit = sp; bestSplitScore = spScore; }
+        }
+      }
+      if (bestSplit) {
+        const spBt = backtestSet(bestSplit);
+        strategies.push({
+          type: 'cavalo_split', label: `🐎 Cavalo ${bestSplit[0]}/${bestSplit[1]}`, emoji: '🐎',
+          numbers: bestSplit, coverage: (2 / 37) * 100, payout: 17,
+          score: bestSplitScore + spBt * 30 + 8,
+          probability: Math.min(98, Math.round(28 + bestSplitScore * 2 + spBt * 35)),
+          justification: `Cavalo ${bestSplit[0]}/${bestSplit[1]}: ambos aparecem no histórico recente. Paga 17:1. Aposta cirúrgica.`,
+        });
+      }
+    }
+
+    // PAR/ÍMPAR com detecção de viés
+    {
+      const recent15 = numbers.slice(0, 15).filter(n => n > 0);
+      const pares = recent15.filter(n => n % 2 === 0).length;
+      const impares = recent15.length - pares;
+      if (pares >= 10 || impares >= 10) {
+        const dominant = pares >= 10 ? 'par' : 'impar';
+        const oppNums = dominant === 'par'
+          ? Array.from({ length: 36 }, (_, i) => i + 1).filter(n => n % 2 === 1)
+          : Array.from({ length: 36 }, (_, i) => i + 1).filter(n => n % 2 === 0);
+        const piScore = sumScores(oppNums) + 5;
+        const piBt = backtestSet(oppNums);
+        strategies.push({
+          type: 'paridade_reversa', label: `🔄 Reversão ${dominant === 'par' ? 'Ímpar' : 'Par'} (${Math.max(pares, impares)}x/15)`, emoji: '🔄',
+          numbers: oppNums, coverage: (18 / 37) * 100, payout: 1,
+          score: piScore + piBt * 15 + Math.max(pares, impares) * 2,
+          probability: Math.min(98, Math.round(35 + piScore * 1 + piBt * 18 + Math.max(pares, impares) * 2)),
+          justification: `Par/Ímpar: ${dominant} dominou ${Math.max(pares, impares)}x em 15. Reversão para ${dominant === 'par' ? 'Ímpar' : 'Par'}. Paga 1:1.`,
+        });
+      }
+    }
+
+    // ALTO/BAIXO com detecção de viés
+    {
+      const recent15 = numbers.slice(0, 15).filter(n => n > 0);
+      const altos = recent15.filter(n => n >= 19).length;
+      const baixos = recent15.length - altos;
+      if (altos >= 10 || baixos >= 10) {
+        const dominant = altos >= 10 ? 'alto' : 'baixo';
+        const oppNums = dominant === 'alto'
+          ? Array.from({ length: 18 }, (_, i) => i + 1)
+          : Array.from({ length: 18 }, (_, i) => i + 19);
+        const abScore = sumScores(oppNums) + 5;
+        const abBt = backtestSet(oppNums);
+        strategies.push({
+          type: 'alto_baixo_reversa', label: `↕️ Reversão ${dominant === 'alto' ? 'Baixo' : 'Alto'} (${Math.max(altos, baixos)}x/15)`, emoji: '↕️',
+          numbers: oppNums, coverage: (18 / 37) * 100, payout: 1,
+          score: abScore + abBt * 15 + Math.max(altos, baixos) * 2,
+          probability: Math.min(98, Math.round(35 + abScore * 1 + abBt * 18 + Math.max(altos, baixos) * 2)),
+          justification: `Alto/Baixo: ${dominant} dominou ${Math.max(altos, baixos)}x em 15. Reversão para ${dominant === 'alto' ? 'Baixo (1-18)' : 'Alto (19-36)'}. Paga 1:1.`,
+        });
+      }
+    }
+
+    // COLUNA com detecção de viés
+    {
+      const recent15 = numbers.slice(0, 15).filter(n => n > 0);
+      const cols = [0, 0, 0];
+      recent15.forEach(n => { if (COL1.includes(n)) cols[0]++; else if (COL2.includes(n)) cols[1]++; else if (COL3.includes(n)) cols[2]++; });
+      // Find coldest column (least hits)
+      const coldCol = cols.indexOf(Math.min(...cols));
+      if (cols[coldCol] <= 2) { // very cold column
+        const colNums = coldCol === 0 ? COL1 : coldCol === 1 ? COL2 : COL3;
+        const colScore = sumScores(colNums) + (5 - cols[coldCol]) * 3;
+        const colBt = backtestSet(colNums);
+        strategies.push({
+          type: 'coluna_fria', label: `📐 Coluna ${coldCol + 1} Fria (${cols[coldCol]}x/15)`, emoji: '📐',
+          numbers: [...colNums], coverage: (12 / 37) * 100, payout: 2,
+          score: colScore + colBt * 20 + (5 - cols[coldCol]) * 4,
+          probability: Math.min(98, Math.round(38 + colScore * 1.5 + colBt * 22)),
+          justification: `Coluna ${coldCol + 1} com apenas ${cols[coldCol]} hits em 15 rodadas. Dívida estatística. Paga 2:1.`,
+        });
+      }
+    }
+
+    // COMBINAÇÃO OURO: F5 + C1 + S3 = terminal dominante + puxados + sequência
+    if (daniGreen.mod1.count >= 3 && daniGreen.mod5Pull.length >= 3 && daniGreen.mod6.active) {
+      const goldTerminal = daniGreen.mod1.terminal;
+      const goldPair = daniGreen.mod1.pair;
+      const goldNums = [...new Set([
+        ...(TERMINALS_MAP[goldTerminal] || []),
+        ...(TERMINALS_MAP[goldPair] || []),
+        ...daniGreen.mod5Pull.slice(0, 5),
+      ])];
+      const goldScore = sumScores(goldNums) + daniGreen.mod1.count * 5 + daniGreen.mod5Pull.length * 3 + 20;
+      const goldBt = backtestSet(goldNums);
+      strategies.push({
+        type: 'combo_ouro', label: `👑 Combo OURO (F5+C1+S3)`, emoji: '👑',
+        numbers: goldNums, coverage: (goldNums.length / 37) * 100, payout: Math.round(36 / goldNums.length),
+        score: goldScore + goldBt * 30 + 25,
+        probability: Math.min(99, Math.round(60 + goldScore * 1.5 + goldBt * 30)),
+        justification: `OURO: Terminal T${goldTerminal} dominante (${daniGreen.mod1.count}x) + Puxados confirmados + Sequência ativa. Confiança MÁXIMA. ${goldNums.length} números.`,
+      });
+    }
+
+    // COMBINAÇÃO PRATA: F1 + C2 + G4 = quente + terminal + vizinho na roda
+    {
+      const last = numbers[0];
+      const lastTerminal = last % 10;
+      const lastNeighbors = getNeighbors(last, 3);
+      const termNums = TERMINALS_MAP[lastTerminal] || [];
+      const silverNums = [...new Set([last, ...lastNeighbors, ...termNums])];
+      // Check if last number is hot (2x in 10)
+      const hotCheck = numbers.slice(0, 10).filter(n => n === last).length;
+      if (hotCheck >= 2) {
+        const silverScore = sumScores(silverNums) + hotCheck * 8 + 15;
+        const silverBt = backtestSet(silverNums);
+        strategies.push({
+          type: 'combo_prata', label: `🥈 Combo PRATA (F1+C2+G4) → ${last}`, emoji: '🥈',
+          numbers: silverNums, coverage: (silverNums.length / 37) * 100, payout: Math.round(36 / silverNums.length),
+          score: silverScore + silverBt * 25 + 18,
+          probability: Math.min(98, Math.round(55 + silverScore * 1.5 + silverBt * 28)),
+          justification: `PRATA: ${last} hiper-quente (${hotCheck}x/10) + Terminal T${lastTerminal} + Vizinhos 3 na roda. ${silverNums.length} números.`,
+        });
+      }
+    }
+
+    // JEU ZERO dedicado (quando zero ausente >20 + vizinhos ativos)
+    {
+      let zeroDelay = 0;
+      for (let i = 0; i < numbers.length; i++) { if (numbers[i] === 0) break; zeroDelay++; }
+      if (zeroDelay >= 20) {
+        const jzScore = sumScores(JEU_ZERO) + zeroDelay * 0.8 + 10;
+        const jzBt = backtestSet(JEU_ZERO);
+        strategies.push({
+          type: 'jeu_zero', label: `🟢 Jeu Zero (${zeroDelay}r ausente)`, emoji: '🟢',
+          numbers: [...JEU_ZERO], coverage: (7 / 37) * 100, payout: Math.round(36 / 7),
+          score: jzScore + jzBt * 25 + (zeroDelay >= 30 ? 15 : 8),
+          probability: Math.min(98, Math.round(38 + jzScore * 1.5 + jzBt * 25 + zeroDelay * 0.6)),
+          justification: `P3: Zero ausente há ${zeroDelay} giros. Jeu Zero: 7 números próximos ao zero. Paga 5:1. ${zeroDelay >= 30 ? 'PRIORIDADE ALTA!' : ''}`,
+        });
+      }
+    }
+
     // REED TRACKING: suppress strategies that failed 4+ consecutive times
     const reedPenalty: Record<string, number> = {};
     for (const st of Object.keys(strategyPerformance)) {
@@ -4303,6 +4671,37 @@ serve(async (req) => {
         const mainNum = nums[0];
         bets.push({ type: 'setor', label: strat.label, detail: `Cubra: ${nums.slice(0, 8).join(', ')} — Pleno no ${mainNum} + vizinhos`, emoji: strat.emoji });
         bets.push({ type: 'vizinhos', label: `Vizinhos do ${mainNum}`, detail: `Pleno no ${mainNum} + vizinhos: ${nums.slice(1, 5).join(', ')}`, emoji: '🎯' });
+      } else if (t === 'rua') {
+        bets.push({ type: 'rua', label: `Rua ${nums[0]}-${nums[nums.length-1]}`, detail: `Aposte na Rua ${nums.join('-')} — paga 11:1`, emoji: '🛣️' });
+      } else if (t === 'cavalo_split') {
+        bets.push({ type: 'cavalo_split', label: `Cavalo ${nums[0]}/${nums[1]}`, detail: `Aposte Cavalo (Split) ${nums[0]}/${nums[1]} — paga 17:1`, emoji: '🐎' });
+      } else if (t === 'cor_alternancia' || t === 'cor_reversa') {
+        const isRed = nums.some((n: number) => RED.includes(n)) && nums.filter((n: number) => RED.includes(n)).length > nums.length / 2;
+        bets.push({ type: 'cor', label: isRed ? 'Vermelho' : 'Preto', detail: `Aposte no ${isRed ? 'Vermelho' : 'Preto'} (1:1)`, emoji: isRed ? '🔴' : '⚫' });
+      } else if (t === 'paridade_reversa') {
+        const even = nums.every((n: number) => n > 0 && n % 2 === 0);
+        bets.push({ type: 'paridade', label: even ? 'Par' : 'Ímpar', detail: `Aposte no ${even ? 'Par' : 'Ímpar'} (1:1)`, emoji: even ? '2️⃣' : '1️⃣' });
+      } else if (t === 'alto_baixo_reversa') {
+        const low = nums.every((n: number) => n >= 1 && n <= 18);
+        bets.push({ type: 'alto_baixo', label: low ? 'Baixo (1-18)' : 'Alto (19-36)', detail: `Aposte no ${low ? 'Baixo (1-18)' : 'Alto (19-36)'} (1:1)`, emoji: low ? '⬇️' : '⬆️' });
+      } else if (t === 'coluna_fria') {
+        const col = COL1.every(n => nums.includes(n)) ? 1 : COL2.every(n => nums.includes(n)) ? 2 : 3;
+        bets.push({ type: 'coluna', label: `Coluna ${col} (Fria)`, detail: `Aposte na Coluna ${col} — em dívida estatística. Paga 2:1`, emoji: '📐' });
+      } else if (t === 'duzia_progressiva') {
+        const dz = nums[0] <= 12 ? 1 : nums[0] <= 24 ? 2 : 3;
+        bets.push({ type: 'duzia', label: `Dúzia ${dz} (Progressiva)`, detail: `${dz}ª Dúzia por sequência D1→D2→D3. Paga 2:1`, emoji: '🎲' });
+      } else if (t === 'combo_ouro') {
+        bets.push({ type: 'absoluta', label: `👑 Combo OURO`, detail: `CONFIANÇA MÁXIMA: Terminal dominante + Puxados + Sequência. ${nums.length} números: ${nums.slice(0, 8).join(', ')}`, emoji: '👑' });
+      } else if (t === 'combo_prata') {
+        bets.push({ type: 'fusao', label: `🥈 Combo PRATA → ${nums[0]}`, detail: `Número quente + Terminal + Vizinhos combinados: ${nums.slice(0, 8).join(', ')}`, emoji: '🥈' });
+      } else if (t === 'jeu_zero') {
+        bets.push({ type: 'setor', label: `Jeu Zero`, detail: `Cubra os 7 números do Jeu Zero: ${nums.join(', ')}. Paga 5:1`, emoji: '🟢' });
+      } else if (t === 'hiper_quente') {
+        bets.push({ type: 'vizinhos', label: `Hiper-Quente ${nums[0]}`, detail: `Número ${nums[0]} repetindo! Terminal + Vizinhos: ${nums.slice(0, 6).join(', ')}`, emoji: '🔥' });
+      } else if (t === 'cluster_regional') {
+        bets.push({ type: 'setor', label: strat.label, detail: `Setor concentrado: ${nums.slice(0, 8).join(', ')}`, emoji: '🗺️' });
+      } else if (t === 'multiplos_seq' || t === 'diferenca_const') {
+        bets.push({ type: 'vizinhos', label: strat.label, detail: `Sequência detectada → Alvo ${nums[0]} + vizinhos: ${nums.slice(1, 5).join(', ')}`, emoji: strat.emoji });
       } else {
         // Generic fallback
         const mainNum = nums[0];
@@ -4350,17 +4749,20 @@ serve(async (req) => {
 
     // Generate diverse alternatives — pick from DIFFERENT bet categories
     const getBetCategory = (type: string): string => {
-      if (['sniper', 'voisins', 'setor_oposto', 'ultra_sniper', 'ritmo_calibrado', 'cylinder_bias'].includes(type)) return 'setor';
-      if (['cavalos', 'cavalos_comp'].includes(type)) return 'cavalos';
-      if (['terminal_alternation', 'duplo_terminal', 'terminais_cruzados', 'poucas_fichas', 'terminal_alto_baixo'].includes(type)) return 'terminal';
-      if (['duzia_unica', 'dozen_phase', 'duzias', 'pressao_retorno'].includes(type)) return 'duzia';
-      if (['coluna', 'column_cycle'].includes(type)) return 'coluna';
-      if (['cor'].includes(type)) return 'cor';
-      if (['paridade'].includes(type)) return 'paridade';
-      if (['alto_baixo'].includes(type)) return 'alto_baixo';
-      if (['fusao_suprema', 'convergencia_absoluta', 'matrix_fusion', 'archetype_fusion'].includes(type)) return 'fusao';
+      if (['sniper', 'voisins', 'setor_oposto', 'ultra_sniper', 'ritmo_calibrado', 'cylinder_bias', 'cluster_regional', 'jeu_zero'].includes(type)) return 'setor';
+      if (['cavalos', 'cavalos_comp', 'cavalo_split'].includes(type)) return 'cavalos';
+      if (['terminal_alternation', 'duplo_terminal', 'terminais_cruzados', 'poucas_fichas', 'terminal_alto_baixo', 'duzia_terminal_corr'].includes(type)) return 'terminal';
+      if (['duzia_unica', 'dozen_phase', 'duzias', 'pressao_retorno', 'duzia_progressiva'].includes(type)) return 'duzia';
+      if (['coluna', 'column_cycle', 'coluna_fria'].includes(type)) return 'coluna';
+      if (['cor', 'cor_alternancia', 'cor_reversa'].includes(type)) return 'cor';
+      if (['paridade', 'paridade_reversa'].includes(type)) return 'paridade';
+      if (['alto_baixo', 'alto_baixo_reversa'].includes(type)) return 'alto_baixo';
+      if (['fusao_suprema', 'convergencia_absoluta', 'matrix_fusion', 'archetype_fusion', 'combo_ouro', 'combo_prata'].includes(type)) return 'fusao';
       if (['numeros_puxam'].includes(type)) return 'puxada';
       if (['pressao_zero'].includes(type)) return 'zero';
+      if (['rua'].includes(type)) return 'rua';
+      if (['hiper_quente'].includes(type)) return 'hiper_quente';
+      if (['multiplos_seq', 'diferenca_const'].includes(type)) return 'sequencia';
       return type;
     };
     const winnerCategory = getBetCategory(winner.type);

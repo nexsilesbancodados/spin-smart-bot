@@ -24,46 +24,54 @@ interface Props {
 const getBetTypeLabel = (type: string) => {
   switch (type) {
     case 'pleno': case 'numero_exato': return '💎 PLENO (35:1)';
-    case 'terminal': case 'terminal_comp': case 'terminal_alternation': case 'duplo_terminal': case 'terminais_cruzados': return '🔢 TERMINAIS';
-    case 'cavalos': case 'cavalos_comp': return '🐎 CAVALOS';
-    case 'setor': case 'vizinhos': case 'sniper': case 'voisins': case 'setor_oposto': return '🎯 VIZINHOS/SETOR';
-    case 'duzia': case 'duzia_unica': case 'dozen_phase': case 'duzias': case 'pressao_retorno': return '🎲 DÚZIA (2:1)';
-    case 'coluna': case 'coluna_comp': case 'column_cycle': return '📐 COLUNA (2:1)';
-    case 'cor': return '🎨 COR (1:1)';
-    case 'paridade': return '🔄 PAR/ÍMPAR (1:1)';
-    case 'alto_baixo': return '↕️ ALTO/BAIXO (1:1)';
+    case 'terminal': case 'terminal_comp': case 'terminal_alternation': case 'duplo_terminal': case 'terminais_cruzados': case 'duzia_terminal_corr': return '🔢 TERMINAIS';
+    case 'cavalos': case 'cavalos_comp': case 'cavalo_split': return '🐎 CAVALOS';
+    case 'setor': case 'vizinhos': case 'sniper': case 'voisins': case 'setor_oposto': case 'cluster_regional': return '🎯 VIZINHOS/SETOR';
+    case 'duzia': case 'duzia_unica': case 'dozen_phase': case 'duzias': case 'pressao_retorno': case 'duzia_progressiva': return '🎲 DÚZIA (2:1)';
+    case 'coluna': case 'coluna_comp': case 'column_cycle': case 'coluna_fria': return '📐 COLUNA (2:1)';
+    case 'cor': case 'cor_alternancia': case 'cor_reversa': return '🎨 COR (1:1)';
+    case 'paridade': case 'paridade_reversa': return '🔄 PAR/ÍMPAR (1:1)';
+    case 'alto_baixo': case 'alto_baixo_reversa': return '↕️ ALTO/BAIXO (1:1)';
     case 'ritmo_calibrado': return '🎯 RITMO CALIBRADO';
     case 'fusao_suprema': return '⚡ FUSÃO SUPREMA';
     case 'convergencia_absoluta': return '💠 CONVERGÊNCIA ABSOLUTA';
     case 'ultra_sniper': return '🔥 ULTRA SNIPER';
     case 'numeros_puxam': return '🧲 PUXADA';
-    case 'pressao_zero': return '🟢 PRESSÃO ZERO';
+    case 'pressao_zero': case 'jeu_zero': return '🟢 PRESSÃO ZERO';
     case 'crescente': return '📈 CRESCENTE';
     case 'poucas_fichas': return '💰 CONSERVADOR';
     case 'matrix_fusion': return '🔮 CONVERGÊNCIA MATRICIAL';
-    case 'cobertura_area': return '🗺️ COBERTURA DE ÁREA';
+    case 'cobertura_area': case 'cluster_regional': return '🗺️ COBERTURA DE ÁREA';
     case 'archetype_fusion': return '🏛️ ARQUÉTIPOS';
     case 'genetic_cluster': return '🧬 CLUSTER GENÉTICO';
     case 'cylinder_bias': return '⚙️ VIÉS DO CILINDRO';
-    case 'hot_phase': return '🔥 FASE QUENTE';
+    case 'hot_phase': case 'hiper_quente': return '🔥 FASE QUENTE';
     case 'cold_phase': return '❄️ FASE FRIA';
     case 'terminal_alto_baixo': return '📊 TERMINAL ALTO/BAIXO';
+    case 'rua': return '🛣️ RUA (11:1)';
+    case 'multiplos_seq': return '🔢 MÚLTIPLOS';
+    case 'diferenca_const': return '📏 DIFERENÇA CONSTANTE';
+    case 'combo_ouro': return '👑 COMBO OURO';
+    case 'combo_prata': return '🥈 COMBO PRATA';
     default: return `📌 ${type.replace(/_/g, ' ').toUpperCase()}`;
   }
 };
 
 const getBetTypeCategory = (type: string): string => {
-  if (['sniper', 'voisins', 'setor_oposto', 'ultra_sniper', 'ritmo_calibrado', 'cylinder_bias'].includes(type)) return 'setor';
-  if (['cavalos', 'cavalos_comp'].includes(type)) return 'cavalos';
-  if (['terminal_alternation', 'duplo_terminal', 'terminais_cruzados', 'poucas_fichas', 'terminal_alto_baixo'].includes(type)) return 'terminal';
-  if (['duzia_unica', 'dozen_phase', 'duzias', 'pressao_retorno'].includes(type)) return 'duzia';
-  if (['coluna', 'column_cycle'].includes(type)) return 'coluna';
-  if (['cor'].includes(type)) return 'cor';
-  if (['paridade'].includes(type)) return 'paridade';
-  if (['alto_baixo'].includes(type)) return 'alto_baixo';
-  if (['fusao_suprema', 'convergencia_absoluta', 'matrix_fusion', 'archetype_fusion'].includes(type)) return 'fusao';
+  if (['sniper', 'voisins', 'setor_oposto', 'ultra_sniper', 'ritmo_calibrado', 'cylinder_bias', 'cluster_regional', 'jeu_zero'].includes(type)) return 'setor';
+  if (['cavalos', 'cavalos_comp', 'cavalo_split'].includes(type)) return 'cavalos';
+  if (['terminal_alternation', 'duplo_terminal', 'terminais_cruzados', 'poucas_fichas', 'terminal_alto_baixo', 'duzia_terminal_corr'].includes(type)) return 'terminal';
+  if (['duzia_unica', 'dozen_phase', 'duzias', 'pressao_retorno', 'duzia_progressiva'].includes(type)) return 'duzia';
+  if (['coluna', 'column_cycle', 'coluna_fria'].includes(type)) return 'coluna';
+  if (['cor', 'cor_alternancia', 'cor_reversa'].includes(type)) return 'cor';
+  if (['paridade', 'paridade_reversa'].includes(type)) return 'paridade';
+  if (['alto_baixo', 'alto_baixo_reversa'].includes(type)) return 'alto_baixo';
+  if (['fusao_suprema', 'convergencia_absoluta', 'matrix_fusion', 'archetype_fusion', 'combo_ouro', 'combo_prata'].includes(type)) return 'fusao';
   if (['numeros_puxam'].includes(type)) return 'puxada';
   if (['pressao_zero'].includes(type)) return 'zero';
+  if (['rua'].includes(type)) return 'rua';
+  if (['hiper_quente'].includes(type)) return 'hiper_quente';
+  if (['multiplos_seq', 'diferenca_const'].includes(type)) return 'sequencia';
   return 'outro';
 };
 
