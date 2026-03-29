@@ -54,6 +54,8 @@ const getBetTypeLabel = (type: string) => {
     case 'diferenca_const': return '📏 DIFERENÇA CONSTANTE';
     case 'combo_ouro': return '👑 COMBO OURO';
     case 'combo_prata': return '🥈 COMBO PRATA';
+    case 'ensemble_supremo': return '🌟 ENSEMBLE SUPREMO';
+    case 'matriz_numerica': return '🔢 MATRIZ NUMÉRICA';
     default: return `📌 ${type.replace(/_/g, ' ').toUpperCase()}`;
   }
 };
@@ -115,7 +117,8 @@ const getBetTypeCategory = (type: string): string => {
   if (['cor', 'cor_alternancia', 'cor_reversa'].includes(type)) return 'cor';
   if (['paridade', 'paridade_reversa'].includes(type)) return 'paridade';
   if (['alto_baixo', 'alto_baixo_reversa'].includes(type)) return 'alto_baixo';
-  if (['fusao_suprema', 'convergencia_absoluta', 'matrix_fusion', 'archetype_fusion', 'combo_ouro', 'combo_prata'].includes(type)) return 'fusao';
+  if (['fusao_suprema', 'convergencia_absoluta', 'matrix_fusion', 'archetype_fusion', 'combo_ouro', 'combo_prata', 'ensemble_supremo'].includes(type)) return 'fusao';
+  if (['matriz_numerica'].includes(type)) return 'outro';
   if (['numeros_puxam'].includes(type)) return 'puxada';
   if (['pressao_zero'].includes(type)) return 'zero';
   if (['rua'].includes(type)) return 'rua';

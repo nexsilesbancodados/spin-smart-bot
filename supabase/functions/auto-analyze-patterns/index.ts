@@ -713,6 +713,7 @@ Deno.serve(async (req) => {
       detectSetorDominante5,
       detectAlternanciaPerfeita,
       detectComplementarAtivo,
+      detectMatrizNumerica,
     ];
 
     const detectedPatterns: PatternResult[] = [];

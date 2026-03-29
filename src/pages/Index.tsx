@@ -437,20 +437,26 @@ const Index = () => {
       }
       const cycle = cycleRef.current++;
       try {
-        // 6-phase cycle: double-pass learning for deeper memory
-        const phase = cycle % 6;
+        const phase = cycle % 8;
         
-        if (phase === 0 || phase === 3) {
+        if (phase === 0 || phase === 4) {
           setAutoLearnStatus('learning');
           const res = await supabase.functions.invoke('ai-learn');
           if (res?.error || res?.data?.error) throw new Error(res?.data?.error || res?.error?.message || 'ai-learn failed');
-        } else if (phase === 1 || phase === 4) {
+        } else if (phase === 1 || phase === 5) {
           setAutoLearnStatus('analyzing');
           const res = await supabase.functions.invoke('auto-analyze-patterns');
           if (res?.error || res?.data?.error) throw new Error(res?.data?.error || res?.error?.message || 'auto-analyze failed');
+        } else if (phase === 2 || phase === 6) {
+          setAutoLearnStatus('backtesting');
+          await supabase.functions.invoke('sniper-predict', {
+            body: { sampleSize: 200 }
+          });
         } else {
           setAutoLearnStatus('backtesting');
-          await supabase.functions.invoke('sniper-predict');
+          await supabase.functions.invoke('sniper-predict', {
+            body: { sampleSize: 50 }
+          });
         }
         
         autoLearnErrorCount.current = 0;
