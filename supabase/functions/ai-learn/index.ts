@@ -606,7 +606,20 @@ ${prevStr || 'Primeiro aprendizado.'}
 - Terminais nos erros recentes: ${topMissTerminals || 'sem dados'}
 - Números que saíram nos erros: ${missedActuals.slice(0, 10).join(',') || 'sem dados'}
 
-## MISSÃO:
+### 🎯 ANÁLISE DE PUXADOS (baseado nos últimos 3 resultados):
+${numbers.slice(0,3).map(n => `Saiu ${n} (T${n%10}) → monitorar terminais relacionados`).join('\n')}
+
+### 🔢 DUPLA DANI GREEN RECOMENDADA:
+Terminal mais quente nos últimos 15: T${Object.entries(termMap30||{}).sort(([,a],[,b])=>(b as number)-(a as number))[0]?.[0]||'?'}
+Dupla correspondente: ${(() => { const DUPLA_MAP: Record<string,string> = {'0':'DG5','1':'DG1','2':'DG2','3':'DG3','4':'DG4','5':'DG5','6':'DG1','7':'DG2','8':'DG3','9':'DG4'}; const hotT = Object.entries(termMap30||{}).sort(([,a],[,b])=>(b as number)-(a as number))[0]?.[0]; return hotT ? DUPLA_MAP[hotT] || 'DG1' : 'DG1'; })()}
+
+### 📊 ENTROPIA DA SESSÃO:
+Terminais distintos (últ 15): ${Object.keys(termMap30||{}).length}/10
+Classificação: ${Object.keys(termMap30||{}).length<=4?'BAIXA — ENTRAR FORTE':Object.keys(termMap30||{}).length<=7?'MÉDIA — CAUTELA':'ALTA — AGUARDAR'}
+
+### 🟢 PRESSÃO DO ZERO:
+${numbers.indexOf(0)===-1?`Zero ausente há ${Math.min(numbers.length,100)}+ rodadas — PRESSÃO ${numbers.length>41?'CRÍTICA — Vizinhos do Zero (9 fichas)':numbers.length>25?'ALTA — Jeu Zero (4 fichas)':numbers.length>14?'MÉDIA — 1 ficha no zero':'NORMAL'}`:`Zero saiu há ${numbers.indexOf(0)} rodadas — ${numbers.indexOf(0)>25?'PRESSÃO ALTA':'normal'}`}
+
 Aja como SUPERCOMPUTADOR DE ANALÍTICA PREDITIVA. Realize análise transversal completa:
 1. Viés de frequência com desvio padrão
 2. Padrões de terminais + relação com setores
