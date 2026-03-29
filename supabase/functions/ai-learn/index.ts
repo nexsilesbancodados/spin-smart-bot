@@ -1182,9 +1182,9 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
       };
 
       if (existing?.id) {
-        await supabase.from('ai_learned_patterns').update(rowData).eq('id', existing.id).catch(() => {});
+        await supabase.from('ai_learned_patterns').update(rowData).eq('id', existing.id);
       } else {
-        await supabase.from('ai_learned_patterns').insert({ learning_type: 'pull_confirmed', title: titulo, ...rowData }).catch(() => {});
+        await supabase.from('ai_learned_patterns').insert({ learning_type: 'pull_confirmed', title: titulo, ...rowData });
       }
     }
 
@@ -1242,11 +1242,11 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
       };
 
       if (exT?.id) {
-        await supabase.from('ai_learned_patterns').update(rowT).eq('id', exT.id).catch(() => {});
+        await supabase.from('ai_learned_patterns').update(rowT).eq('id', exT.id);
       } else {
         await supabase.from('ai_learned_patterns').insert({
           learning_type: 'terminal_dominance', title: titulo2, ...rowT
-        }).catch(() => {});
+        });
       }
     }
 
@@ -1283,11 +1283,11 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
       };
 
       if (exS?.id) {
-        await supabase.from('ai_learned_patterns').update(rowS).eq('id', exS.id).catch(()=>{});
+        await supabase.from('ai_learned_patterns').update(rowS).eq('id', exS.id);
       } else {
         await supabase.from('ai_learned_patterns').insert({
           learning_type: 'session_spin', title: titulo3, ...rowS
-        }).catch(()=>{});
+        });
       }
     }
 
@@ -1327,11 +1327,11 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
       };
 
       if (exH?.id) {
-        await supabase.from('ai_learned_patterns').update(rowH).eq('id', exH.id).catch(()=>{});
+        await supabase.from('ai_learned_patterns').update(rowH).eq('id', exH.id);
       } else {
         await supabase.from('ai_learned_patterns').insert({
           learning_type: 'hit_pattern', title: tituloH, ...rowH
-        }).catch(()=>{});
+        });
       }
     }
 
@@ -1387,11 +1387,11 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
       };
 
       if ((exM as any)?.id) {
-        await supabase.from('ai_learned_patterns').update(rowM).eq('id', (exM as any).id).catch(()=>{});
+        await supabase.from('ai_learned_patterns').update(rowM).eq('id', (exM as any).id);
       } else {
         await supabase.from('ai_learned_patterns').insert({
           learning_type: 'matrix_transition', title: titulo, ...rowM
-        }).catch(()=>{});
+        });
       }
     }
 
@@ -1438,11 +1438,11 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
       };
 
       if ((exR as any)?.id) {
-        await supabase.from('ai_learned_patterns').update(rowR).eq('id', (exR as any).id).catch(()=>{});
+        await supabase.from('ai_learned_patterns').update(rowR).eq('id', (exR as any).id);
       } else {
         await supabase.from('ai_learned_patterns').insert({
           learning_type: 'session_spin', title: tituloRep, ...rowR
-        }).catch(()=>{});
+        });
       }
     }
 
@@ -1460,11 +1460,11 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
       if (allOfType && allOfType.length > limit) {
         const toDelete = allOfType.slice(limit).map((r: any) => r.id);
         if (toDelete.length > 0) {
-          await supabase.from('ai_learned_patterns').delete().in('id', toDelete).catch(()=>{});
+          await supabase.from('ai_learned_patterns').delete().in('id', toDelete);
         }
       }
     }
-    await supabase.from('ai_learned_patterns').delete().lt('accuracy', 15).catch(()=>{});
+    await supabase.from('ai_learned_patterns').delete().lt('accuracy', 15);
 
     return new Response(JSON.stringify({
       status: "success",
