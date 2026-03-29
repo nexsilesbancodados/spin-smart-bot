@@ -86,18 +86,6 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
   const mainNumber = sniperData.signal?.number;
   const probability = sniperData.signal?.probability || 0;
 
-  // Get diverse alternatives (different bet categories)
-  const topAlternatives: any[] = sniperData.topAlternatives || [];
-  const winnerCategory = sniperData.strategy ? getBetTypeCategory(sniperData.strategy.type) : '';
-  
-  // Filter alternatives to show diverse types
-  const seenCategories = new Set([winnerCategory]);
-  const diverseAlternatives = topAlternatives.filter((alt: any) => {
-    const cat = getBetTypeCategory(alt.type);
-    if (seenCategories.has(cat)) return false;
-    seenCategories.add(cat);
-    return true;
-  }).slice(0, 3);
 
   return (
     <motion.div
