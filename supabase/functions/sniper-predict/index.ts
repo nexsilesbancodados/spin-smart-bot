@@ -2037,6 +2037,13 @@ serve(async (req) => {
           break; // only count strongest archetype per number
         }
       }
+      // RITMO CALIBRADOR: boost target and neighbors from directional arc prediction
+      if (ritmoCalibration.alvo !== null && ritmoCalibration.confianca >= 70) {
+        const ritmoWeight = ritmoCalibration.confianca >= 98 ? 7 : ritmoCalibration.confianca >= 85 ? 5 : 3;
+        if (n === ritmoCalibration.alvo) { s += ritmoWeight; r.push(`⏱️ Alvo Ritmo (${ritmoCalibration.confianca}%)`); }
+        else if (wheelDist(n, ritmoCalibration.alvo) <= 2) { s += ritmoWeight * 0.6; r.push(`⏱️ Ritmo ±2`); }
+        else if (wheelDist(n, ritmoCalibration.alvo) <= 4) { s += ritmoWeight * 0.3; r.push(`⏱️ Ritmo ±4`); }
+      }
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
