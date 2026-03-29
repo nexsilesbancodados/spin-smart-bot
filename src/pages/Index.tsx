@@ -498,7 +498,7 @@ const Index = () => {
                 )}
               </div>
             </div>
-          )
+          )}
           {/* MONITORAMENTO */}
           <motion.div className={`rounded-xl border p-4 transition-all ${
             isCavaloEntry ? 'bg-gradient-to-r from-primary/20 to-yellow-500/10 border-primary/50 shadow-lg shadow-primary/10' : 'bg-card border-border'
