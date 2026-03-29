@@ -807,12 +807,12 @@ const Index = () => {
           {/* HISTÓRICO + TERMINAIS */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
             <div className="lg:col-span-3 bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-primary" />
                   <span className="font-display text-sm text-primary tracking-widest font-bold">HISTÓRICO</span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   {[50, 100, 250, 500].map(lim => (
                     <button key={lim} onClick={() => { setHistoryLimit(lim); setSelectedNum(null); }}
                       className={`text-[9px] px-2 py-1 rounded-lg font-bold transition-all ${
@@ -822,7 +822,7 @@ const Index = () => {
                     </button>
                   ))}
                   <ManualInput onAddNumbers={handleManualNumbers} />
-                  <span className="text-[8px] text-muted-foreground font-mono ml-1">{Math.min(historyLimit, allNumbers.length)} giros</span>
+                  <span className="text-[8px] text-muted-foreground font-mono">{Math.min(historyLimit, allNumbers.length)} giros</span>
                   <button onClick={async () => {
                     if (!confirm('Limpar todo o histórico?')) return;
                     await supabase.from('roulette_numbers').delete().not('id', 'is', null);
@@ -833,7 +833,7 @@ const Index = () => {
                     setApiNumbers([]);
                     prevNumbersRef.current = apiSnapshotRef.current.slice(0, 20).join(',');
                     console.log('Histórico limpo!');
-                  }} className="text-[9px] px-2 py-1 rounded-lg font-bold bg-destructive/20 text-destructive border border-destructive/30 hover:bg-destructive/30 transition-all ml-1">
+                  }} className="text-[9px] px-2 py-1 rounded-lg font-bold bg-destructive/20 text-destructive border border-destructive/30 hover:bg-destructive/30 transition-all">
                     🗑️ Limpar
                   </button>
                 </div>
