@@ -1,4 +1,5 @@
 import { type RouletteNumber } from '@/lib/roulette';
+import { MessageSquare } from 'lucide-react';
 
 interface NumberHistoryProps {
   history: RouletteNumber[];
@@ -10,20 +11,30 @@ const NumberHistory = ({ history }: NumberHistoryProps) => {
 
   return (
     <div className="bg-card rounded-lg p-4 border border-border">
-      <h3 className="font-display text-sm text-primary mb-3 tracking-wider uppercase">Últimos Números</h3>
-      <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-        {history.slice(0, 50).map((h, i) => (
+      <div className="flex items-center justify-center gap-2 mb-3">
+        <h3 className="font-display text-sm text-foreground tracking-wider">Histórico Rodadas</h3>
+        <MessageSquare className="w-4 h-4 text-muted-foreground" />
+      </div>
+      <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto justify-center">
+        {history.slice(0, 60).map((h, i) => (
           <div
             key={i}
-            className={`${colorClass(h.color)} w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-foreground ${i === 0 ? 'ring-2 ring-accent animate-pulse-neon scale-110' : 'opacity-80'}`}
+            className={`${colorClass(h.color)} w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-foreground transition-all ${
+              i === 0 ? 'ring-2 ring-cyan-400 scale-110 shadow-lg' : ''
+            }`}
           >
             {h.value}
           </div>
         ))}
         {history.length === 0 && (
-          <p className="text-muted-foreground text-sm">Nenhum número registrado ainda.</p>
+          <p className="text-muted-foreground text-sm py-4">Toque nos números acima para registrar as rodadas</p>
         )}
       </div>
+      {history.length > 0 && (
+        <p className="text-xs text-muted-foreground text-center mt-2">
+          {history.length} rodadas registradas
+        </p>
+      )}
     </div>
   );
 };
