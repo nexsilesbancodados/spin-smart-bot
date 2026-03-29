@@ -195,11 +195,23 @@ const Index = () => {
         if (cycle % 3 === 0) {
           setAutoLearnStatus('learning');
           const res = await supabase.functions.invoke('ai-learn');
-          if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message || 'ai-learn failed');
+          const message = res.data?.error || res.error?.message || '';
+          const status = res.error?.context?.status;
+          if (res.error || res.data?.error) {
+            const err = new Error(message || 'ai-learn failed');
+            (err as any).status = status;
+            throw err;
+          }
         } else if (cycle % 3 === 1) {
           setAutoLearnStatus('analyzing');
           const res = await supabase.functions.invoke('auto-analyze-patterns');
-          if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message || 'auto-analyze failed');
+          const message = res.data?.error || res.error?.message || '';
+          const status = res.error?.context?.status;
+          if (res.error || res.data?.error) {
+            const err = new Error(message || 'auto-analyze failed');
+            (err as any).status = status;
+            throw err;
+          }
         } else {
           setAutoLearnStatus('backtesting');
           await supabase.functions.invoke('sniper-predict');
@@ -210,10 +222,12 @@ const Index = () => {
       } catch (err: any) {
         autoLearnErrorCount.current++;
         const msg = err?.message || String(err);
-        const isCreditError = msg.includes('402') || msg.includes('429') || msg.includes('Credits') || msg.includes('Rate') || msg.includes('credit');
+        const status = err?.status;
+        const isCreditError = status === 402 || status === 429 || msg.includes('402') || msg.includes('429') || msg.includes('Credits') || msg.includes('Rate') || msg.includes('credit');
         if (isCreditError) {
           autoLearnDisabled.current = true;
-          console.warn('[AutoLearn] AI credits exhausted — auto-learn disabled.');
+          toast.error(status === 402 ? 'Créditos de IA esgotados. O aprendizado automático foi pausado.' : 'Limite de requisições atingido. O aprendizado automático foi pausado.');
+          console.warn('[AutoLearn] AI credits exhausted / rate limited — auto-learn disabled.');
         }
         console.error(`[AutoLearn] Ciclo ${cycle} erro (${autoLearnErrorCount.current}):`, msg);
       } finally {
@@ -256,7 +270,20 @@ const Index = () => {
   const triggerLearn = async () => {
     setIsAnalyzing(true);
     try {
-      await supabase.functions.invoke('ai-learn');
+      const res = await supabase.functions.invoke('ai-learn');
+      const status = res.error?.context?.status;
+      const message = res.data?.error || res.error?.message || '';
+      if (res.error || res.data?.error) {
+        if (status === 402 || message.includes('Credits')) {
+          toast.error('Créditos de IA esgotados. O aprendizado manual não pôde ser executado.');
+          return;
+        }
+        if (status === 429 || message.includes('Rate')) {
+          toast.error('Muitas tentativas em pouco tempo. Tente novamente em instantes.');
+          return;
+        }
+        throw new Error(message || 'ai-learn failed');
+      }
       await Promise.all([loadInsights(), loadLearned()]);
     } catch (err) { console.error(err); }
     finally { setIsAnalyzing(false); }
