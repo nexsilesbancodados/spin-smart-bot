@@ -774,6 +774,16 @@ const Index = () => {
             </div>
           )}
 
+          {/* ─── HISTÓRICO & DADOS (COLAPSÁVEL) ─── */}
+          <details className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden relative">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+            <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none hover:bg-primary/5 transition-colors">
+              <ChevronDown className="w-4 h-4 text-primary/60" />
+              <Activity className="w-3.5 h-3.5 text-primary" />
+              <span className="font-display text-[10px] tracking-[0.2em] font-bold text-primary">HISTÓRICO & DADOS</span>
+              <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-bold font-mono">{allNumbers.length} giros</span>
+            </summary>
+            <div className="p-4 border-t border-border/40 space-y-4">
           {/* ─── SEÇÃO 5: STATUS BAR ─── */}
           {(sniperData?.memoryWindows || allNumbers.length >= 10) && (
             <div className="bg-card/80 rounded-xl border border-border p-3">
