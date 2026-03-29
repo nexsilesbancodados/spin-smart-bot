@@ -165,20 +165,182 @@ export const TERMINAL_PAIRS: Record<number, number> = { 1:6, 6:1, 2:7, 7:2, 3:8,
 export const ZERO_NEIGHBORS_WHEEL = [32, 15, 26, 3, 35, 12, 28];
 export const ZERO_TERMINAL_NUMS = [0, 10, 20, 30];
 
-// Módulo 5: Pull Map expandido
+// Módulo 5: Pull Map expandido — TABELA MESTRE COMPLETA (37 números)
 export const FULL_PULL_MAP: Record<number, number[]> = {
-  0: [10, 20, 30, 32, 15, 26, 3],
-  1: [11, 35, 16, 4, 18, 28, 27, 29, 33],
-  4: [26, 15, 18, 32, 33, 16, 8],
-  6: [8, 15, 31, 21, 22, 23],
-  7: [16, 18, 17, 30],
-  9: [34, 35, 36, 3, 16, 26, 1, 23, 24, 32, 31],
+  0:  [10, 20, 30, 32, 15, 26, 3, 33, 31],
+  1:  [11, 35, 16, 4, 18, 28, 27, 29, 33],
+  2:  [14, 1, 13, 18, 35, 29],
+  3:  [13, 27, 6, 11, 30, 8],
+  4:  [26, 15, 18, 32, 33, 16, 8],
+  5:  [3, 33, 16, 24, 10, 18],
+  6:  [8, 15, 31, 21, 22, 23],
+  7:  [16, 18, 17, 30, 31],
+  8:  [11, 9, 10],
+  9:  [34, 35, 36, 3, 16, 26, 23, 24, 32, 31],
   10: [20, 5, 18, 11, 14, 24],
-  14: [24, 21, 18, 22, 33, 2],
+  11: [8, 18, 16, 21],
+  12: [21],
+  13: [31],
+  14: [24, 21, 18],
+  15: [4, 19, 21],
   16: [24, 21, 18, 14],
+  17: [34, 6, 25],
+  18: [8, 18, 28],
+  19: [9, 19, 29],
   20: [4, 14],
+  21: [19],
+  22: [33, 2],
+  23: [32, 11, 2],
+  24: [21, 18, 14],
+  25: [2, 4, 17, 28, 29, 12, 7, 18],
+  26: [6, 16, 26, 36, 3, 0],
   27: [28, 29, 24, 22, 26, 33, 31, 34, 35, 36],
+  28: [13, 14, 15, 16, 17, 18],
+  29: [35],
   30: [4, 8, 16, 9, 18, 22, 5, 25, 3],
+  31: [13],
+  32: [2, 12, 22, 32],
+  33: [16],
+  34: [16],
+  35: [0, 3, 7, 12, 26, 28, 29, 35],
+  36: [3, 10, 27],
+};
+
+// Pull Terminals expandidos — TABELA MESTRE COMPLETA
+export const FULL_PULL_TERMINALS: Record<number, number[]> = {
+  0:  [0, 2, 3, 5],
+  1:  [1, 5, 6, 8],
+  2:  [4, 1, 3, 8, 5, 9],
+  3:  [3, 7, 6, 1, 0, 8],
+  4:  [6, 5, 8, 2, 3],
+  5:  [3, 6, 4, 0, 8],
+  6:  [8, 5, 1, 2, 3],
+  7:  [6, 8, 7, 0, 1],
+  8:  [1, 9, 0, 8],
+  9:  [4, 5, 6, 3],
+  10: [0, 5, 8, 1, 4],
+  11: [8, 6, 1],
+  12: [1],
+  13: [1],
+  14: [4, 1, 8],
+  15: [4, 9, 1],
+  16: [4, 1, 8],
+  17: [7, 4, 6, 5],
+  18: [8],
+  19: [9],
+  20: [4, 0],
+  21: [9],
+  22: [3, 2],
+  23: [2, 1],
+  24: [1, 8, 4],
+  25: [2, 4, 7, 8, 9],
+  26: [6, 3, 0],
+  27: [8, 9, 4, 2, 6, 3, 1, 5],
+  28: [3, 4, 5, 6, 7, 8],
+  29: [5],
+  30: [4, 8, 6, 9, 2, 5],
+  31: [3, 1],
+  32: [2],
+  33: [6, 3],
+  34: [6, 4],
+  35: [0, 3, 7, 2, 6, 8, 9],
+  36: [3, 0, 7, 6],
+};
+
+// === DUPLAS DE TERMINAIS (Método Dani Green) ===
+export const DUPLAS_TERMINAIS: Record<string, { terminals: [number, number]; numbers: number[] }> = {
+  'D1': { terminals: [1, 6], numbers: [1, 11, 21, 31, 6, 16, 26, 36] },
+  'D2': { terminals: [2, 7], numbers: [2, 12, 22, 32, 7, 17, 27] },
+  'D3': { terminals: [3, 8], numbers: [3, 13, 23, 33, 8, 18, 28] },
+  'D4': { terminals: [4, 9], numbers: [4, 14, 24, 34, 9, 19, 29] },
+  'D5': { terminals: [0, 5], numbers: [10, 20, 30, 5, 15, 25, 35] },
+};
+
+// === POSIÇÃO NA RODA (índice 0-36) ===
+export const POSICAO_RODA: Record<number, number> = {
+  0:0, 32:1, 15:2, 19:3, 4:4, 21:5, 2:6, 25:7, 17:8, 34:9,
+  6:10, 27:11, 13:12, 36:13, 11:14, 30:15, 8:16, 23:17, 10:18,
+  5:19, 24:20, 16:21, 33:22, 1:23, 20:24, 14:25, 31:26, 9:27,
+  22:28, 18:29, 29:30, 7:31, 28:32, 12:33, 35:34, 3:35, 26:36,
+};
+
+// === VIZINHOS NA RODA (distância 2 para cada lado) ===
+export const VIZINHOS_RODA: Record<number, number[]> = {
+  0: [26, 3, 0, 32, 15],  1: [20, 33, 1, 14, 31],  2: [21, 4, 2, 25, 17],
+  3: [35, 26, 3, 0, 32],  4: [19, 21, 4, 2, 25],   5: [24, 10, 5, 16, 33],
+  6: [34, 27, 6, 13, 36], 7: [29, 18, 7, 28, 12],   8: [23, 10, 8, 11, 30],
+  9: [22, 31, 9, 14, 20], 10: [5, 23, 10, 8, 11],  11: [30, 8, 11, 23, 10],
+  12: [28, 7, 12, 35, 3], 13: [36, 11, 13, 27, 6], 14: [1, 20, 14, 31, 9],
+  15: [32, 0, 15, 19, 4], 16: [24, 5, 16, 33, 1],  17: [25, 2, 17, 34, 6],
+  18: [29, 7, 18, 28, 12],19: [15, 4, 19, 21, 2],  20: [1, 33, 20, 14, 31],
+  21: [4, 19, 21, 2, 25], 22: [9, 31, 22, 18, 29], 23: [10, 8, 23, 5, 24],
+  24: [16, 33, 24, 5, 10],25: [2, 21, 25, 17, 34], 26: [3, 35, 26, 0, 32],
+  27: [13, 36, 27, 6, 34],28: [7, 29, 28, 12, 35], 29: [22, 18, 29, 7, 28],
+  30: [11, 30, 8, 23, 10],31: [14, 9, 31, 22, 18], 32: [26, 3, 32, 0, 15],
+  33: [16, 24, 33, 1, 20],34: [27, 6, 34, 17, 25], 35: [12, 28, 35, 3, 26],
+  36: [6, 13, 36, 11, 30],
+};
+
+// === SISTEMA DE SCORE E CONFIANÇA ===
+export const SIGNAL_SCORES: Record<string, number> = {
+  F5_TERMINAL_DOMINANTE: 30,
+  C1_PUXADOS_DIRETOS: 40,
+  S3_S4_SEQUENCIA_TERMINAL: 35,
+  S1_REPETICAO_IMEDIATA: 15,
+  G4_VIZINHO_RODA: 20,
+  C2_MESMO_TERMINAL: 25,
+  F1_HOT_NUMBER: 30,
+  F2_COLD_NUMBER: 20,
+  P3_ZERO_AUSENTE: 20,
+  S2_NEAR_MISS: 15,
+};
+
+export const DIVERSITY_BONUS: Record<number, number> = {
+  2: 10,
+  3: 15,
+  4: 25,
+};
+
+export const CONFIDENCE_LEVELS = {
+  AGUARDAR: { min: 0, max: 24, fichas: 0 },
+  AMARELO: { min: 25, max: 49, fichas: 4 },
+  VERDE: { min: 50, max: 74, fichas: 6 },
+  FORTE: { min: 75, max: 100, fichas: 10 },
+} as const;
+
+// === GESTÃO DE BANCA ===
+export const BANCA_RULES = [
+  { banca: 30, fichas: '3-4', stopLoss: -12, stopWin: 10 },
+  { banca: 50, fichas: '5-7', stopLoss: -20, stopWin: 15 },
+  { banca: 100, fichas: '8-10', stopLoss: -30, stopWin: 25 },
+  { banca: 200, fichas: '15-20', stopLoss: -60, stopWin: 50 },
+];
+
+// === COMBINAÇÕES DE ALTO VALOR ===
+export const COMBINACOES = {
+  OURO: { signals: ['F5', 'C1', 'S3'], fichas: '8-12', desc: 'Terminal dominante + puxados + sequência crescente' },
+  PRATA: { signals: ['F1', 'C2', 'G4'], fichas: '6-8', desc: 'Número quente + terminal + vizinho roda' },
+  BRONZE: { signals: ['S3', 'F5'], fichas: '5-6', desc: 'Sequência terminal + terminal dominante' },
+  ZERO: { signals: ['P3', 'G1'], fichas: '4-9', desc: 'Zero ausente + Voisins quentes' },
+  REVERSA: { signals: ['F2'], fichas: '1-2', desc: 'Número frio isolado — especulação' },
+};
+
+// === PROBABILIDADES MATEMÁTICAS ===
+export const MATH_CONSTANTS = {
+  TOTAL_NUMBERS: 37,
+  HOUSE_EDGE: 0.027,
+  RTP: 0.973,
+  SINGLE_NUMBER_PROB: 1 / 37,
+  AVERAGE_INTERVAL: 37,
+  PAYOUTS: {
+    PLENA: 35,
+    CAVALO: 17,
+    RUA: 11,
+    CANTO: 8,
+    LINHA: 5,
+    DUZIA: 2,
+    OUTSIDE: 1,
+  },
 };
 
 // === TERMINAL TRIANGULATIONS ===

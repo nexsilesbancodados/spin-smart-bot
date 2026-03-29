@@ -64,23 +64,55 @@ const isOdd = (n: number) => n > 0 && n % 2 === 1;
 // Documented correlations: number X frequently pulls Y
 // ========================================================
 const PULL_MAP: Record<number, number[]> = {
-  1: [11,35,16,4,18,28,27,29,33],
-  4: [26,15,18,32,33,16,8],
-  6: [8,15,31,21,22,23],
-  7: [30,31,16,18,17],
-  9: [34,35,36,3,16,26,1,23,24,32,31],
-  10: [20,5,18,11,14,24],
-  14: [22,33,2],
-  16: [24,21,18,14],
-  20: [4,14],
-  27: [28,29,24,22,26,33,31,34,35,36],
-  30: [4,8,16,9,18,22,5,25,3],
+  0:  [10, 20, 30, 32, 15, 26, 3, 33, 31],
+  1:  [11, 35, 16, 4, 18, 28, 27, 29, 33],
+  2:  [14, 1, 13, 18, 35, 29],
+  3:  [13, 27, 6, 11, 30, 8],
+  4:  [26, 15, 18, 32, 33, 16, 8],
+  5:  [3, 33, 16, 24, 10, 18],
+  6:  [8, 15, 31, 21, 22, 23],
+  7:  [16, 18, 17, 30, 31],
+  8:  [11, 9, 10],
+  9:  [34, 35, 36, 3, 16, 26, 23, 24, 32, 31],
+  10: [20, 5, 18, 11, 14, 24],
+  11: [8, 18, 16, 21],
+  12: [21],
+  13: [31],
+  14: [24, 21, 18],
+  15: [4, 19, 21],
+  16: [24, 21, 18, 14],
+  17: [34, 6, 25],
+  18: [8, 18, 28],
+  19: [9, 19, 29],
+  20: [4, 14],
+  21: [19],
+  22: [33, 2],
+  23: [32, 11, 2],
+  24: [21, 18, 14],
+  25: [2, 4, 17, 28, 29, 12, 7, 18],
+  26: [6, 16, 26, 36, 3, 0],
+  27: [28, 29, 24, 22, 26, 33, 31, 34, 35, 36],
+  28: [13, 14, 15, 16, 17, 18],
+  29: [35],
+  30: [4, 8, 16, 9, 18, 22, 5, 25, 3],
+  31: [13],
+  32: [2, 12, 22, 32],
+  33: [16],
+  34: [16],
+  35: [0, 3, 7, 12, 26, 28, 29, 35],
+  36: [3, 10, 27],
 };
 
 const PULL_TERMINALS: Record<number, number[]> = {
-  1: [6,1], 7: [7,9,4,0,3], 9: [8,0], 10: [0,5,8,3,4],
-  14: [5], 16: [6,9,4], 20: [5,6,0], 27: [5,6], 30: [6,5],
-  4: [8,0,4], 6: [4,2,6,0],
+  0: [0,2,3,5], 1: [1,5,6,8], 2: [4,1,3,8,5,9], 3: [3,7,6,1,0,8],
+  4: [6,5,8,2,3], 5: [3,6,4,0,8], 6: [8,5,1,2,3], 7: [7,9,4,0,3,8],
+  8: [1,9,0,8], 9: [4,5,6,3], 10: [0,5,8,1,4], 11: [8,6,1],
+  12: [1], 13: [1], 14: [4,1,8], 15: [4,9,1], 16: [4,1,8],
+  17: [7,4,6,5], 18: [8], 19: [9], 20: [4,0], 21: [9],
+  22: [3,2], 23: [2,1], 24: [1,8,4], 25: [2,4,7,8,9],
+  26: [6,3,0], 27: [8,9,4,2,6,3,1,5], 28: [3,4,5,6,7,8],
+  29: [5], 30: [4,8,6,9,2,5], 31: [3,1], 32: [2],
+  33: [6,3], 34: [6,4], 35: [0,3,7,2,6,8,9], 36: [3,0,7,6],
 };
 
 const PULL_CAVALOS: Record<number, string[]> = {
@@ -109,24 +141,91 @@ const ZERO_TERMINAL_NUMS = [0, 10, 20, 30];
 
 // Pull Maps
 const FULL_PULL_MAP: Record<number, number[]> = {
-  0: [10, 20, 30, 32, 15, 26, 3],
-  1: [11, 35, 16, 4, 18, 28, 27, 29, 33],
-  4: [26, 15, 18, 32, 33, 16, 8],
-  6: [8, 15, 31, 21, 22, 23],
-  7: [16, 18, 17, 30],
-  9: [34, 35, 36, 3, 16, 26, 1, 23, 24, 32, 31],
+  0:  [10, 20, 30, 32, 15, 26, 3, 33, 31],
+  1:  [11, 35, 16, 4, 18, 28, 27, 29, 33],
+  2:  [14, 1, 13, 18, 35, 29],
+  3:  [13, 27, 6, 11, 30, 8],
+  4:  [26, 15, 18, 32, 33, 16, 8],
+  5:  [3, 33, 16, 24, 10, 18],
+  6:  [8, 15, 31, 21, 22, 23],
+  7:  [16, 18, 17, 30, 31],
+  8:  [11, 9, 10],
+  9:  [34, 35, 36, 3, 16, 26, 23, 24, 32, 31],
   10: [20, 5, 18, 11, 14, 24],
-  14: [24, 21, 18, 22, 33, 2],
+  11: [8, 18, 16, 21],
+  12: [21],
+  13: [31],
+  14: [24, 21, 18],
+  15: [4, 19, 21],
   16: [24, 21, 18, 14],
+  17: [34, 6, 25],
+  18: [8, 18, 28],
+  19: [9, 19, 29],
   20: [4, 14],
+  21: [19],
+  22: [33, 2],
+  23: [32, 11, 2],
+  24: [21, 18, 14],
+  25: [2, 4, 17, 28, 29, 12, 7, 18],
+  26: [6, 16, 26, 36, 3, 0],
   27: [28, 29, 24, 22, 26, 33, 31, 34, 35, 36],
+  28: [13, 14, 15, 16, 17, 18],
+  29: [35],
   30: [4, 8, 16, 9, 18, 22, 5, 25, 3],
+  31: [13],
+  32: [2, 12, 22, 32],
+  33: [16],
+  34: [16],
+  35: [0, 3, 7, 12, 26, 28, 29, 35],
+  36: [3, 10, 27],
 };
 const FULL_PULL_TERMINALS: Record<number, number[]> = {
-  0: [0, 2, 3, 5], 1: [1, 4, 5, 6], 7: [7, 9, 4, 0, 3, 8],
-  9: [8, 0, 6, 4, 9], 10: [0, 5, 8, 3, 4], 14: [4, 1, 5, 8],
-  16: [6, 9, 4], 20: [0, 4, 5, 6], 27: [5, 6, 7, 9, 4, 2, 3],
-  30: [0, 8, 6, 9, 2, 5, 3], 4: [8, 0, 4], 6: [4, 2, 6, 0],
+  0:  [0, 2, 3, 5],
+  1:  [1, 5, 6, 8],
+  2:  [4, 1, 3, 8, 5, 9],
+  3:  [3, 7, 6, 1, 0, 8],
+  4:  [6, 5, 8, 2, 3],
+  5:  [3, 6, 4, 0, 8],
+  6:  [8, 5, 1, 2, 3],
+  7:  [7, 9, 4, 0, 3, 8],
+  8:  [1, 9, 0, 8],
+  9:  [4, 5, 6, 3],
+  10: [0, 5, 8, 1, 4],
+  11: [8, 6, 1],
+  12: [1],
+  13: [1],
+  14: [4, 1, 8],
+  15: [4, 9, 1],
+  16: [4, 1, 8],
+  17: [7, 4, 6, 5],
+  18: [8],
+  19: [9],
+  20: [4, 0],
+  21: [9],
+  22: [3, 2],
+  23: [2, 1],
+  24: [1, 8, 4],
+  25: [2, 4, 7, 8, 9],
+  26: [6, 3, 0],
+  27: [8, 9, 4, 2, 6, 3, 1, 5],
+  28: [3, 4, 5, 6, 7, 8],
+  29: [5],
+  30: [4, 8, 6, 9, 2, 5],
+  31: [3, 1],
+  32: [2],
+  33: [6, 3],
+  34: [6, 4],
+  35: [0, 3, 7, 2, 6, 8, 9],
+  36: [3, 0, 7, 6],
+};
+
+// Duplas de Terminais (Método Dani Green)
+const DUPLAS_TERMINAIS: Record<string, number[]> = {
+  'D1_T1T6': [1,11,21,31,6,16,26,36],
+  'D2_T2T7': [2,12,22,32,7,17,27],
+  'D3_T3T8': [3,13,23,33,8,18,28],
+  'D4_T4T9': [4,14,24,34,9,19,29],
+  'D5_T0T5': [10,20,30,5,15,25,35],
 };
 
 // Cavalos Especiais
@@ -155,6 +254,32 @@ const CENTRAL_SEQUENCE = [5, 14, 23, 32];
 
 // Estrela de Davi (Invictor)
 const ESTRELA_DAVI_NUMS = [30, 31, 33, 34, 35, 8, 23, 10, 5, 9, 22, 1, 20, 14, 3, 26, 12];
+
+// ========================================================
+// SCORING SYSTEM — Signal-based confidence scoring
+// ========================================================
+const SIGNAL_SCORES: Record<string, number> = {
+  F5: 30, C1: 40, S3_S4: 35, S1: 15, G4: 20, C2: 25, F1: 30, F2: 20, P3: 20, S2: 15,
+};
+const DIVERSITY_BONUS: Record<number, number> = { 2: 10, 3: 15, 4: 25 };
+
+// ========================================================
+// ENTROPY — Terminal frequency entropy for session regime
+// ========================================================
+const calculateEntropy = (nums: number[], window = 15): number => {
+  const terms: Record<number, number> = {};
+  for (let t = 0; t <= 9; t++) terms[t] = 0;
+  const slice = nums.slice(0, window);
+  slice.forEach(n => terms[n % 10]++);
+  const total = slice.length || 1;
+  let entropy = 0;
+  for (let t = 0; t <= 9; t++) {
+    const p = terms[t] / total;
+    if (p > 0) entropy -= p * Math.log2(p);
+  }
+  // Normalize to 0-1 range (max entropy for 10 bins = log2(10) ≈ 3.32)
+  return entropy / Math.log2(10);
+};
 
 // ========================================================
 // DETECTORS
@@ -473,8 +598,24 @@ serve(async (req) => {
       mod5Pull: FULL_PULL_MAP[numbers[0]] || PULL_MAP[numbers[0]] || [],
       mod5PullTerminals: FULL_PULL_TERMINALS[numbers[0]] || PULL_TERMINALS[numbers[0]] || [],
       mod6: detectAscendingTerminals(numbers),
+      entropy: calculateEntropy(numbers, 15),
     };
 
+    // Entropy-based session regime
+    const sessionEntropy = calculateEntropy(numbers, 15);
+    const entropyDrift = numbers.length >= 45 ? [
+      calculateEntropy(numbers.slice(0, 15), 15),
+      calculateEntropy(numbers.slice(15, 30), 15),
+      calculateEntropy(numbers.slice(30, 45), 15),
+    ] : [];
+    const isEntropyDroppingConsistently = entropyDrift.length === 3 && entropyDrift[0] < entropyDrift[1] && entropyDrift[1] < entropyDrift[2];
+    const sessionRegime = sessionEntropy < 0.5 ? 'CONCENTRADO' : sessionEntropy < 0.7 ? 'PADRÃO IDENTIFICÁVEL' : 'DISPERSO';
+
+    // Dupla de terminal detection
+    const hotTermPair = TERMINAL_PAIRS[daniGreen.mod1.terminal];
+    const duplaKey = Object.entries(DUPLAS_TERMINAIS).find(([, nums]) =>
+      nums.some(n => TERMINALS_MAP[daniGreen.mod1.terminal]?.includes(n))
+    )?.[0] || null;
     // Extended detectors (100 strategies)
     const ext = {
       terminalRepetido: detectTerminalRepetido(numbers),
@@ -741,6 +882,17 @@ serve(async (req) => {
     if (daniGreen.mod1Cold.delay >= 10) {
       aiLearnings.push(`❄️ #9 Terminal Frio: T${daniGreen.mod1Cold.terminal} ausente (${daniGreen.mod1Cold.delay} atraso) — combo quente+frio`);
     }
+    // Entropy learnings
+    aiLearnings.push(`🎲 Entropia: ${(sessionEntropy * 100).toFixed(0)}% → Regime ${sessionRegime}`);
+    if (sessionEntropy < 0.5) aiLearnings.push('🎯 SESSÃO CONCENTRADA: padrão claro detectado — momento ideal para entrar');
+    if (sessionEntropy > 0.8) aiLearnings.push('⚠️ SESSÃO DISPERSA: alta entropia — AGUARDAR mais dados');
+    if (isEntropyDroppingConsistently) aiLearnings.push('📉 DRIFT de Entropia: sessão se organizando — bom momento para entrar');
+    if (duplaKey) aiLearnings.push(`🎰 Dupla Terminal ativa: ${duplaKey} — ${DUPLAS_TERMINAIS[duplaKey]?.slice(0,5).join(',')}`);
+    // Zero pressure zones (P3)
+    if (daniGreen.mod4.delay >= 15 && daniGreen.mod4.delay < 25) aiLearnings.push(`🟡 Ciclo Zero LEVE: ${daniGreen.mod4.delay} giros — proteção 1 ficha`);
+    if (daniGreen.mod4.delay >= 26 && daniGreen.mod4.delay < 40) aiLearnings.push(`🟠 Ciclo Zero MÉDIA: ${daniGreen.mod4.delay} giros — Jeu Zero (4 fichas)`);
+    if (daniGreen.mod4.delay >= 41 && daniGreen.mod4.delay < 60) aiLearnings.push(`🔴 Ciclo Zero ALTA: ${daniGreen.mod4.delay} giros — Vizinhos do Zero (9 fichas)`);
+    if (daniGreen.mod4.delay >= 60) aiLearnings.push(`🚨 ANOMALIA ZERO: ${daniGreen.mod4.delay} giros — PRIORIDADE MÁXIMA`);
     // Time awareness
     aiLearnings.push(`🕐 Turno ${timeAwareness.shift}: ${isNightShift ? 'Dealers mecânicos — prioridade física' : isDayShift ? 'Volume alto — prioridade matemática' : 'Turno misto'}`);
     if (microArcStd < 2) aiLearnings.push(`🎯 Dealer com mão viciada: arco ±${microArcStd.toFixed(1)} casas`);
