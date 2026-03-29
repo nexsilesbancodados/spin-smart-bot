@@ -2737,52 +2737,100 @@ serve(async (req) => {
           if (getSector(n) === pp.dominantSector) { s += 1; r.push(`🧲 Setor puxado`); }
         }
       }
-      // COMMUNITY PULL MAP: static documented correlations from Playtech BR community
+      // ====== KNOWLEDGE BASE SCORING SYSTEM (C1=40pts highest) ======
       const lastNum = numbers[0];
+      
+      // C1: PUXADOS DIRETOS — strongest signal (40 pts in knowledge base)
       const pullTargets = FULL_PULL_MAP[lastNum] || PULL_MAP[lastNum];
       if (pullTargets && pullTargets.includes(n)) {
-        s += 4; r.push(`📚 Puxa(${lastNum}→${n})`);
+        s += 6; r.push(`📚 C1:Puxa(${lastNum}→${n})`);
       }
-      // COMMUNITY PULL TERMINALS: boost all numbers of pulled terminal
+      // Also check 2nd and 3rd last numbers for deeper pull chains
+      if (numbers.length >= 2) {
+        const pull2 = FULL_PULL_MAP[numbers[1]] || PULL_MAP[numbers[1]];
+        if (pull2 && pull2.includes(n)) { s += 3; r.push(`📚 C1:Puxa2(${numbers[1]}→${n})`); }
+      }
+      if (numbers.length >= 3) {
+        const pull3 = FULL_PULL_MAP[numbers[2]] || PULL_MAP[numbers[2]];
+        if (pull3 && pull3.includes(n)) { s += 2; r.push(`📚 C1:Puxa3`); }
+      }
+      
+      // C2: TERMINAL DO NÚMERO — boost same terminal as last number (25 pts)
+      if (n % 10 === lastNum % 10 && n !== lastNum) { s += 3.5; r.push(`📚 C2:MesmoT${lastNum % 10}`); }
+      
+      // S1: REPETIÇÃO IMEDIATA — same number repeated (15 pts)
+      if (n === lastNum) { s += 2; r.push('📚 S1:Repetição'); }
+      
+      // S2: NEAR-MISS NA RODA — consecutive are wheel neighbors (20 pts)
+      if (wheelDist(n, lastNum) <= 2 && n !== lastNum) { s += 3; r.push('📚 S2:NearMiss'); }
+      
+      // F1: HOT NUMBER — appears ≥2x in last 10 (30 pts)
+      const hotCount10 = last10.filter(x => x === n).length;
+      if (hotCount10 >= 2) { s += 4; r.push(`📚 F1:Quente(${hotCount10}x)`); }
+      
+      // F3: HIPER-QUENTE — appears 2x in ≤5 spins (30 pts)
+      const hotCount5 = numbers.slice(0, 5).filter(x => x === n).length;
+      if (hotCount5 >= 2) { s += 5; r.push(`📚 F3:HiperQuente`); }
+      
+      // F2: COLD NUMBER — absent for long time (20 pts)
+      let coldDelay = 0;
+      for (let ci = 0; ci < Math.min(100, numbers.length); ci++) { if (numbers[ci] === n) break; coldDelay++; }
+      if (coldDelay >= 80) { s += 4; r.push(`📚 F2:CRÍTICO(${coldDelay}r)`); }
+      else if (coldDelay >= 50) { s += 3; r.push(`📚 F2:Frio(${coldDelay}r)`); }
+      else if (coldDelay >= 30) { s += 1.5; r.push(`📚 F2:Morno(${coldDelay}r)`); }
+      
+      // F5: TERMINAL DOMINANTE — terminal ≥3x in 15 spins (30 pts)
+      if (daniGreen.mod1.count >= 3 && n % 10 === daniGreen.mod1.terminal) { s += 4; r.push(`📚 F5:TermDom`); }
+      
+      // F4: CLUSTER REGIONAL — 3+ numbers from same sector in 10 (20 pts)
+      const nSector = getSector(n);
+      const sectorCount10 = last10.filter(x => getSector(x) === nSector).length;
+      if (sectorCount10 >= 3) { s += 2.5; r.push(`📚 F4:Cluster(${nSector})`); }
+      
+      // COMMUNITY PULL TERMINALS
       const pullTerms = FULL_PULL_TERMINALS[lastNum] || PULL_TERMINALS[lastNum];
       if (pullTerms) {
         const nTerm = n % 10;
-        if (pullTerms.includes(nTerm)) {
-          s += 2.5; r.push(`📚 PuxaT${nTerm}`);
-        }
+        if (pullTerms.includes(nTerm)) { s += 3; r.push(`📚 PuxaT${nTerm}`); }
       }
-      // COMMUNITY PULL CAVALOS: boost cavalos groups pulled by last number
+      // COMMUNITY PULL CAVALOS
       const pullCav = PULL_CAVALOS[lastNum];
       if (pullCav) {
         const nCav = getCavalo(n);
-        if (nCav && pullCav.includes(nCav)) {
-          s += 2; r.push(`📚 PuxaC${nCav}`);
-        }
+        if (nCav && pullCav.includes(nCav)) { s += 2; r.push(`📚 PuxaC${nCav}`); }
       }
-      // FINALES WEIGHT: terminals 0-6 have 4 numbers (higher probability) vs 7-9 with 3
+      // FINALES WEIGHT
       const nFinal = n % 10;
-      if (FINALES_WEIGHT[nFinal] === 4) { s += 0.5; } // slight boost for more probable finals
-      // TERMINAL PROGRESSION: predicted next terminal from escalation
-      if (terminalProgression.predictedNext !== null && n % 10 === terminalProgression.predictedNext) { s += 2.5; r.push(`🐎 Escada T${terminalProgression.predictedNext}`); }
+      if (FINALES_WEIGHT[nFinal] === 4) { s += 0.5; }
+      // TERMINAL PROGRESSION
+      if (terminalProgression.predictedNext !== null && n % 10 === terminalProgression.predictedNext) { s += 3.5; r.push(`🐎 Escada T${terminalProgression.predictedNext}`); }
       // DANI GREEN MÓD1: Duplo Terminal boost
       if (n % 10 === daniGreen.mod1.terminal || n % 10 === daniGreen.mod1.pair) {
-        const mod1Boost = daniGreen.mod1.count >= 5 ? 4 : daniGreen.mod1.count >= 3 ? 2.5 : 1.5;
+        const mod1Boost = daniGreen.mod1.count >= 5 ? 5 : daniGreen.mod1.count >= 3 ? 3.5 : 2;
         s += mod1Boost; r.push(`🎰 DuploT${daniGreen.mod1.terminal}+T${daniGreen.mod1.pair}`);
       }
-      // DANI GREEN MÓD2: Alto/Baixo terminal bias
-      if (daniGreen.mod2 === 'high' && n >= 19) { s += 1.5; r.push('📊 Mod2 Alto'); }
-      if (daniGreen.mod2 === 'low' && n >= 1 && n <= 18) { s += 1.5; r.push('📊 Mod2 Baixo'); }
-      // DANI GREEN MÓD4: Zero pressure
+      // DANI GREEN MÓD2: Alto/Baixo
+      if (daniGreen.mod2 === 'high' && n >= 19) { s += 2; r.push('📊 Mod2 Alto'); }
+      if (daniGreen.mod2 === 'low' && n >= 1 && n <= 18) { s += 2; r.push('📊 Mod2 Baixo'); }
+      // DANI GREEN MÓD4: Zero pressure with zone-based scaling
       if (daniGreen.mod4.active && (n === 0 || ZERO_NEIGHBORS_WHEEL.includes(n) || ZERO_TERMINAL_NUMS.includes(n))) {
-        s += daniGreen.mod4.delay >= 20 ? 5 : 3; r.push(`🟢 Pressão Zero(${daniGreen.mod4.delay}r)`);
+        const zeroBoost = daniGreen.mod4.delay >= 60 ? 8 : daniGreen.mod4.delay >= 40 ? 6 : daniGreen.mod4.delay >= 25 ? 4 : 3;
+        s += zeroBoost; r.push(`🟢 PressãoZero(${daniGreen.mod4.delay}r)`);
       }
       // DANI GREEN MÓD5: Full pull map
-      if (daniGreen.mod5Pull.includes(n)) { s += 3.5; r.push(`🧲 Mod5 Puxa(${daniGreen.mod5LastNum}→${n})`); }
-      if (daniGreen.mod5PullTerminals.includes(n % 10)) { s += 2; r.push(`🧲 Mod5 PuxaT${n%10}`); }
-      // DANI GREEN MÓD6: Crescente
+      if (daniGreen.mod5Pull.includes(n)) { s += 4.5; r.push(`🧲 Mod5 Puxa(${daniGreen.mod5LastNum}→${n})`); }
+      if (daniGreen.mod5PullTerminals.includes(n % 10)) { s += 2.5; r.push(`🧲 Mod5 PuxaT${n%10}`); }
+      // DANI GREEN MÓD6: Crescente/Decrescente
       if (daniGreen.mod6.active && daniGreen.mod6.nextTerminal !== null && n % 10 === daniGreen.mod6.nextTerminal) {
-        s += 3; r.push(`📈 Mod6 Crescente→T${daniGreen.mod6.nextTerminal}`);
+        s += 4; r.push(`📈 Mod6→T${daniGreen.mod6.nextTerminal}`);
       }
+      // DUPLAS DE TERMINAIS boost
+      if (duplaKey && DUPLAS_TERMINAIS[duplaKey]?.includes(n)) {
+        s += 2.5; r.push(`🎰 Dupla(${duplaKey})`);
+      }
+      // ENTROPY MULTIPLIER: boost when session is concentrated
+      if (sessionEntropy < 0.5) { s *= 1.15; }
+      else if (sessionEntropy > 0.8) { s *= 0.85; }
       // DIAMOND DEFLECTORS: if current diamond zone predicts a sector, boost numbers in that sector
       if (numbers.length >= 2) {
         const dfFromIdx = wheelIdx(numbers[0]);
@@ -3478,6 +3526,40 @@ serve(async (req) => {
       });
     }
 
+    // DUPLAS DE TERMINAIS (Método Dani Green) — dedicated strategy
+    for (const [dKey, dNums] of Object.entries(DUPLAS_TERMINAIS)) {
+      const duplaScore = sumScores(dNums);
+      // Only suggest if hot terminal matches this dupla
+      const t1 = daniGreen.mod1.terminal;
+      const t2 = daniGreen.mod1.pair;
+      const matchesHot = dNums.some(n => n % 10 === t1 || n % 10 === t2);
+      if (matchesHot && duplaScore > 10) {
+        const duplaBt = backtestSet(dNums);
+        strategies.push({
+          type: 'dupla_terminal', label: `🎰 Dupla ${dKey}`, emoji: '🎰',
+          numbers: dNums, coverage: (dNums.length / 37) * 100, payout: Math.round(36 / dNums.length),
+          score: duplaScore + duplaBt * 25 + daniGreen.mod1.count * 3 + (sessionEntropy < 0.5 ? 10 : 0),
+          probability: Math.min(98, Math.round(45 + duplaScore * 1.8 + duplaBt * 30)),
+          justification: `Dupla de Terminais ${dKey}: ${dNums.length} números. Sessão ${sessionRegime}. Entropia ${(sessionEntropy * 100).toFixed(0)}%.`,
+        });
+        break; // only add one dupla
+      }
+    }
+
+    // REED TRACKING: suppress strategies that failed 4+ consecutive times
+    const reedPenalty: Record<string, number> = {};
+    for (const st of Object.keys(strategyPerformance)) {
+      const stPreds = resolvedHistory.filter(p => p.strategy_type === st).slice(0, 6);
+      let consecutiveMisses = 0;
+      for (const p of stPreds) {
+        if (!p.hit) consecutiveMisses++;
+        else break;
+      }
+      if (consecutiveMisses >= REED_MAX) {
+        reedPenalty[st] = consecutiveMisses;
+        aiLearnings.push(`🛑 REED: ${st} errou ${consecutiveMisses}x seguidas — PAUSAR esta estratégia`);
+      }
+    }
     if (transitionMatrix.predictedSector && transitionMatrix.predictedDozen && transitionMatrix.predictedTerminal !== null) {
       const sectorPool = transitionMatrix.predictedSector === 'Voisins' ? VOISINS : transitionMatrix.predictedSector === 'Tiers' ? TIERS : ORPHELINS;
       const dozenPool = Array.from({ length: 12 }, (_, i) => (transitionMatrix.predictedDozen! - 1) * 12 + i + 1);
@@ -3568,6 +3650,14 @@ serve(async (req) => {
       // ====== SELF-CORRECTION: 5-round weight adjustment ======
       const selfCorrectionWeight = strategyWeightAdjust[st.type] || 0;
       st.score += selfCorrectionWeight;
+
+      // ====== REED PENALTY: suppress strategies that failed 4+ consecutive times ======
+      const reed = reedPenalty[st.type];
+      if (reed) st.score -= reed * 8; // massive penalty for REED violations
+
+      // ====== ENTROPY GATING: reduce confidence when session is dispersed ======
+      if (sessionEntropy > 0.8) st.score -= 8;
+      else if (sessionEntropy < 0.5) st.score += 5; // concentrated session = bonus
 
       // ====== NOISE PENALTY: reduce confidence when too many noisy spins ======
       if (noiseCount > 5) st.score -= 5;
