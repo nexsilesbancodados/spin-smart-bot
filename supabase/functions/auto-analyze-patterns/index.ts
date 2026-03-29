@@ -5,875 +5,805 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ─── Constantes ───────────────────────────────────────────────
 const WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 const WL = WHEEL.length;
-const RED = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
-const VOISINS = [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25];
-const TIERS = [27,13,36,11,30,8,23,10,5,24,16,33];
-const ORPHELINS = [1,20,14,31,9,17,34,6];
-const COL1 = [1,4,7,10,13,16,19,22,25,28,31,34];
-const COL2 = [2,5,8,11,14,17,20,23,26,29,32,35];
-const COL3 = [3,6,9,12,15,18,21,24,27,30,33,36];
-const CAVALOS: Record<string, number[]> = {
-  '258': [2,5,8,12,15,18,22,25,28,32,35],
-  '147': [1,4,7,11,14,17,21,24,27,31,34],
-  '03': [0,3,10,13,20,23,30,33],
-  '69': [6,9,16,19,26,29,36],
+const RED_SET = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const VOISINS_SET = new Set([22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25]);
+const TIERS_SET   = new Set([27,13,36,11,30,8,23,10,5,24,16,33]);
+const ORPHS_SET   = new Set([1,20,14,31,9,17,34,6]);
+const TERMINALS_MAP: Record<number,number[]> = {
+  0:[0,10,20,30],1:[1,11,21,31],2:[2,12,22,32],3:[3,13,23,33],
+  4:[4,14,24,34],5:[5,15,25,35],6:[6,16,26,36],7:[7,17,27],
+  8:[8,18,28],9:[9,19,29]
+};
+const DUPLAS: Record<string,number[]> = {
+  DG1:[1,11,21,31,6,16,26,36], DG2:[2,12,22,32,7,17,27],
+  DG3:[3,13,23,33,8,18,28],    DG4:[4,14,24,34,9,19,29],
+  DG5:[10,20,30,5,15,25,35]
+};
+const T_TO_DG: Record<number,string> = {
+  1:'DG1',6:'DG1',2:'DG2',7:'DG2',3:'DG3',8:'DG3',4:'DG4',9:'DG4',0:'DG5',5:'DG5'
+};
+const PULL_MAP: Record<number,number[]> = {
+  0:[10,20,30,32,15,26,3,33,31,35], 1:[11,35,16,4,18,28,27,29,33,14,31],
+  2:[14,1,13,18,35,29,12,22],       3:[13,27,6,11,30,8,23,33],
+  4:[26,15,18,32,33,16,8,24,14],    5:[3,33,16,24,10,18,15,25],
+  6:[8,15,31,21,22,23,16,26],       7:[16,18,17,30,31,28,12],
+  8:[11,9,10,18,28,23],             9:[34,35,36,3,16,26,23,24,32,31,29],
+  10:[20,5,18,11,14,24,30],         11:[8,18,16,21,30,1],
+  12:[21,7,28,35],                  13:[31,27,36,6],
+  14:[24,21,18,31,9],               15:[4,19,21,32,0],
+  16:[24,21,18,14,6,26],            17:[34,6,25,27,7],
+  18:[8,18,28,7],                   19:[9,19,29,4,21],
+  20:[4,14,10,30],                  21:[19,2,4,23],
+  22:[33,2,32,12],                  23:[32,11,2,33,13],
+  24:[21,18,14,34,4],               25:[2,4,17,28,29,12,7,18],
+  26:[6,16,26,36,3,0],              27:[28,29,24,22,26,33,31,34,35,36],
+  28:[13,14,15,16,17,18,7],         29:[35,28,22],
+  30:[4,8,16,9,18,22,5,25,3],       31:[13,9,14],
+  32:[2,12,22,32,0,15],             33:[16,3,23,13],
+  34:[16,6,4,24],                   35:[0,3,7,12,26,28,29,35],
+  36:[3,10,27,6]
 };
 
-const getColor = (n: number) => n === 0 ? 'green' : RED.includes(n) ? 'red' : 'black';
-const wheelIdx = (n: number) => WHEEL.indexOf(n);
-const wheelDist = (a: number, b: number) => { const ia = wheelIdx(a), ib = wheelIdx(b); if (ia === -1 || ib === -1) return 99; const d = Math.abs(ia - ib); return Math.min(d, WL - d); };
-const getSector = (n: number) => VOISINS.includes(n) ? 'Voisins' : TIERS.includes(n) ? 'Tiers' : ORPHELINS.includes(n) ? 'Orphelins' : 'Zero';
-const getDozen = (n: number) => n === 0 ? 0 : n <= 12 ? 1 : n <= 24 ? 2 : 3;
-const getColumn = (n: number) => n === 0 ? 0 : COL1.includes(n) ? 1 : COL2.includes(n) ? 2 : 3;
-const getCavalo = (n: number) => { for (const [k, v] of Object.entries(CAVALOS)) if (v.includes(n)) return k; return null; };
+function wIdx(n: number) { return WHEEL.indexOf(n); }
+function wDist(a: number, b: number) {
+  const ia = wIdx(a), ib = wIdx(b);
+  if (ia < 0 || ib < 0) return 99;
+  const d = Math.abs(ia - ib);
+  return Math.min(d, WL - d);
+}
+function getDozen(n: number) { return n === 0 ? 0 : n <= 12 ? 1 : n <= 24 ? 2 : 3; }
 
-// ========================
-// BACKTEST: validate a pattern against history
-// Returns win rate (0-1)
-// ========================
-function backtestPattern(
-  numbers: number[],
-  predictFn: (window: number[]) => number[], // given a window, predict next numbers
-  windowSize: number,
-  maxTests: number
-): { winRate: number; hits: number; total: number } {
-  let hits = 0, total = 0;
-  const testCount = Math.min(maxTests, Math.floor(numbers.length / (windowSize + 1)) - 1);
-  for (let w = 0; w < testCount; w++) {
-    const start = w * 3; // overlap windows for more data
-    if (start + windowSize + 1 > numbers.length) break;
-    const window = numbers.slice(start, start + windowSize);
-    const actual = numbers[start + windowSize];
-    if (actual === undefined) continue;
-    const predicted = predictFn(window);
-    total++;
-    if (predicted.includes(actual)) hits++;
+// ─── Backtest real (array decrescente: index 0 = mais recente) ───
+function backtest(nums: number[], predictFn: (win: number[]) => number[], winSz: number, maxT = 80): number {
+  let h = 0, t = 0;
+  const mx = Math.min(maxT, nums.length - winSz - 1);
+  for (let i = 0; i < mx; i++) {
+    const win  = nums.slice(i + 1, i + 1 + winSz);
+    const next = nums[i];
+    const pred = predictFn(win);
+    t++;
+    if (pred.includes(next)) h++;
   }
-  return { winRate: total > 0 ? hits / total : 0, hits, total };
+  return t > 0 ? h / t : 0;
 }
 
-// ========================
-// 20+ PATTERN DETECTORS
-// Each returns: { found, type, description, confidence, numbers_involved, recommendation }
-// ========================
-interface PatternResult {
-  found: boolean;
-  pattern_type: string;
-  description: string;
+// ─── Tipos ───────────────────────────────────────────────────
+interface DetectorResult {
+  type: string;
+  label: string;
+  numbers: number[];
   confidence: number;
-  numbers_involved: number[];
+  bt: number;
   recommendation: string;
-  backtestRate?: number;
 }
 
-// 1. Terminal Crescente (ascending terminals: T2→T5→T8)
-function detectTerminalAscending(numbers: number[]): PatternResult {
-  const terms = numbers.slice(0, 10).map(n => n % 10);
-  const groups = [[1,4,7], [2,5,8], [0,3,6,9]];
-  for (const group of groups) {
-    for (let i = 0; i < terms.length - 2; i++) {
-      const idx1 = group.indexOf(terms[i]);
-      const idx2 = group.indexOf(terms[i+1]);
-      const idx3 = group.indexOf(terms[i+2]);
-      if (idx1 >= 0 && idx2 >= 0 && idx3 >= 0 && idx1 < idx2 && idx2 < idx3) {
-        const nextIdx = idx3 + 1;
-        const nextTerm = nextIdx < group.length ? group[nextIdx] : group[0];
-        const predicted = Array.from({length:37}, (_,n)=>n).filter(n => n%10 === nextTerm);
-        const bt = backtestPattern(numbers, (w) => {
-          const t = w.slice(0,3).map(n=>n%10);
-          for (const g of groups) {
-            const i1=g.indexOf(t[0]),i2=g.indexOf(t[1]),i3=g.indexOf(t[2]);
-            if (i1>=0&&i2>=0&&i3>=0&&i1<i2&&i2<i3) {
-              const ni=i3+1; const nt=ni<g.length?g[ni]:g[0];
-              return Array.from({length:37},(_,n)=>n).filter(n=>n%10===nt);
-            }
-          }
-          return [];
-        }, 10, 50);
-        return { found: true, pattern_type: 'terminal_ascending', description: `Terminal Crescente: T${terms[i+2]}→T${terms[i+1]}→T${terms[i]} — próximo T${nextTerm}`, confidence: Math.min(90, 50 + bt.winRate * 50), numbers_involved: predicted, recommendation: `Aposte nos terminais ${nextTerm}: ${predicted.join(',')}`, backtestRate: bt.winRate };
-      }
-    }
-  }
-  return { found: false, pattern_type: 'terminal_ascending', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
+interface Pattern {
+  type: string;
+  label: string;
+  description: string;
+  numbers: number[];
+  confidence: number;
+  bt: number;
+  windows_found: number[];
+  score: number;
+  recommendation: string;
 }
 
-// 2. Terminal Decrescente
-function detectTerminalDescending(numbers: number[]): PatternResult {
-  const terms = numbers.slice(0, 10).map(n => n % 10);
-  const groups = [[1,4,7], [2,5,8], [0,3,6,9]];
-  for (const group of groups) {
-    for (let i = 0; i < terms.length - 2; i++) {
-      const idx1 = group.indexOf(terms[i]);
-      const idx2 = group.indexOf(terms[i+1]);
-      const idx3 = group.indexOf(terms[i+2]);
-      if (idx1 >= 0 && idx2 >= 0 && idx3 >= 0 && idx1 > idx2 && idx2 > idx3) {
-        const nextIdx = idx3 - 1;
-        const nextTerm = nextIdx >= 0 ? group[nextIdx] : group[group.length - 1];
-        const predicted = Array.from({length:37}, (_,n)=>n).filter(n => n%10 === nextTerm);
-        return { found: true, pattern_type: 'terminal_descending', description: `Terminal Decrescente: T${terms[i+2]}→T${terms[i+1]}→T${terms[i]} — próximo T${nextTerm}`, confidence: 55, numbers_involved: predicted, recommendation: `Aposte terminais ${nextTerm}: ${predicted.join(',')}` };
-      }
-    }
-  }
-  return { found: false, pattern_type: 'terminal_descending', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
+// ══════════════════════════════════════════════════════════════
+// 22 DETECTORES
+// ══════════════════════════════════════════════════════════════
+
+function dAutoRepeticao(nums: number[], wSize: number): DetectorResult | null {
+  const f: Record<number,number> = {};
+  nums.slice(0,5).forEach(n => { f[n]=(f[n]||0)+1; });
+  const best = Object.entries(f).sort(([,a],[,b])=>Number(b)-Number(a))[0];
+  if (!best || Number(best[1]) < 2) return null;
+  const n = Number(best[0]);
+  const cnt = Number(best[1]);
+  const neighbors = [-2,-1,0,1,2].map(d=>WHEEL[(wIdx(n)+d+WL)%WL]);
+  const bt = backtest(nums, w => {
+    const ff: Record<number,number>={};
+    w.slice(0,5).forEach(x=>{ff[x]=(ff[x]||0)+1;});
+    const bb=Object.entries(ff).sort(([,a],[,b])=>Number(b)-Number(a))[0];
+    return bb && Number(bb[1])>=2 ? [-2,-1,0,1,2].map(d=>WHEEL[(wIdx(Number(bb[0]))+d+WL)%WL]) : [];
+  }, 5, 60);
+  return {
+    type:'auto_repeticao', label:'🔁 Auto-Repetição',
+    numbers:[...new Set(neighbors)],
+    confidence: Math.min(92, 55 + cnt*15),
+    bt, recommendation:`${n} repetiu ${cnt}x → apostar pleno+vizinhos [${neighbors.join(',')}]`
+  };
 }
 
-// 3. Color Streak (sequência de cor)
-function detectColorStreak(numbers: number[]): PatternResult {
-  if (numbers.length < 5) return { found: false, pattern_type: 'color_streak', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-  let streak = 1; const first = getColor(numbers[0]);
-  if (first === 'green') return { found: false, pattern_type: 'color_streak', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-  for (let i = 1; i < Math.min(20, numbers.length); i++) {
-    if (numbers[i] === 0) break;
-    if (getColor(numbers[i]) === first) streak++; else break;
-  }
-  if (streak >= 4) {
-    const opposite = first === 'red' ? 'black' : 'red';
-    const nums = Array.from({length:37},(_,n)=>n).filter(n => getColor(n) === opposite);
-    const conf = Math.min(95, 55 + streak * 7);
-    return { found: true, pattern_type: 'color_streak', description: `Sequência de ${streak}x ${first === 'red' ? 'Vermelho' : 'Preto'} — reversão provável`, confidence: conf, numbers_involved: nums, recommendation: `Aposte no ${opposite === 'red' ? 'Vermelho' : 'Preto'}` };
-  }
-  return { found: false, pattern_type: 'color_streak', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 4. Alternância de Cor (xadrez)
-function detectColorAlternation(numbers: number[]): PatternResult {
-  const colors = numbers.slice(0, 10).map(n => getColor(n)).filter(c => c !== 'green');
-  if (colors.length < 6) return { found: false, pattern_type: 'color_alternation', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-  let alt = 0;
-  for (let i = 1; i < colors.length; i++) if (colors[i] !== colors[i-1]) alt++;
-  const rate = alt / (colors.length - 1);
-  if (rate >= 0.8) {
-    const nextColor = colors[0] === 'red' ? 'black' : 'red';
-    const nums = Array.from({length:37},(_,n)=>n).filter(n => getColor(n) === nextColor);
-    return { found: true, pattern_type: 'color_alternation', description: `Alternância de cores: ${(rate*100).toFixed(0)}% — próximo ${nextColor === 'red' ? 'Vermelho' : 'Preto'}`, confidence: Math.min(85, 55 + rate * 30), numbers_involved: nums, recommendation: `Xadrez ativo, aposte ${nextColor === 'red' ? 'Vermelho' : 'Preto'}` };
-  }
-  return { found: false, pattern_type: 'color_alternation', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 5. Números Altos Dominantes
-function detectHighDominance(numbers: number[]): PatternResult {
-  const last20 = numbers.slice(0, 20);
-  const high = last20.filter(n => n >= 19 && n <= 36).length;
-  if (high >= 14) {
-    const lowNums = Array.from({length:18},(_,i)=>i+1);
-    return { found: true, pattern_type: 'high_dominance', description: `Números ALTOS dominando: ${high}/20 — reversão para Baixos`, confidence: Math.min(85, 50 + (high - 14) * 8), numbers_involved: lowNums, recommendation: `Aposte Baixo (1-18) — ${high}/20 altos` };
-  }
-  const low = last20.filter(n => n >= 1 && n <= 18).length;
-  if (low >= 14) {
-    const highNums = Array.from({length:18},(_,i)=>i+19);
-    return { found: true, pattern_type: 'high_dominance', description: `Números BAIXOS dominando: ${low}/20 — reversão para Altos`, confidence: Math.min(85, 50 + (low - 14) * 8), numbers_involved: highNums, recommendation: `Aposte Alto (19-36) — ${low}/20 baixos` };
-  }
-  return { found: false, pattern_type: 'high_dominance', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 6. Par/Ímpar streak
-function detectParityStreak(numbers: number[]): PatternResult {
-  const filtered = numbers.filter(n => n > 0).slice(0, 15);
-  if (filtered.length < 5) return { found: false, pattern_type: 'parity_streak', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-  let streak = 1; const first = filtered[0] % 2 === 0 ? 'par' : 'ímpar';
-  for (let i = 1; i < filtered.length; i++) {
-    if ((filtered[i] % 2 === 0 ? 'par' : 'ímpar') === first) streak++; else break;
-  }
-  if (streak >= 5) {
-    const opposite = first === 'par' ? 'ímpar' : 'par';
-    const nums = Array.from({length:36},(_,i)=>i+1).filter(n => first === 'par' ? n % 2 === 1 : n % 2 === 0);
-    return { found: true, pattern_type: 'parity_streak', description: `${streak}x ${first} seguidos — reversão para ${opposite}`, confidence: Math.min(90, 50 + streak * 6), numbers_involved: nums, recommendation: `Aposte no ${opposite === 'par' ? 'Par' : 'Ímpar'}` };
-  }
-  return { found: false, pattern_type: 'parity_streak', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 7. Zona quente do cilindro (concentração de setor)
-function detectSectorConcentration(numbers: number[]): PatternResult {
-  const last15 = numbers.slice(0, 15);
-  const freq: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0 };
-  last15.forEach(n => { const s = getSector(n); if (freq[s] !== undefined) freq[s]++; });
-  const sorted = Object.entries(freq).sort(([,a],[,b]) => b - a);
-  if (sorted[0][1] >= 9) {
-    const sector = sorted[0][0];
-    const sectorNums = sector === 'Voisins' ? VOISINS : sector === 'Tiers' ? TIERS : ORPHELINS;
-    return { found: true, pattern_type: 'sector_concentration', description: `Concentração no setor ${sector}: ${sorted[0][1]}/15`, confidence: Math.min(90, 55 + (sorted[0][1] - 9) * 8), numbers_involved: [...sectorNums], recommendation: `Cubra setor ${sector}` };
-  }
-  return { found: false, pattern_type: 'sector_concentration', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 8. Gangorra de setores (A→B→A→B)
-function detectSectorSeesaw(numbers: number[]): PatternResult {
-  const secs = numbers.slice(0, 12).map(n => getSector(n)).filter(s => s !== 'Zero');
-  if (secs.length < 6) return { found: false, pattern_type: 'sector_seesaw', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-  let ababCount = 0;
-  for (let i = 2; i < secs.length; i++) {
-    if (secs[i] === secs[i-2] && secs[i] !== secs[i-1]) ababCount++;
-  }
-  const rate = ababCount / (secs.length - 2);
-  if (rate >= 0.5 && ababCount >= 3) {
-    const predictSec = secs[0] === secs[2] ? secs[1] : secs[0];
-    const sectorNums = predictSec === 'Voisins' ? VOISINS : predictSec === 'Tiers' ? TIERS : ORPHELINS;
-    return { found: true, pattern_type: 'sector_seesaw', description: `Gangorra ${secs[0]}↔${secs[1]}: ${ababCount}x alternância — próximo: ${predictSec}`, confidence: Math.min(85, 50 + ababCount * 8), numbers_involved: [...sectorNums].slice(0, 8), recommendation: `Aposte setor ${predictSec}` };
-  }
-  return { found: false, pattern_type: 'sector_seesaw', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 9. Terminal dominante (1 terminal >25% das rodadas)
-function detectTerminalDominance(numbers: number[]): PatternResult {
-  const last30 = numbers.slice(0, 30);
-  const freq: Record<number, number> = {};
-  for (let t = 0; t <= 9; t++) freq[t] = 0;
-  last30.forEach(n => freq[n % 10]++);
-  const sorted = Object.entries(freq).sort(([,a],[,b]) => b - a);
-  const top = sorted[0];
-  const topTerm = Number(top[0]);
-  const topCount = top[1];
-  if (topCount >= 8) { // >26% in 30
-    const nums = Array.from({length:37},(_,n)=>n).filter(n => n%10 === topTerm);
-    const bt = backtestPattern(numbers, (w) => {
-      const f: Record<number,number> = {};
-      for (let t=0;t<=9;t++) f[t]=0;
-      w.forEach(n=>f[n%10]++);
-      const best = Object.entries(f).sort(([,a],[,b])=>b-a)[0];
-      return Array.from({length:37},(_,n)=>n).filter(n=>n%10===Number(best[0]));
-    }, 15, 40);
-    return { found: true, pattern_type: 'terminal_hot', description: `Terminal ${topTerm} QUENTE: ${topCount}x em 30 (${((topCount/30)*100).toFixed(0)}%)`, confidence: Math.min(90, 50 + bt.winRate * 50), numbers_involved: nums, recommendation: `Aposte terminais ${topTerm}: ${nums.join(',')}`, backtestRate: bt.winRate };
-  }
-  return { found: false, pattern_type: 'terminal_hot', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 10. Terminal frio (ausente por muitas rodadas)
-function detectTerminalCold(numbers: number[]): PatternResult {
-  const delays: Record<number, number> = {};
-  for (let t = 0; t <= 9; t++) delays[t] = 999;
-  for (let i = 0; i < Math.min(50, numbers.length); i++) {
-    const t = numbers[i] % 10;
-    if (delays[t] === 999) delays[t] = i;
-  }
-  const cold = Object.entries(delays).filter(([,d]) => d >= 12).sort(([,a],[,b]) => b - a);
-  if (cold.length > 0) {
-    const term = Number(cold[0][0]);
-    const delay = cold[0][1];
-    const nums = Array.from({length:37},(_,n)=>n).filter(n => n%10 === term);
-    return { found: true, pattern_type: 'terminal_cold', description: `Terminal ${term} FRIO: ausente há ${delay} giros — retorno esperado`, confidence: Math.min(80, 45 + delay * 2), numbers_involved: nums, recommendation: `Terminal ${term} em dívida: ${nums.join(',')}` };
-  }
-  return { found: false, pattern_type: 'terminal_cold', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 11. Dúzia ausente (retorno por pressão)
-function detectDozenAbsent(numbers: number[]): PatternResult {
-  const delays = [999, 999, 999];
-  for (let i = 0; i < Math.min(50, numbers.length); i++) {
-    const d = getDozen(numbers[i]);
-    if (d > 0 && delays[d-1] === 999) delays[d-1] = i;
-  }
-  const maxDelay = Math.max(...delays);
-  const coldDozen = delays.indexOf(maxDelay) + 1;
-  if (maxDelay >= 12) {
-    const nums = Array.from({length:12},(_,i)=>(coldDozen-1)*12+i+1);
-    return { found: true, pattern_type: 'dozen_absent', description: `Dúzia ${coldDozen} ausente há ${maxDelay} giros — pressão de retorno`, confidence: Math.min(85, 45 + maxDelay * 2), numbers_involved: nums, recommendation: `Aposte Dúzia ${coldDozen} (${nums[0]}-${nums[11]})` };
-  }
-  return { found: false, pattern_type: 'dozen_absent', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 12. Coluna ausente
-function detectColumnAbsent(numbers: number[]): PatternResult {
-  const delays = [999, 999, 999];
-  for (let i = 0; i < Math.min(50, numbers.length); i++) {
-    const c = getColumn(numbers[i]);
-    if (c > 0 && delays[c-1] === 999) delays[c-1] = i;
-  }
-  const maxDelay = Math.max(...delays);
-  const coldCol = delays.indexOf(maxDelay) + 1;
-  if (maxDelay >= 10) {
-    const nums = coldCol === 1 ? COL1 : coldCol === 2 ? COL2 : COL3;
-    return { found: true, pattern_type: 'column_absent', description: `Coluna ${coldCol} ausente há ${maxDelay} giros`, confidence: Math.min(80, 40 + maxDelay * 2), numbers_involved: [...nums], recommendation: `Aposte Coluna ${coldCol}` };
-  }
-  return { found: false, pattern_type: 'column_absent', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 13. Repetição de vizinhos consecutivos (dealer mecânico)
-function detectNeighborRepetition(numbers: number[]): PatternResult {
-  let count = 0;
-  const pairs: number[][] = [];
-  for (let i = 0; i < Math.min(15, numbers.length) - 1; i++) {
-    if (wheelDist(numbers[i], numbers[i+1]) <= 2) {
-      count++;
-      pairs.push([numbers[i], numbers[i+1]]);
-    }
-  }
-  if (count >= 4) {
-    const last = numbers[0];
-    const idx = wheelIdx(last);
-    const predicted = idx !== -1 ? [-2,-1,0,1,2].map(o => WHEEL[(idx+o+WL)%WL]) : [];
-    return { found: true, pattern_type: 'neighbor_repeat', description: `Dealer mecânico: ${count} vizinhos consecutivos em 15 giros`, confidence: Math.min(85, 50 + count * 6), numbers_involved: predicted, recommendation: `Aposte vizinhos do ${last}: ${predicted.join(',')}` };
-  }
-  return { found: false, pattern_type: 'neighbor_repeat', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 14. Números quentes (hot numbers — repetiram >3x em 37)
-function detectHotNumbers(numbers: number[]): PatternResult {
-  const freq: Record<number, number> = {};
-  for (let n = 0; n <= 36; n++) freq[n] = 0;
-  numbers.slice(0, 37).forEach(n => freq[n]++);
-  const hot = Object.entries(freq).filter(([,f]) => f >= 3).sort(([,a],[,b]) => b - a).map(([n]) => Number(n));
-  if (hot.length >= 2) {
-    return { found: true, pattern_type: 'hot_numbers', description: `Números quentes (≥3x em 37): ${hot.join(',')}`, confidence: Math.min(80, 45 + hot.length * 6), numbers_involved: hot, recommendation: `Pleno ou vizinhos nos quentes: ${hot.slice(0,5).join(',')}` };
-  }
-  return { found: false, pattern_type: 'hot_numbers', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 15. Números frios (cold — 0x em 37, Lei do Terço)
-function detectColdNumbers(numbers: number[]): PatternResult {
-  const freq: Record<number, number> = {};
-  for (let n = 0; n <= 36; n++) freq[n] = 0;
-  numbers.slice(0, Math.min(37, numbers.length)).forEach(n => freq[n]++);
-  const cold = Object.entries(freq).filter(([,f]) => f === 0).map(([n]) => Number(n));
-  if (cold.length >= 10) {
-    return { found: true, pattern_type: 'cold_numbers', description: `Lei do Terço: ${cold.length} números ausentes em 37 giros`, confidence: Math.min(75, 40 + cold.length), numbers_involved: cold.slice(0, 15), recommendation: `Números em dívida (terço): ${cold.slice(0,8).join(',')}` };
-  }
-  return { found: false, pattern_type: 'cold_numbers', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 16. Cavalos quentes
-function detectCavaloHot(numbers: number[]): PatternResult {
-  const last30 = numbers.slice(0, 30);
-  const freq: Record<string, number> = { '258':0, '147':0, '03':0, '69':0 };
-  last30.forEach(n => { const c = getCavalo(n); if (c) freq[c]++; });
-  const sorted = Object.entries(freq).sort(([,a],[,b]) => b - a);
-  const best = sorted[0];
-  const rate = best[1] / 30;
-  if (rate >= 0.35) {
-    const nums = CAVALOS[best[0]] || [];
-    const bt = backtestPattern(numbers, (w) => {
-      const f: Record<string,number> = {'258':0,'147':0,'03':0,'69':0};
-      w.forEach(n => { const c = getCavalo(n); if (c) f[c]++; });
-      const top = Object.entries(f).sort(([,a],[,b])=>b-a)[0][0];
-      return CAVALOS[top] || [];
-    }, 15, 40);
-    return { found: true, pattern_type: 'cavalos_hot', description: `Cavalos ${best[0]} QUENTES: ${best[1]}x em 30 (${(rate*100).toFixed(0)}%)`, confidence: Math.min(85, 50 + bt.winRate * 40), numbers_involved: nums, recommendation: `Aposte Cavalos ${best[0]}: ${nums.join(',')}`, backtestRate: bt.winRate };
-  }
-  return { found: false, pattern_type: 'cavalos_hot', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 17. Espelhamento de número (13→31, 25→52→não, 12→21)
-function detectMirrorPattern(numbers: number[]): PatternResult {
-  for (let i = 0; i < Math.min(10, numbers.length) - 1; i++) {
-    const n = numbers[i];
-    if (n >= 10 && n <= 36) {
-      const mirror = parseInt(String(n).split('').reverse().join(''));
-      if (mirror >= 0 && mirror <= 36 && mirror !== n) {
-        // Check if mirror appeared nearby
-        const recent = numbers.slice(Math.max(0, i-3), i);
-        if (recent.includes(mirror)) {
-          const predicted = [n, mirror, ...Array.from({length:37},(_,x)=>x).filter(x => x%10 === n%10 && x !== n).slice(0,3)];
-          return { found: true, pattern_type: 'mirror', description: `Espelhamento: ${mirror}↔${n} — tendência de espelho ativa`, confidence: 60, numbers_involved: predicted, recommendation: `Padrão espelho: aposte ${predicted.slice(0,5).join(',')}` };
-        }
-      }
-    }
-  }
-  return { found: false, pattern_type: 'mirror', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 18. Dúzia repetida (mesma dúzia 3+ vezes seguidas)
-function detectDozenRepeat(numbers: number[]): PatternResult {
-  const dozens = numbers.slice(0, 10).map(n => getDozen(n)).filter(d => d > 0);
-  if (dozens.length < 3) return { found: false, pattern_type: 'dozen_repeat', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-  let streak = 1;
-  for (let i = 1; i < dozens.length; i++) {
-    if (dozens[i] === dozens[0]) streak++; else break;
-  }
-  if (streak >= 3) {
-    const dz = dozens[0];
-    const nums = Array.from({length:12},(_,i)=>(dz-1)*12+i+1);
-    return { found: true, pattern_type: 'dozen_repeat', description: `Dúzia ${dz} repetiu ${streak}x seguidas — pode continuar ou reverter`, confidence: Math.min(75, 45 + streak * 6), numbers_involved: nums, recommendation: `Dúzia ${dz} em streak de ${streak}` };
-  }
-  return { found: false, pattern_type: 'dozen_repeat', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 19. Zigzag de colunas
-function detectColumnZigzag(numbers: number[]): PatternResult {
-  const cols = numbers.slice(0, 10).map(n => getColumn(n)).filter(c => c > 0);
-  if (cols.length < 6) return { found: false, pattern_type: 'column_zigzag', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-  let alt = 0;
-  for (let i = 1; i < cols.length; i++) if (cols[i] !== cols[i-1]) alt++;
-  const rate = alt / (cols.length - 1);
-  if (rate >= 0.8) {
-    const nextCol = cols[0] === 1 ? 3 : cols[0] === 3 ? 1 : 2;
-    const nums = nextCol === 1 ? COL1 : nextCol === 2 ? COL2 : COL3;
-    return { found: true, pattern_type: 'column_zigzag', description: `Zigzag de colunas: ${(rate*100).toFixed(0)}% alternância — próxima Coluna ${nextCol}`, confidence: Math.min(80, 50 + rate * 30), numbers_involved: [...nums], recommendation: `Aposte Coluna ${nextCol}` };
-  }
-  return { found: false, pattern_type: 'column_zigzag', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 20. Sequência exata repetida no histórico
-function detectSequenceRepeat(numbers: number[]): PatternResult {
-  if (numbers.length < 50) return { found: false, pattern_type: 'sequence_repeat', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-  const seq = numbers.slice(0, 3);
-  for (let start = 4; start <= numbers.length - 4; start++) {
-    let match = 0;
-    for (let j = 0; j < 3; j++) if (numbers[start + j] === seq[j]) match++;
-    if (match === 3) {
-      const next = numbers[start - 1];
-      if (next !== undefined) {
-        const idx = wheelIdx(next);
-        const predicted = idx !== -1 ? [-2,-1,0,1,2].map(o => WHEEL[(idx+o+WL)%WL]) : [next];
-        return { found: true, pattern_type: 'sequence_repeat', description: `Sequência ${seq.join(',')} repetida há ${start} giros — histórico aponta ${next}`, confidence: 75, numbers_involved: predicted, recommendation: `Sequência histórica: pleno ${next} + vizinhos` };
-      }
-    }
-  }
-  return { found: false, pattern_type: 'sequence_repeat', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 21. Puxada de número (após X sempre sai Y)
-function detectPullPattern(numbers: number[]): PatternResult {
-  if (numbers.length < 100) return { found: false, pattern_type: 'pull', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-  const source = numbers[0];
-  const occurrences: number[] = [];
-  for (let i = 1; i < Math.min(500, numbers.length) - 1; i++) {
-    if (numbers[i] === source) occurrences.push(i);
-  }
-  if (occurrences.length < 3) return { found: false, pattern_type: 'pull', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-  const nextMap: Record<number, number> = {};
-  for (const idx of occurrences) {
-    if (idx - 1 >= 0) { // what came AFTER this number (in reverse order)
-      const next = numbers[idx - 1];
-      nextMap[next] = (nextMap[next] || 0) + 1;
-    }
-  }
-  const sorted = Object.entries(nextMap).sort(([,a],[,b]) => b - a);
-  if (sorted.length > 0 && sorted[0][1] >= 3) {
-    const target = Number(sorted[0][0]);
-    const count = sorted[0][1];
-    const idx = wheelIdx(target);
-    const predicted = idx !== -1 ? [-1,0,1].map(o => WHEEL[(idx+o+WL)%WL]) : [target];
-    return { found: true, pattern_type: 'pull', description: `Puxada: após ${source} saiu ${target} ${count}x em ${occurrences.length} — padrão ativo`, confidence: Math.min(80, 45 + count * 8), numbers_involved: predicted, recommendation: `Após ${source}: aposte ${target} + vizinhos` };
-  }
-  return { found: false, pattern_type: 'pull', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// 22. Alternância Alto/Baixo
-function detectHighLowAlternation(numbers: number[]): PatternResult {
-  const filtered = numbers.slice(0, 10).filter(n => n > 0);
-  if (filtered.length < 6) return { found: false, pattern_type: 'highlow_alt', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-  let alt = 0;
-  for (let i = 1; i < filtered.length; i++) {
-    const prev = filtered[i-1] >= 19 ? 'H' : 'L';
-    const curr = filtered[i] >= 19 ? 'H' : 'L';
-    if (prev !== curr) alt++;
-  }
-  const rate = alt / (filtered.length - 1);
-  if (rate >= 0.8) {
-    const lastHL = filtered[0] >= 19 ? 'H' : 'L';
-    const nextHL = lastHL === 'H' ? 'Baixo' : 'Alto';
-    const nums = lastHL === 'H' ? Array.from({length:18},(_,i)=>i+1) : Array.from({length:18},(_,i)=>i+19);
-    return { found: true, pattern_type: 'highlow_alt', description: `Alternância Alto/Baixo: ${(rate*100).toFixed(0)}% — próximo ${nextHL}`, confidence: Math.min(80, 50 + rate * 30), numbers_involved: nums, recommendation: `Aposte ${nextHL}` };
-  }
-  return { found: false, pattern_type: 'highlow_alt', description: '', confidence: 0, numbers_involved: [], recommendation: '' };
-}
-
-// ========================
-// 6 NEW DETECTORS
-// ========================
-const PULL_MAP_AA: Record<number, number[]> = {
-  0:[10,20,30,32,15,26,3,33,31],1:[11,35,16,4,18,28,27,29,33],
-  2:[14,1,13,18,35,29],3:[13,27,6,11,30,8],4:[26,15,18,32,33,16,8],
-  5:[3,33,16,24,10,18],6:[8,15,31,21,22,23],7:[16,18,17,30,31],
-  8:[11,9,10],9:[34,35,36,3,16,26,23,24,32,31],10:[20,5,18,11,14,24],
-  20:[4,14],27:[28,29,24,22,26,33,31,34,35,36],30:[4,8,16,9,18,22,5,25,3],36:[3,10,27]
-};
-const TERMINALS_AA: Record<number,number[]> = {
-  0:[10,20,30],1:[1,11,21,31],2:[2,12,22,32],3:[3,13,23,33],
-  4:[4,14,24,34],5:[5,15,25,35],6:[6,16,26,36],7:[7,17,27],8:[8,18,28],9:[9,19,29]
-};
-const DUPLAS_AA: Record<string,number[]> = {
-  'DG1':[1,11,21,31,6,16,26,36],'DG2':[2,12,22,32,7,17,27],
-  'DG3':[3,13,23,33,8,18,28],'DG4':[4,14,24,34,9,19,29],'DG5':[10,20,30,5,15,25,35]
-};
-const T_TO_DG: Record<number,string> = {1:'DG1',6:'DG1',2:'DG2',7:'DG2',3:'DG3',8:'DG3',4:'DG4',9:'DG4',0:'DG5',5:'DG5'};
-
-function detectDuplaDaniGreen(numbers: number[]): PatternResult {
-  const last15 = numbers.slice(0,15);
-  const tf: Record<number,number> = {};
-  last15.forEach(n => { const t=n%10; tf[t]=(tf[t]||0)+1; });
-  const sorted = Object.entries(tf).sort(([,a],[,b])=>b-a);
-  const hotT = Number(sorted[0]?.[0] ?? -1);
-  const hotC = Number(sorted[0]?.[1] ?? 0);
-  if (hotT < 0 || hotC < 3) return { found:false, pattern_type:'dupla_dani_green', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-  const dgKey = T_TO_DG[hotT];
-  const dgNums = DUPLAS_AA[dgKey] || [];
-  const bt = backtestPattern(numbers,(w)=>{const tf2:Record<number,number>={};w.forEach(n=>{const t=n%10;tf2[t]=(tf2[t]||0)+1;});const ht=Number(Object.entries(tf2).sort(([,a],[,b])=>b-a)[0]?.[0]??0);return DUPLAS_AA[T_TO_DG[ht]]||[];},15,60);
-  return { found:true, pattern_type:'dupla_dani_green', description:`${dgKey}: T${hotT} domina ${hotC}x em 15`, confidence:Math.min(92,55+hotC*7+bt.winRate*18), numbers_involved:dgNums, recommendation:`Aposte ${dgKey}: [${dgNums.join(',')}] — 7-8 fichas`, backtestRate:bt.winRate };
-}
-
-function detectZeroCritical(numbers: number[]): PatternResult {
-  const idx = numbers.indexOf(0);
-  const delay = idx===-1 ? numbers.length : idx;
-  if (delay < 15) return { found:false, pattern_type:'pressao_zero', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-  const JZ=[12,35,3,26,0,32,15], VZ=[22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25];
-  const level = delay>40?'CRÍTICA':delay>25?'ALTA':'MÉDIA';
-  const nums = delay>40?VZ:JZ;
-  const fichas = delay>40?'Vizinhos do Zero (9 fichas)':delay>25?'Jeu Zero (4 fichas)':'1 ficha no zero';
-  return { found:true, pattern_type:'pressao_zero', description:`Pressão ${level}: zero ausente ${delay} rodadas`, confidence:Math.min(90,40+delay*1.1), numbers_involved:nums, recommendation:`Zero ${level} — ${fichas}: [${nums.slice(0,7).join(',')}]`, backtestRate:0.37 };
-}
-
-function detectEntropiaBaixa(numbers: number[]): PatternResult {
-  const last15 = numbers.slice(0,15);
-  const distintos = new Set(last15.map(n=>n%10)).size;
-  if (distintos > 5) return { found:false, pattern_type:'entropia_baixa', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-  const tf: Record<number,number> = {};
-  last15.forEach(n => { const t=n%10; tf[t]=(tf[t]||0)+1; });
-  const hotT = Number(Object.entries(tf).sort(([,a],[,b])=>b-a)[0]?.[0]??0);
-  const nums = TERMINALS_AA[hotT] || [];
-  return { found:true, pattern_type:'entropia_baixa', description:`Entropia baixa: ${distintos} terminais distintos em 15. T${hotT} domina.`, confidence:Math.min(88,42+(6-distintos)*11), numbers_involved:nums, recommendation:`Sessão concentrada — T${hotT}: [${nums.join(',')}] — 5-7 fichas`, backtestRate:0.42 };
-}
-
-function detectNearMissConsecutivo(numbers: number[]): PatternResult {
-  const last5 = numbers.slice(0,5);
-  let cnt = 0;
-  for (let i=0;i<last5.length-1;i++){const ia=WHEEL.indexOf(last5[i]),ib=WHEEL.indexOf(last5[i+1]);if(ia!==-1&&ib!==-1&&Math.min(Math.abs(ia-ib),WL-Math.abs(ia-ib))<=3)cnt++;}
-  if (cnt < 3) return { found:false, pattern_type:'near_miss_consecutivo', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-  const li=WHEEL.indexOf(numbers[0]);
-  const viz=li!==-1?[-2,-1,0,1,2].map(d=>WHEEL[(li+d+WL)%WL]):[];
-  return { found:true, pattern_type:'near_miss_consecutivo', description:`${cnt} near-misses na roda. Clustering físico detectado.`, confidence:Math.min(85,50+cnt*10), numbers_involved:viz, recommendation:`Clustering roda — Vizinhos do ${numbers[0]}: [${viz.join(',')}]`, backtestRate:0.38 };
-}
-
-function detectDuziaCiclo(numbers: number[]): PatternResult {
-  const dz = numbers.slice(0,6).map(n=>n===0?0:n<=12?1:n<=24?2:3).filter(d=>d>0);
-  if (dz.length<4) return { found:false, pattern_type:'duzia_ciclo', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-  let asc=0,desc=0;
-  const ascSeq=[1,2,3,1,2,3],descSeq=[3,2,1,3,2,1];
-  for(let i=0;i<Math.min(dz.length,4);i++){if(dz[i]===ascSeq[i])asc++;if(dz[i]===descSeq[i])desc++;}
-  if(asc<3&&desc<3) return { found:false, pattern_type:'duzia_ciclo', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-  const isAsc=asc>=desc;
-  const last=dz[dz.length-1];
-  const next=isAsc?(last%3)+1:last===1?3:last-1;
-  const nums=next===1?Array.from({length:12},(_,i)=>i+1):next===2?Array.from({length:12},(_,i)=>i+13):Array.from({length:12},(_,i)=>i+25);
-  return { found:true, pattern_type:'duzia_ciclo', description:`Ciclo ${isAsc?'ascendente':'descendente'} de dúzias → próxima D${next}`, confidence:72, numbers_involved:nums, recommendation:`Aposte Dúzia ${next} (2:1): [${nums.join(',')}]`, backtestRate:0.35 };
-}
-
-function detectComboOuro(numbers: number[]): PatternResult {
-  const last15=numbers.slice(0,15);
+function dTerminalDom(nums: number[], wSize: number): DetectorResult | null {
+  const last = nums.slice(0, Math.min(wSize, 15));
   const tf: Record<number,number>={};
-  last15.forEach(n=>{const t=n%10;tf[t]=(tf[t]||0)+1;});
-  const sorted = Object.entries(tf).sort(([,a],[,b])=>b-a);
-  const hotT = Number(sorted[0]?.[0] ?? -1);
-  const hotC = Number(sorted[0]?.[1] ?? 0);
-  if(hotT<0||hotC<3) return { found:false, pattern_type:'combo_ouro', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-  const distintos=new Set(last15.map(n=>n%10)).size;
-  const puxados=PULL_MAP_AA[numbers[0]]||[];
-  const dgKey=T_TO_DG[hotT];
-  const dgNums=DUPLAS_AA[dgKey]||[];
-  const puxadoConfirma=puxados.some(p=>dgNums.includes(p));
-  if(hotC<3||distintos>5||!puxadoConfirma) return { found:false, pattern_type:'combo_ouro', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-  return { found:true, pattern_type:'combo_ouro', description:`COMBO OURO: T${hotT}(${hotC}x)+puxados confirmados+entropia baixa(${distintos})`, confidence:Math.min(95,78+hotC*3), numbers_involved:dgNums, recommendation:`👑 COMBO OURO — ${dgKey}: [${dgNums.join(',')}] — 10-12 fichas`, backtestRate:0.51 };
+  last.forEach(n=>{const t=n%10;tf[t]=(tf[t]||0)+1;});
+  const sorted = Object.entries(tf).sort(([,a],[,b])=>Number(b)-Number(a));
+  if (!sorted[0] || Number(sorted[0][1]) < 3) return null;
+  const hotT = Number(sorted[0][0]);
+  const cnt = Number(sorted[0][1]);
+  const dgKey = T_TO_DG[hotT];
+  const dgNums = DUPLAS[dgKey] || [];
+  const bt = backtest(nums, w => {
+    const tf2: Record<number,number>={};
+    w.slice(0,15).forEach(n=>{const t=n%10;tf2[t]=(tf2[t]||0)+1;});
+    const ht=Number(Object.entries(tf2).sort(([,a],[,b])=>Number(b)-Number(a))[0]?.[0]??0);
+    return DUPLAS[T_TO_DG[ht]]||[];
+  }, Math.min(wSize,15), 60);
+  return {
+    type:'terminal_dominante', label:`🎯 Terminal T${hotT} (${dgKey})`,
+    numbers: dgNums,
+    confidence: Math.min(90, 50 + cnt*8),
+    bt, recommendation:`T${hotT} domina ${cnt}x → Dupla ${dgKey}: [${dgNums.join(',')}]`
+  };
 }
+
+function dPuxadaConfirmada(nums: number[], wSize: number): DetectorResult | null {
+  const last = nums[0];
+  const targets = PULL_MAP[last] || [];
+  if (targets.length === 0) return null;
+  let h=0, t=0;
+  for (let i=1; i<Math.min(wSize, nums.length)-4; i++) {
+    if (nums[i]===last) {
+      t++;
+      const next4 = nums.slice(Math.max(0,i-4),i);
+      if (next4.some(n=>targets.includes(n))) h++;
+    }
+  }
+  if (t < 3) return null;
+  const rate = h/t;
+  if (rate < 0.30) return null;
+  const bt = backtest(nums, w => PULL_MAP[w[0]]||[], 1, 80);
+  return {
+    type:'puxada_confirmada', label:`🧲 Puxada ${last}→[${targets.slice(0,4).join(',')}]`,
+    numbers: targets.slice(0,8),
+    confidence: Math.min(90, 40 + rate*120),
+    bt, recommendation:`${last} puxou ${(rate*100).toFixed(0)}% (${h}/${t}) → apostar [${targets.slice(0,5).join(',')}]`
+  };
+}
+
+function dMatrizNumerica(nums: number[], wSize: number): DetectorResult | null {
+  const last = nums[0];
+  const freq: Record<number,number>={};
+  let total=0;
+  for (let i=1;i<Math.min(wSize,nums.length)-1;i++) {
+    if (nums[i]===last) {
+      const next=nums[i-1];
+      if(next>=0&&next<=36){freq[next]=(freq[next]||0)+1;total++;}
+    }
+  }
+  if (total<5) return null;
+  const topNums = Object.entries(freq).sort(([,a],[,b])=>Number(b)-Number(a)).slice(0,5)
+    .filter(([,c])=>Number(c)/total>0.12).map(([n])=>Number(n));
+  if (topNums.length===0) return null;
+  const topProb = Number(freq[topNums[0]]||0)/total;
+  const bt = backtest(nums, w => {
+    const f2: Record<number,number>={};
+    let t2=0;
+    for(let i=1;i<w.length;i++){if(w[i]===w[0]){f2[w[i-1]]=(f2[w[i-1]]||0)+1;t2++;}}
+    if(t2<3) return [last];
+    return Object.entries(f2).sort(([,a],[,b])=>Number(b)-Number(a)).slice(0,3).map(([n])=>Number(n));
+  }, Math.min(wSize,30), 50);
+  return {
+    type:'matriz_numerica', label:`🔢 Matriz ${last}→[${topNums.join(',')}]`,
+    numbers: topNums,
+    confidence: Math.min(90, 40+topProb*150+(total>20?10:0)),
+    bt, recommendation:`Após ${last}: [${topNums.join(',')}] confirmados (${(topProb*100).toFixed(0)}%, ${total}obs)`
+  };
+}
+
+function dZeroPressao(nums: number[], wSize: number): DetectorResult | null {
+  const idx = nums.indexOf(0);
+  const delay = idx<0 ? Math.min(wSize, nums.length) : idx;
+  if (delay<15) return null;
+  const JEU_ZERO=[12,35,3,26,0,32,15];
+  const VIZ_ZERO=[22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25];
+  const level = delay>40?'CRÍTICA':delay>25?'ALTA':'MÉDIA';
+  const ns = delay>40?VIZ_ZERO:JEU_ZERO;
+  const bt = backtest(nums, w => {
+    const d=w.indexOf(0); const dl=d<0?wSize:d;
+    return dl>20?VIZ_ZERO:dl>12?JEU_ZERO:[];
+  }, Math.min(wSize,20), 50);
+  return {
+    type:'pressao_zero', label:`🟢 Pressão Zero ${level}`,
+    numbers: ns,
+    confidence: Math.min(90, 35+delay*1.2),
+    bt, recommendation:`Zero ausente ${delay} giros (${level}) → ${delay>40?'Vizinhos Zero 9 fichas':'Jeu Zero 4 fichas'}`
+  };
+}
+
+function dColorStreak(nums: number[], wSize: number): DetectorResult | null {
+  const last = nums.slice(0, Math.min(wSize, 8));
+  const colors = last.filter(n=>n>0).map(n=>RED_SET.has(n)?'R':'P');
+  if (colors.length<5) return null;
+  let s=1; const c=colors[0];
+  for(let i=1;i<colors.length;i++){if(colors[i]===c)s++;else break;}
+  if (s<4) return null;
+  const isRed = c==='R';
+  const reverseNums = isRed
+    ? Array.from({length:36},(_,i)=>i+1).filter(n=>!RED_SET.has(n))
+    : Array.from({length:36},(_,i)=>i+1).filter(n=>RED_SET.has(n));
+  const bt = backtest(nums, w => {
+    const cs=w.filter(n=>n>0).map(n=>RED_SET.has(n)?'R':'P');
+    let ss=1; const cc=cs[0];for(let i=1;i<cs.length;i++){if(cs[i]===cc)ss++;else break;}
+    return ss>=4?(cc==='R'?Array.from({length:36},(_,i)=>i+1).filter(n=>!RED_SET.has(n)):Array.from({length:36},(_,i)=>i+1).filter(n=>RED_SET.has(n))):[];
+  }, Math.min(wSize,8), 60);
+  return {
+    type:'color_streak', label:`${isRed?'🔴':'⚫'} Streak ${s}x → reversão`,
+    numbers: reverseNums,
+    confidence: Math.min(82, 45+s*7),
+    bt, recommendation:`${s}x ${isRed?'Vermelho':'Preto'} → apostar ${isRed?'Preto':'Vermelho'} reversão`
+  };
+}
+
+function dColorTendencia(nums: number[], wSize: number): DetectorResult | null {
+  const sl = nums.slice(0, Math.min(wSize, 30)).filter(n=>n>0);
+  const reds = sl.filter(n=>RED_SET.has(n)).length;
+  const ratio = reds/sl.length;
+  if (ratio > 0.42 && ratio < 0.58) return null;
+  const isRedDom = ratio >= 0.58;
+  const domNums = isRedDom
+    ? Array.from({length:36},(_,i)=>i+1).filter(n=>RED_SET.has(n))
+    : Array.from({length:36},(_,i)=>i+1).filter(n=>!RED_SET.has(n));
+  const bt = backtest(nums, w => {
+    const s=w.slice(0,Math.min(wSize,30)).filter(n=>n>0);
+    const r=s.filter(n=>RED_SET.has(n)).length/s.length;
+    return r>=0.58?Array.from({length:36},(_,i)=>i+1).filter(n=>RED_SET.has(n))
+          :r<=0.42?Array.from({length:36},(_,i)=>i+1).filter(n=>!RED_SET.has(n)):[];
+  }, Math.min(wSize,30), 60);
+  return {
+    type:'color_tendencia', label:`${isRedDom?'🔴':'⚫'} Tendência ${isRedDom?'Vermelho':'Preto'}`,
+    numbers: domNums,
+    confidence: Math.min(80, 45 + Math.abs(ratio-0.5)*200),
+    bt, recommendation:`${isRedDom?'Vermelho':'Preto'} domina (${(ratio*100).toFixed(0)}% em ${sl.length}) → seguir tendência`
+  };
+}
+
+function dParidadeStreak(nums: number[], wSize: number): DetectorResult | null {
+  const last = nums.slice(0, Math.min(wSize, 8)).filter(n=>n>0);
+  const par = last.map(n=>n%2===0?'P':'I');
+  let s=1; const c=par[0];
+  for(let i=1;i<par.length;i++){if(par[i]===c)s++;else break;}
+  if (s<4) return null;
+  const nextPar = c==='P';
+  const ns = Array.from({length:36},(_,i)=>i+1).filter(n=>nextPar?n%2!==0:n%2===0);
+  const bt = backtest(nums, w => {
+    const p=w.filter(n=>n>0).map(n=>n%2===0?'P':'I');
+    let ss=1; const cc=p[0];for(let i=1;i<p.length;i++){if(p[i]===cc)ss++;else break;}
+    return ss>=4?(cc==='P'?Array.from({length:36},(_,i)=>i+1).filter(n=>n%2!==0):Array.from({length:36},(_,i)=>i+1).filter(n=>n%2===0)):[];
+  }, Math.min(wSize,8), 60);
+  return {
+    type:'paridade_streak', label:`${c==='P'?'🔵':'🟠'} Streak ${s}x ${c==='P'?'Par':'Ímpar'} → inversão`,
+    numbers: ns,
+    confidence: Math.min(80, 42+s*8),
+    bt, recommendation:`${s}x ${c==='P'?'Par':'Ímpar'} → apostar ${c==='P'?'Ímpar':'Par'}`
+  };
+}
+
+function dAltosBaixos(nums: number[], wSize: number): DetectorResult | null {
+  const sl = nums.slice(0,Math.min(wSize,20)).filter(n=>n>0);
+  const altos = sl.filter(n=>n>=19).length;
+  const ratio = altos/sl.length;
+  if (ratio>0.42&&ratio<0.58) return null;
+  const isAltoDom = ratio>=0.58;
+  const ns = isAltoDom?Array.from({length:18},(_,i)=>i+19):Array.from({length:18},(_,i)=>i+1);
+  const bt = backtest(nums, w=>{
+    const s=w.slice(0,Math.min(wSize,20)).filter(n=>n>0);
+    const r=s.filter(n=>n>=19).length/s.length;
+    return r>=0.58?Array.from({length:18},(_,i)=>i+19):r<=0.42?Array.from({length:18},(_,i)=>i+1):[];
+  }, Math.min(wSize,20), 60);
+  return {
+    type:'alto_baixo_bias', label:`${isAltoDom?'⬆️':'⬇️'} ${isAltoDom?'Altos':'Baixos'} dominando`,
+    numbers: ns,
+    confidence: Math.min(78, 42+Math.abs(ratio-0.5)*180),
+    bt, recommendation:`${isAltoDom?'19-36':'1-18'} domina ${(ratio*100).toFixed(0)}% → seguir`
+  };
+}
+
+function dSetorDom(nums: number[], wSize: number): DetectorResult | null {
+  const sl = nums.slice(0, Math.min(wSize, 20));
+  const vc=sl.filter(n=>VOISINS_SET.has(n)).length;
+  const tc=sl.filter(n=>TIERS_SET.has(n)).length;
+  const oc=sl.filter(n=>ORPHS_SET.has(n)).length;
+  const total=vc+tc+oc||1;
+  const max=Math.max(vc,tc,oc);
+  if (max/total<0.40) return null;
+  const isV=vc===max, isT=tc===max;
+  const ns=isV?[...VOISINS_SET]:isT?[...TIERS_SET]:[...ORPHS_SET];
+  const nome=isV?'Voisins':isT?'Tiers':'Orphelins';
+  const cnt=isV?vc:isT?tc:oc;
+  const bt = backtest(nums, w=>{
+    const vv=w.slice(0,Math.min(wSize,20)).filter(n=>VOISINS_SET.has(n)).length;
+    const tt=w.slice(0,Math.min(wSize,20)).filter(n=>TIERS_SET.has(n)).length;
+    const oo=w.slice(0,Math.min(wSize,20)).filter(n=>ORPHS_SET.has(n)).length;
+    const mm=Math.max(vv,tt,oo);
+    return vv===mm?[...VOISINS_SET]:tt===mm?[...TIERS_SET]:[...ORPHS_SET];
+  }, Math.min(wSize,20), 50);
+  return {
+    type:'setor_dominante', label:`🗺️ ${nome} Dominante`,
+    numbers: ns,
+    confidence: Math.min(85, 45+(cnt/sl.length)*150),
+    bt, recommendation:`${nome} domina: ${cnt}/${sl.length} (${(cnt/sl.length*100).toFixed(0)}%) → apostar setor`
+  };
+}
+
+function dDuziaDom(nums: number[], wSize: number): DetectorResult | null {
+  const sl = nums.slice(0, Math.min(wSize,20)).filter(n=>n>0);
+  const d=[0,0,0];
+  sl.forEach(n=>{const dz=getDozen(n);if(dz>0)d[dz-1]++;});
+  const mx=Math.max(...d); const di=d.indexOf(mx);
+  if (mx/sl.length<0.40) return null;
+  const ns=Array.from({length:12},(_,i)=>i+(di)*12+1);
+  const bt = backtest(nums, w=>{
+    const s=w.slice(0,Math.min(wSize,20)).filter(n=>n>0);
+    const dd=[0,0,0];s.forEach(n=>{const dz=getDozen(n);if(dz>0)dd[dz-1]++;});
+    const mx2=Math.max(...dd);const di2=dd.indexOf(mx2);
+    return Array.from({length:12},(_,i)=>i+di2*12+1);
+  }, Math.min(wSize,20), 60);
+  return {
+    type:'duzia_dominante', label:`🎲 Dúzia ${di+1} Dominante`,
+    numbers: ns,
+    confidence: Math.min(82, 42+(mx/sl.length)*140),
+    bt, recommendation:`D${di+1} (${(di)*12+1}-${(di+1)*12}) domina ${mx}/${sl.length} → apostar dúzia`
+  };
+}
+
+function dDuziaCiclo(nums: number[], wSize: number): DetectorResult | null {
+  const sl = nums.slice(0,Math.min(wSize,10)).filter(n=>n>0);
+  if (sl.length<6) return null;
+  const dz=sl.map(n=>getDozen(n)).filter(d=>d>0);
+  let asc=0,desc=0;
+  const aSeq=[1,2,3,1,2,3],dSeq=[3,2,1,3,2,1];
+  for(let i=0;i<Math.min(dz.length,4);i++){if(dz[i]===aSeq[i])asc++;if(dz[i]===dSeq[i])desc++;}
+  if (asc<3&&desc<3) return null;
+  const isAsc=asc>=desc; const last=dz[dz.length-1];
+  const next=isAsc?(last%3)+1:last===1?3:last-1;
+  const ns=Array.from({length:12},(_,i)=>i+(next-1)*12+1);
+  const bt = backtest(nums, w=>{
+    const dd=w.slice(0,Math.min(wSize,10)).filter(n=>n>0).map(n=>getDozen(n)).filter(d=>d>0);
+    let aa=0,bb=0;for(let i=0;i<Math.min(dd.length,4);i++){if(dd[i]===aSeq[i])aa++;if(dd[i]===dSeq[i])bb++;}
+    if(aa<3&&bb<3) return [];
+    const ia=aa>=bb; const ll=dd[dd.length-1];
+    const nn=ia?(ll%3)+1:ll===1?3:ll-1;
+    return Array.from({length:12},(_,i)=>i+(nn-1)*12+1);
+  }, Math.min(wSize,10), 50);
+  return {
+    type:'duzia_ciclo', label:`🔄 Ciclo Dúzia → D${next}`,
+    numbers: ns,
+    confidence: Math.min(80, 50+Math.max(asc,desc)*8),
+    bt, recommendation:`Ciclo ${isAsc?'ascendente':'descendente'} → próxima D${next}`
+  };
+}
+
+function dTerminalAscDesc(nums: number[], wSize: number): DetectorResult | null {
+  const sl=nums.slice(0,Math.min(wSize,10));
+  const terms=sl.map(n=>n%10);
+  let asc=0,desc=0;
+  for(let i=0;i<terms.length-1;i++){if(terms[i+1]<terms[i])asc++;else if(terms[i+1]>terms[i])desc++;}
+  const total=asc+desc||1;
+  if (asc/total<0.65&&desc/total<0.65) return null;
+  const isAsc=asc>desc;
+  const lastT=terms[0];
+  const nextT=isAsc?Math.min(9,lastT+1):(lastT>0?lastT-1:9);
+  const ns=TERMINALS_MAP[nextT]||[];
+  const bt = backtest(nums, w=>{
+    const t=w.slice(0,Math.min(wSize,10)).map(n=>n%10);
+    let aa=0,bb=0;for(let i=0;i<t.length-1;i++){if(t[i+1]<t[i])aa++;else if(t[i+1]>t[i])bb++;}
+    const tot=aa+bb||1;if(aa/tot<0.65&&bb/tot<0.65)return[];
+    const ia=aa>bb;const lt=t[0];const nt=ia?Math.min(9,lt+1):(lt>0?lt-1:9);
+    return TERMINALS_MAP[nt]||[];
+  }, Math.min(wSize,10), 60);
+  return {
+    type:`terminal_${isAsc?'asc':'desc'}`, label:`📈 Terminal ${isAsc?'Crescente':'Decrescente'} → T${nextT}`,
+    numbers: ns,
+    confidence: Math.min(80, 45+(isAsc?asc:desc)/total*100),
+    bt, recommendation:`Sequência ${isAsc?'ascendente':'descendente'} → T${nextT}: [${ns.join(',')}]`
+  };
+}
+
+function dVizinhosRoda(nums: number[], wSize: number): DetectorResult | null {
+  const sl=nums.slice(0,Math.min(wSize,10));
+  let nearMiss=0;
+  for(let i=0;i<sl.length-1;i++){if(wDist(sl[i],sl[i+1])<=3)nearMiss++;}
+  if (nearMiss<4) return null;
+  const last=sl[0]; const li=wIdx(last);
+  const viz=li>=0?[-3,-2,-1,0,1,2,3].map(d=>WHEEL[(li+d+WL)%WL]):[];
+  const bt = backtest(nums, w=>{
+    let nm=0;const s=w.slice(0,Math.min(wSize,10));
+    for(let i=0;i<s.length-1;i++){if(wDist(s[i],s[i+1])<=3)nm++;}
+    if(nm<4)return[];const ll=s[0];const lli=wIdx(ll);
+    return lli>=0?[-3,-2,-1,0,1,2,3].map(d=>WHEEL[(lli+d+WL)%WL]):[];
+  }, Math.min(wSize,10), 60);
+  return {
+    type:'vizinhos_roda', label:`🔵 Clustering na Roda`,
+    numbers:[...new Set(viz)],
+    confidence:Math.min(82,45+nearMiss*6),
+    bt, recommendation:`${nearMiss} near-misses → clustering físico → vizinhos do ${last}`
+  };
+}
+
+function dNumerosQuentes(nums: number[], wSize: number): DetectorResult | null {
+  const sl=nums.slice(0,Math.min(wSize,nums.length));
+  const f: Record<number,number>={};
+  sl.forEach(n=>{f[n]=(f[n]||0)+1;});
+  const hot=Object.entries(f).sort(([,a],[,b])=>Number(b)-Number(a))
+    .filter(([,c])=>Number(c)>=Math.ceil(wSize/20)).slice(0,6).map(([n])=>Number(n));
+  if (hot.length<3) return null;
+  const threshold=wSize/37;
+  const hotBig=hot.filter(n=>Number(f[n])>=threshold*2);
+  if (hotBig.length<2) return null;
+  const bt = backtest(nums, w=>{
+    const ff: Record<number,number>={};
+    w.slice(0,Math.min(wSize,w.length)).forEach(n=>{ff[n]=(ff[n]||0)+1;});
+    return Object.entries(ff).sort(([,a],[,b])=>Number(b)-Number(a)).slice(0,6).map(([n])=>Number(n));
+  }, Math.min(wSize,20), 50);
+  return {
+    type:'numeros_quentes', label:`🔥 Hot Numbers [${hotBig.slice(0,4).join(',')}]`,
+    numbers: hot,
+    confidence:Math.min(85,48+hotBig.length*8),
+    bt, recommendation:`Quentes: [${hot.join(',')}] — persistência histórica`
+  };
+}
+
+function dNumerosFrios(nums: number[], wSize: number): DetectorResult | null {
+  const sl=nums.slice(0,Math.min(wSize,nums.length));
+  const f: Record<number,number>={};
+  for(let n=0;n<=36;n++) f[n]=0;
+  sl.forEach(n=>{f[n]++;});
+  const expected=wSize/37;
+  const cold=Object.entries(f).filter(([,c])=>Number(c)<=expected*0.5)
+    .sort(([,a],[,b])=>Number(a)-Number(b)).slice(0,8).map(([n])=>Number(n));
+  if (cold.length<4) return null;
+  const bt = backtest(nums, w=>{
+    const ff: Record<number,number>={};
+    for(let n=0;n<=36;n++) ff[n]=0;
+    w.slice(0,Math.min(wSize,w.length)).forEach(n=>{ff[n]++;});
+    const exp=wSize/37;
+    return Object.entries(ff).filter(([,c])=>Number(c)<=exp*0.5).map(([n])=>Number(n));
+  }, Math.min(wSize,20), 50);
+  return {
+    type:'numeros_frios', label:`❄️ Cold Numbers Dívida`,
+    numbers: cold,
+    confidence:Math.min(78,42+cold.length*4),
+    bt, recommendation:`Ausentes em ${wSize}: [${cold.slice(0,6).join(',')}] — dívida estatística`
+  };
+}
+
+function dCavaloHot(nums: number[], wSize: number): DetectorResult | null {
+  const CAVALOS: Record<string,number[]>={
+    '258':[2,5,8,12,15,18,22,25,28,32,35],
+    '147':[1,4,7,11,14,17,21,24,27,31,34],
+    '03':[0,3,10,13,20,23,30,33],
+    '69':[6,9,16,19,26,29,36],
+  };
+  const sl=nums.slice(0,Math.min(wSize,30));
+  const scores: Record<string,number>={};
+  Object.entries(CAVALOS).forEach(([k,v])=>{scores[k]=sl.filter(n=>v.includes(n)).length;});
+  const best=Object.entries(scores).sort(([,a],[,b])=>Number(b)-Number(a))[0];
+  if (!best||Number(best[1])/sl.length<0.32) return null;
+  const ns=CAVALOS[best[0]];
+  const bt = backtest(nums, w=>{
+    const sc: Record<string,number>={};
+    Object.entries(CAVALOS).forEach(([k,v])=>{sc[k]=w.slice(0,Math.min(wSize,30)).filter(n=>v.includes(n)).length;});
+    const bb=Object.entries(sc).sort(([,a],[,b])=>Number(b)-Number(a))[0];
+    return bb?CAVALOS[bb[0]]:[];
+  }, Math.min(wSize,30), 50);
+  return {
+    type:'cavalo_hot', label:`🐴 Cavalos ${best[0]} Quente`,
+    numbers: ns,
+    confidence:Math.min(84,46+Number(best[1])/sl.length*120),
+    bt, recommendation:`Grupo C${best[0]} quente: ${Number(best[1])}/${sl.length} → apostar cavalos`
+  };
+}
+
+function dEntropiaSetor(nums: number[], wSize: number): DetectorResult | null {
+  const sl=nums.slice(0,Math.min(wSize,15));
+  const distintos=new Set(sl.map(n=>n%10)).size;
+  if (distintos>5) return null;
+  const tf: Record<number,number>={};
+  sl.forEach(n=>{const t=n%10;tf[t]=(tf[t]||0)+1;});
+  const hotT=Number(Object.entries(tf).sort(([,a],[,b])=>Number(b)-Number(a))[0]?.[0]??0);
+  const dgKey=T_TO_DG[hotT];
+  const ns=DUPLAS[dgKey]||[];
+  const bt = backtest(nums, w=>{
+    const s=w.slice(0,Math.min(wSize,15));
+    const dist=new Set(s.map(n=>n%10)).size;
+    if(dist>5) return [];
+    const tff: Record<number,number>={};
+    s.forEach(n=>{const t=n%10;tff[t]=(tff[t]||0)+1;});
+    const ht=Number(Object.entries(tff).sort(([,a],[,b])=>Number(b)-Number(a))[0]?.[0]??0);
+    return DUPLAS[T_TO_DG[ht]]||[];
+  }, Math.min(wSize,15), 60);
+  return {
+    type:'entropia_baixa', label:`🎯 Entropia Baixa (${distintos} T)`,
+    numbers: ns,
+    confidence:Math.min(88,42+(6-distintos)*12),
+    bt, recommendation:`Sessão concentrada (${distintos}/10 terminais) → ${dgKey}: [${ns.join(',')}]`
+  };
+}
+
+function dMirrorNumbers(nums: number[], wSize: number): DetectorResult | null {
+  const sl=nums.slice(0,Math.min(wSize,20));
+  const pairs: {a:number;b:number;score:number}[]=[];
+  for(let n=1;n<=18;n++){
+    const m=37-n;if(m>36)continue;
+    const ca=sl.filter(x=>x===n).length;const cb=sl.filter(x=>x===m).length;
+    if(ca>=1&&cb>=1) pairs.push({a:n,b:m,score:ca+cb});
+  }
+  if(pairs.length<2) return null;
+  const topP=pairs.sort((a,b)=>b.score-a.score).slice(0,3);
+  const ns=[...new Set(topP.flatMap(p=>[p.a,p.b]))];
+  const bt = backtest(nums, w=>{
+    const s=w.slice(0,Math.min(wSize,20));
+    const pp: number[]=[];
+    for(let n=1;n<=18;n++){const m=37-n;if(s.includes(n)&&s.includes(m)){pp.push(n,m);}}
+    return pp;
+  }, Math.min(wSize,20), 50);
+  return {
+    type:'mirror_pattern', label:`🪞 Complementares Ativos`,
+    numbers: ns,
+    confidence:Math.min(78,44+topP.length*8),
+    bt, recommendation:`Pares complementares: ${topP.map(p=>`${p.a}+${p.b}`).join(', ')} → apostar ambos`
+  };
+}
+
+function dComboOuro(nums: number[], wSize: number): DetectorResult | null {
+  const sl=nums.slice(0,Math.min(wSize,15));
+  const tf: Record<number,number>={};
+  sl.forEach(n=>{const t=n%10;tf[t]=(tf[t]||0)+1;});
+  const sorted=Object.entries(tf).sort(([,a],[,b])=>Number(b)-Number(a));
+  const hotT=Number(sorted[0]?.[0]??-1),hotC=Number(sorted[0]?.[1]??0);
+  if(hotT<0||hotC<3) return null;
+  const distintos=new Set(sl.map(n=>n%10)).size;
+  const puxados=PULL_MAP[nums[0]]||[];
+  const dgKey=T_TO_DG[hotT];
+  const dgNums=DUPLAS[dgKey]||[];
+  const puxConfirm=puxados.some(p=>dgNums.includes(p));
+  if(distintos>5||!puxConfirm) return null;
+  const bt = backtest(nums, w=>{
+    const s=w.slice(0,Math.min(wSize,15));
+    const tff: Record<number,number>={};
+    s.forEach(n=>{const t=n%10;tff[t]=(tff[t]||0)+1;});
+    const ht=Number(Object.entries(tff).sort(([,a],[,b])=>Number(b)-Number(a))[0]?.[0]??0);
+    return DUPLAS[T_TO_DG[ht]]||[];
+  }, Math.min(wSize,15), 40);
+  return {
+    type:'combo_ouro', label:`👑 COMBO OURO`,
+    numbers: dgNums,
+    confidence:Math.min(95,78+hotC*3),
+    bt, recommendation:`COMBO OURO: T${hotT}(${hotC}x)+puxados+entropia(${distintos}) → ${dgKey}: [${dgNums.join(',')}]`
+  };
+}
+
+function dRepetindo3x(nums: number[], wSize: number): DetectorResult | null {
+  const sl=nums.slice(0,Math.min(wSize,nums.length));
+  const f: Record<number,number>={};
+  sl.forEach(n=>{f[n]=(f[n]||0)+1;});
+  const rep3=Object.entries(f).filter(([,c])=>Number(c)>=3).sort(([,a],[,b])=>Number(b)-Number(a));
+  if(rep3.length===0) return null;
+  const top=rep3.slice(0,4).map(([n,c])=>({n:Number(n),c:Number(c)}));
+  const ns=top.map(x=>x.n);
+  const bt = backtest(nums, w=>{
+    const ff: Record<number,number>={};
+    w.slice(0,Math.min(wSize,w.length)).forEach(n=>{ff[n]=(ff[n]||0)+1;});
+    return Object.entries(ff).filter(([,c])=>Number(c)>=3).map(([n])=>Number(n));
+  }, Math.min(wSize,20), 50);
+  return {
+    type:'repeticao_3x', label:`⚡ Repetição 3x+ [${ns.join(',')}]`,
+    numbers: ns,
+    confidence:Math.min(88,50+top[0].c*6),
+    bt, recommendation:`Em ${wSize} giros: ${top.map(x=>`${x.n}(${x.c}x)`).join(', ')} → jogar persistência`
+  };
+}
+
+function dSequenciaPull2(nums: number[], wSize: number): DetectorResult | null {
+  if(nums.length<3) return null;
+  const n0=nums[0],n1=nums[1];
+  const pull0=PULL_MAP[n0]||[];
+  const pull1=PULL_MAP[n1]||[];
+  const commonPull=[...pull0].filter(n=>pull1.includes(n));
+  if(commonPull.length===0) return null;
+  const bt = backtest(nums, w=>{
+    const p0=PULL_MAP[w[0]]||[];const p1=PULL_MAP[w[1]]||[];
+    return p0.filter(n=>p1.includes(n));
+  }, 2, 80);
+  if(bt<0.15) return null;
+  return {
+    type:'pull_duplo', label:`🔗 Pull Duplo [${commonPull.slice(0,4).join(',')}]`,
+    numbers: commonPull.slice(0,8),
+    confidence:Math.min(88,55+commonPull.length*5),
+    bt, recommendation:`${n1}→${n0} ambos puxam [${commonPull.slice(0,4).join(',')}] — Double Pull confirmado`
+  };
+}
+
+// ──────────────────────────────────────────────────────────────
+// ANÁLISE MULTI-JANELA: 6 janelas independentes
+// ──────────────────────────────────────────────────────────────
+const WINDOW_SIZES = [500, 400, 300, 200, 100, 50] as const;
+
+const ALL_DETECTORS: Array<(nums: number[], wSize: number) => DetectorResult | null> = [
+  dAutoRepeticao, dTerminalDom, dPuxadaConfirmada, dMatrizNumerica,
+  dZeroPressao, dColorStreak, dColorTendencia, dParidadeStreak,
+  dAltosBaixos, dSetorDom, dDuziaDom, dDuziaCiclo, dTerminalAscDesc,
+  dVizinhosRoda, dNumerosQuentes, dNumerosFrios, dCavaloHot,
+  dEntropiaSetor, dMirrorNumbers, dComboOuro, dRepetindo3x, dSequenciaPull2,
+];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-    // 1. Fetch numbers from DB (most reliable source)
     const { data: dbData } = await supabase
       .from('roulette_numbers')
       .select('number')
       .order('fetched_at', { ascending: false })
       .limit(500);
 
-    const numbers: number[] = (dbData || []).map((r: any) => r.number as number);
+    const allNums: number[] = (dbData || []).map((r: any) => r.number as number);
 
-    if (numbers.length < 30) {
+    if (allNums.length < 30) {
       return new Response(JSON.stringify({ status: "not_enough_data" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 2. Run ALL 22 deterministic pattern detectors
-    // DETECTOR: Padrão de Repetição Específica (mesmo número 2x em 5)
-    function detectHiperQuente(numbers: number[]): PatternResult {
-      const last5 = numbers.slice(0, 5);
-      const freq: Record<number,number> = {};
-      last5.forEach(n => { freq[n] = (freq[n]||0)+1; });
-      const hot = Object.entries(freq).find(([,c]) => c >= 2);
-      if (!hot) return { found:false, pattern_type:'hiper_quente', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-      const n = Number(hot[0]);
-      const WHEEL_L = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
-      const idx = WHEEL_L.indexOf(n);
-      const viz = idx !== -1 ? [-2,-1,0,1,2].map(d=>WHEEL_L[(idx+d+37)%37]) : [n];
-      return {
-        found: true, pattern_type: 'hiper_quente',
-        description: `${n} saiu ${hot[1]}x em 5 rodadas. Hiper-quente.`,
-        confidence: Math.min(88, 60 + Number(hot[1]) * 12),
-        numbers_involved: viz,
-        recommendation: `Hiper-quente: aposte ${n} + vizinhos [${viz.join(',')}] — 5 fichas`,
-        backtestRate: 0.44
-      };
-    }
+    // ─── Rodar detectores em cada janela ─────────────────────
+    const accumulator: Record<string, {
+      pattern: DetectorResult;
+      windows: number[];
+      totalBt: number;
+      totalConf: number;
+    }> = {};
 
-    // DETECTOR: Setor dominante nas últimas 5 rodadas (3+ do mesmo)
-    function detectSetorDominante5(numbers: number[]): PatternResult {
-      const VOISINS_L = new Set([22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25]);
-      const TIERS_L = new Set([27,13,36,11,30,8,23,10,5,24,16,33]);
-      const last5 = numbers.slice(0, 5);
-      const vC = last5.filter(n=>VOISINS_L.has(n)).length;
-      const tC = last5.filter(n=>TIERS_L.has(n)).length;
-      if (vC < 3 && tC < 3) return { found:false, pattern_type:'setor_dominante_5', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-      const isV = vC >= tC;
-      const nums = isV ? [...VOISINS_L] : [...TIERS_L];
-      const nome = isV ? 'Voisins' : 'Tiers';
-      const count = isV ? vC : tC;
-      return {
-        found: true, pattern_type: 'setor_dominante_5',
-        description: `${nome} domina: ${count}/5 nas últimas 5 rodadas`,
-        confidence: Math.min(85, 50 + count * 10),
-        numbers_involved: nums,
-        recommendation: `Setor ${nome} quente — ${count}/5 → apostar setor completo`,
-        backtestRate: 0.40
-      };
-    }
+    for (const wSize of WINDOW_SIZES) {
+      const slice = allNums.slice(0, Math.min(wSize, allNums.length));
+      if (slice.length < 20) continue;
 
-    // DETECTOR: Alternância perfeita par/ímpar (4+ alternâncias em 5)
-    function detectAlternanciaPerfeita(numbers: number[]): PatternResult {
-      const last6 = numbers.slice(0, 6).filter(n => n > 0);
-      if (last6.length < 5) return { found:false, pattern_type:'alternancia_perfeita', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-      let alts = 0;
-      for (let i = 0; i < last6.length - 1; i++) {
-        if ((last6[i] % 2) !== (last6[i+1] % 2)) alts++;
-      }
-      if (alts < 4) return { found:false, pattern_type:'alternancia_perfeita', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-      const lastIsEven = last6[0] % 2 === 0;
-      const nextParity = lastIsEven ? 'ímpar' : 'par';
-      const nums = nextParity === 'par'
-        ? Array.from({length:18},(_,i)=>(i+1)*2).filter(n=>n<=36)
-        : Array.from({length:18},(_,i)=>i*2+1).filter(n=>n<=36);
-      return {
-        found: true, pattern_type: 'alternancia_perfeita',
-        description: `Alternância Par/Ímpar perfeita: ${alts}/5. Próximo: ${nextParity}`,
-        confidence: Math.min(82, 50 + alts * 7),
-        numbers_involved: nums,
-        recommendation: `Alternância ativa → apostar ${nextParity} (1:1)`,
-        backtestRate: 0.48
-      };
-    }
+      for (const detector of ALL_DETECTORS) {
+        const result = detector(slice, wSize);
+        if (!result || result.confidence < 40 || result.bt < 0.08) continue;
 
-    // DETECTOR: Número complementar (37-n) ativo
-    function detectComplementarAtivo(numbers: number[]): PatternResult {
-      const last10 = numbers.slice(0, 10);
-      const pairs: { a: number; b: number; count: number }[] = [];
-      for (let n = 1; n <= 18; n++) {
-        const comp = 37 - n;
-        if (comp > 36) continue;
-        const countA = last10.filter(x => x === n).length;
-        const countB = last10.filter(x => x === comp).length;
-        if (countA >= 1 && countB >= 1) pairs.push({ a: n, b: comp, count: countA + countB });
-      }
-      if (pairs.length === 0) return { found:false, pattern_type:'complementar_ativo', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-      const best = pairs.sort((a,b)=>b.count-a.count)[0];
-      return {
-        found: true, pattern_type: 'complementar_ativo',
-        description: `Par complementar (${best.a}+${best.b}=37) ativo: ${best.count}x em 10`,
-        confidence: Math.min(80, 45 + best.count * 8),
-        numbers_involved: [best.a, best.b],
-        recommendation: `Complementares ${best.a}/${best.b} ativos — apostar ambos (2 fichas pleno)`,
-        backtestRate: 0.36
-      };
-    }
-
-    // DETECTOR: Matriz Numérica 37×37
-    function detectMatrizNumerica(numbers: number[]): PatternResult {
-      if (numbers.length < 30) return { found:false, pattern_type:'matriz_numerica', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-      const last = numbers[0];
-      const src100 = numbers.slice(0, Math.min(100, numbers.length));
-      const freq: Record<number,number> = {};
-      let total = 0;
-      for (let i = 1; i < src100.length; i++) {
-        if (src100[i] === last) {
-          const next = src100[i - 1];
-          if (next !== undefined && next >= 0 && next <= 36) {
-            freq[next] = (freq[next] || 0) + 1;
-            total++;
-          }
+        const key = `${result.type}_${result.numbers.slice(0,3).join('_')}`;
+        if (!accumulator[key]) {
+          accumulator[key] = { pattern: result, windows: [], totalBt: 0, totalConf: 0 };
         }
-      }
-      if (total < 5) return { found:false, pattern_type:'matriz_numerica', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-      const topNums = Object.entries(freq)
-        .sort(([,a],[,b]) => (b as number) - (a as number))
-        .slice(0, 4)
-        .filter(([,c]) => (c as number) / total > 0.12)
-        .map(([n]) => Number(n));
-      if (topNums.length === 0) return { found:false, pattern_type:'matriz_numerica', description:'', confidence:0, numbers_involved:[], recommendation:'' };
-      const topProb = ((freq[topNums[0]] || 0) as number) / total;
-      return {
-        found: true, pattern_type: 'matriz_numerica',
-        description: `Após ${last}: [${topNums.join(',')}] aparecem em ${(topProb*100).toFixed(0)}% dos casos (${total} obs)`,
-        confidence: Math.min(90, 45 + topProb * 200),
-        numbers_involved: topNums,
-        recommendation: `Após ${last} sair → apostar [${topNums.join(',')}] — ${(topProb*100).toFixed(0)}% histórico`,
-        backtestRate: topProb,
-      };
-    }
-
-    const allDetectors = [
-      detectTerminalAscending,
-      detectTerminalDescending,
-      detectColorStreak,
-      detectColorAlternation,
-      detectHighDominance,
-      detectParityStreak,
-      detectSectorConcentration,
-      detectSectorSeesaw,
-      detectTerminalDominance,
-      detectTerminalCold,
-      detectDozenAbsent,
-      detectColumnAbsent,
-      detectNeighborRepetition,
-      detectHotNumbers,
-      detectColdNumbers,
-      detectCavaloHot,
-      detectMirrorPattern,
-      detectDozenRepeat,
-      detectColumnZigzag,
-      detectSequenceRepeat,
-      detectPullPattern,
-      detectHighLowAlternation,
-      detectDuplaDaniGreen,
-      detectZeroCritical,
-      detectEntropiaBaixa,
-      detectNearMissConsecutivo,
-      detectDuziaCiclo,
-      detectComboOuro,
-      detectHiperQuente,
-      detectSetorDominante5,
-      detectAlternanciaPerfeita,
-      detectComplementarAtivo,
-      detectMatrizNumerica,
-    ];
-
-    const detectedPatterns: PatternResult[] = [];
-    for (const detector of allDetectors) {
-      const result = detector(numbers);
-      if (result.found && result.confidence >= 45) {
-        detectedPatterns.push(result);
+        accumulator[key].windows.push(wSize);
+        accumulator[key].totalBt += result.bt;
+        accumulator[key].totalConf += result.confidence;
       }
     }
 
-    // 3. INTERNAL VALIDATION — run backtest on each detected pattern
-    // Only keep patterns that pass a minimum backtest threshold
-    const validatedPatterns = detectedPatterns.filter(p => {
-      // If pattern already has backtest rate, check it
-      if (p.backtestRate !== undefined) {
-        return p.backtestRate >= 0.15; // at least 15% hit rate
-      }
-      // For patterns without explicit backtest, do a quick one
-      if (p.numbers_involved.length > 0 && p.numbers_involved.length <= 18) {
-        const bt = backtestPattern(numbers, () => p.numbers_involved, 10, 30);
-        p.backtestRate = bt.winRate;
-        p.confidence = Math.min(p.confidence, Math.round(40 + bt.winRate * 60));
-        return bt.winRate >= 0.1; // minimum 10% for wider coverage bets
-      }
-      return true; // keep patterns we can't backtest
-    });
+    // ─── Score composto ──────────────────────────────────────
+    const rankedPatterns: Pattern[] = Object.values(accumulator)
+      .map(({ pattern, windows, totalBt, totalConf }) => {
+        const wCount = windows.length;
+        const avgConf = totalConf / wCount;
+        const avgBt = totalBt / wCount;
+        const windowBonus = 1 + wCount * 0.25;
+        const score = Math.round(avgConf * windowBonus * (0.5 + avgBt * 0.5));
+        return {
+          type: pattern.type,
+          label: pattern.label,
+          description: pattern.recommendation,
+          numbers: pattern.numbers,
+          confidence: Math.round(avgConf),
+          bt: +avgBt.toFixed(2),
+          windows_found: windows,
+          score,
+          recommendation: pattern.recommendation,
+        };
+      })
+      .filter(p => p.score >= 40)
+      .sort((a, b) => b.score - a.score);
 
-    if (validatedPatterns.length === 0) {
-      return new Response(JSON.stringify({ status: "no_validated_patterns", raw_found: detectedPatterns.length }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (rankedPatterns.length === 0) {
+      return new Response(JSON.stringify({
+        status: "no_patterns", analyzed: allNums.length
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 4. Store validated patterns in Supabase
-    const rows = validatedPatterns.map(p => ({
-      pattern_type: p.pattern_type,
-      description: p.description,
-      confidence: Math.min(100, Math.max(0, p.confidence)),
-      numbers_involved: p.numbers_involved.slice(0, 20),
+    // ─── Top por categoria ────────────────────────────────────
+    const seenTypes = new Set<string>();
+    const topPatterns = rankedPatterns.filter(p => {
+      if (seenTypes.has(p.type)) return false;
+      seenTypes.add(p.type);
+      return true;
+    }).slice(0, 15);
+
+    // ─── Salvar no banco ──────────────────────────────────────
+    const rows = topPatterns.map(p => ({
+      pattern_type: p.type,
+      description: `[${p.windows_found.join('/')}W | BT:${(p.bt*100).toFixed(0)}%] ${p.description}`,
+      confidence: Math.min(100, p.score),
+      numbers_involved: p.numbers.slice(0, 20),
       recommendation: p.recommendation,
       source_data: {
-        analyzed_numbers: numbers.slice(0, 20),
-        total_analyzed: numbers.length,
-        backtest_rate: p.backtestRate || null,
+        analyzed_numbers: allNums.slice(0, 10),
+        total_analyzed: allNums.length,
+        backtest_rate: p.bt,
+        windows_confirmed: p.windows_found,
+        score: p.score,
         validated: true,
       },
     }));
 
-    const { error: insertError } = await supabase.from("pattern_insights").insert(rows);
-    if (insertError) {
-      console.error("Insert error:", insertError);
-      throw new Error(`DB insert failed: ${insertError.message}`);
-    }
+    await supabase.from("pattern_insights").insert(rows);
 
-    // 5. Cleanup: keep only last 500 insights
+    // ─── Limpeza: manter últimos 500 insights ─────────────────
     const { data: oldData } = await supabase
       .from("pattern_insights")
-      .select("id, created_at")
+      .select("id")
       .order("created_at", { ascending: false })
-      .range(500, 999);
+      .range(500, 9999);
 
     if (oldData && oldData.length > 0) {
-      const oldIds = oldData.map((r: any) => r.id);
-      await supabase.from("pattern_insights").delete().in("id", oldIds);
+      await supabase.from("pattern_insights").delete()
+        .in("id", oldData.map((r: any) => r.id));
     }
 
-    // ── MEMÓRIA EVOLUTIVA: reforçar padrões confirmados ──
-    const { data: memoriaAtual } = await supabase
+    // ─── Memória Evolutiva ────────────────────────────────────
+    const { data: memoria } = await supabase
       .from('pattern_insights')
-      .select('id, pattern_type, description, confidence')
-      .gt('confidence', 30)
+      .select('id, pattern_type, confidence')
+      .gt('confidence', 35)
       .order('created_at', { ascending: false })
       .limit(100);
 
-    for (const mem of (memoriaAtual || [])) {
-      const redetected = validatedPatterns.find(
-        p => p.pattern_type === mem.pattern_type &&
-             p.description?.slice(0,30) === (mem.description as string)?.slice(0,30)
-      );
+    for (const mem of (memoria || []) as any[]) {
+      const redetected = topPatterns.find(p => p.type === mem.pattern_type);
       if (redetected) {
-        await supabase
-          .from('pattern_insights')
-          .update({ confidence: Math.min(95, ((mem.confidence as number) || 50) + 3) })
+        await supabase.from('pattern_insights')
+          .update({ confidence: Math.min(98, (mem.confidence || 50) + 3) })
           .eq('id', mem.id);
       }
     }
 
-    // Penalizar padrões não vistos nas últimas 15min
-    const staleTime = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-    const { data: stalePatterns } = await supabase
-      .from('pattern_insights')
-      .select('id, confidence')
-      .lt('created_at', staleTime)
-      .gt('confidence', 15);
+    // Penalizar padrões velhos
+    const staleTime = new Date(Date.now() - 12 * 60 * 1000).toISOString();
+    const { data: stale } = await supabase
+      .from('pattern_insights').select('id, confidence')
+      .lt('created_at', staleTime).gt('confidence', 12);
 
-    for (const s of ((stalePatterns || []) as any[]).slice(0, 30)) {
-      await supabase
-        .from('pattern_insights')
-        .update({ confidence: Math.max(10, ((s.confidence as number) || 30) - 2) })
+    for (const s of ((stale || []) as any[]).slice(0, 40)) {
+      await supabase.from('pattern_insights')
+        .update({ confidence: Math.max(10, (s.confidence || 30) - 2) })
         .eq('id', s.id);
     }
-
-    // Remover padrões mortos (confiança < 10)
     await supabase.from('pattern_insights').delete().lt('confidence', 10);
 
+    // ─── Retorno detalhado ────────────────────────────────────
     return new Response(JSON.stringify({
       status: "success",
-      patterns_detected: detectedPatterns.length,
-      patterns_validated: validatedPatterns.length,
-      patterns: validatedPatterns.map(p => ({
-        type: p.pattern_type,
-        description: p.description,
+      analyzed: allNums.length,
+      windows_used: WINDOW_SIZES.filter(w => w <= allNums.length),
+      patterns_found: rankedPatterns.length,
+      patterns_saved: topPatterns.length,
+      top_patterns: topPatterns.slice(0, 8).map(p => ({
+        type: p.type,
+        label: p.label,
+        score: p.score,
         confidence: p.confidence,
-        backtest: p.backtestRate ? `${(p.backtestRate * 100).toFixed(0)}%` : 'N/A',
+        backtest: `${(p.bt*100).toFixed(0)}%`,
+        windows: p.windows_found,
+        numbers: p.numbers,
         recommendation: p.recommendation,
       })),
       timestamp: new Date().toISOString(),
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (e) {
     console.error("auto-analyze error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({
+      error: e instanceof Error ? e.message : "Unknown error"
+    }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
