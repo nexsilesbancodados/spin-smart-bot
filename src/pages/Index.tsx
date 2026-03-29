@@ -330,6 +330,9 @@ const Index = () => {
                       <div className={`text-2xl font-bold font-mono ${sniperData.signal.probability >= 85 ? 'text-primary' : 'text-yellow-400'}`}>
                         {sniperData.signal.probability}%
                       </div>
+                      <span className="text-[8px] text-muted-foreground">
+                        {sniperData.layerResults ? `${sniperData.layerResults.total}/500` : 'probabilidade'}
+                      </span>
                       <span className="text-[8px] text-muted-foreground">probabilidade</span>
                     </div>
                   </div>
