@@ -437,6 +437,13 @@ const Index = () => {
             }`}>
               {predStats.total > 0 ? ((predStats.hits / predStats.total) * 100).toFixed(1) : '0.0'}% WIN
             </div>
+            <div className="w-px h-3 bg-border" />
+            <button onClick={async () => {
+              await supabase.from('prediction_history').delete().not('id', 'is', null);
+              setPredStats({ hits: 0, misses: 0, exact: 0, total: 0 });
+            }} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive/20 transition-all">
+              <RefreshCw className="w-2.5 h-2.5" /> REINICIAR
+            </button>
           </div>
         </div>
       )}
