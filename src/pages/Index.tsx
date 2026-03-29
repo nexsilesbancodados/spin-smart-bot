@@ -987,49 +987,169 @@ const Index = () => {
 
           {/* HISTÓRICO + TERMINAIS side by side */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
-            {/* HISTÓRICO - 3 cols */}
+          {/* HISTÓRICO INTERATIVO - 3 cols */}
             <div className="lg:col-span-3 bg-card rounded-xl border border-border p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-primary" />
                   <span className="font-display text-sm text-primary tracking-widest font-bold">HISTÓRICO</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setShowAllHistory(!showAllHistory)}
-                    className={`text-[9px] px-2 py-1 rounded-lg font-bold transition-all ${
-                      showAllHistory ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-secondary text-muted-foreground border border-border'
-                    }`}>
-                    {showAllHistory ? `TODOS (${allNumbers.length})` : 'ÚLTIMOS 100'}
-                  </button>
-                  <span className="text-[9px] text-muted-foreground font-mono">{displayNumbers.length}</span>
+                <div className="flex items-center gap-1.5">
+                  {[50, 100, 250, 500].map(lim => (
+                    <button key={lim} onClick={() => { setHistoryLimit(lim); setSelectedNum(null); }}
+                      className={`text-[9px] px-2 py-1 rounded-lg font-bold transition-all ${
+                        historyLimit === lim ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-secondary text-muted-foreground border border-border'
+                      }`}>
+                      {lim}
+                    </button>
+                  ))}
+                  <span className="text-[8px] text-muted-foreground font-mono ml-1">{Math.min(historyLimit, allNumbers.length)} giros</span>
                 </div>
               </div>
 
               {error && <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-2 text-[10px] text-destructive font-semibold mb-2">⚠️ {error}</div>}
 
-              {displayNumbers.length === 0 ? (
+              {selectedNum !== null && (
+                <button onClick={() => setSelectedNum(null)} className="text-[9px] px-2 py-1 rounded-lg font-bold bg-destructive/20 text-destructive border border-destructive/30 mb-2 hover:bg-destructive/30 transition-all">
+                  ✕ Limpar filtro (#{selectedNum})
+                </button>
+              )}
+
+              {historySlice.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground text-sm">Aguardando dados...</div>
               ) : (
                 <div className="space-y-1">
-                  {rows.map((row, rowIdx) => (
-                    <div key={rowIdx} className="flex gap-[3px] flex-wrap">
-                      {row.map((n, i) => {
-                        const globalIdx = rowIdx * 20 + i;
-                        const highlight = globalIdx < 80 && isCavalo(n);
-                        return (
-                          <motion.div key={`${rowIdx}-${i}-${n}`}
-                            initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                            transition={{ duration: 0.12, delay: i * 0.005 }}
-                            className={`w-[32px] h-[32px] rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm hover:scale-110 transition-transform cursor-default border
-                              ${highlight ? 'bg-yellow-400 text-black border-yellow-300 shadow-yellow-400/20 ring-1 ring-yellow-300/50' : `${colorClass(n)} border-white/10`}`}>
-                            {n}
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  ))}
+                  {(() => {
+                    const hRows: number[][] = [];
+                    for (let i = 0; i < historySlice.length; i += 20) hRows.push(historySlice.slice(i, i + 20));
+                    return hRows.map((row, rowIdx) => (
+                      <div key={rowIdx} className="flex gap-[3px] flex-wrap">
+                        {row.map((n, i) => {
+                          const isSelected = selectedNum === n;
+                          const isDimmed = selectedNum !== null && selectedNum !== n;
+                          return (
+                            <motion.div key={`${rowIdx}-${i}-${n}`}
+                              initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: isDimmed ? 0.25 : 1 }}
+                              transition={{ duration: 0.12, delay: i * 0.005 }}
+                              onClick={() => setSelectedNum(selectedNum === n ? null : n)}
+                              className={`w-[32px] h-[32px] rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm transition-all cursor-pointer border
+                                ${isSelected ? 'ring-2 ring-primary scale-110 bg-primary text-primary-foreground border-primary' : isDimmed ? `${colorClass(n)} border-white/5` : `${colorClass(n)} border-white/10 hover:scale-110`}`}>
+                              {n}
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    ));
+                  })()}
                 </div>
               )}
+
+              {/* PAINEL DE INSIGHTS DO NÚMERO SELECIONADO */}
+              <AnimatePresence>
+                {selectedNum !== null && historySlice.length > 0 && (() => {
+                  const positions = historySlice.map((n, i) => n === selectedNum ? i : -1).filter(i => i >= 0);
+                  const count = positions.length;
+                  const delays = positions.slice(0, -1).map((p, i) => positions[i + 1] - p);
+                  const avgDelay = delays.length > 0 ? (delays.reduce((a, b) => a + b, 0) / delays.length).toFixed(1) : '—';
+                  const lastDelay = positions[0] !== undefined ? positions[0] : null;
+                  // Next numbers after each occurrence
+                  const nextNums: number[] = [];
+                  positions.forEach(p => { if (p + 1 < historySlice.length) nextNums.push(historySlice[p + 1]); });
+                  const nextFreq: Record<number, number> = {};
+                  nextNums.forEach(n => { nextFreq[n] = (nextFreq[n] || 0) + 1; });
+                  const topNext = Object.entries(nextFreq).sort(([, a], [, b]) => b - a).slice(0, 5);
+                  // Sector distribution of next numbers
+                  const nextSectors: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0, Zero: 0 };
+                  nextNums.forEach(n => { nextSectors[getSectorName(n)]++; });
+                  const totalNextSectors = Object.values(nextSectors).reduce((a, b) => a + b, 0);
+                  // Regularity check
+                  const isRegular = delays.length >= 3 && delays.every(d => Math.abs(d - delays[0]) <= 2);
+
+                  return (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                      className="mt-3 bg-gradient-to-r from-primary/10 via-card to-primary/5 border border-primary/30 rounded-xl p-3 overflow-hidden">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Crosshair className="w-4 h-4 text-primary" />
+                        <span className="font-display text-[10px] tracking-[0.15em] font-bold text-primary">ANÁLISE DO NÚMERO {selectedNum}</span>
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${colorClass(selectedNum)} border border-white/20`}>{selectedNum}</div>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+                        <div className="bg-secondary/50 rounded-lg p-2 text-center border border-border">
+                          <span className="text-lg font-bold font-mono text-foreground">{count}</span>
+                          <span className="text-[7px] text-muted-foreground block">APARIÇÕES/{historyLimit}</span>
+                        </div>
+                        <div className="bg-secondary/50 rounded-lg p-2 text-center border border-border">
+                          <span className="text-lg font-bold font-mono text-foreground">{avgDelay}</span>
+                          <span className="text-[7px] text-muted-foreground block">DELAY MÉDIO</span>
+                        </div>
+                        <div className={`rounded-lg p-2 text-center border ${lastDelay !== null && lastDelay === 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-secondary/50 border-border'}`}>
+                          <span className={`text-lg font-bold font-mono ${lastDelay !== null && lastDelay <= 10 ? 'text-green-400' : 'text-foreground'}`}>
+                            {lastDelay !== null ? lastDelay : '—'}
+                          </span>
+                          <span className="text-[7px] text-muted-foreground block">GIROS ATRÁS</span>
+                        </div>
+                        <div className={`rounded-lg p-2 text-center border ${isRegular ? 'bg-primary/10 border-primary/30' : 'bg-secondary/50 border-border'}`}>
+                          <span className={`text-lg font-bold font-mono ${isRegular ? 'text-primary' : 'text-foreground'}`}>
+                            {isRegular ? '🎯' : '🔀'}
+                          </span>
+                          <span className="text-[7px] text-muted-foreground block">{isRegular ? 'REGULAR' : 'ALEATÓRIO'}</span>
+                        </div>
+                      </div>
+
+                      {isRegular && delays.length >= 3 && (
+                        <div className="bg-primary/10 border border-primary/30 rounded-lg p-2 text-center mb-2">
+                          <span className="text-[9px] font-bold text-primary">🎯 ASSINATURA DE MÃO DETECTADA — Intervalo ~{delays[0]} rodadas (Dealer com mecânica perfeita)</span>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {/* Next numbers */}
+                        <div className="bg-secondary/40 rounded-lg p-2 border border-border">
+                          <span className="text-[8px] font-bold text-foreground block mb-1">📍 NÚMEROS QUE SAEM DEPOIS</span>
+                          {topNext.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {topNext.map(([num, freq]) => (
+                                <div key={num} className="flex items-center gap-0.5">
+                                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ${colorClass(Number(num))} border border-white/20`}>{num}</div>
+                                  <span className="text-[7px] font-mono text-muted-foreground">{freq}x</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-[8px] text-muted-foreground">Sem dados suficientes</span>
+                          )}
+                        </div>
+
+                        {/* Sector heat map after this number */}
+                        <div className="bg-secondary/40 rounded-lg p-2 border border-border">
+                          <span className="text-[8px] font-bold text-foreground block mb-1">🌡️ MAPA DE CALOR PÓS-GIRO</span>
+                          {totalNextSectors > 0 ? (
+                            <div className="space-y-1">
+                              {Object.entries(nextSectors).sort(([, a], [, b]) => b - a).map(([sector, cnt]) => {
+                                const pct = totalNextSectors > 0 ? (cnt / totalNextSectors) * 100 : 0;
+                                return (
+                                  <div key={sector} className="space-y-0.5">
+                                    <div className="flex justify-between text-[9px]">
+                                      <span className="text-muted-foreground">{sector}</span>
+                                      <span className="font-mono font-bold text-foreground">{pct.toFixed(0)}% ({cnt}/{totalNextSectors})</span>
+                                    </div>
+                                    <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
+                                      <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-[8px] text-muted-foreground">Sem dados suficientes</span>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })()}
+              </AnimatePresence>
 
               <div className="flex items-center gap-3 mt-3 pt-2 border-t border-border">
                 {[
@@ -1043,6 +1163,7 @@ const Index = () => {
                     <span className="text-[8px] text-muted-foreground">{l.label}</span>
                   </div>
                 ))}
+                <span className="text-[7px] text-muted-foreground/60 ml-auto">Clique em um número para analisar</span>
               </div>
             </div>
 
