@@ -1562,18 +1562,18 @@ serve(async (req) => {
     }
 
     // CHAOS AUTO-CALIBRATION: If dealer is chaotic AND dispersing wildly, pause signals
-    if (chaoticDealer && isDispersingWildly && totalLayers < 500) {
+    if (chaoticDealer && isDispersingWildly && totalLayers < 700) {
       aiLearnings.push('🛑 Mesa sem padrão detectável. Auto-calibração pausou sinais.');
-      return json({ signal: null, mode: 'calibrating', message: '🔄 AUTO-CALIBRAGEM — Dealer caótico, aguardando padrão...', ...baseResponse, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
+      return json({ signal: null, mode: 'calibrating', message: '🔄 AUTO-CALIBRAGEM — Dealer caótico, aguardando padrão...', ...baseResponse, memoryWindows, aiLearnings, randomnessIndex, kellyBetting, dealerBiometrics, diamondDeflection: diamondDeflection.slice(0, 4), deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
     }
 
-    if (highEntropy && totalLayers < 400) {
-      return json({ signal: null, mode: 'observing', message: '🔍 OBSERVAÇÃO — Alta entropia', ...baseResponse, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
+    if (highEntropy && totalLayers < 550) {
+      return json({ signal: null, mode: 'observing', message: '🔍 OBSERVAÇÃO — Alta entropia', ...baseResponse, memoryWindows, aiLearnings, randomnessIndex, kellyBetting, dealerBiometrics, diamondDeflection: diamondDeflection.slice(0, 4), deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
     }
 
-    if (totalLayers < 300) {
+    if (totalLayers < 400) {
       return json({ signal: null, mode: 'monitoring', message: '👁️ Monitorando...', ...baseResponse,
-        topCandidates: [], delayedTerminals, cavaloDelays, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
+        topCandidates: [], delayedTerminals, cavaloDelays, memoryWindows, aiLearnings, randomnessIndex, kellyBetting, dealerBiometrics, diamondDeflection: diamondDeflection.slice(0, 4), deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
     }
 
     // ========================================================
