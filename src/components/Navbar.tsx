@@ -1,5 +1,5 @@
 import {
-  CircleDot, Brain, Shield, Wifi, WifiOff, RefreshCw, Download, History, Sparkles, Power
+  CircleDot, Brain, Shield, Wifi, WifiOff, RefreshCw, Download, History, Sparkles, Power, ChevronDown
 } from 'lucide-react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -39,6 +39,8 @@ interface NavbarProps {
   setAiEnabled: (v: boolean) => void;
   strategyFilter: string;
   setStrategyFilter: (v: string) => void;
+  predStats: { hits: number; misses: number; exact: number; total: number };
+  setPredStats: (stats: { hits: number; misses: number; exact: number; total: number }) => void;
 }
 
 const Navbar = ({
@@ -46,140 +48,211 @@ const Navbar = ({
   confidenceFilter, setConfidenceFilter, lastUpdate,
   fetchNumbers, fetchStored, autoLearnStatus, onShowHistory,
   aiEnabled, setAiEnabled, strategyFilter, setStrategyFilter,
-}: NavbarProps) => (
-  <nav className="border-b border-border/60 px-4 py-0 z-50 shrink-0 glass relative overflow-hidden">
-    {/* Subtle top accent line */}
-    <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-    
-    <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-3 h-14">
-      {/* Logo */}
-      <div className="flex items-center gap-3 shrink-0">
-        <div className="relative">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 flex items-center justify-center shadow-neon-cyan">
-            <CircleDot className="w-4 h-4 text-primary" />
+  predStats, setPredStats,
+}: NavbarProps) => {
+  const winPct = predStats.total > 0 ? ((predStats.hits / predStats.total) * 100).toFixed(1) : '0.0';
+  const isWinning = predStats.total > 0 && (predStats.hits / predStats.total) >= 0.5;
+
+  return (
+    <nav className="border-b border-border/40 z-50 shrink-0 relative overflow-hidden bg-card/95 backdrop-blur-md">
+      {/* Top accent */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+
+      {/* ═══ ROW 1: Brand + Controls ═══ */}
+      <div className="max-w-[1600px] mx-auto px-3 flex items-center justify-between h-11">
+        {/* Logo */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="relative">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary/25 to-primary/5 border border-primary/30 flex items-center justify-center">
+              <CircleDot className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_6px_hsl(var(--primary)/0.6)]" />
           </div>
-          <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary)/0.6)]" />
+          <div className="hidden sm:flex flex-col leading-none">
+            <span className="font-display font-bold text-[11px] tracking-[0.2em] text-foreground">
+              ROULETTE <span className="text-primary">PRO</span>
+            </span>
+            <span className="text-[7px] text-muted-foreground/60 tracking-wider">SISTEMA PREDITIVO</span>
+          </div>
         </div>
-        <div className="hidden sm:flex flex-col">
-          <span className="font-display font-bold text-xs tracking-[0.2em] text-foreground leading-none">
-            ROULETTE <span className="text-primary text-glow-cyan">PRO</span>
+
+        {/* Center: Strategy Filter + AI Toggle */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[7px] px-1.5 py-0.5 rounded font-bold border bg-primary/10 text-primary border-primary/30 font-display tracking-widest hidden md:inline-block">
+            AI 24H
           </span>
-          <span className="text-[8px] text-muted-foreground tracking-wider">SISTEMA PREDITIVO</span>
+
+          <Select value={strategyFilter} onValueChange={setStrategyFilter}>
+            <SelectTrigger className="h-7 w-[130px] sm:w-[160px] text-[9px] font-bold border-primary/25 bg-primary/5 text-primary rounded-md px-2 py-0 gap-1 focus:ring-1 focus:ring-primary/30">
+              <SelectValue placeholder="Estratégia" />
+            </SelectTrigger>
+            <SelectContent className="text-[10px]">
+              {STRATEGY_OPTIONS.map(opt => (
+                <SelectItem key={opt.value} value={opt.value} className="text-[10px]">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* IA ON/OFF */}
+          <button onClick={() => setAiEnabled(!aiEnabled)}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[9px] font-bold transition-all border ${
+              aiEnabled
+                ? 'bg-primary/12 text-primary border-primary/25'
+                : 'bg-destructive/10 text-destructive border-destructive/25'
+            }`}>
+            <Power className="w-3 h-3" />
+            <span>{aiEnabled ? 'IA ON' : 'IA OFF'}</span>
+            <span className={`w-1.5 h-1.5 rounded-full ${aiEnabled ? 'bg-primary animate-pulse' : 'bg-destructive'}`} />
+          </button>
+
+          {autoLearnStatus !== 'idle' && aiEnabled && (
+            <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-neon-purple/10 border border-neon-purple/20 animate-pulse">
+              <Sparkles className="w-2.5 h-2.5 text-purple-400" />
+              <span className="text-[7px] font-bold text-purple-400 font-mono tracking-wider">
+                {autoLearnStatus === 'learning' ? 'APRENDENDO' : autoLearnStatus === 'analyzing' ? 'ANALISANDO' : 'TESTANDO'}
+              </span>
+            </div>
+          )}
+
+          {/* IA Aprender */}
+          <button onClick={triggerLearn} disabled={isAnalyzing || !aiEnabled}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[9px] font-bold transition-all border disabled:opacity-30
+              bg-primary/8 text-primary border-primary/25 hover:bg-primary/15">
+            <Brain className={`w-3 h-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isAnalyzing ? 'APRENDENDO...' : 'APRENDER'}</span>
+          </button>
+
+          {/* Filtro confiança */}
+          <button onClick={() => setConfidenceFilter(!confidenceFilter)}
+            className={`flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-bold transition-all border ${
+              confidenceFilter
+                ? 'bg-gold/10 text-gold border-gold/25'
+                : 'bg-secondary/40 text-muted-foreground border-border/40'
+            }`}>
+            <Shield className="w-3 h-3" />
+            <span className="hidden sm:inline">{confidenceFilter ? '70%+' : 'TODOS'}</span>
+          </button>
+
+          {/* Live */}
+          <button onClick={() => setIsPolling(!isPolling)}
+            className={`flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-bold transition-all border ${
+              isPolling
+                ? 'bg-neon-green/10 text-neon-green border-neon-green/25'
+                : 'bg-destructive/10 text-destructive border-destructive/25'
+            }`}>
+            {isPolling ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+            <span className={`w-1.5 h-1.5 rounded-full ${isPolling ? 'bg-neon-green animate-pulse' : 'bg-destructive'}`} />
+            <span>{isPolling ? 'LIVE' : 'OFF'}</span>
+          </button>
         </div>
-        <span className="text-[7px] px-2 py-1 rounded-md font-bold border bg-primary/10 text-primary border-primary/30 font-display tracking-widest shadow-neon-cyan">
-          AI 24H
-        </span>
-        {autoLearnStatus !== 'idle' && aiEnabled && (
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-neon-purple/10 border border-neon-purple/25 animate-pulse">
-            <Sparkles className="w-3 h-3 text-purple-400" />
-            <span className="text-[7px] font-bold text-purple-400 font-mono tracking-wider">
-              {autoLearnStatus === 'learning' ? 'APRENDENDO' : autoLearnStatus === 'analyzing' ? 'ANALISANDO' : 'TESTANDO'}
+
+        {/* Right: Quick actions */}
+        <div className="flex items-center gap-1">
+          <button onClick={() => { fetchNumbers(); fetchStored(); }}
+            className="p-1.5 text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-primary/8">
+            <RefreshCw className="w-3 h-3" />
+          </button>
+          <button onClick={onShowHistory}
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-bold bg-primary/8 text-primary border border-primary/20 hover:bg-primary/15 transition-all">
+            <History className="w-3 h-3" />
+            <span className="hidden sm:inline">Histórico</span>
+          </button>
+          <button
+            onClick={() => {
+              fetch('/roulette-extension.zip')
+                .then(res => { if (!res.ok) throw new Error('Download failed'); return res.blob(); })
+                .then(blob => {
+                  const a = document.createElement('a');
+                  a.href = URL.createObjectURL(blob);
+                  a.download = 'roulette-extension.zip';
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                })
+                .catch(err => alert(err.message));
+            }}
+            className="p-1.5 text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-primary/8"
+            title="Baixar extensão"
+          >
+            <Download className="w-3 h-3" />
+          </button>
+          {lastUpdate && (
+            <span className="text-[8px] text-primary/50 font-mono hidden lg:inline tabular-nums ml-1">
+              {lastUpdate.toLocaleTimeString('pt-BR')}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ═══ ROW 2: Stats Bar (integrated) ═══ */}
+      <div className="border-t border-border/20 bg-background/30">
+        <div className="max-w-[1600px] mx-auto px-3 flex items-center justify-center gap-3 h-8 overflow-x-auto">
+          {/* Total */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[7px] text-muted-foreground/60 font-bold tracking-[0.15em] uppercase font-display">Previsões</span>
+            <span className="text-[11px] font-mono font-black text-primary bg-primary/8 px-2 py-0.5 rounded border border-primary/15">
+              {predStats.total}
             </span>
           </div>
-        )}
+
+          <div className="w-px h-3 bg-border/30 shrink-0" />
+
+          {/* Acertos */}
+          <div className="flex items-center gap-1 shrink-0">
+            <div className="w-1.5 h-1.5 rounded-full bg-neon-green shadow-[0_0_4px_hsl(var(--neon-green)/0.5)]" />
+            <span className="text-[11px] font-mono font-black text-neon-green">{predStats.hits}</span>
+            <span className="text-[7px] text-muted-foreground/50 uppercase tracking-wide">Acertos</span>
+          </div>
+
+          {/* Erros */}
+          <div className="flex items-center gap-1 shrink-0">
+            <div className="w-1.5 h-1.5 rounded-full bg-destructive shadow-[0_0_4px_hsl(var(--destructive)/0.4)]" />
+            <span className="text-[11px] font-mono font-black text-destructive">{predStats.misses}</span>
+            <span className="text-[7px] text-muted-foreground/50 uppercase tracking-wide">Erros</span>
+          </div>
+
+          {/* Exatos */}
+          <div className="flex items-center gap-1 shrink-0">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_4px_hsl(var(--primary)/0.5)]" />
+            <span className="text-[11px] font-mono font-black text-primary">{predStats.exact}</span>
+            <span className="text-[7px] text-muted-foreground/50 uppercase tracking-wide">Exatos</span>
+          </div>
+
+          <div className="w-px h-3 bg-border/30 shrink-0" />
+
+          {/* Win Rate Badge */}
+          <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-bold border shrink-0 ${
+            isWinning
+              ? 'bg-neon-green/8 text-neon-green border-neon-green/20'
+              : 'bg-destructive/8 text-destructive border-destructive/20'
+          }`}>
+            <span className="font-mono font-black">{winPct}%</span>
+            <span className="text-[6px] opacity-60 font-display tracking-[0.2em]">WIN</span>
+          </div>
+
+          {/* Mini progress */}
+          {predStats.total > 0 && (
+            <div className="w-20 h-1 bg-secondary/40 rounded-full overflow-hidden hidden sm:block shrink-0">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${isWinning ? 'bg-neon-green' : 'bg-destructive'}`}
+                style={{ width: `${Math.min(parseFloat(winPct), 100)}%` }}
+              />
+            </div>
+          )}
+
+          {/* Reset */}
+          <button onClick={async () => {
+            const { supabase } = await import('@/integrations/supabase/client');
+            await supabase.from('prediction_history').delete().not('id', 'is', null);
+            setPredStats({ hits: 0, misses: 0, exact: 0, total: 0 });
+          }} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[7px] font-bold text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-all shrink-0">
+            <RefreshCw className="w-2 h-2" /> ZERAR
+          </button>
+        </div>
       </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-1.5">
-        {/* Strategy Filter Select */}
-        <Select value={strategyFilter} onValueChange={setStrategyFilter}>
-          <SelectTrigger className="h-7 w-[140px] sm:w-[170px] text-[9px] font-bold border-primary/30 bg-primary/5 text-primary rounded-lg px-2 py-0">
-            <SelectValue placeholder="Estratégia" />
-          </SelectTrigger>
-          <SelectContent className="text-[10px]">
-            {STRATEGY_OPTIONS.map(opt => (
-              <SelectItem key={opt.value} value={opt.value} className="text-[10px]">
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* AI ON/OFF TOGGLE */}
-        <button onClick={() => setAiEnabled(!aiEnabled)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-bold transition-all border ${
-            aiEnabled
-              ? 'bg-primary/15 text-primary border-primary/30 shadow-neon-cyan'
-              : 'bg-destructive/10 text-destructive border-destructive/30'
-          }`}>
-          <Power className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">{aiEnabled ? 'IA ON' : 'IA OFF'}</span>
-          <span className={`w-1.5 h-1.5 rounded-full ${aiEnabled ? 'bg-primary animate-pulse shadow-[0_0_6px_hsl(var(--primary)/0.6)]' : 'bg-destructive'}`} />
-        </button>
-
-        {/* IA Aprender */}
-        <button onClick={triggerLearn} disabled={isAnalyzing || !aiEnabled}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-bold transition-all border disabled:opacity-40
-            bg-gradient-to-r from-primary/15 to-primary/5 text-primary border-primary/30 hover:from-primary/25 hover:to-primary/10 hover:shadow-neon-cyan">
-          <Brain className={`w-3.5 h-3.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
-          <span className="hidden sm:inline">{isAnalyzing ? 'APRENDENDO...' : 'IA APRENDER'}</span>
-        </button>
-
-        {/* Filtro */}
-        <button onClick={() => setConfidenceFilter(!confidenceFilter)}
-          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold transition-all border ${
-            confidenceFilter
-              ? 'bg-gold/10 text-gold border-gold/30 shadow-neon-gold'
-              : 'bg-secondary/50 text-muted-foreground border-border/50'
-          }`}>
-          <Shield className="w-3 h-3" />
-          <span className="hidden sm:inline">{confidenceFilter ? '70%+' : 'TODOS'}</span>
-        </button>
-
-        {/* Live */}
-        <button onClick={() => setIsPolling(!isPolling)}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-bold transition-all border ${
-            isPolling
-              ? 'bg-neon-green/10 text-neon-green border-neon-green/30 shadow-neon-green'
-              : 'bg-destructive/10 text-destructive border-destructive/30'
-          }`}>
-          {isPolling ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-          <span className={`w-1.5 h-1.5 rounded-full ${isPolling ? 'bg-neon-green animate-pulse shadow-[0_0_6px_hsl(var(--neon-green)/0.6)]' : 'bg-destructive'}`} />
-          {isPolling ? 'LIVE' : 'OFF'}
-        </button>
-
-        {/* Refresh */}
-        <button onClick={() => { fetchNumbers(); fetchStored(); }}
-          className="p-1.5 text-muted-foreground hover:text-primary transition-colors rounded-lg hover:bg-primary/10">
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
-
-        {/* Histórico */}
-        <button onClick={onShowHistory}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15 hover:shadow-neon-cyan transition-all">
-          <History className="w-3 h-3" />
-          <span className="hidden sm:inline">Histórico</span>
-        </button>
-
-        {/* Extensão */}
-        <button
-          onClick={() => {
-            fetch('/roulette-extension.zip')
-              .then(res => { if (!res.ok) throw new Error('Download failed'); return res.blob(); })
-              .then(blob => {
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = 'roulette-extension.zip';
-                a.click();
-                URL.revokeObjectURL(a.href);
-              })
-              .catch(err => alert(err.message));
-          }}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold bg-secondary/40 text-muted-foreground border border-border/50 hover:bg-secondary/70 hover:text-foreground transition-all"
-        >
-          <Download className="w-3 h-3" />
-          <span className="hidden sm:inline">Extensão</span>
-        </button>
-
-        {/* Timestamp */}
-        {lastUpdate && (
-          <span className="text-[9px] text-primary/60 font-mono hidden md:inline tabular-nums">
-            {lastUpdate.toLocaleTimeString('pt-BR')}
-          </span>
-        )}
-      </div>
-    </div>
-  </nav>
-);
+    </nav>
+  );
+};
 
 export default Navbar;
