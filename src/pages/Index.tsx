@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import {
   CircleDot, Activity, Shield, ShieldCheck, MonitorPlay,
@@ -194,7 +195,28 @@ const Index = () => {
   useEffect(() => {
     const ch1 = supabase.channel('insights_rt').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pattern_insights' }, () => loadInsights()).subscribe();
     const ch2 = supabase.channel('learned_rt').on('postgres_changes', { event: '*', schema: 'public', table: 'ai_learned_patterns' }, () => loadLearned()).subscribe();
-    return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
+    const ch3 = supabase.channel('prediction_result_rt').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'prediction_history' }, (payload: any) => {
+      const row = payload.new;
+      if (row && row.hit !== null && row.actual_number !== null) {
+        const isHit = row.hit === true;
+        const hitType = row.hit_type;
+        const label = row.strategy_label || row.strategy_type || 'Previsão';
+        const predicted = row.predicted_main;
+        const actual = row.actual_number;
+        if (isHit) {
+          toast.success(
+            `${hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO VIZINHO!'} ${label} — Previsto: ${predicted}, Saiu: ${actual}`,
+            { duration: 8000, style: { background: '#0a2e1a', border: '1px solid #22c55e', color: '#4ade80' } }
+          );
+        } else {
+          toast.error(
+            `❌ ERRO — ${label} — Previsto: ${predicted}, Saiu: ${actual}`,
+            { duration: 6000, style: { background: '#2e0a0a', border: '1px solid #ef4444', color: '#f87171' } }
+          );
+        }
+      }
+    }).subscribe();
+    return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); supabase.removeChannel(ch3); };
   }, [loadInsights, loadLearned]);
 
   const triggerLearn = async () => {
