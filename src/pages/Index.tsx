@@ -511,18 +511,21 @@ const Index = () => {
 
           {/* ─── SEÇÃO 4: ANÁLISE AVANÇADA (COLAPSÁVEL) ─── */}
           {sniperData && (
-            <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <div className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden relative">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neon-purple/40 to-transparent" />
               <button onClick={() => setShowAdvanced(!showAdvanced)}
-                className="w-full flex items-center gap-2 px-4 py-3 hover:bg-secondary/50 transition-colors">
-                <Brain className="w-4 h-4 text-purple-400" />
-                <span className="font-display text-[10px] tracking-[0.15em] font-bold text-purple-400">ANÁLISE AVANÇADA</span>
+                className="w-full flex items-center gap-2.5 px-4 py-3.5 hover:bg-neon-purple/5 transition-colors">
+                <div className="w-6 h-6 rounded-md bg-neon-purple/15 border border-neon-purple/30 flex items-center justify-center">
+                  <Brain className="w-3.5 h-3.5 text-neon-purple" />
+                </div>
+                <span className="font-display text-[10px] tracking-[0.2em] font-bold text-neon-purple">ANÁLISE AVANÇADA</span>
                 {sniperData?.aiLearnings?.length > 0 && (
-                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 font-bold">
+                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-neon-purple/15 text-neon-purple border border-neon-purple/30 font-bold font-mono">
                     {sniperData.aiLearnings.length} insights
                   </span>
                 )}
                 {sniperData?.deepMemory && (
-                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold">
+                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-bold font-mono">
                     1700+ CAMADAS
                   </span>
                 )}
