@@ -6,6 +6,7 @@ import StatsPanel from '@/components/StatsPanel';
 import BotControls from '@/components/BotControls';
 import ProfitChart from '@/components/ProfitChart';
 import ManualInput from '@/components/ManualInput';
+import BetSuggestion from '@/components/BetSuggestion';
 import { CircleDot } from 'lucide-react';
 
 const INITIAL_BOT: BotState = {
@@ -132,6 +133,7 @@ const Index = () => {
 
         {/* Right column */}
         <div className="space-y-4">
+          <BetSuggestion history={history} bot={bot} />
           <BotControls
             bot={bot}
             onStart={handleStart}
