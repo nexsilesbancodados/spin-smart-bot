@@ -5754,7 +5754,7 @@ serve(async (req) => {
         puxada: ['numeros_puxam'],
         zero: ['pressao_zero','jeu_zero'],
         rua: ['rua'],
-        hiper_quente: ['hiper_quente','hot_phase'],
+        hiper_quente: ['hiper_quente','hot_phase','auto_repeticao'],
         sequencia: ['multiplos_seq','diferenca_const'],
       };
       const allowed = catMap[strategyFilterParam];
