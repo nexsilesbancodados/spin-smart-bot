@@ -940,15 +940,7 @@ serve(async (req) => {
     const bayesHighLow = bayesianPredict(numbers, n => n > 0 ? (n >= 19 ? 'Alto' : 'Baixo') : 'Zero');
     const bayesParity = bayesianPredict(numbers, n => n > 0 ? (n % 2 === 0 ? 'Par' : 'Ímpar') : 'Zero');
     
-    // Multi-dimension convergence
-    const multiDimResults = multiDimensionConvergence(
-      numbers,
-      transitionMatrix?.predictedSector || bayesSector.predicted as string || null,
-      transitionMatrix?.predictedDozen || (bayesDozen.predicted ? Number(bayesDozen.predicted) : null),
-      transitionMatrix?.predictedTerminal ?? null,
-      colorBias || (bayesColor.predicted === 'red' || bayesColor.predicted === 'black' ? bayesColor.predicted as string : null),
-      daniGreen.mod2
-    );
+    // Multi-dimension convergence will be calculated after transitionMatrix is ready
 
 
     // ========================================================
