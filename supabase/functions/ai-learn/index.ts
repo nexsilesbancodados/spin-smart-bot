@@ -228,6 +228,8 @@ Deno.serve(async (req) => {
 - Cruzado: VermPar:${crossMap.redEven}, VermÍmp:${crossMap.redOdd}, PretPar:${crossMap.blackEven}, PretÍmp:${crossMap.blackOdd}
 - Streaks máx: Verm ${maxRedStreak}, Preto ${maxBlackStreak}
 - Concentração cilindro: ${Object.entries(wheelConcentration).map(([z,c]) => `${z}:${c}`).join(', ')}
+- Dominância cor/coluna: C1(eq) ${colMap[0]} saídas, C2(preta) ${colMap[1]} saídas, C3(verm) ${colMap[2]} saídas
+- Finais em Pleno: F0-6(4nºs): ${[0,1,2,3,4,5,6].map(f => `F${f}:${termMap[f]||0}`).join(',')} | F7-9(3nºs): ${[7,8,9].map(f => `F${f}:${termMap[f]||0}`).join(',')}
 - Horas: ${Object.entries(hourMap).sort(([a],[b]) => Number(a)-Number(b)).map(([h,c]) => `${h}h:${c}`).join(', ')}
 
 ### CONHECIMENTO PRÉVIO:
@@ -244,7 +246,10 @@ Analise TODOS os dados usando seu conhecimento completo de roleta europeia. Gere
 7. Padrões horários e temporais
 8. Sequências e reversões de tendência
 9. Vizinhos no cilindro que saem juntos
-10. Compare com conhecimento prévio: confirme ou refute`;
+10. Compare com conhecimento prévio: confirme ou refute
+11. Finais em Pleno: diferencie probabilidade de finais 0-6 (4 nºs) vs 7-9 (3 nºs)
+12. Dominância de coluna por cor: C2 deveria ter mais pretos, C3 mais vermelhos — confirme ou refute
+13. Espelhos visuais: identifique se números na mesma posição de dúzias diferentes saem em sequência`;
 
     // 4. Call AI
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -253,7 +258,7 @@ Analise TODOS os dados usando seu conhecimento completo de roleta europeia. Gere
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Você é o sistema de IA mais avançado de análise de roleta do mundo. Possui conhecimento COMPLETO da roleta europeia: setores do cilindro, cavalos, terminais, mapeamento cruzado, seisenas, e vizinhos. Responda APENAS via tool call. Gere 8-15 aprendizados profundos e acionáveis." },
+          { role: "system", content: "Você é o sistema de IA mais avançado de análise de roleta do mundo. Possui conhecimento COMPLETO da roleta europeia: setores do cilindro, cavalos, terminais, finais em pleno, dominância de coluna por cor, espelhos visuais, mapeamento cruzado, seisenas, e vizinhos. Responda APENAS via tool call. Gere 8-15 aprendizados profundos e acionáveis." },
           { role: "user", content: prompt },
         ],
         tools: [{
@@ -269,7 +274,7 @@ Analise TODOS os dados usando seu conhecimento completo de roleta europeia. Gere
                   items: {
                     type: "object",
                     properties: {
-                      learning_type: { type: "string", enum: ["frequency_bias","terminal_pattern","color_tendency","dozen_cycle","cavalos_pattern","timing_pattern","streak_behavior","sector_concentration","column_pattern","sixline_pattern","cross_mapping","wheel_neighbors","parity_pattern"] },
+                      learning_type: { type: "string", enum: ["frequency_bias","terminal_pattern","color_tendency","dozen_cycle","cavalos_pattern","timing_pattern","streak_behavior","sector_concentration","column_pattern","sixline_pattern","cross_mapping","wheel_neighbors","parity_pattern","final_pleno","column_color_dominance","visual_mirror"] },
                       title: { type: "string" },
                       knowledge: { type: "string" },
                       data_points: { type: "integer" },
