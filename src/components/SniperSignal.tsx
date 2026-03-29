@@ -278,6 +278,59 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
         </div>
       )}
 
+      {/* TREND ENGINE */}
+      {sniperData?.trendEngine && sniperData.trendEngine.confidence > 30 && (
+        <div className="px-4 py-2 border-b border-border/30">
+          <div className="flex items-center gap-2 mb-1.5">
+            <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-[9px] font-bold text-cyan-400 tracking-widest uppercase">
+              Tendências Ativas
+            </span>
+            <span className={`ml-auto text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border ${
+              sniperData.trendEngine.confidence >= 70 ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' :
+              'bg-secondary text-muted-foreground border-border'
+            }`}>{sniperData.trendEngine.confidence}%</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {sniperData.trendEngine.colorTrend && (
+              <span className={`text-[8px] px-1.5 py-0.5 rounded-full border font-bold ${
+                sniperData.trendEngine.colorTrend === 'red'
+                  ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                  : 'bg-secondary/60 text-muted-foreground border-border'
+              }`}>
+                {sniperData.trendEngine.colorTrend === 'red' ? '🔴 Vermelho' : '⚫ Preto'}
+              </span>
+            )}
+            {sniperData.trendEngine.parityTrend && (
+              <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-purple-500/15 text-purple-400 border-purple-500/30">
+                {sniperData.trendEngine.parityTrend === 'even' ? 'PAR' : 'ÍMPAR'}
+              </span>
+            )}
+            {sniperData.trendEngine.highLowTrend && (
+              <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-blue-500/15 text-blue-400 border-blue-500/30">
+                {sniperData.trendEngine.highLowTrend === 'high' ? '↑ ALTO' : '↓ BAIXO'}
+              </span>
+            )}
+            {sniperData.trendEngine.dozenTrend && (
+              <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-amber-500/15 text-amber-400 border-amber-500/30">
+                D{sniperData.trendEngine.dozenTrend}
+              </span>
+            )}
+            {sniperData.trendEngine.sectorTrend && (
+              <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-green-500/15 text-green-400 border-green-500/30">
+                {sniperData.trendEngine.sectorTrend}
+              </span>
+            )}
+            {sniperData.trendEngine.mode && sniperData.trendEngine.mode !== 'neutral' && (
+              <span className="text-[8px] px-1.5 py-0.5 rounded-full border font-bold bg-primary/15 text-primary border-primary/30">
+                {sniperData.trendEngine.mode === 'repetition' ? '🔁 Repetição' :
+                 sniperData.trendEngine.mode === 'alternation' ? '🔄 Alternância' : ''}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* REED STOP warning */}
       {reedStopped && (
         <div className="mx-4 mt-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-center animate-pulse">
@@ -383,6 +436,31 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                       })}
                     </div>
                   </div>
+
+                  {/* TOP CANDIDATOS */}
+                  {sniperData?.topCandidates?.length > 0 && (
+                    <div className="px-4 py-2 border-t border-primary/10">
+                      <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wide block mb-1">
+                        🏆 Top Candidatos (Score IA)
+                      </span>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {sniperData.topCandidates.slice(0, 5).map((c: any, i: number) => (
+                          <div key={c.num} className={`flex flex-col items-center gap-0.5 ${i === 0 ? 'opacity-100' : 'opacity-70'}`}>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold border-2 ${
+                              c.num === 0 ? 'bg-emerald-600 text-white border-emerald-400/50' :
+                              RED_NUMBERS.includes(c.num) ? 'bg-red-600 text-white border-red-400/50' :
+                              'bg-zinc-800 text-white border-zinc-500/50'
+                            } ${i === 0 ? 'ring-2 ring-yellow-400/50 shadow-md shadow-yellow-400/20' : ''}`}>
+                              {c.num}
+                            </div>
+                            <span className={`text-[6px] font-mono font-bold ${i === 0 ? 'text-yellow-400' : 'text-muted-foreground'}`}>
+                              {c.score.toFixed(0)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* COMO APOSTAR — Instrução clara */}
                   <div className="px-4 py-2.5 border-t border-primary/15 bg-primary/5">

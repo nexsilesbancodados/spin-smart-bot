@@ -110,6 +110,65 @@ const NumberDNADialog = ({ number, allNumbers, open, onClose }: Props) => {
             </div>
           </div>
 
+          {/* PUXADOS DO NÚMERO */}
+          {(() => {
+            const PULL_DNA: Record<number, number[]> = {
+              0:[10,20,30,32,15,26,3,33,31],1:[11,35,16,4,18,28,27,29,33],
+              2:[14,1,13,18,35,29],3:[13,27,6,11,30,8],4:[26,15,18,32,33,16,8],
+              5:[3,33,16,24,10,18],6:[8,15,31,21,22,23],7:[16,18,17,30,31],
+              8:[11,9,10],9:[34,35,36,3,16,26,23,24,32,31],10:[20,5,18,11,14,24],
+              11:[8,18,16,21],12:[21],13:[31],14:[24,21,18],15:[4,19,21],
+              16:[24,21,18,14],17:[34,6,25],18:[8,18,28],19:[9,19,29],20:[4,14],
+              21:[19],22:[33,2],23:[32,11,2],24:[21,18,14],
+              25:[2,4,17,28,29,12,7,18],26:[6,16,26,36,3,0],
+              27:[28,29,24,22,26,33,31,34,35,36],28:[13,14,15,16,17,18],
+              29:[35],30:[4,8,16,9,18,22,5,25,3],31:[13],32:[2,12,22,32],
+              33:[16],34:[16],35:[0,3,7,12,26,28,29],36:[3,10,27]
+            };
+            const T_DG: Record<number, string> = {1:'T1+T6',6:'T1+T6',2:'T2+T7',7:'T2+T7',3:'T3+T8',8:'T3+T8',4:'T4+T9',9:'T4+T9',0:'T0+T5',5:'T0+T5'};
+            const DUPLAS_DNA: Record<string, number[]> = {
+              'T1+T6':[1,11,21,31,6,16,26,36],'T2+T7':[2,12,22,32,7,17,27],
+              'T3+T8':[3,13,23,33,8,18,28],'T4+T9':[4,14,24,34,9,19,29],'T0+T5':[10,20,30,5,15,25,35]
+            };
+            const puxados = PULL_DNA[number] || [];
+            const terminal = number % 10;
+            const dupla = T_DG[terminal];
+            const duplaNumeros = DUPLAS_DNA[dupla] || [];
+            return (
+              <>
+                {puxados.length > 0 && (
+                  <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Magnet className="w-3.5 h-3.5 text-cyan-400" />
+                      <span className="text-[9px] font-bold text-cyan-400">PUXADOS DO {number}</span>
+                      <span className="text-[7px] text-muted-foreground ml-auto">próximas 4 rodadas</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {puxados.map(n => (
+                        <div key={n} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold border border-white/10 ${colorClass(n)}`}>{n}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="bg-primary/[0.08] rounded-lg p-2.5 border border-primary/20">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Target className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[9px] font-bold text-primary">DUPLA DANI GREEN</span>
+                    <span className="text-[8px] font-mono font-bold text-primary/70 ml-auto">{dupla}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {duplaNumeros.map(n => (
+                      <div key={n} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold border ${
+                        n === number ? 'border-primary ring-1 ring-primary/50' : 'border-white/10'
+                      } ${colorClass(n)}`}>{n}</div>
+                    ))}
+                  </div>
+                  <p className="text-[7px] text-muted-foreground mt-1.5">Dupla de terminais para este número</p>
+                </div>
+              </>
+            );
+          })()}
+
           {/* Magnet description */}
           <div className="bg-primary/5 border border-primary/20 rounded-lg p-2">
             <span className="text-[8px] font-bold text-primary block mb-0.5">🧲 O IMÃ</span>
