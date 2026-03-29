@@ -189,7 +189,6 @@ const Index = () => {
     const runContinuousLearn = async () => {
       if (autoLearnDisabled.current) return;
       if (autoLearnErrorCount.current >= 2) {
-        console.warn('[AutoLearn] Desativado — créditos AI esgotados ou rate limit. Recarregue a página para tentar novamente.');
         autoLearnDisabled.current = true;
         setAutoLearnStatus('idle');
         return;
@@ -200,27 +199,27 @@ const Index = () => {
       try {
         if (cycle % 3 === 0) {
           setAutoLearnStatus('learning');
-          const res = await supabase.functions.invoke('ai-learn');
-          const message = res.data?.error || res.error?.message || '';
-          const status = res.error?.context?.status;
-          if (res.error || res.data?.error) {
-            const err = new Error(message || 'ai-learn failed');
-            (err as any).status = status;
-            throw err;
+          let res: any;
+          try { res = await supabase.functions.invoke('ai-learn'); } catch (e) {
+            throw Object.assign(new Error(String(e)), { status: 402 });
+          }
+          const errMsg = typeof res?.data === 'string' ? res.data : res?.data?.error || res?.error?.message || '';
+          if (res?.error || errMsg) {
+            throw Object.assign(new Error(errMsg || 'ai-learn failed'), { status: res?.error?.context?.status });
           }
         } else if (cycle % 3 === 1) {
           setAutoLearnStatus('analyzing');
-          const res = await supabase.functions.invoke('auto-analyze-patterns');
-          const message = res.data?.error || res.error?.message || '';
-          const status = res.error?.context?.status;
-          if (res.error || res.data?.error) {
-            const err = new Error(message || 'auto-analyze failed');
-            (err as any).status = status;
-            throw err;
+          let res: any;
+          try { res = await supabase.functions.invoke('auto-analyze-patterns'); } catch (e) {
+            throw Object.assign(new Error(String(e)), { status: 402 });
+          }
+          const errMsg = typeof res?.data === 'string' ? res.data : res?.data?.error || res?.error?.message || '';
+          if (res?.error || errMsg) {
+            throw Object.assign(new Error(errMsg || 'auto-analyze failed'), { status: res?.error?.context?.status });
           }
         } else {
           setAutoLearnStatus('backtesting');
-          await supabase.functions.invoke('sniper-predict');
+          try { await supabase.functions.invoke('sniper-predict'); } catch {}
         }
         await Promise.all([loadInsights(), loadLearned()]);
         setLastAutoLearnTime(new Date());
@@ -229,13 +228,12 @@ const Index = () => {
         autoLearnErrorCount.current++;
         const msg = err?.message || String(err);
         const status = err?.status;
-        const isCreditError = status === 402 || status === 429 || msg.includes('402') || msg.includes('429') || msg.includes('Credits') || msg.includes('Rate') || msg.includes('credit');
+        const isCreditError = status === 402 || status === 429 || /402|429|[Cc]redit|[Rr]ate|exhausted|payment/i.test(msg);
         if (isCreditError) {
           autoLearnDisabled.current = true;
-          toast.error(status === 402 ? 'Créditos de IA esgotados. O aprendizado automático foi pausado.' : 'Limite de requisições atingido. O aprendizado automático foi pausado.');
-          console.warn('[AutoLearn] AI credits exhausted / rate limited — auto-learn disabled.');
+          toast.error('Créditos de IA esgotados. Adicione saldo em Settings → Cloud & AI balance.');
         }
-        console.error(`[AutoLearn] Ciclo ${cycle} erro (${autoLearnErrorCount.current}):`, msg);
+        console.error(`[AutoLearn] Ciclo ${cycle} erro:`, msg);
       } finally {
         setAutoLearnStatus('idle');
       }
