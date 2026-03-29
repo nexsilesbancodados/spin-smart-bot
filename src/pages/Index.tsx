@@ -60,11 +60,16 @@ const Index = () => {
   const [showAllHistory, setShowAllHistory] = useState(false);
   const prevNumbersRef = useRef<string>('');
   const [sniperData, setSniperData] = useState<any>(null);
-  const [sniperCountdown, setSniperCountdown] = useState(13);
+  const [sniperCountdown, setSniperCountdown] = useState(0);
   const [autoLearnCycle, setAutoLearnCycle] = useState(0);
   const [autoLearnStatus, setAutoLearnStatus] = useState<'idle' | 'learning' | 'analyzing' | 'backtesting'>('idle');
   const [lastAutoLearnTime, setLastAutoLearnTime] = useState<Date | null>(null);
   const [showCasino, setShowCasino] = useState(false);
+
+  // Roulette spin cycle sync
+  const lastNewNumberTime = useRef<number>(Date.now());
+  const spinCycleEstimate = useRef<number>(35); // estimated seconds per spin
+  const spinHistory = useRef<number[]>([]); // history of spin intervals for averaging
 
   // Fetch from API
   const fetchNumbers = useCallback(async () => {
@@ -76,9 +81,29 @@ const Index = () => {
         const nums = data.results.map((n: unknown) => Number(n)).filter((n: number) => !isNaN(n) && n >= 0 && n <= 36);
         const key = nums.slice(0, 20).join(',');
         if (key !== prevNumbersRef.current) {
+          // New number detected — sync the spin cycle
+          const now = Date.now();
+          if (prevNumbersRef.current !== '') {
+            const elapsed = (now - lastNewNumberTime.current) / 1000;
+            // Only count reasonable intervals (10s-120s)
+            if (elapsed >= 10 && elapsed <= 120) {
+              spinHistory.current.push(elapsed);
+              // Keep last 10 intervals for averaging
+              if (spinHistory.current.length > 10) spinHistory.current.shift();
+              // Calculate weighted average (recent intervals matter more)
+              const weights = spinHistory.current.map((_, i) => i + 1);
+              const totalWeight = weights.reduce((a, b) => a + b, 0);
+              spinCycleEstimate.current = Math.round(
+                spinHistory.current.reduce((sum, val, i) => sum + val * weights[i], 0) / totalWeight
+              );
+            }
+          }
+          lastNewNumberTime.current = now;
           prevNumbersRef.current = key;
           setApiNumbers(nums);
           setLastUpdate(new Date());
+          // Reset countdown to estimated cycle
+          setSniperCountdown(spinCycleEstimate.current);
         }
         setError(null);
       }
@@ -109,7 +134,6 @@ const Index = () => {
       const res = await supabase.functions.invoke('sniper-predict');
       if (res.data) {
         setSniperData(res.data);
-        setSniperCountdown(13);
       }
     } catch (err) { console.error('Sniper error:', err); }
   }, []);
@@ -320,8 +344,9 @@ const Index = () => {
                       </span>
                     )}
                     <div className="ml-auto flex items-center gap-2">
+                      <span className="text-[7px] text-muted-foreground font-mono">~{spinCycleEstimate.current}s/giro</span>
                       <div className={`flex items-center gap-1 px-2 py-1 rounded-lg font-mono text-xs font-bold ${
-                        sniperCountdown <= 3 ? 'bg-destructive/20 text-destructive animate-pulse' : sniperCountdown <= 7 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-secondary text-muted-foreground'
+                        sniperCountdown <= 5 ? 'bg-destructive/20 text-destructive animate-pulse' : sniperCountdown <= 15 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-secondary text-muted-foreground'
                       }`}>
                         <Clock className="w-3 h-3" />
                         {sniperCountdown}s
