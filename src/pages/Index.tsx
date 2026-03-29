@@ -1440,6 +1440,9 @@ const Index = () => {
           </div>
 
 
+          {/* LOG DE APRENDIZADO IA */}
+          <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} />
+
           {/* CASSINO AO VIVO - collapsible */}
           <div className="bg-card rounded-xl border border-border overflow-hidden">
             <button onClick={() => setShowCasino(!showCasino)}
