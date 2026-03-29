@@ -3585,8 +3585,7 @@ serve(async (req) => {
     const maxHeat = Math.max(...heatMap);
 
     // AI learned patterns
-    const learnedBonus: Record<number, number> = {};
-    const learnedReasons: Record<number, string[]> = {};
+    // Reset learnedBonus/learnedReasons (already declared above)
     for (let n = 0; n <= 36; n++) { learnedBonus[n] = 0; learnedReasons[n] = []; }
 
     for (const l of learned) {
