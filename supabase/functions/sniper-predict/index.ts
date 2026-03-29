@@ -256,6 +256,32 @@ const CENTRAL_SEQUENCE = [5, 14, 23, 32];
 const ESTRELA_DAVI_NUMS = [30, 31, 33, 34, 35, 8, 23, 10, 5, 9, 22, 1, 20, 14, 3, 26, 12];
 
 // ========================================================
+// SCORING SYSTEM — Signal-based confidence scoring
+// ========================================================
+const SIGNAL_SCORES: Record<string, number> = {
+  F5: 30, C1: 40, S3_S4: 35, S1: 15, G4: 20, C2: 25, F1: 30, F2: 20, P3: 20, S2: 15,
+};
+const DIVERSITY_BONUS: Record<number, number> = { 2: 10, 3: 15, 4: 25 };
+
+// ========================================================
+// ENTROPY — Terminal frequency entropy for session regime
+// ========================================================
+const calculateEntropy = (nums: number[], window = 15): number => {
+  const terms: Record<number, number> = {};
+  for (let t = 0; t <= 9; t++) terms[t] = 0;
+  const slice = nums.slice(0, window);
+  slice.forEach(n => terms[n % 10]++);
+  const total = slice.length || 1;
+  let entropy = 0;
+  for (let t = 0; t <= 9; t++) {
+    const p = terms[t] / total;
+    if (p > 0) entropy -= p * Math.log2(p);
+  }
+  // Normalize to 0-1 range (max entropy for 10 bins = log2(10) ≈ 3.32)
+  return entropy / Math.log2(10);
+};
+
+// ========================================================
 // DETECTORS
 // ========================================================
 
