@@ -721,10 +721,10 @@ const Index = () => {
                 <Eye className="w-4 h-4 text-blue-400" />
                 <span className="font-display text-[10px] tracking-[0.15em] font-bold text-blue-400">MEMÓRIA PROFUNDA & FÍSICA AVANÇADA</span>
                 <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold ml-auto">
-                  1000 CAMADAS
+                  1100 CAMADAS
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
                 {/* Ancestral Patterns */}
                 <div className="bg-secondary/40 rounded-lg p-2 border border-border">
                   <span className="text-[8px] font-bold text-purple-400 block mb-1">👻 SEQUÊNCIAS ANCESTRAIS</span>
@@ -790,6 +790,48 @@ const Index = () => {
                   ) : (
                     <span className="text-[8px] text-muted-foreground">Evoluindo...</span>
                   )}
+                </div>
+                {/* Flow Dynamics */}
+                <div className="bg-secondary/40 rounded-lg p-2 border border-border">
+                  <span className="text-[8px] font-bold text-yellow-400 block mb-1">🌊 DINÂMICA DE FLUXO</span>
+                  <div className="text-[8px] text-foreground/80 space-y-0.5">
+                    {sniperData.deepMemory.flowDynamics?.mesaFlowState && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Modo</span>
+                          <span className={`font-bold ${sniperData.deepMemory.flowDynamics.mesaFlowState.mode === 'concentracao' ? 'text-red-400' : sniperData.deepMemory.flowDynamics.mesaFlowState.mode === 'gangorra' ? 'text-blue-400' : 'text-muted-foreground'}`}>
+                            {sniperData.deepMemory.flowDynamics.mesaFlowState.mode === 'concentracao' ? '🔥 Concentração' : sniperData.deepMemory.flowDynamics.mesaFlowState.mode === 'gangorra' ? '🔄 Gangorra' : '⚖️ Neutro'}
+                          </span>
+                        </div>
+                        {sniperData.deepMemory.flowDynamics.mesaFlowState.clusterZone && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Zona</span>
+                            <span className="font-mono font-bold text-red-400">{sniperData.deepMemory.flowDynamics.mesaFlowState.clusterZone}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {sniperData.deepMemory.flowDynamics?.pullPatterns?.length > 0 && (
+                      <div>
+                        <span className="text-muted-foreground">Puxadas: </span>
+                        {sniperData.deepMemory.flowDynamics.pullPatterns.slice(0, 2).map((pp: any, i: number) => (
+                          <span key={i} className="font-mono font-bold">{pp.source}→{pp.dominantSector.slice(0, 4)} </span>
+                        ))}
+                      </div>
+                    )}
+                    {sniperData.deepMemory.flowDynamics?.terminalProgression?.predictedNext !== null && sniperData.deepMemory.flowDynamics?.terminalProgression?.predictedNext !== undefined && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Escada</span>
+                        <span className="font-mono font-bold text-yellow-400">→ T{sniperData.deepMemory.flowDynamics.terminalProgression.predictedNext}</span>
+                      </div>
+                    )}
+                    {sniperData.deepMemory.flowDynamics?.neighborJumps >= 3 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Vizinhos</span>
+                        <span className="font-mono font-bold text-green-400">{sniperData.deepMemory.flowDynamics.neighborJumps}x seguidos</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </motion.div>

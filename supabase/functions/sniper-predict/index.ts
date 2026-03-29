@@ -624,7 +624,191 @@ serve(async (req) => {
     blocoE = Math.min(maxE, blocoE);
 
     // ========================================================
-    // BLOCO F: MEMÓRIA PROFUNDA HISTÓRICA (100 CAMADAS)
+    // BLOCO K: DINÂMICA DE FLUXO DE MESA (100 CAMADAS)
+    // Concentração vs Dispersão, Puxada, Alternância de Áreas,
+    // Progressão de Terminais
+    // ========================================================
+    let blocoK = 0;
+    const maxK = 100;
+
+    // K1-K30: CONCENTRAÇÃO vs DISPERSÃO (Cluster vs Gangorra)
+    // Mede se os últimos 15 números caem em poucos setores (concentrado)
+    // ou cruzam o cilindro alternadamente (gangorra)
+    const mesaFlowState: { mode: 'concentracao' | 'gangorra' | 'neutro'; clusterZone: string | null; gangorraSequence: string[]; strength: number } = {
+      mode: 'neutro', clusterZone: null, gangorraSequence: [], strength: 0
+    };
+
+    if (numbers.length >= 15) {
+      // Check sector concentration in last 15
+      const sec15: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0 };
+      last15.forEach(n => { const s = getSector(n); if (sec15[s] !== undefined) sec15[s]++; });
+      const maxSec15 = Math.max(...Object.values(sec15));
+      const maxSecName = Object.entries(sec15).sort(([,a],[,b]) => b - a)[0][0];
+
+      // Concentration: >60% in one sector
+      if (maxSec15 >= 9) {
+        mesaFlowState.mode = 'concentracao';
+        mesaFlowState.clusterZone = maxSecName;
+        mesaFlowState.strength = maxSec15 / 15;
+        blocoK += 30;
+        aiLearnings.push(`🔥 CONCENTRAÇÃO: ${maxSecName} com ${maxSec15}/15 — Zona de Calor ativa`);
+      } else {
+        // Check gangorra: alternating sectors
+        const secSeq = last15.map(n => getSector(n));
+        let alternations = 0;
+        for (let i = 1; i < secSeq.length; i++) {
+          if (secSeq[i] !== secSeq[i-1]) alternations++;
+        }
+        const alternationRate = alternations / (secSeq.length - 1);
+        if (alternationRate > 0.75) {
+          mesaFlowState.mode = 'gangorra';
+          mesaFlowState.gangorraSequence = secSeq.slice(0, 5);
+          mesaFlowState.strength = alternationRate;
+          blocoK += 25;
+          aiLearnings.push(`🔄 GANGORRA: ${alternationRate.toFixed(0)}% alternância de setores`);
+
+          // Detect sector alternation pattern (Tiers→Voisins→Tiers→Voisins)
+          if (secSeq.length >= 4 && secSeq[0] !== secSeq[1] && secSeq[1] === secSeq[3] && secSeq[0] === secSeq[2]) {
+            aiLearnings.push(`⚡ CONVERGÊNCIA DE ALTERNÂNCIA: ${secSeq[0]}↔${secSeq[1]} (padrão cíclico)`);
+            blocoK += 15;
+          }
+        } else {
+          blocoK += 10;
+        }
+      }
+    }
+
+    // K31-K60: PUXADA DE NÚMEROS (Relação de Imã)
+    // Para cada número recente, calcula quais números saem logo depois com frequência
+    const pullPatterns: { source: number; targets: { num: number; count: number; sector: string }[]; dominantSector: string; neighborRepeat: number }[] = [];
+    if (numbers.length >= 100) {
+      // Analyze last 5 unique numbers as "sources"
+      const sourcesToAnalyze = [...new Set(numbers.slice(0, 5))].slice(0, 3);
+      for (const src of sourcesToAnalyze) {
+        const occurrences: number[] = [];
+        for (let i = 0; i < Math.min(500, numbers.length) - 1; i++) {
+          if (numbers[i] === src) occurrences.push(i);
+        }
+        if (occurrences.length < 3) continue;
+
+        // What comes AFTER this number
+        const nextMap: Record<number, number> = {};
+        const nextSectors: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0 };
+        let neighborRepeats = 0;
+        for (const idx of occurrences) {
+          if (idx + 1 < numbers.length) {
+            const next = numbers[idx + 1];
+            nextMap[next] = (nextMap[next] || 0) + 1;
+            const sec = getSector(next);
+            if (nextSectors[sec] !== undefined) nextSectors[sec]++;
+            // Check if next is a wheel neighbor (within 2)
+            if (wheelDist(src, next) <= 2) neighborRepeats++;
+          }
+        }
+        const topTargets = Object.entries(nextMap)
+          .sort(([,a],[,b]) => b - a)
+          .slice(0, 5)
+          .map(([n, c]) => ({ num: Number(n), count: c, sector: getSector(Number(n)) }));
+
+        const domSector = Object.entries(nextSectors).sort(([,a],[,b]) => b - a)[0][0];
+        const domSectorPct = Object.values(nextSectors).reduce((a, b) => a + b, 0) > 0
+          ? nextSectors[domSector] / Object.values(nextSectors).reduce((a, b) => a + b, 0)
+          : 0;
+
+        pullPatterns.push({
+          source: src,
+          targets: topTargets,
+          dominantSector: domSector,
+          neighborRepeat: neighborRepeats,
+        });
+
+        // Score based on pull strength
+        if (domSectorPct > 0.5) blocoK += 5;
+        if (neighborRepeats >= occurrences.length * 0.3) {
+          blocoK += 5;
+          aiLearnings.push(`🧲 Puxada: ${src} chama vizinhos em ${((neighborRepeats/occurrences.length)*100).toFixed(0)}% das vezes`);
+        }
+        if (topTargets[0] && topTargets[0].count >= 3) {
+          aiLearnings.push(`🧲 Puxada forte: ${src} → ${topTargets[0].num} (${topTargets[0].count}x em ${occurrences.length})`);
+          blocoK += 5;
+        }
+      }
+    }
+
+    // K61-K80: ALTERNÂNCIA RÍTMICA DE VIZINHOS
+    // Detecta "Salto de Vizinhos" (consecutivos são vizinhos de cilindro)
+    let neighborJumpCount = 0;
+    const neighborJumpPairs: [number, number][] = [];
+    if (numbers.length >= 10) {
+      for (let i = 0; i < Math.min(15, numbers.length) - 1; i++) {
+        if (wheelDist(numbers[i], numbers[i+1]) <= 2) {
+          neighborJumpCount++;
+          neighborJumpPairs.push([numbers[i], numbers[i+1]]);
+        }
+      }
+      if (neighborJumpCount >= 4) {
+        mesaFlowState.mode = 'concentracao';
+        blocoK += 15;
+        aiLearnings.push(`🤝 Mão Mecânica: ${neighborJumpCount} vizinhos consecutivos — Dealer com arco fixo`);
+      } else if (neighborJumpCount >= 2) {
+        blocoK += 8;
+      } else {
+        blocoK += 3;
+      }
+    }
+
+    // K81-K100: PROGRESSÃO DE TERMINAIS (Cavalos em Escada)
+    // Detecta progressões como T2→T5→T8 (Cavalos 258)
+    const terminalProgression: { sequence: number[]; group: string | null; predictedNext: number | null } = {
+      sequence: [], group: null, predictedNext: null
+    };
+    if (numbers.length >= 5) {
+      const recentTerms = numbers.slice(0, 5).map(n => n % 10);
+      // Check Cavalos 258 progression (2→5→8 or reverse)
+      const c258 = [2, 5, 8];
+      const c147 = [1, 4, 7];
+      const c0369 = [0, 3, 6, 9];
+
+      const checkProgression = (terms: number[], group: number[], name: string) => {
+        const indices = terms.map(t => group.indexOf(t)).filter(i => i >= 0);
+        if (indices.length >= 2) {
+          // Check if consecutive indices form an ascending or descending pattern
+          const isAscending = indices[0] < indices[1];
+          const nextIdx = isAscending ? indices[0] + (indices.length) : indices[0] - 1;
+          if (nextIdx >= 0 && nextIdx < group.length && !terms.includes(group[nextIdx])) {
+            terminalProgression.sequence = indices.map(i => group[i]);
+            terminalProgression.group = name;
+            terminalProgression.predictedNext = group[nextIdx];
+            blocoK += 10;
+          }
+        }
+      };
+
+      checkProgression(recentTerms, c258, '258');
+      if (!terminalProgression.group) checkProgression(recentTerms, c147, '147');
+      if (!terminalProgression.group) checkProgression(recentTerms, c0369, '0369');
+
+      if (terminalProgression.predictedNext !== null) {
+        aiLearnings.push(`🐎 Escada Terminal: T${terminalProgression.sequence.join('→T')} → próximo T${terminalProgression.predictedNext} (C${terminalProgression.group})`);
+      }
+
+      // Terminal block dominance
+      const termBlockFreq: Record<string, number> = { '258': 0, '147': 0, '0369': 0 };
+      const recent10Terms = numbers.slice(0, 10).map(n => n % 10);
+      recent10Terms.forEach(t => {
+        if (c258.includes(t)) termBlockFreq['258']++;
+        else if (c147.includes(t)) termBlockFreq['147']++;
+        else if (c0369.includes(t)) termBlockFreq['0369']++;
+      });
+      const dominantTermBlock = Object.entries(termBlockFreq).sort(([,a],[,b]) => b - a)[0];
+      if (Number(dominantTermBlock[1]) >= 6) {
+        blocoK += 10;
+        aiLearnings.push(`🏇 Bloco Terminal dominante: ${dominantTermBlock[0]} (${dominantTermBlock[1]}/10 rodadas)`);
+      }
+    }
+
+    blocoK = Math.min(maxK, blocoK);
+
     // ========================================================
     let blocoF = 0;
     const maxF = 100;
@@ -934,7 +1118,7 @@ serve(async (req) => {
     }
 
     // I81-I100: Convergência cruzada entre blocos
-    const blockScores = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH];
+    const blockScores = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH, blocoK / maxK];
     const highBlocks = blockScores.filter(s => s > 0.7).length;
     blocoI += Math.min(20, highBlocks * 4);
 
@@ -960,7 +1144,7 @@ serve(async (req) => {
     }
 
     // J71-J100: Final confidence — all 10 blocks must agree
-    const allBlockPcts = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH, blocoI / maxI];
+    const allBlockPcts = [blocoA / maxA, blocoB / maxB, blocoC / maxC, blocoD / maxD, blocoE / maxE, blocoF / maxF, blocoG / maxG, blocoH / maxH, blocoI / maxI, blocoK / maxK];
     const avgBlockPct = allBlockPcts.reduce((a, b) => a + b, 0) / allBlockPcts.length;
     const minBlockPct = Math.min(...allBlockPcts);
     // High average + high minimum = strong convergence
@@ -969,9 +1153,9 @@ serve(async (req) => {
     blocoJ = Math.min(maxJ, blocoJ);
 
     // ========================================================
-    // TOTAL DAS 1.000 CAMADAS
+    // TOTAL DAS 1.100 CAMADAS
     // ========================================================
-    const totalLayers = blocoA + blocoB + blocoC + blocoD + blocoE + blocoF + blocoG + blocoH + blocoI + blocoJ;
+    const totalLayers = blocoA + blocoB + blocoC + blocoD + blocoE + blocoF + blocoG + blocoH + blocoI + blocoJ + blocoK;
     const layerResults = {
       blocoA: { score: blocoA, max: maxA, label: 'Biomecânica & Física' },
       blocoB: { score: blocoB, max: maxB, label: 'Matemática & Terminais' },
@@ -983,8 +1167,9 @@ serve(async (req) => {
       blocoH: { score: blocoH, max: maxH, label: 'Micro-Vibração Física' },
       blocoI: { score: blocoI, max: maxI, label: 'Inteligência Profunda' },
       blocoJ: { score: blocoJ, max: maxJ, label: 'Convergência Final' },
+      blocoK: { score: blocoK, max: maxK, label: 'Dinâmica de Fluxo' },
       total: totalLayers,
-      max: 1000,
+      max: 1100,
     };
 
     // ========================================================
@@ -1126,22 +1311,22 @@ serve(async (req) => {
     };
 
     if (dealerChanged) {
-      return json({ signal: null, mode: 'recalibrating', message: '🔄 Novo Dealer: Recalibrando...', ...baseResponse, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights } });
+      return json({ signal: null, mode: 'recalibrating', message: '🔄 Novo Dealer: Recalibrando...', ...baseResponse, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
     }
 
     // CHAOS AUTO-CALIBRATION: If dealer is chaotic AND dispersing wildly, pause signals
     if (chaoticDealer && isDispersingWildly && totalLayers < 500) {
       aiLearnings.push('🛑 Mesa sem padrão detectável. Auto-calibração pausou sinais.');
-      return json({ signal: null, mode: 'calibrating', message: '🔄 AUTO-CALIBRAGEM — Dealer caótico, aguardando padrão...', ...baseResponse, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights } });
+      return json({ signal: null, mode: 'calibrating', message: '🔄 AUTO-CALIBRAGEM — Dealer caótico, aguardando padrão...', ...baseResponse, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
     }
 
     if (highEntropy && totalLayers < 400) {
-      return json({ signal: null, mode: 'observing', message: '🔍 OBSERVAÇÃO — Alta entropia', ...baseResponse, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights } });
+      return json({ signal: null, mode: 'observing', message: '🔍 OBSERVAÇÃO — Alta entropia', ...baseResponse, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
     }
 
     if (totalLayers < 300) {
       return json({ signal: null, mode: 'monitoring', message: '👁️ Monitorando...', ...baseResponse,
-        topCandidates: [], delayedTerminals, cavaloDelays, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights } });
+        topCandidates: [], delayedTerminals, cavaloDelays, memoryWindows, aiLearnings, deepMemory: { ancestralPatterns: ancestralPatterns.slice(0, 3), mesaDNA, cylinderInertia, geneticPatterns: geneticPatterns.slice(0, 3), backpropWeights, flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression } } });
     }
 
     // ========================================================
@@ -1209,6 +1394,24 @@ serve(async (req) => {
       }
       // BACKPROPAGATION: weight by best dimension
       if (backpropWeights['physical'] > 0.3 && maoViciada) { const idx0 = wheelIdx(numbers[0]); if (idx0 !== -1 && wheelDist(n, WHEEL[(idx0 + Math.round(arcMean)) % WL]) <= 3) { s += 2; r.push('🔄 Backprop Phys'); } }
+      // FLOW DYNAMICS: concentration bonus
+      if (mesaFlowState.mode === 'concentracao' && mesaFlowState.clusterZone && getSector(n) === mesaFlowState.clusterZone) { s += 3; r.push(`🔥 Zona ${mesaFlowState.clusterZone}`); }
+      // FLOW DYNAMICS: gangorra prediction (opposite sector)
+      if (mesaFlowState.mode === 'gangorra' && mesaFlowState.gangorraSequence.length >= 2) {
+        const lastSec = getSector(numbers[0]);
+        const predictedSec = lastSec === 'Voisins' ? 'Tiers' : lastSec === 'Tiers' ? 'Voisins' : lastSec === 'Orphelins' ? 'Voisins' : 'Tiers';
+        if (getSector(n) === predictedSec) { s += 2.5; r.push(`🔄 Gangorra→${predictedSec}`); }
+      }
+      // PULL PATTERNS: numbers that are "pulled" by the latest number
+      for (const pp of pullPatterns) {
+        if (pp.source === numbers[0]) {
+          const target = pp.targets.find(t => t.num === n);
+          if (target && target.count >= 2) { s += Math.min(3, target.count * 0.8); r.push(`🧲 Puxada(${pp.source}→${n})`); }
+          if (getSector(n) === pp.dominantSector) { s += 1; r.push(`🧲 Setor puxado`); }
+        }
+      }
+      // TERMINAL PROGRESSION: predicted next terminal from escalation
+      if (terminalProgression.predictedNext !== null && n % 10 === terminalProgression.predictedNext) { s += 2.5; r.push(`🐎 Escada T${terminalProgression.predictedNext}`); }
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
@@ -1784,7 +1987,7 @@ serve(async (req) => {
     }));
 
     // Final probability = winner's probability boosted by layer convergence
-    const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 800)));
+    const finalProbability = Math.min(98, Math.round(winner.probability * (totalLayers / 900)));
     
     // Add strategy performance learnings
     const winnerPerf = strategyPerformance[winner.type];
@@ -1816,18 +2019,18 @@ serve(async (req) => {
       aiLearnings.push(`🔑 Assinatura terminal: T${mesaDNA.terminalSignature.join(',T')} consistentes`);
     }
 
-    const mode = totalLayers >= 840 && finalProbability >= 88 ? 'sniper'
-      : totalLayers >= 740 && finalProbability >= 80 ? 'alert'
+    const mode = totalLayers >= 920 && finalProbability >= 88 ? 'sniper'
+      : totalLayers >= 810 && finalProbability >= 80 ? 'alert'
       : 'monitoring';
 
     const message = mode === 'sniper'
-      ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/1000`
+      ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/1100`
       : mode === 'alert'
-      ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/1000`
-      : `👁️ Analisando... ${totalLayers}/1000 — aguardando convergência`;
+      ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/1100`
+      : `👁️ Analisando... ${totalLayers}/1100 — aguardando convergência`;
 
     const diagnostic = mode === 'sniper'
-      ? `Convergência Milenária (1000 camadas): ${winner.justification}`
+      ? `Convergência Milenária (1100 camadas): ${winner.justification}`
       : mode === 'alert'
       ? `Quase lá: ${winner.justification}`
       : `Análise em andamento: ${winner.justification}`;
@@ -1975,6 +2178,7 @@ serve(async (req) => {
         cylinderInertia,
         geneticPatterns: geneticPatterns.slice(0, 3),
         backpropWeights,
+        flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression },
       },
       ...baseResponse, recoveryMode,
       topCandidates: numScores.slice(0, 8).map(s => ({ num: s.num, score: +s.score.toFixed(1), reasons: s.reasons })),

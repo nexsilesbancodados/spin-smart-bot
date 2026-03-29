@@ -191,7 +191,7 @@ const PredictionHistory = () => {
                     {p.hit_type === 'exact' ? '🎯 EXATO' : p.hit ? '✅ VIZINHO' : '❌ ERRO'}
                   </span>
                   <span className="text-[7px] text-muted-foreground ml-auto font-mono">
-                    {p.probability}% • {p.convergence_score}/500
+                    {p.probability}% • {p.convergence_score}/1100
                   </span>
                 </div>
                 <div className="flex items-center gap-1 mt-0.5">
