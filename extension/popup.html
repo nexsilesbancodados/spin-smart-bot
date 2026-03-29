@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 340px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0a0a;
+      color: #e0e0e0;
+    }
+    .header {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      padding: 16px;
+      text-align: center;
+      border-bottom: 1px solid #333;
+    }
+    .header h1 {
+      font-size: 16px;
+      color: #00ff88;
+      margin-bottom: 4px;
+    }
+    .header p { font-size: 11px; color: #888; }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #222;
+    }
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    .status-dot.active { background: #00ff88; }
+    .status-dot.inactive { background: #ff4444; animation: none; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .section {
+      padding: 12px 16px;
+      border-bottom: 1px solid #222;
+    }
+    .section label {
+      font-size: 11px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: block;
+      margin-bottom: 6px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px 10px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+      outline: none;
+    }
+    input[type="text"]:focus { border-color: #00ff88; }
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 8px;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: #00ff88; color: #000; }
+    .btn-danger { background: #ff4444; color: #fff; }
+    .btn-secondary { background: #333; color: #ccc; }
+    .log {
+      max-height: 160px;
+      overflow-y: auto;
+      font-size: 11px;
+    }
+    .log-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .log-num {
+      font-weight: bold;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-size: 11px;
+    }
+    .log-num.red { background: #dc2626; color: #fff; }
+    .log-num.black { background: #1a1a1a; color: #fff; border: 1px solid #444; }
+    .log-num.green { background: #16a34a; color: #fff; }
+    .log-time { color: #666; }
+    .empty { color: #555; text-align: center; padding: 16px; font-size: 12px; }
+    .count { font-size: 20px; color: #00ff88; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎰 Roulette Tracker</h1>
+    <p>Captura automática — Onabet</p>
+  </div>
+
+  <div class="status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText" style="font-size:12px;">Verificando...</span>
+  </div>
+
+  <div class="section">
+    <label>Webhook URL</label>
+    <input type="text" id="webhookInput" placeholder="https://...supabase.co/functions/v1/webhook-roulette" />
+    <button class="btn btn-primary" id="saveBtn">Salvar</button>
+  </div>
+
+  <div class="section">
+    <label>Números Capturados</label>
+    <div style="text-align:center;margin-bottom:8px;">
+      <span class="count" id="totalCount">0</span>
+    </div>
+    <div class="log" id="logContainer">
+      <div class="empty">Nenhum número capturado ainda</div>
+    </div>
+    <button class="btn btn-secondary" id="clearBtn" style="margin-top:8px;">Limpar Log</button>
+  </div>
+
+  <div class="section" style="border:none;">
+    <button class="btn btn-danger" id="testBtn">🧪 Enviar Número Teste</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
