@@ -1250,6 +1250,47 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
       }
     }
 
+    // ── SESSION SPIN: números quentes desta sessão ──
+    const session30 = numbers.slice(0, 30);
+    const sessionFreq: Record<number,number> = {};
+    session30.forEach(n => { sessionFreq[n] = (sessionFreq[n]||0)+1; });
+    const hotNums30 = Object.entries(sessionFreq)
+      .filter(([,c]) => c >= 3)
+      .sort(([,a],[,b])=>b-a)
+      .slice(0, 8)
+      .map(([n]) => Number(n));
+
+    if (hotNums30.length >= 3) {
+      const titulo3 = 'Números quentes desta sessão';
+      const { data: exS } = await supabase
+        .from('ai_learned_patterns')
+        .select('id')
+        .eq('learning_type', 'session_spin')
+        .eq('title', titulo3)
+        .maybeSingle();
+
+      const rowS = {
+        knowledge: `Sessão atual: números ${hotNums30.join(',')} estão quentes (≥3x em 30 rodadas). Priorizar esses números.`,
+        data_points: session30.length,
+        accuracy: Math.min(85, 50 + hotNums30.length * 4),
+        metadata: {
+          hotNumbers: hotNums30,
+          key_numbers: hotNums30,
+          sessionSize: session30.length,
+          lastSeen: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString(),
+      };
+
+      if (exS?.id) {
+        await supabase.from('ai_learned_patterns').update(rowS).eq('id', exS.id).catch(()=>{});
+      } else {
+        await supabase.from('ai_learned_patterns').insert({
+          learning_type: 'session_spin', title: titulo3, ...rowS
+        }).catch(()=>{});
+      }
+    }
+
     return new Response(JSON.stringify({
       status: "success",
       learnings: learnings.length,
