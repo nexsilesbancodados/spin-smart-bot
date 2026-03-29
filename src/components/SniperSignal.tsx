@@ -390,6 +390,29 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                          : displayProb >= 35 ? '⚠️ ENTRAR LEVE — 3 fichas'
                          : '⏸ AGUARDAR'}
                       </div>
+                      {/* Contexto da sessão */}
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        {sniperData?.recentWinRate !== undefined && (
+                          <span className={`text-[7px] px-1.5 py-0.5 rounded border font-bold ${
+                            sniperData.recentWinRate >= 0.5 ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                            sniperData.recentWinRate >= 0.3 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+                            'bg-red-500/10 text-red-400 border-red-500/20'
+                          }`}>
+                            {sniperData.recentWinRate >= 0.5 ? '🔥' : sniperData.recentWinRate < 0.25 ? '🛡️' : '⚖️'}
+                            {' '}WR {(sniperData.recentWinRate * 100).toFixed(0)}% (últ.10)
+                          </span>
+                        )}
+                        {sniperData?.matrizNumerica?.observacoes >= 10 && (
+                          <span className="text-[7px] px-1.5 py-0.5 rounded border font-bold bg-blue-500/10 text-blue-400 border-blue-500/20">
+                            🔢 Matriz: {sniperData.matrizNumerica.observacoes} obs
+                          </span>
+                        )}
+                        {sniperData?.ensemble?.sources?.length > 0 && (
+                          <span className="text-[7px] px-1.5 py-0.5 rounded border font-bold bg-primary/10 text-primary border-primary/20">
+                            🌟 {sniperData.ensemble.sources.length} fontes
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
