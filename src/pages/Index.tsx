@@ -89,11 +89,22 @@ const Index = () => {
   // Track if sniper is already being fetched to avoid double calls
   const sniperFetchingRef = useRef(false);
   const lastSniperTriggerRef = useRef(0);
+  const lastSpinSignatureRef = useRef('');
+
+  const handleNewSpin = useCallback((signature: string, latestNumber?: number) => {
+    if (!signature || signature === lastSpinSignatureRef.current) return;
+    lastSpinSignatureRef.current = signature;
+    sniperSameCount.current = 0;
+    setSniperStale(false);
+    setSniperCountdown(13);
+    if (typeof latestNumber === 'number') {
+      setStoredNumbers(prev => prev[0] === latestNumber ? prev : [latestNumber, ...prev].slice(0, 1000));
+    }
+  }, []);
 
   const fetchSniper = useCallback(async () => {
-    // Debounce: don't call sniper more than once per 2s
     const now = Date.now();
-    if (now - lastSniperTriggerRef.current < 2000) return;
+    if (now - lastSniperTriggerRef.current < 1200) return;
     if (sniperFetchingRef.current) return;
     sniperFetchingRef.current = true;
     lastSniperTriggerRef.current = now;
@@ -105,7 +116,6 @@ const Index = () => {
           sniperPrevKey.current = key;
           sniperSameCount.current = 0;
           setSniperStale(false);
-          setSniperCountdown(13);
         } else {
           sniperSameCount.current++;
           if (sniperSameCount.current >= 3) setSniperStale(true);
@@ -129,7 +139,7 @@ const Index = () => {
           prevNumbersRef.current = key;
           setApiNumbers(nums);
           setLastUpdate(new Date());
-          // NEW NUMBER DETECTED — trigger sniper IMMEDIATELY
+          handleNewSpin(nums.slice(0, 3).join(','), nums[0]);
           fetchSniper();
         }
         setError(null);
@@ -137,7 +147,7 @@ const Index = () => {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro');
     }
-  }, [fetchSniper]);
+  }, [fetchSniper, handleNewSpin]);
 
   const fetchStored = useCallback(async () => {
     const { data } = await supabase
@@ -151,9 +161,8 @@ const Index = () => {
   useEffect(() => {
     fetchNumbers();
     fetchStored();
-    fetchSniper(); // initial load
+    fetchSniper();
     if (!isPolling) return;
-    // Poll data every 3s, sniper only triggers when new number detected
     const interval = setInterval(() => { fetchNumbers(); fetchStored(); }, 3000);
     return () => clearInterval(interval);
   }, [fetchNumbers, fetchStored, fetchSniper, isPolling]);
@@ -161,13 +170,17 @@ const Index = () => {
   // Also trigger sniper instantly via realtime when a new number is inserted
   useEffect(() => {
     const ch = supabase.channel('sniper_trigger_rt')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'roulette_numbers' }, () => {
-        // New number just inserted — fire sniper immediately
-        fetchSniper();
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'roulette_numbers' }, (payload: any) => {
+        const row = payload?.new;
+        if (typeof row?.number === 'number') {
+          handleNewSpin(`${row.number}-${row.fetched_at ?? ''}`, row.number);
+          setLastUpdate(new Date());
+          fetchSniper();
+        }
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [fetchSniper]);
+  }, [fetchSniper, handleNewSpin]);
 
   useEffect(() => {
     const timer = setInterval(() => {

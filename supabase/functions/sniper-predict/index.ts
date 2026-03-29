@@ -144,48 +144,52 @@ serve(async (req) => {
     let isNewNumber = false;
     if (numbers.length > 0 && unresolved.length > 0) {
       const latestNum = numbers[0];
-      
+
       const { data: recentlyResolved } = await supabase
         .from('prediction_history')
         .select('actual_number, resolved_at')
         .not('hit', 'is', null)
         .order('resolved_at', { ascending: false })
         .limit(1);
-      
+
       const lastResolvedNum = recentlyResolved?.[0]?.actual_number;
       const lastResolvedTime = recentlyResolved?.[0]?.resolved_at;
       const timeSinceResolved = lastResolvedTime ? (Date.now() - new Date(lastResolvedTime).getTime()) / 1000 : 999;
-      
-      if (latestNum !== lastResolvedNum || timeSinceResolved > 60) {
+      const shouldResolveCurrentSpin = latestNum !== lastResolvedNum || timeSinceResolved > 18;
+
+      if (shouldResolveCurrentSpin) {
         isNewNumber = true;
+        const resolvedAt = new Date().toISOString();
+
         for (const pred of unresolved) {
           const nums: number[] = pred.predicted_numbers || [];
           const isHit = nums.includes(latestNum);
           const hitType = isHit
             ? (pred.predicted_main === latestNum ? 'exact' : 'neighbor')
             : 'miss';
+
           await supabase.from('prediction_history').update({
             actual_number: latestNum,
             hit: isHit,
             hit_type: hitType,
-            resolved_at: new Date().toISOString(),
-          }).eq('id', pred.id);
+            resolved_at: resolvedAt,
+          }).eq('id', pred.id).is('hit', null);
         }
       }
     } else if (unresolved.length === 0) {
-      // Check if we recently created a prediction (avoid duplicates from rapid polling)
+      // Strong idempotency guard: only 1 prediction per real spin window
       const { data: recentPred } = await supabase
         .from('prediction_history')
-        .select('created_at, predicted_main')
+        .select('created_at, predicted_main, actual_number, hit')
         .order('created_at', { ascending: false })
         .limit(1);
-      
+
       const lastPredTime = recentPred?.[0]?.created_at;
-      const lastPredMain = recentPred?.[0]?.predicted_main;
       const timeSinceLastPred = lastPredTime ? (Date.now() - new Date(lastPredTime).getTime()) / 1000 : 999;
-      
-      // Only allow new prediction if: 30s+ passed OR different main number
-      if (timeSinceLastPred > 30 || (numbers.length > 0 && lastPredMain !== numbers[0])) {
+      const lastPredPending = recentPred?.[0]?.hit === null;
+
+      // Do not open another prediction inside the same spin window
+      if (!lastPredPending && timeSinceLastPred > 18) {
         isNewNumber = true;
       }
     }
@@ -3039,19 +3043,32 @@ serve(async (req) => {
       ? `Alerta ativo: ${winner.justification}`
       : `Análise em andamento: ${winner.justification}`;
 
-    // Save prediction to history — save in sniper/alert modes
+    // Save prediction to history — save once per real spin window
     const shouldSave = isNewNumber && (mode === 'sniper' || mode === 'alert') && winner.numbers.length > 0;
     if (shouldSave) {
-      await supabase.from('prediction_history').insert({
-        strategy_type: winner.type,
-        strategy_label: winner.label,
-        predicted_numbers: winner.numbers,
-        predicted_main: winner.numbers[0],
-        probability: finalProbability,
-        convergence_score: totalLayers,
-        mesa_mode: mesaMode,
-        justification: winner.justification,
-      }).then(() => {}).catch(() => {}); // non-blocking
+      const { data: latestPrediction } = await supabase
+        .from('prediction_history')
+        .select('created_at, hit')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const secondsSinceLatestPrediction = latestPrediction?.created_at
+        ? (Date.now() - new Date(latestPrediction.created_at).getTime()) / 1000
+        : 999;
+
+      if (!latestPrediction || (latestPrediction.hit !== null && secondsSinceLatestPrediction > 18)) {
+        await supabase.from('prediction_history').insert({
+          strategy_type: winner.type,
+          strategy_label: winner.label,
+          predicted_numbers: winner.numbers,
+          predicted_main: winner.numbers[0],
+          probability: finalProbability,
+          convergence_score: totalLayers,
+          mesa_mode: mesaMode,
+          justification: winner.justification,
+        }).then(() => {}).catch(() => {});
+      }
     }
 
     // ==========================================
