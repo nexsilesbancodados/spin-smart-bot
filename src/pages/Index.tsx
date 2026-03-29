@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Scanner500 from '@/components/Scanner500';
 import PredictionHistory from '@/components/PredictionHistory';
+import BetPanel from '@/components/BetPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
@@ -419,6 +420,9 @@ const Index = () => {
               )}
             </motion.div>
           )}
+
+          {/* 💰 CENTRAL DE APOSTAS */}
+          <BetPanel sniperData={sniperData} allNumbers={allNumbers} />
 
           {/* 🎯 DEALER + TERMINALS + SECTOR ROW */}
           {sniperData && (
