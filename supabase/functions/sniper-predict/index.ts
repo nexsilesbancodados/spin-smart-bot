@@ -4691,6 +4691,47 @@ serve(async (req) => {
           }
         }
       }
+
+      // ========================================================
+      // STRATEGY STATS: Update per-strategy performance metrics
+      // ========================================================
+      try {
+        // Get current stats for this strategy
+        const { data: existingStats } = await supabase
+          .from('strategy_stats')
+          .select('*')
+          .eq('strategy_type', winner.type)
+          .maybeSingle();
+
+        const totalPred = (existingStats?.total_predictions || 0) + 1;
+        const totalHits = existingStats?.total_hits || 0;
+        const exactHits = existingStats?.exact_hits || 0;
+        const neighborHits = existingStats?.neighbor_hits || 0;
+        const avgProb = existingStats?.avg_probability || 0;
+        const avgCov = existingStats?.avg_coverage || 0;
+        const avgPay = existingStats?.avg_payout || 0;
+
+        // Running average
+        const newAvgProb = (avgProb * (totalPred - 1) + finalProbability) / totalPred;
+        const newAvgCov = (avgCov * (totalPred - 1) + winner.coverage) / totalPred;
+        const newAvgPay = (avgPay * (totalPred - 1) + winner.payout) / totalPred;
+
+        await supabase.from('strategy_stats').upsert({
+          strategy_type: winner.type,
+          strategy_label: winner.label,
+          total_predictions: totalPred,
+          total_hits: totalHits,
+          exact_hits: exactHits,
+          neighbor_hits: neighborHits,
+          win_rate: totalHits / totalPred,
+          avg_probability: +newAvgProb.toFixed(1),
+          avg_coverage: +newAvgCov.toFixed(1),
+          avg_payout: +newAvgPay.toFixed(1),
+          best_streak: existingStats?.best_streak || 0,
+          current_streak: existingStats?.current_streak || 0,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'strategy_type' }).then(() => {}).catch(() => {});
+      } catch { /* ignore stats errors */ }
     }
 
     // ==========================================
