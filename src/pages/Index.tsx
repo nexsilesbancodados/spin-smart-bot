@@ -4,7 +4,7 @@ import {
   CircleDot, Activity, Shield, ShieldCheck, MonitorPlay,
   RefreshCw, Wifi, WifiOff, Brain, Sparkles, TrendingUp,
   Hash, Flame, Snowflake, Target, BarChart3, ChevronDown,
-  BookOpen, Zap, Clock, GraduationCap
+  BookOpen, Zap, Clock, GraduationCap, Crosshair, Eye, AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
