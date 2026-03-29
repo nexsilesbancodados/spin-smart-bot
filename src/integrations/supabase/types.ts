@@ -203,6 +203,66 @@ export type Database = {
         }
         Relationships: []
       }
+      strategy_stats: {
+        Row: {
+          avg_coverage: number
+          avg_payout: number
+          avg_probability: number
+          best_streak: number
+          created_at: string
+          current_streak: number
+          exact_hits: number
+          id: string
+          last_hit_at: string | null
+          last_miss_at: string | null
+          neighbor_hits: number
+          strategy_label: string
+          strategy_type: string
+          total_hits: number
+          total_predictions: number
+          updated_at: string
+          win_rate: number
+        }
+        Insert: {
+          avg_coverage?: number
+          avg_payout?: number
+          avg_probability?: number
+          best_streak?: number
+          created_at?: string
+          current_streak?: number
+          exact_hits?: number
+          id?: string
+          last_hit_at?: string | null
+          last_miss_at?: string | null
+          neighbor_hits?: number
+          strategy_label: string
+          strategy_type: string
+          total_hits?: number
+          total_predictions?: number
+          updated_at?: string
+          win_rate?: number
+        }
+        Update: {
+          avg_coverage?: number
+          avg_payout?: number
+          avg_probability?: number
+          best_streak?: number
+          created_at?: string
+          current_streak?: number
+          exact_hits?: number
+          id?: string
+          last_hit_at?: string | null
+          last_miss_at?: string | null
+          neighbor_hits?: number
+          strategy_label?: string
+          strategy_type?: string
+          total_hits?: number
+          total_predictions?: number
+          updated_at?: string
+          win_rate?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
