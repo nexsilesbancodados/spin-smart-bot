@@ -6,7 +6,7 @@ import {
 
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-const PROTECTION_NUMBERS = [0, 26, 32];
+const PROTECTION_NUMBERS = [24, 29, 35, 11];
 const colorClass = (n: number, isProtection = false) => {
   const base = n === 0 ? 'bg-green-600 text-white ring-green-400/40' 
     : RED_NUMBERS.includes(n) ? 'bg-red-600 text-white ring-red-400/30' 
@@ -56,6 +56,7 @@ const getBetTypeLabel = (type: string) => {
     case 'combo_prata': return '🥈 COMBO PRATA';
     case 'ensemble_supremo': return '🌟 ENSEMBLE SUPREMO';
     case 'matriz_numerica': return '🔢 MATRIZ NUMÉRICA';
+    case 'auto_repeticao': return '🔁 AUTO-REPETIÇÃO';
     default: return `📌 ${type.replace(/_/g, ' ').toUpperCase()}`;
   }
 };
