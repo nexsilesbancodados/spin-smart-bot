@@ -243,4 +243,17 @@ ${Object.entries(CAVALOS).map(([k, v]) => `- Cavalos ${k}: ${v.join(', ')}`).joi
 
 ### 7. Vizinhos no Cilindro
 Cada número tem vizinhos à esquerda e direita no cilindro físico. Use a ordem do cilindro para calcular.
+
+### 8. Finais em Pleno (Finales en Plein)
+- Finais 0-6: 4 números cada (prob ~10.8% cada grupo) — 33% mais prováveis que finais 7-9
+- Finais 7-9: 3 números cada (prob ~8.1% cada grupo)
+${Object.entries(FINAIS_PLENO).map(([f, d]) => `- Final ${f} (${d.count} nºs): ${d.numbers.join(', ')}`).join('\n')}
+
+### 9. Dominância de Coluna por Cor
+- Coluna 1: 6 pretos, 6 vermelhos (Equilibrada)
+- Coluna 2: 8 pretos, 4 vermelhos (Dominante Preta)
+- Coluna 3: 4 pretos, 8 vermelhos (Dominante Vermelha)
+
+### 10. Espelhos Visuais (mesma posição em dúzias diferentes)
+${VISUAL_MIRRORS.map(g => `- Espelho: ${g.join(', ')}`).join('\n')}
 `;
