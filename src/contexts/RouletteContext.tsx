@@ -220,6 +220,28 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [addNumber]);
 
+  // Supabase Realtime: listen for new inserts on resultados_roleta
+  useEffect(() => {
+    const channel = supabase
+      .channel('resultados_roleta_realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'resultados_roleta' },
+        (payload) => {
+          const row = payload.new as { numero: string; mesa: string };
+          const num = parseInt(row.numero, 10);
+          if (!isNaN(num) && num >= 0 && num <= 36) {
+            addNumber(num);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [addNumber]);
+
   // Load recent history from Supabase on mount
   useEffect(() => {
     const loadHistory = async () => {
