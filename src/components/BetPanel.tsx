@@ -94,16 +94,19 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
       
       setStats(prev => {
         const updated = { ...prev, waitingResult: false };
+        let resultProfit = 0;
         
         if (won) {
           const payout = prev.lastBetAmount * 35;
           const cost = prev.lastBetAmount * prev.lastBetNumbers.length;
+          resultProfit = payout - cost;
           updated.wins = prev.wins + 1;
-          updated.profit = prev.profit + (payout - cost);
+          updated.profit = prev.profit + resultProfit;
           updated.currentGaleStep = 0;
           updated.consecutiveLosses = 0;
         } else {
           const cost = prev.lastBetAmount * prev.lastBetNumbers.length;
+          resultProfit = -cost;
           updated.losses = prev.losses + 1;
           updated.profit = prev.profit - cost;
           updated.consecutiveLosses = prev.consecutiveLosses + 1;
@@ -114,6 +117,17 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
             updated.currentGaleStep = 0;
           }
         }
+
+        // Add to history (keep last 20)
+        const entry: BetResult = {
+          won,
+          numbers: prev.lastBetNumbers,
+          actual: latestNumber,
+          amount: prev.lastBetAmount,
+          profit: resultProfit,
+          timestamp: Date.now(),
+        };
+        updated.history = [entry, ...prev.history].slice(0, 20);
 
         // Check stop conditions
         if (updated.profit <= config.stopLoss) {
