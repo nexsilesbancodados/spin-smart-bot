@@ -140,35 +140,47 @@ const Index = () => {
 
   useEffect(() => { loadInsights(); loadLearned(); }, [loadInsights, loadLearned]);
 
-  // CONTINUOUS AUTO-LEARNING ENGINE
+  // CONTINUOUS AUTO-LEARNING ENGINE (throttled to save AI credits)
   const autoLearnRef = useRef<NodeJS.Timeout | null>(null);
   const cycleRef = useRef(0);
+  const autoLearnErrorCount = useRef(0);
   useEffect(() => {
     const runContinuousLearn = async () => {
+      // Back off if too many errors (rate limits / no credits)
+      if (autoLearnErrorCount.current >= 3) {
+        console.log('[AutoLearn] Pausado por excesso de erros. Tentando novamente em 5 min.');
+        autoLearnErrorCount.current = 0;
+        return;
+      }
       const cycle = cycleRef.current;
       cycleRef.current++;
       setAutoLearnCycle(cycle);
       try {
         if (cycle % 3 === 0) {
           setAutoLearnStatus('learning');
-          await supabase.functions.invoke('ai-learn');
+          const res = await supabase.functions.invoke('ai-learn');
+          if (res.error) throw res.error;
         } else if (cycle % 3 === 1) {
           setAutoLearnStatus('analyzing');
-          await supabase.functions.invoke('auto-analyze-patterns');
+          const res = await supabase.functions.invoke('auto-analyze-patterns');
+          if (res.error) throw res.error;
         } else {
           setAutoLearnStatus('backtesting');
           await supabase.functions.invoke('sniper-predict');
         }
         await Promise.all([loadInsights(), loadLearned()]);
         setLastAutoLearnTime(new Date());
+        autoLearnErrorCount.current = 0;
       } catch (err) {
-        console.error(`[AutoLearn] Ciclo ${cycle} erro:`, err);
+        autoLearnErrorCount.current++;
+        console.error(`[AutoLearn] Ciclo ${cycle} erro (${autoLearnErrorCount.current}/3):`, err);
       } finally {
         setAutoLearnStatus('idle');
       }
     };
-    const initialTimeout = setTimeout(runContinuousLearn, 10_000);
-    autoLearnRef.current = setInterval(runContinuousLearn, 45_000);
+    const initialTimeout = setTimeout(runContinuousLearn, 15_000);
+    // Run every 5 minutes instead of 45s to avoid rate limits
+    autoLearnRef.current = setInterval(runContinuousLearn, 300_000);
     return () => { clearTimeout(initialTimeout); if (autoLearnRef.current) clearInterval(autoLearnRef.current); };
   }, [loadInsights, loadLearned]);
 
