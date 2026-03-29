@@ -482,12 +482,19 @@ const Index = () => {
                       </span>
                     )}
                     <div className="ml-auto flex items-center gap-2">
-                      <div className={`flex items-center gap-1 px-2 py-1 rounded-lg font-mono text-xs font-bold ${
-                        sniperCountdown <= 3 ? 'bg-destructive/20 text-destructive animate-pulse' : sniperCountdown <= 7 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-secondary text-muted-foreground'
-                      }`}>
-                        <Clock className="w-3 h-3" />
-                        {sniperCountdown}s
-                      </div>
+                      {sniperCountdown > 0 ? (
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded-lg font-mono text-xs font-bold ${
+                          sniperCountdown <= 3 ? 'bg-destructive/20 text-destructive animate-pulse' : sniperCountdown <= 7 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-secondary text-muted-foreground'
+                        }`}>
+                          <Clock className="w-3 h-3" />
+                          {sniperCountdown}s
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-lg font-mono text-[9px] font-bold bg-secondary text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          Aguardando giro...
+                        </div>
+                      )}
                     </div>
                   </div>
 
