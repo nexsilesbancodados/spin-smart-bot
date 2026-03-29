@@ -140,18 +140,11 @@ serve(async (req) => {
       }
     }
 
-    // Resolve previous predictions — ONLY if latest number is NEW (not already used to resolve)
+    // Resolve previous predictions — ONLY if latest number is NEW
     let isNewNumber = false;
     if (numbers.length > 0 && unresolved.length > 0) {
       const latestNum = numbers[0];
-      const latestTime = entries[0]?.time;
-      // Check if any unresolved prediction was already resolved with this exact number+time
-      // by checking if the latest roulette number timestamp is NEWER than the prediction
-      const newestPred = unresolved[0];
-      const predTime = new Date(newestPred.id ? 0 : 0); // we'll use a different approach
       
-      // Better approach: check if any resolved prediction already has this actual_number 
-      // with a resolved_at within the last 30 seconds (meaning we already processed this number)
       const { data: recentlyResolved } = await supabase
         .from('prediction_history')
         .select('actual_number, resolved_at')
@@ -163,7 +156,6 @@ serve(async (req) => {
       const lastResolvedTime = recentlyResolved?.[0]?.resolved_at;
       const timeSinceResolved = lastResolvedTime ? (Date.now() - new Date(lastResolvedTime).getTime()) / 1000 : 999;
       
-      // Only resolve if: different number OR enough time passed (new spin)
       if (latestNum !== lastResolvedNum || timeSinceResolved > 60) {
         isNewNumber = true;
         for (const pred of unresolved) {
@@ -181,7 +173,21 @@ serve(async (req) => {
         }
       }
     } else if (unresolved.length === 0) {
-      isNewNumber = true; // no unresolved = safe to create new
+      // Check if we recently created a prediction (avoid duplicates from rapid polling)
+      const { data: recentPred } = await supabase
+        .from('prediction_history')
+        .select('created_at, predicted_main')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      const lastPredTime = recentPred?.[0]?.created_at;
+      const lastPredMain = recentPred?.[0]?.predicted_main;
+      const timeSinceLastPred = lastPredTime ? (Date.now() - new Date(lastPredTime).getTime()) / 1000 : 999;
+      
+      // Only allow new prediction if: 30s+ passed OR different main number
+      if (timeSinceLastPred > 30 || (numbers.length > 0 && lastPredMain !== numbers[0])) {
+        isNewNumber = true;
+      }
     }
 
     if (numbers.length < 15) {
