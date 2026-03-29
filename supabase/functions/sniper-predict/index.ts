@@ -963,8 +963,8 @@ serve(async (req) => {
       ? `Convergência Pentacentesimal: ${winner.justification}`
       : `Análise: ${winner.justification}`;
 
-    // Save prediction to history (only for alert/sniper modes)
-    if (mode !== 'monitoring' && winner.numbers.length > 0) {
+    // Save prediction to history — ONLY once per new number (not every poll)
+    if (isNewNumber && mode !== 'monitoring' && winner.numbers.length > 0) {
       await supabase.from('prediction_history').insert({
         strategy_type: winner.type,
         strategy_label: winner.label,
