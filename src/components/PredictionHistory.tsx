@@ -48,7 +48,7 @@ const STRATEGY_FRIENDLY: Record<string, string> = {
   cor: 'Cor', paridade: 'Par/Ímpar', alto_baixo: 'Alto/Baixo', coluna: 'Coluna', duzia_unica: 'Dúzia Única',
 };
 
-type TabType = 'resumo' | 'todos' | 'acertos' | 'erros';
+type TabType = 'resumo' | 'todos' | 'acertos' | 'erros' | 'estrategias';
 
 const PredictionHistory = () => {
   const [predictions, setPredictions] = useState<PredictionRecord[]>([]);
@@ -114,6 +114,7 @@ const PredictionHistory = () => {
     { key: 'todos', label: 'Todos', count: resolved.length },
     { key: 'acertos', label: 'Acertos', count: hits.length },
     { key: 'erros', label: 'Erros', count: misses.length },
+    { key: 'estrategias', label: 'Estratégias', count: Object.keys(strategyStats).length },
   ];
 
   const winRateNum = parseFloat(winRate);

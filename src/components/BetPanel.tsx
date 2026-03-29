@@ -148,8 +148,21 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
       });
     }
     
+      // Atualizar contadores de simulação se estiver em modo sim
+      if (simMode) {
+        const won = stats.lastBetNumbers.includes(latestNumber);
+        const betAmt = stats.lastBetAmount;
+        const n = stats.lastBetNumbers.length;
+        const resultProfit = won
+          ? betAmt * 35 - betAmt * (n - 1)
+          : -(betAmt * n);
+        if (won) setSimWins(prev => prev + 1);
+        setSimProfit(prev => prev + resultProfit);
+      }
+    }
+    
     prevNumberRef.current = latestNumber;
-  }, [allNumbers, stats.waitingResult, stats.lastBetNumbers, stats.lastBetAmount, config]);
+  }, [allNumbers, stats.waitingResult, stats.lastBetNumbers, stats.lastBetAmount, config, simMode]);
 
   // Calculate current bet amount
   const getCurrentBetAmount = useCallback(() => {

@@ -279,7 +279,7 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
       )}
 
       {/* TREND ENGINE */}
-      {sniperData?.trendEngine && sniperData.trendEngine.confidence > 30 && (
+      {sniperData?.trendEngine && Number(sniperData.trendEngine.confidence) > 30 && (
         <div className="px-4 py-2 border-b border-border/30">
           <div className="flex items-center gap-2 mb-1.5">
             <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
@@ -289,7 +289,7 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
             <span className={`ml-auto text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border ${
               sniperData.trendEngine.confidence >= 70 ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' :
               'bg-secondary text-muted-foreground border-border'
-            }`}>{sniperData.trendEngine.confidence}%</span>
+            }`}>{Number(sniperData.trendEngine.confidence)}%</span>
           </div>
           <div className="flex flex-wrap gap-1">
             {sniperData.trendEngine.colorTrend?.direction && (

@@ -3479,6 +3479,25 @@ serve(async (req) => {
       }
     }
 
+    // ── BOOST DOS PADRÕES DO AUTO-ANALYZE ──
+    const insightsAA = insightsRes.data || [];
+    for (const ins of insightsAA) {
+      if (!ins.confidence || (ins.confidence as number) < 45) continue;
+      const insNums: number[] = (ins.numbers_involved || []) as number[];
+      const boostMult = ins.pattern_type === 'combo_ouro' ? 3.0
+        : ins.pattern_type === 'dupla_dani_green' ? 2.0
+        : ins.pattern_type === 'entropia_baixa' ? 1.5
+        : ins.pattern_type === 'pressao_zero' ? 1.2
+        : 1.0;
+      for (const n of insNums) {
+        if (n >= 0 && n <= 36) {
+          learnedBonus[n] = (learnedBonus[n] || 0) + ((ins.confidence as number) / 100) * boostMult;
+          learnedReasons[n] = learnedReasons[n] || [];
+          learnedReasons[n].push(`Padrão:${ins.pattern_type}(${ins.confidence}%)`);
+        }
+      }
+    }
+
     // ========================================================
     // CONVERGENCE REASONS
     // ========================================================
