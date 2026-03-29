@@ -8,7 +8,7 @@ import BetSuggestion from '@/components/BetSuggestion';
 import QuickNumberPad from '@/components/QuickNumberPad';
 import AnalysisFilter from '@/components/AnalysisFilter';
 import PremiumTable from '@/components/PremiumTable';
-import { CircleDot, Settings, ChevronDown } from 'lucide-react';
+import { CircleDot, Settings, ChevronDown, ClipboardPaste, X } from 'lucide-react';
 
 const PROVIDERS: Record<string, { label: string; tables: string[] }> = {
   Playtech: {
