@@ -336,6 +336,8 @@ serve(async (req) => {
       return json({ signal: null, mode: 'waiting', message: 'Aguardando dados...', layerResults: null, memoryWindows: null, aiLearnings: [] });
     }
 
+    const aiLearnings: string[] = [];
+
     // ========================================================
     // MÓDULOS DANI GREEN — Detecção de Padrões
     // ========================================================
@@ -548,7 +550,6 @@ serve(async (req) => {
     // ========================================================
     // AI LEARNINGS — Dynamic real-time phrases
     // ========================================================
-    const aiLearnings: string[] = [];
     // Add error deep scan learnings first
     aiLearnings.push(...errorLearnings.slice(0, 4));
     // Dani Green module learnings
