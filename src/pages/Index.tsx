@@ -85,6 +85,7 @@ const Index = () => {
   const prevNumbersRef = useRef<string>('');
   const [sniperData, setSniperData] = useState<any>(null);
   const [sniperCountdown, setSniperCountdown] = useState(13);
+  const sniperPrevKey = useRef<string>('');
   const [autoLearnCycle, setAutoLearnCycle] = useState(0);
   const [autoLearnStatus, setAutoLearnStatus] = useState<'idle' | 'learning' | 'analyzing' | 'backtesting'>('idle');
   const [lastAutoLearnTime, setLastAutoLearnTime] = useState<Date | null>(null);
