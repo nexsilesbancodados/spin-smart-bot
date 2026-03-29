@@ -55,6 +55,7 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
       case 'ritmo': return 'RITMO CALIBRADO';
       case 'fusao': return 'FUSÃO DE PADRÕES';
       case 'matriz': return 'CONVERGÊNCIA';
+      case 'absoluta': return 'CONVERGÊNCIA ABSOLUTA';
       case 'area': return 'COBERTURA DE SETOR';
       default: return bet.type?.toUpperCase() || 'JOGADA';
     }
