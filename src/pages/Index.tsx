@@ -109,6 +109,26 @@ const Index = () => {
 
   useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
 
+  const importPastedNumbers = () => {
+    // Extract all numbers from pasted text (supports comma, space, newline, dash separators)
+    const numbers = pasteText.match(/\d+/g);
+    if (!numbers) return;
+    
+    // Parse and filter valid roulette numbers (0-36), reverse so oldest first
+    const validNumbers = numbers
+      .map(n => parseInt(n))
+      .filter(n => !isNaN(n) && n >= 0 && n <= 36);
+    
+    if (validNumbers.length === 0) return;
+    
+    // Add numbers in reverse order (last pasted = most recent)
+    const reversed = [...validNumbers].reverse();
+    reversed.forEach(n => addNumber(n));
+    
+    setPasteText('');
+    setShowPasteHistory(false);
+  };
+
   const hotNumbers = getHotNumbers(history, 10);
 
   return (
