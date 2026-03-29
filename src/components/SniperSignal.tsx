@@ -261,92 +261,78 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                   </div>
                 </div>
 
-                {/* ===== JOGADAS ALTERNATIVAS DIVERSAS ===== */}
-                {diverseAlternatives.length > 0 && (
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => setShowAlternatives(!showAlternatives)}
-                      className="flex items-center gap-2 w-full text-left group"
+                {/* ===== JOGADA COMBINADA — Fusão das alternativas ===== */}
+                {(() => {
+                  if (diverseAlternatives.length === 0) return null;
+                  // Merge all alternative numbers into one combined set (deduped)
+                  const allAltNums: number[] = [];
+                  const allAltLabels: string[] = [];
+                  const allAltEmojis: string[] = [];
+                  let maxProb = 0;
+                  diverseAlternatives.forEach((alt: any) => {
+                    alt.numbers.forEach((n: number) => {
+                      if (!allAltNums.includes(n)) allAltNums.push(n);
+                    });
+                    allAltLabels.push(getBetTypeLabel(alt.type));
+                    allAltEmojis.push(alt.emoji);
+                    if (alt.probability > maxProb) maxProb = alt.probability;
+                  });
+                  // Also add protection
+                  PROTECTION_NUMBERS.forEach(n => { if (!allAltNums.includes(n)) allAltNums.push(n); });
+                  const avgProb = Math.round(diverseAlternatives.reduce((s: number, a: any) => s + a.probability, 0) / diverseAlternatives.length);
+                  const combinedCoverage = ((allAltNums.length / 37) * 100).toFixed(1);
+
+                  return (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="rounded-xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/8 via-card to-card overflow-hidden"
                     >
-                      <Zap className="w-3.5 h-3.5 text-yellow-400" />
-                      <span className="text-[10px] font-black tracking-wide text-muted-foreground group-hover:text-foreground transition-colors">
-                        JOGADAS ALTERNATIVAS ({diverseAlternatives.length} tipos diferentes)
-                      </span>
-                      <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground ml-auto transition-transform ${showAlternatives ? 'rotate-180' : ''}`} />
-                    </button>
+                      <div className="flex items-center gap-2 px-3 py-2 bg-yellow-500/10 border-b border-yellow-500/20">
+                        <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                        <span className="text-[10px] font-black tracking-wide text-yellow-400">
+                          JOGADA COMBINADA — FUSÃO DE {diverseAlternatives.length} ESTRATÉGIAS
+                        </span>
+                        <span className={`ml-auto text-sm font-black font-mono ${probColor(avgProb)}`}>
+                          {avgProb}%
+                        </span>
+                      </div>
 
-                    {showAlternatives && diverseAlternatives.map((alt: any, idx: number) => {
-                      const altMainNum = alt.numbers[0];
-                      const altBet = alt.betInstructions?.bets?.find((b: any) => b.type !== 'protecao');
-                      const category = getBetTypeLabel(alt.type);
-                      
-                      return (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.08 }}
-                          className="rounded-xl border border-border/60 bg-card/80 overflow-hidden hover:border-primary/30 transition-colors"
-                        >
-                          <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/30 border-b border-border/40">
-                            <span className="text-[9px] font-black text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
-                              #{idx + 2}
-                            </span>
-                            <span className="text-[10px] font-bold text-foreground/80">
-                              {category}
-                            </span>
-                            <span className={`ml-auto text-xs font-black font-mono ${probColor(alt.probability)}`}>
-                              {alt.probability}%
-                            </span>
-                          </div>
+                      {/* Tags das estratégias combinadas */}
+                      <div className="flex flex-wrap gap-1.5 px-3 pt-2.5">
+                        {diverseAlternatives.map((alt: any, i: number) => (
+                          <span key={i} className="text-[8px] px-2 py-0.5 rounded-md bg-secondary/60 text-foreground/80 border border-border/40 font-bold">
+                            {alt.emoji} {alt.label}
+                          </span>
+                        ))}
+                      </div>
 
-                          <div className="flex items-center gap-3 px-3 py-2.5">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black ring-2 flex-shrink-0 ${
-                              altMainNum === 0 ? 'bg-green-600 text-white ring-green-400/40'
-                              : RED_NUMBERS.includes(altMainNum) ? 'bg-red-600 text-white ring-red-400/40'
-                              : 'bg-zinc-800 text-white ring-zinc-500/40'
-                            }`}>
-                              {altMainNum}
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <span className="text-xs font-bold text-foreground block truncate">
-                                {alt.emoji} {alt.label}
-                              </span>
-                              {altBet && (
-                                <p className="text-[9px] text-muted-foreground truncate">{altBet.detail}</p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Números desta alternativa */}
-                          <div className="flex flex-wrap gap-1 px-3 pb-2">
-                            {alt.numbers.slice(0, 10).map((n: number, ni: number) => (
-                              <div key={ni} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold ring-1 ${
-                                n === altMainNum
-                                  ? 'bg-primary/80 text-primary-foreground ring-primary/40'
-                                  : colorClass(n)
-                              }`}>
+                      {/* Todos os números combinados */}
+                      <div className="px-3 py-2.5">
+                        <span className="text-[9px] text-muted-foreground font-bold block mb-1.5">🎯 {allAltNums.length} NÚMEROS COBERTOS:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {allAltNums.map((n: number, i: number) => {
+                            const isProt = PROTECTION_NUMBERS.includes(n);
+                            return (
+                              <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold ring-1 relative ${colorClass(n, isProt)}`}>
                                 {n}
+                                {isProt && <span className="absolute -top-0.5 -right-0.5 text-[6px]">🛡️</span>}
                               </div>
-                            ))}
-                            {alt.numbers.length > 10 && (
-                              <span className="text-[8px] text-muted-foreground self-center">+{alt.numbers.length - 10}</span>
-                            )}
-                          </div>
+                            );
+                          })}
+                        </div>
+                      </div>
 
-                          <div className="flex items-center gap-2 px-3 py-1 border-t border-border/30 text-[8px] text-muted-foreground">
-                            <span>Payout: <strong>{alt.payout}x</strong></span>
-                            <span className="text-border">•</span>
-                            <span><strong>{alt.numbers.length}</strong> núm.</span>
-                            <span className="text-border">•</span>
-                            <span><strong>{alt.coverage}%</strong> cob.</span>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                )}
+                      <div className="flex items-center gap-2 px-3 py-1.5 border-t border-yellow-500/15 text-[9px] text-muted-foreground">
+                        <span><strong className="text-foreground">{allAltNums.length}</strong> números</span>
+                        <span className="text-border">•</span>
+                        <span><strong className="text-foreground">{combinedCoverage}%</strong> cobertura</span>
+                        <span className="text-border">•</span>
+                        <span>Payout: <strong className="text-foreground">{Math.round(36 / allAltNums.length)}x</strong></span>
+                      </div>
+                    </motion.div>
+                  );
+                })()}
 
                 {/* JUSTIFICATIVA */}
                 <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
