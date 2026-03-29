@@ -388,6 +388,10 @@ serve(async (req) => {
     // AI LEARNINGS — Dynamic real-time phrases
     // ========================================================
     const aiLearnings: string[] = [];
+    // Add error deep scan learnings first
+    aiLearnings.push(...errorLearnings.slice(0, 4));
+    // Time awareness
+    aiLearnings.push(`🕐 Turno ${timeAwareness.shift}: ${isNightShift ? 'Dealers mecânicos — prioridade física' : isDayShift ? 'Volume alto — prioridade matemática' : 'Turno misto'}`);
     if (microArcStd < 2) aiLearnings.push(`🎯 Dealer com mão viciada: arco ±${microArcStd.toFixed(1)} casas`);
     if (chaoticDealer) aiLearnings.push('⚠️ Dealer caótico detectado: reduzindo sinais automáticos');
     if (microSectorDom && Number(microSectorDom[1]) >= 5) aiLearnings.push(`🔥 Concentração no setor ${microSectorDom[0]}: ${microSectorDom[1]}/10 rodadas`);
