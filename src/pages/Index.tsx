@@ -12,6 +12,7 @@ import PredictionHistory from '@/components/PredictionHistory';
 import BetPanel from '@/components/BetPanel';
 import AILearningLog from '@/components/AILearningLog';
 import NumberDNADialog from '@/components/NumberDNADialog';
+import PullRadar from '@/components/PullRadar';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
@@ -99,6 +100,7 @@ const Index = () => {
   const [selectedNum, setSelectedNum] = useState<number | null>(null);
   const [dnaNumber, setDnaNumber] = useState<number | null>(null);
   const [dnaOpen, setDnaOpen] = useState(false);
+  const [confidenceFilter, setConfidenceFilter] = useState(true); // hide signals < 85%
 
   // Fetch from API
   const fetchNumbers = useCallback(async () => {
@@ -375,6 +377,13 @@ const Index = () => {
               <Brain className={`w-3 h-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">{isAnalyzing ? 'APRENDENDO...' : 'IA APRENDER'}</span>
             </button>
+            <button onClick={() => setConfidenceFilter(!confidenceFilter)}
+              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
+                confidenceFilter ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-secondary text-muted-foreground border border-border'
+              }`}>
+              <Shield className="w-3 h-3" />
+              <span className="hidden sm:inline">{confidenceFilter ? '85%+' : 'TODOS'}</span>
+            </button>
             <button onClick={() => setIsPolling(!isPolling)}
               className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
                 isPolling ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-destructive/20 text-destructive border border-destructive/30'
@@ -554,8 +563,16 @@ const Index = () => {
 
                   {sniperData.signal && sniperData.strategy ? (
                     <div className="space-y-3">
+                      {/* CONFIDENCE FILTER */}
+                      {confidenceFilter && sniperData.signal.probability < 85 && (
+                        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-center">
+                          <Shield className="w-5 h-5 text-amber-400 mx-auto mb-1" />
+                          <span className="text-[10px] font-bold text-amber-400 block">FILTRO DE SEGURANÇA ATIVO</span>
+                          <span className="text-[8px] text-muted-foreground">Convergência {sniperData.signal.probability}% — abaixo do limiar 85%. Aguardando sinal mais forte.</span>
+                        </div>
+                      )}
                       {/* BET INSTRUCTIONS — MAIN ACTION */}
-                      {sniperData.betInstructions && sniperData.betInstructions.bets?.length > 0 && (
+                      {(!confidenceFilter || sniperData.signal.probability >= 85) && sniperData.betInstructions && sniperData.betInstructions.bets?.length > 0 && (
                         <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-transparent border-2 border-primary/40 rounded-xl p-3 space-y-2">
                           <div className="flex items-center gap-2">
                             <Zap className="w-4 h-4 text-primary" />
@@ -983,6 +1000,60 @@ const Index = () => {
 
           {/* LOG DE APRENDIZADO IA */}
           <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} />
+
+          {/* PULL RADAR + ERROR ANALYSIS */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {/* RADAR DE PUXADA */}
+            {sniperData?.deepMemory?.flowDynamics?.pullPatterns && allNumbers.length > 0 && (
+              <PullRadar pullPatterns={sniperData.deepMemory.flowDynamics.pullPatterns} latestNumber={allNumbers[0]} />
+            )}
+
+            {/* ERROR ANALYSIS PANEL */}
+            {sniperData?.errorAnalysis && (
+              <div className="bg-card/90 rounded-xl border border-destructive/20 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="w-4 h-4 text-destructive" />
+                  <span className="font-display text-[10px] tracking-[0.15em] font-bold text-destructive">ANÁLISE DE ERROS (RL)</span>
+                  {sniperData.timeAwareness && (
+                    <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold ml-auto">
+                      🕐 {sniperData.timeAwareness.shift}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                  {Object.entries(sniperData.errorAnalysis.categories || {}).map(([cat, cnt]) => {
+                    const labels: Record<string, { icon: string; name: string }> = {
+                      dealer_change: { icon: '🎭', name: 'Dealer' },
+                      wrong_sector: { icon: '🗺️', name: 'Setor' },
+                      wrong_terminal: { icon: '🔢', name: 'Terminal' },
+                      deflector_bounce: { icon: '💎', name: 'Defletor' },
+                      entropy_break: { icon: '🔀', name: 'Entropia' },
+                    };
+                    const info = labels[cat] || { icon: '❓', name: cat };
+                    return (
+                      <div key={cat} className={`rounded-lg p-1.5 text-center border ${
+                        (cnt as number) >= 2 ? 'bg-destructive/10 border-destructive/30' : 'bg-secondary/40 border-border'
+                      }`}>
+                        <span className="text-sm block">{info.icon}</span>
+                        <span className={`text-[10px] font-mono font-bold block ${(cnt as number) >= 2 ? 'text-destructive' : 'text-muted-foreground'}`}>{cnt as number}</span>
+                        <span className="text-[7px] text-muted-foreground block">{info.name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Consecutive hit boosts */}
+                {sniperData.errorAnalysis.consecutiveBoosts && Object.keys(sniperData.errorAnalysis.consecutiveBoosts).length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {Object.entries(sniperData.errorAnalysis.consecutiveBoosts).map(([st, boost]) => (
+                      <span key={st} className="text-[8px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 font-bold">
+                        🔥 {st}: +{boost as number} peso ({(boost as number) / 8}x seguidas)
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {sniperData?.memoryWindows && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

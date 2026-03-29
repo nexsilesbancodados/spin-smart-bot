@@ -203,33 +203,114 @@ serve(async (req) => {
     const noiseCount = noiseIndices.size;
 
     // ========================================================
-    // SELF-CORRECTION — Strategy weight adjustment (last 5 rounds)
+    // SELF-CORRECTION + REINFORCEMENT LEARNING ENGINE
     // ========================================================
     const recentResolved = resolvedHistory.slice(0, 5);
     const strategyWeightAdjust: Record<string, number> = {};
+
+    // ERROR DEEP SCAN: categorize WHY each miss happened
+    const errorCategories: Record<string, number> = { dealer_change: 0, wrong_sector: 0, wrong_terminal: 0, deflector_bounce: 0, entropy_break: 0 };
+    const errorLearnings: string[] = [];
+    
     for (const pred of recentResolved) {
       const st = pred.strategy_type || '';
       if (!strategyWeightAdjust[st]) strategyWeightAdjust[st] = 0;
       if (pred.hit) {
-        strategyWeightAdjust[st] += 8; // reward recent hits heavily
+        strategyWeightAdjust[st] += 8;
       } else {
-        strategyWeightAdjust[st] -= 5; // penalize recent misses
-        // Check what actually hit — boost that strategy type
+        strategyWeightAdjust[st] -= 5;
         if (pred.actual_number !== null) {
           const actualSector = getSector(pred.actual_number);
           const actualCavalo = getCavalo(pred.actual_number);
           const actualTerm = pred.actual_number % 10;
-          // If predicted sector strategy but terminal hit, boost terminals
+          const predMain = pred.predicted_main;
+          
+          // Categorize the error
+          if (predMain !== null) {
+            const predSector = getSector(predMain);
+            const arcToPred = predMain !== null ? wheelDist(numbers[0], predMain) : 99;
+            const arcToActual = wheelDist(numbers[0], pred.actual_number);
+            
+            // Wrong sector = dealer threw to different area
+            if (predSector !== actualSector) {
+              errorCategories.wrong_sector++;
+              errorLearnings.push(`❌ Erro de setor: previsto ${predSector}, saiu ${actualSector} (nº ${pred.actual_number})`);
+            }
+            // Wrong terminal
+            if (predMain % 10 !== actualTerm) {
+              errorCategories.wrong_terminal++;
+            }
+            // Arc changed dramatically = dealer change
+            if (Math.abs(arcToPred - arcToActual) > 10) {
+              errorCategories.dealer_change++;
+              errorLearnings.push(`⚠️ Dealer mudou arco: esperado ~${arcToPred} casas, veio ${arcToActual}`);
+            }
+            // Deflector bounce: actual number far from predicted arc
+            if (arcToActual > 12 && arcToPred <= 6) {
+              errorCategories.deflector_bounce++;
+              errorLearnings.push(`💎 Bola desviou no defletor: salto anômalo de ${arcToActual} casas`);
+            }
+          }
+
+          // Cross-adaptation: boost what SHOULD have predicted the actual
           if (pred.strategy_type?.includes('sniper') || pred.strategy_type?.includes('voisins')) {
             strategyWeightAdjust['cavalos'] = (strategyWeightAdjust['cavalos'] || 0) + 3;
             strategyWeightAdjust['terminal_alternation'] = (strategyWeightAdjust['terminal_alternation'] || 0) + 3;
           }
-          // If predicted terminal but sector hit, boost sectors
           if (pred.strategy_type?.includes('cavalos') || pred.strategy_type?.includes('terminal')) {
             strategyWeightAdjust['sniper'] = (strategyWeightAdjust['sniper'] || 0) + 3;
             strategyWeightAdjust['voisins'] = (strategyWeightAdjust['voisins'] || 0) + 3;
           }
         }
+      }
+    }
+
+    // 3-CONSECUTIVE HIT PRIORITY BOOST
+    // If a strategy hits 3+ times in a row, massively boost it
+    const consecutiveHitBoost: Record<string, number> = {};
+    for (const st of Object.keys(strategyPerformance)) {
+      const stPreds = resolvedHistory.filter(p => p.strategy_type === st).slice(0, 10);
+      let consecutiveHits = 0;
+      for (const p of stPreds) {
+        if (p.hit) consecutiveHits++;
+        else break;
+      }
+      if (consecutiveHits >= 3) {
+        consecutiveHitBoost[st] = consecutiveHits * 8;
+        strategyWeightAdjust[st] = (strategyWeightAdjust[st] || 0) + consecutiveHits * 8;
+      }
+    }
+
+    // TIME-OF-DAY AWARENESS: mesa behavior changes throughout the day
+    const currentHour = new Date().getUTCHours();
+    const isNightShift = currentHour >= 0 && currentHour < 8; // midnight-8am
+    const isDayShift = currentHour >= 8 && currentHour < 16; // 8am-4pm
+    // Night shift: dealers tend to be more mechanical (fewer players, less pressure)
+    // Day shift: more chaotic due to higher volume
+    const timeAwareness = {
+      shift: isNightShift ? 'noturno' : isDayShift ? 'diurno' : 'vespertino',
+      physicalBias: isNightShift ? 1.3 : 1.0, // night = more physical patterns
+      mathBias: isDayShift ? 1.2 : 1.0, // day = more mathematical patterns
+    };
+
+    // Add dominant error category to learnings
+    const topError = Object.entries(errorCategories).sort(([,a],[,b]) => b - a)[0];
+    if (topError && topError[1] >= 2) {
+      const errorLabels: Record<string, string> = {
+        dealer_change: '🎭 Troca de Dealer foi a causa principal dos erros',
+        wrong_sector: '🗺️ IA está errando o setor — recalibrando foco',
+        wrong_terminal: '🔢 Terminais desalinhados — ajustando pesos matemáticos',
+        deflector_bounce: '💎 Defletores causando desvios — aumentando filtro de ruído',
+        entropy_break: '🔀 Entropia quebrando padrões — modo conservador ativado',
+      };
+      errorLearnings.push(errorLabels[topError[0]] || `Categoria de erro dominante: ${topError[0]}`);
+    }
+
+    // Consecutive hit learnings
+    for (const [st, boost] of Object.entries(consecutiveHitBoost)) {
+      if (boost > 0) {
+        const hits = boost / 8;
+        errorLearnings.push(`🔥 PRIORIDADE MÁXIMA: ${st} acertou ${hits}x seguidas — peso elevado em +${boost}`);
       }
     }
 
@@ -307,6 +388,10 @@ serve(async (req) => {
     // AI LEARNINGS — Dynamic real-time phrases
     // ========================================================
     const aiLearnings: string[] = [];
+    // Add error deep scan learnings first
+    aiLearnings.push(...errorLearnings.slice(0, 4));
+    // Time awareness
+    aiLearnings.push(`🕐 Turno ${timeAwareness.shift}: ${isNightShift ? 'Dealers mecânicos — prioridade física' : isDayShift ? 'Volume alto — prioridade matemática' : 'Turno misto'}`);
     if (microArcStd < 2) aiLearnings.push(`🎯 Dealer com mão viciada: arco ±${microArcStd.toFixed(1)} casas`);
     if (chaoticDealer) aiLearnings.push('⚠️ Dealer caótico detectado: reduzindo sinais automáticos');
     if (microSectorDom && Number(microSectorDom[1]) >= 5) aiLearnings.push(`🔥 Concentração no setor ${microSectorDom[0]}: ${microSectorDom[1]}/10 rodadas`);
@@ -2361,6 +2446,19 @@ serve(async (req) => {
       // Mathematical mode bonus for terminal-based strategies
       if (mesaMode === 'matematico' && ['cavalos', 'duzias', 'terminal_alternation'].includes(st.type)) st.score += 5;
 
+      // TIME-OF-DAY BIAS: night favors physical, day favors math
+      if (['sniper', 'voisins', 'setor_oposto', 'cylinder_bias'].includes(st.type)) st.score += (timeAwareness.physicalBias - 1) * 15;
+      if (['cavalos', 'duzias', 'terminal_alternation', 'dozen_phase'].includes(st.type)) st.score += (timeAwareness.mathBias - 1) * 15;
+
+      // CONSECUTIVE HIT PRIORITY BOOST
+      const chBoost = consecutiveHitBoost[st.type] || 0;
+      if (chBoost > 0) st.score += chBoost;
+
+      // ERROR-BASED ADAPTATION: if errors are mostly from wrong sector, penalize sector strategies
+      if (errorCategories.wrong_sector >= 2 && ['sniper', 'voisins', 'setor_oposto'].includes(st.type)) st.score -= 10;
+      if (errorCategories.wrong_terminal >= 2 && ['cavalos', 'terminal_alternation'].includes(st.type)) st.score -= 10;
+      if (errorCategories.deflector_bounce >= 2) st.score -= 5; // general penalty when deflectors are active
+
       // LEARNED KNOWLEDGE BOOST: apply AI-learned weights
       const learnedBoost = learnedStrategyBoosts[st.type] || 0;
       st.score += learnedBoost * 3;
@@ -2625,6 +2723,8 @@ serve(async (req) => {
       noiseFiltered: noiseCount,
       dealerChaos: chaoticDealer,
       selfCorrection: strategyWeightAdjust,
+      errorAnalysis: { categories: errorCategories, topError: topError?.[0] || null, consecutiveBoosts: consecutiveHitBoost },
+      timeAwareness,
       randomnessIndex,
       diamondDeflection: diamondDeflection.slice(0, 4),
       kellyBetting,
