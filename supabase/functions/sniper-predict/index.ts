@@ -3748,8 +3748,8 @@ serve(async (req) => {
       strategies.push({
         type: 'fusao_suprema', label: `⚡ Fusão Suprema`, emoji: '⚡',
         numbers: fusionFinalNums, coverage: (fusionFinalNums.length / 37) * 100, payout: Math.round(36 / fusionFinalNums.length),
-        score: fusionScore + fusionBt * 28 + fusionCandidates.length * 3,
-        probability: Math.min(98, Math.round(55 + fusionScore * 1.8 + fusionBt * 30 + fusionCandidates.length * 4)),
+        score: fusionScore + fusionBt * 22 + fusionCandidates.length * 2,
+        probability: Math.min(98, Math.round(45 + fusionScore * 1.4 + fusionBt * 25 + fusionCandidates.length * 3)),
         justification: `${fusionCandidates.length} números aparecem em 3+ estratégias simultâneas. Convergência máxima: ${topFusionInfo}. Interseção validada por backtest.`,
       });
     }
@@ -4328,8 +4328,11 @@ serve(async (req) => {
     }
 
     strategies.forEach(st => {
-      // Bonus for high payout low coverage (more profitable if hits)
-      st.score += (st.payout > 10 ? 3 : st.payout > 3 ? 1 : 0);
+      // Bonus for high payout (more profitable if hits) — REFORÇADO para competir com fusão
+      if (st.payout >= 17) st.score += 12;       // cavalos/splits pay 17:1
+      else if (st.payout >= 8) st.score += 8;     // small groups pay 8:1+
+      else if (st.payout >= 5) st.score += 5;     // jeu zero etc
+      else if (st.payout >= 2) st.score += 2;     // dozens/columns
       // Physical mode bonus for sector-based strategies
       if (mesaMode === 'fisico' && ['sniper', 'voisins'].includes(st.type)) st.score += 5;
       // Mathematical mode bonus for terminal-based strategies
@@ -4489,6 +4492,14 @@ serve(async (req) => {
       const topReasonCategories = new Set(numScores[0].reasons.map(r => r.split(':')[0].replace(/[^a-zA-Z]/g, '')));
       if (topReasonCategories.size >= 6) finalProbability += 6;
       else if (topReasonCategories.size >= 5) finalProbability += 3;
+    }
+    
+    // COVERAGE-BASED PROBABILITY CEILING — probabilidade não pode exceder expectativa real ajustada
+    // Random baseline = coverage%. Com análise boa, +15-25% acima do baseline é realista.
+    const coveragePercent = winner.coverage; // e.g. 38% for 14 numbers
+    const maxRealisticProb = Math.min(99, coveragePercent + 25); // 14 nums = 38% + 25 = 63% max
+    if (finalProbability > maxRealisticProb) {
+      finalProbability = maxRealisticProb;
     }
     
     // Cap
