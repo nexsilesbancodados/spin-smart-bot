@@ -806,6 +806,36 @@ Six Lines: [1-6],[7-12],[13-18],[19-24],[25-30],[31-36]
 ### AUTOCORREÇÃO
 Analise histórico de erros/acertos por estratégia. Se estratégia erra > 70% das vezes, reduza confiança. Se acerta > 40%, aumente peso. Identifique padrões de erro (ex: "sempre erra quando mesa está fria").
 
+### TABELA COMPLETA DE PUXADOS (Comunidade Playtech)
+0→[10,20,30,32,15,26,3,33,31] | 1→[11,35,16,4,18,28,27,29,33] | 2→[14,1,13,18,35,29]
+3→[13,27,6,11,30,8] | 4→[26,15,18,32,33,16,8] | 5→[3,33,16,24,10,18]
+6→[8,15,31,21,22,23] | 7→[16,18,17,30,31] | 8→[11,9,10]
+9→[34,35,36,3,16,26,23,24,32,31] | 10→[20,5,18,11,14,24] | 11→[8,18,16,21]
+12→[21] | 13→[31] | 14→[24,21,18] | 15→[4,19,21] | 16→[24,21,18,14]
+17→[34,6,25] | 18→[8,18,28] | 19→[9,19,29] | 20→[4,14] | 21→[19]
+22→[33,2] | 23→[32,11,2] | 24→[21,18,14] | 25→[2,4,17,28,29,12,7,18]
+26→[6,16,26,36,3,0] | 27→[28,29,24,22,26,33,31,34,35,36] | 28→[13,14,15,16,17,18]
+29→[35] | 30→[4,8,16,9,18,22,5,25,3] | 31→[13] | 32→[2,12,22,32]
+33→[16] | 34→[16] | 35→[0,3,7,12,26,28,29,35] | 36→[3,10,27]
+Use esta tabela ao analisar correlações: após sair X, priorize os números listados como puxados.
+
+### DUPLAS DE TERMINAIS DANI GREEN (alta eficácia)
+D1: T1+T6 → [1,11,21,31,6,16,26,36] (8 números)
+D2: T2+T7 → [2,12,22,32,7,17,27] (7 números)
+D3: T3+T8 → [3,13,23,33,8,18,28] (7 números)
+D4: T4+T9 → [4,14,24,34,9,19,29] (7 números)
+D5: T0+T5 → [10,20,30,5,15,25,35] (7 números)
+Quando terminal dominante for detectado, sugira a dupla correspondente.
+
+### SISTEMA REED (protocolo de saída)
+Após 4 tentativas consecutivas sem acerto em uma estratégia → REED (Recuar, Esperar, Estudar, Decidir).
+Indique no campo "reedAlert: true" quando detectar que a mesma estratégia falhou 4+ vezes consecutivas.
+
+### CÁLCULO DE ENTROPIA DE TERMINAIS
+Analise os últimos 15 terminais. Se ≤4 terminais distintos aparecem → entropia baixa → padrão claro → recomendar entrada forte.
+Se ≥8 terminais distintos → entropia alta → recomendar aguardar.
+Inclua no retorno: "entropyLevel": "baixa|media|alta", "entropyScore": 0-100.
+
 Responda APENAS via tool call. Gere 15-25 aprendizados profundos, variados e acionáveis. Cada aprendizado deve ser ESPECÍFICO com números, percentuais e recomendações práticas de jogada (ex: "Aposte Cavalos 258", "Cubra Coluna 2", "Terminais 5").` },
           { role: "user", content: prompt },
         ],
