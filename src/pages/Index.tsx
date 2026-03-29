@@ -226,6 +226,24 @@ const Index = () => {
             <button onClick={() => { fetchNumbers(); fetchStored(); }} className="p-1 text-muted-foreground hover:text-primary transition-colors rounded-lg hover:bg-secondary">
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
+            <button
+              onClick={() => {
+                fetch('/roulette-extension.zip')
+                  .then(res => { if (!res.ok) throw new Error('Download failed'); return res.blob(); })
+                  .then(blob => {
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = 'roulette-extension.zip';
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                  })
+                  .catch(err => alert(err.message));
+              }}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-bold bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-all"
+            >
+              <Download className="w-3 h-3" />
+              Extensão
+            </button>
             {lastUpdate && <span className="text-[8px] text-muted-foreground font-mono hidden md:inline">{lastUpdate.toLocaleTimeString('pt-BR')}</span>}
             <div className={`w-2 h-2 rounded-full ${isPolling ? 'bg-green-400 animate-pulse' : 'bg-muted'}`} />
           </div>
