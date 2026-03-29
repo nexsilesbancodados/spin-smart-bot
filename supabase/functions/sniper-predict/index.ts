@@ -2794,76 +2794,114 @@ serve(async (req) => {
           if (getSector(n) === pp.dominantSector) { s += 1; r.push(`🧲 Setor puxado`); }
         }
       }
-      // ====== KNOWLEDGE BASE SCORING SYSTEM (C1=40pts highest) ======
+      // ====== KNOWLEDGE BASE SCORING SYSTEM — REFORÇADO V2 ======
+      // Weights aligned with document: C1=40pts, S3/S4=35pts, F5/F1=30pts, C2=25pts, etc.
       const lastNum = numbers[0];
       
-      // C1: PUXADOS DIRETOS — strongest signal (40 pts in knowledge base)
+      // Track signal types for COMBO detection (OURO/PRATA/BRONZE)
+      const signalFlags: Record<string, boolean> = {};
+      
+      // C1: PUXADOS DIRETOS — STRONGEST signal (40 pts × weight factor)
       const pullTargets = FULL_PULL_MAP[lastNum] || PULL_MAP[lastNum];
       if (pullTargets && pullTargets.includes(n)) {
-        s += 6; r.push(`📚 C1:Puxa(${lastNum}→${n})`);
+        s += 8; r.push(`📚 C1:Puxa(${lastNum}→${n})`); signalFlags['C1'] = true;
       }
-      // Also check 2nd and 3rd last numbers for deeper pull chains
+      // Deep pull chain: 2nd and 3rd last numbers (diminishing weight)
       if (numbers.length >= 2) {
         const pull2 = FULL_PULL_MAP[numbers[1]] || PULL_MAP[numbers[1]];
-        if (pull2 && pull2.includes(n)) { s += 3; r.push(`📚 C1:Puxa2(${numbers[1]}→${n})`); }
+        if (pull2 && pull2.includes(n)) { s += 4.5; r.push(`📚 C1:Puxa2(${numbers[1]}→${n})`); signalFlags['C1'] = true; }
       }
       if (numbers.length >= 3) {
         const pull3 = FULL_PULL_MAP[numbers[2]] || PULL_MAP[numbers[2]];
-        if (pull3 && pull3.includes(n)) { s += 2; r.push(`📚 C1:Puxa3`); }
+        if (pull3 && pull3.includes(n)) { s += 3; r.push(`📚 C1:Puxa3`); signalFlags['C1'] = true; }
+      }
+      // DOUBLE PULL CONFIRMATION: if number is pulled by BOTH last AND penultimate → super boost
+      if (numbers.length >= 2 && pullTargets?.includes(n)) {
+        const pull2 = FULL_PULL_MAP[numbers[1]] || PULL_MAP[numbers[1]];
+        if (pull2?.includes(n)) { s += 5; r.push(`🔗 DuplaPuxa!`); }
       }
       
       // C2: TERMINAL DO NÚMERO — boost same terminal as last number (25 pts)
-      if (n % 10 === lastNum % 10 && n !== lastNum) { s += 3.5; r.push(`📚 C2:MesmoT${lastNum % 10}`); }
+      if (n % 10 === lastNum % 10 && n !== lastNum) { s += 4; r.push(`📚 C2:MesmoT${lastNum % 10}`); signalFlags['C2'] = true; }
       
       // S1: REPETIÇÃO IMEDIATA — same number repeated (15 pts)
-      if (n === lastNum) { s += 2; r.push('📚 S1:Repetição'); }
+      if (n === lastNum) { s += 2.5; r.push('📚 S1:Repetição'); signalFlags['S1'] = true; }
       
       // S2: NEAR-MISS NA RODA — consecutive are wheel neighbors (20 pts)
-      if (wheelDist(n, lastNum) <= 2 && n !== lastNum) { s += 3; r.push('📚 S2:NearMiss'); }
+      if (wheelDist(n, lastNum) <= 2 && n !== lastNum) { s += 3.5; r.push('📚 S2:NearMiss'); signalFlags['S2'] = true; }
+      
+      // S3/S4: SEQUÊNCIA DE TERMINAL CRESCENTE/DECRESCENTE (35 pts)
+      if (daniGreen.mod6.active && daniGreen.mod6.nextTerminal !== null && n % 10 === daniGreen.mod6.nextTerminal) {
+        s += 5.5; r.push(`📚 S3:SeqT→T${daniGreen.mod6.nextTerminal}`); signalFlags['S3'] = true;
+      }
+      
+      // G4: VIZINHO NA RODA DO ÚLTIMO (20 pts)
+      if (wheelDist(n, lastNum) <= 4 && wheelDist(n, lastNum) > 0) { s += 3; r.push('📚 G4:VizRoda'); signalFlags['G4'] = true; }
       
       // F1: HOT NUMBER — appears ≥2x in last 10 (30 pts)
       const hotCount10 = last10.filter(x => x === n).length;
-      if (hotCount10 >= 2) { s += 4; r.push(`📚 F1:Quente(${hotCount10}x)`); }
+      if (hotCount10 >= 2) { s += 5; r.push(`📚 F1:Quente(${hotCount10}x)`); signalFlags['F1'] = true; }
+      if (hotCount10 >= 3) { s += 3; } // extra for 3x
       
       // F3: HIPER-QUENTE — appears 2x in ≤5 spins (30 pts)
       const hotCount5 = numbers.slice(0, 5).filter(x => x === n).length;
-      if (hotCount5 >= 2) { s += 5; r.push(`📚 F3:HiperQuente`); }
+      if (hotCount5 >= 2) { s += 6; r.push(`📚 F3:HiperQuente`); signalFlags['F1'] = true; }
       
-      // F2: COLD NUMBER — absent for long time (20 pts)
+      // F2: COLD NUMBER — absent for long time (20 pts) — scaled by absence
       let coldDelay = 0;
       for (let ci = 0; ci < Math.min(100, numbers.length); ci++) { if (numbers[ci] === n) break; coldDelay++; }
-      if (coldDelay >= 80) { s += 4; r.push(`📚 F2:CRÍTICO(${coldDelay}r)`); }
-      else if (coldDelay >= 50) { s += 3; r.push(`📚 F2:Frio(${coldDelay}r)`); }
-      else if (coldDelay >= 30) { s += 1.5; r.push(`📚 F2:Morno(${coldDelay}r)`); }
+      if (coldDelay >= 80) { s += 5; r.push(`📚 F2:CRÍTICO(${coldDelay}r)`); signalFlags['F2'] = true; }
+      else if (coldDelay >= 50) { s += 3.5; r.push(`📚 F2:Frio(${coldDelay}r)`); signalFlags['F2'] = true; }
+      else if (coldDelay >= 30) { s += 2; r.push(`📚 F2:Morno(${coldDelay}r)`); }
       
       // F5: TERMINAL DOMINANTE — terminal ≥3x in 15 spins (30 pts)
-      if (daniGreen.mod1.count >= 3 && n % 10 === daniGreen.mod1.terminal) { s += 4; r.push(`📚 F5:TermDom`); }
+      if (daniGreen.mod1.count >= 3 && n % 10 === daniGreen.mod1.terminal) { s += 5; r.push(`📚 F5:TermDom`); signalFlags['F5'] = true; }
+      if (daniGreen.mod1.count >= 5 && n % 10 === daniGreen.mod1.terminal) { s += 3; } // extra for 5x dominant
       
       // F4: CLUSTER REGIONAL — 3+ numbers from same sector in 10 (20 pts)
       const nSector = getSector(n);
       const sectorCount10 = last10.filter(x => getSector(x) === nSector).length;
-      if (sectorCount10 >= 3) { s += 2.5; r.push(`📚 F4:Cluster(${nSector})`); }
+      if (sectorCount10 >= 4) { s += 4; r.push(`📚 F4:Cluster!(${nSector})`); signalFlags['F4'] = true; }
+      else if (sectorCount10 >= 3) { s += 2.5; r.push(`📚 F4:Cluster(${nSector})`); signalFlags['F4'] = true; }
       
-      // COMMUNITY PULL TERMINALS
+      // P3: ZERO AUSENTE — pressure zone (20 pts)
+      if (n === 0 && daniGreen.mod4.delay >= 25) { s += 4; r.push(`📚 P3:ZeroPress(${daniGreen.mod4.delay}r)`); signalFlags['P3'] = true; }
+      
+      // ====== COMBO DETECTION (OURO/PRATA/BRONZE from documentation) ======
+      const signalCount = Object.keys(signalFlags).length;
+      // COMBO OURO: F5 + C1 + S3 = terminal dom + puxados + sequência (máxima confiança)
+      if (signalFlags['F5'] && signalFlags['C1'] && signalFlags['S3']) { s += 12; r.push('👑 COMBO OURO'); }
+      // COMBO PRATA: F1 + C2 + G4 = quente + terminal + vizinho roda
+      else if (signalFlags['F1'] && signalFlags['C2'] && signalFlags['G4']) { s += 8; r.push('🥈 COMBO PRATA'); }
+      // COMBO BRONZE: S3 + F5 = sequência + terminal dominante
+      else if (signalFlags['S3'] && signalFlags['F5']) { s += 6; r.push('🥉 COMBO BRONZE'); }
+      // COMBO ZERO: P3 + G4 = zero ausente + vizinhos quentes
+      else if (signalFlags['P3'] && signalFlags['G4']) { s += 5; r.push('🟢 COMBO ZERO'); }
+      // DIVERSITY BONUS from documentation (2=+10, 3=+15, 4+=+25)
+      if (signalCount >= 4) { s += 5; r.push(`🔥 ${signalCount} sinais`); }
+      else if (signalCount >= 3) { s += 3; }
+      else if (signalCount >= 2) { s += 1.5; }
+      
+      // COMMUNITY PULL TERMINALS — boosted
       const pullTerms = FULL_PULL_TERMINALS[lastNum] || PULL_TERMINALS[lastNum];
       if (pullTerms) {
         const nTerm = n % 10;
-        if (pullTerms.includes(nTerm)) { s += 3; r.push(`📚 PuxaT${nTerm}`); }
+        if (pullTerms.includes(nTerm)) { s += 4; r.push(`📚 PuxaT${nTerm}`); }
       }
-      // COMMUNITY PULL CAVALOS
+      // COMMUNITY PULL CAVALOS — boosted
       const pullCav = PULL_CAVALOS[lastNum];
       if (pullCav) {
         const nCav = getCavalo(n);
-        if (nCav && pullCav.includes(nCav)) { s += 2; r.push(`📚 PuxaC${nCav}`); }
+        if (nCav && pullCav.includes(nCav)) { s += 3; r.push(`📚 PuxaC${nCav}`); }
       }
-      // FINALES WEIGHT
+      // FINALES WEIGHT (4-number terminals have higher coverage = +weight)
       const nFinal = n % 10;
-      if (FINALES_WEIGHT[nFinal] === 4) { s += 0.5; }
+      if (FINALES_WEIGHT[nFinal] === 4) { s += 0.8; }
       // TERMINAL PROGRESSION
-      if (terminalProgression.predictedNext !== null && n % 10 === terminalProgression.predictedNext) { s += 3.5; r.push(`🐎 Escada T${terminalProgression.predictedNext}`); }
-      // DANI GREEN MÓD1: Duplo Terminal boost
+      if (terminalProgression.predictedNext !== null && n % 10 === terminalProgression.predictedNext) { s += 4.5; r.push(`🐎 Escada T${terminalProgression.predictedNext}`); }
+      // DANI GREEN MÓD1: Duplo Terminal boost — REFORÇADO
       if (n % 10 === daniGreen.mod1.terminal || n % 10 === daniGreen.mod1.pair) {
-        const mod1Boost = daniGreen.mod1.count >= 5 ? 5 : daniGreen.mod1.count >= 3 ? 3.5 : 2;
+        const mod1Boost = daniGreen.mod1.count >= 5 ? 6 : daniGreen.mod1.count >= 4 ? 5 : daniGreen.mod1.count >= 3 ? 4 : 2.5;
         s += mod1Boost; r.push(`🎰 DuploT${daniGreen.mod1.terminal}+T${daniGreen.mod1.pair}`);
       }
       // DANI GREEN MÓD2: Alto/Baixo
