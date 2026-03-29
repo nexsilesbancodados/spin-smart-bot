@@ -105,6 +105,7 @@ const Index = () => {
   const [dnaNumber, setDnaNumber] = useState<number | null>(null);
   const [dnaOpen, setDnaOpen] = useState(false);
   const [confidenceFilter, setConfidenceFilter] = useState(true); // hide signals < 85%
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Fetch from API
   const fetchNumbers = useCallback(async () => {
