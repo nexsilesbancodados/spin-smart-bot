@@ -96,17 +96,17 @@ const TERMINALS_MAP: Record<number, number[]> = {
 const FINALES_WEIGHT: Record<number, number> = {0:4,1:4,2:4,3:4,4:4,5:4,6:4,7:3,8:3,9:3};
 
 // ========================================================
-// MÓDULOS DANI GREEN — 6 Estratégias Avançadas
+// 100 ESTRATÉGIAS — Constants & Detectors
 // ========================================================
 
 // MÓD 1: Duplo de Terminais — pares complementares
 const TERMINAL_PAIRS: Record<number, number> = { 1:6, 6:1, 2:7, 7:2, 3:8, 8:3, 4:9, 9:4, 0:5, 5:0 };
 
-// MÓD 4: Zero Pressure — vizinhos do zero na roda
-const ZERO_NEIGHBORS_WHEEL = [32, 15, 26, 3, 35, 12, 28]; // adjacentes ao 0 no cilindro
+// MÓD 4: Zero Pressure
+const ZERO_NEIGHBORS_WHEEL = [32, 15, 26, 3, 35, 12, 28];
 const ZERO_TERMINAL_NUMS = [0, 10, 20, 30];
 
-// MÓD 5: Pull Map expandido com dados do módulo do usuário
+// Pull Maps
 const FULL_PULL_MAP: Record<number, number[]> = {
   0: [10, 20, 30, 32, 15, 26, 3],
   1: [11, 35, 16, 4, 18, 28, 27, 29, 33],
@@ -121,24 +121,44 @@ const FULL_PULL_MAP: Record<number, number[]> = {
   27: [28, 29, 24, 22, 26, 33, 31, 34, 35, 36],
   30: [4, 8, 16, 9, 18, 22, 5, 25, 3],
 };
-
-// MÓD 5: Pull Terminals expandido
 const FULL_PULL_TERMINALS: Record<number, number[]> = {
-  0: [0, 2, 3, 5],
-  1: [1, 4, 5, 6],
-  7: [7, 9, 4, 0, 3, 8],
-  9: [8, 0, 6, 4, 9],
-  10: [0, 5, 8, 3, 4],
-  14: [4, 1, 5, 8],
-  16: [6, 9, 4],
-  20: [0, 4, 5, 6],
-  27: [5, 6, 7, 9, 4, 2, 3],
-  30: [0, 8, 6, 9, 2, 5, 3],
-  4: [8, 0, 4],
-  6: [4, 2, 6, 0],
+  0: [0, 2, 3, 5], 1: [1, 4, 5, 6], 7: [7, 9, 4, 0, 3, 8],
+  9: [8, 0, 6, 4, 9], 10: [0, 5, 8, 3, 4], 14: [4, 1, 5, 8],
+  16: [6, 9, 4], 20: [0, 4, 5, 6], 27: [5, 6, 7, 9, 4, 2, 3],
+  30: [0, 8, 6, 9, 2, 5, 3], 4: [8, 0, 4], 6: [4, 2, 6, 0],
 };
 
-// Detect hot terminal from last N results
+// Cavalos Especiais
+const CAVALOS_RED_SPLITS = [[9,12], [16,19], [18,21], [27,30]];
+const CAVALOS_BLACK_SPLITS = [[8,11], [10,13], [17,20], [26,29]];
+const CAVALOS_ZERO_SPLITS = [[0,1], [0,2], [0,3]];
+const EDDIE_SPLITS = [[5,8], [10,11], [13,16], [23,24], [27,30], [33,36]];
+const KAVOURAS_NUMS = [1,2,3,4,5,6,8,9,11,12,14,15,17,18,26,27,29,30,31,32,33,34,35,36];
+
+// Triangulações de Terminal
+const TERMINAL_TRIANGLES: Record<string, number[]> = {
+  'T1+T4+T7': [1,11,21,31,4,14,24,34,7,17,27],
+  'T2+T5+T8': [2,12,22,32,5,15,25,35,8,18,28],
+  'T3+T6+T9': [3,13,23,33,6,16,26,36,9,19,29],
+};
+
+// Pós-zero terminais
+const POST_ZERO_TERMINALS = [0, 2, 5];
+const POST_ZERO_NUMS = [0,10,20,30, 2,12,22,32, 5,15,25,35];
+
+// Espelhos numéricos
+const NUMERIC_MIRRORS: Record<number, number> = { 12:21, 21:12, 13:31, 31:13, 23:32, 32:23 };
+
+// Central crescente/decrescente (col2 diagonal)
+const CENTRAL_SEQUENCE = [5, 14, 23, 32];
+
+// Estrela de Davi (Invictor)
+const ESTRELA_DAVI_NUMS = [30, 31, 33, 34, 35, 8, 23, 10, 5, 9, 22, 1, 20, 14, 3, 26, 12];
+
+// ========================================================
+// DETECTORS
+// ========================================================
+
 const detectHotTerminal = (nums: number[], window = 15): { terminal: number; count: number; pair: number } => {
   const freq: Record<number, number> = {};
   for (let t = 0; t <= 9; t++) freq[t] = 0;
@@ -148,7 +168,14 @@ const detectHotTerminal = (nums: number[], window = 15): { terminal: number; cou
   return { terminal: hot, count: sorted[0][1] as number, pair: TERMINAL_PAIRS[hot] };
 };
 
-// Detect high/low bias from last N
+const detectColdTerminal = (nums: number[], window = 15): { terminal: number; delay: number } => {
+  const freq: Record<number, number> = {};
+  for (let t = 0; t <= 9; t++) freq[t] = 0;
+  nums.slice(0, window).forEach(n => freq[n % 10]++);
+  const sorted = Object.entries(freq).sort(([,a],[,b]) => a - b);
+  return { terminal: Number(sorted[0][0]), delay: window - (sorted[0][1] as number) };
+};
+
 const detectHighLowBias = (nums: number[], window = 10): 'high' | 'low' | null => {
   const recent = nums.slice(0, window).filter(n => n > 0);
   const highCount = recent.filter(n => n >= 19).length;
@@ -158,43 +185,138 @@ const detectHighLowBias = (nums: number[], window = 10): 'high' | 'low' | null =
   return null;
 };
 
-// Detect zero pressure
 const detectZeroPressure = (nums: number[]): { active: boolean; delay: number; neighborsActive: number } => {
   let delay = 0;
-  for (let i = 0; i < nums.length; i++) {
-    if (nums[i] === 0) break;
-    delay++;
-  }
+  for (let i = 0; i < nums.length; i++) { if (nums[i] === 0) break; delay++; }
   const recent15 = nums.slice(0, 15);
   const neighborsActive = ZERO_NEIGHBORS_WHEEL.filter(n => recent15.includes(n)).length;
   const t0Active = ZERO_TERMINAL_NUMS.filter(n => recent15.includes(n) && n !== 0).length;
   return { active: delay >= 15 && (neighborsActive >= 2 || t0Active >= 2), delay, neighborsActive: neighborsActive + t0Active };
 };
 
-// Detect ascending terminal sequence (Módulo 6)
-const detectAscendingTerminals = (nums: number[]): { active: boolean; sequence: number[]; nextTerminal: number | null } => {
-  if (nums.length < 3) return { active: false, sequence: [], nextTerminal: null };
+const detectAscendingTerminals = (nums: number[]): { active: boolean; sequence: number[]; nextTerminal: number | null; direction: string } => {
+  if (nums.length < 3) return { active: false, sequence: [], nextTerminal: null, direction: '' };
   const terms = nums.slice(0, 5).map(n => n % 10);
-  // Check ascending
   if (terms.length >= 3 && terms[2] < terms[1] && terms[1] < terms[0]) {
-    const next = (terms[0] + 1) % 10;
-    return { active: true, sequence: [terms[2], terms[1], terms[0]], nextTerminal: next };
+    return { active: true, sequence: [terms[2], terms[1], terms[0]], nextTerminal: (terms[0] + 1) % 10, direction: 'asc' };
   }
-  // Check descending
   if (terms.length >= 3 && terms[2] > terms[1] && terms[1] > terms[0]) {
-    const next = (terms[0] - 1 + 10) % 10;
-    return { active: true, sequence: [terms[2], terms[1], terms[0]], nextTerminal: next };
+    return { active: true, sequence: [terms[2], terms[1], terms[0]], nextTerminal: (terms[0] - 1 + 10) % 10, direction: 'desc' };
   }
-  // Check dozen progression
   const dzs = nums.slice(0, 3).filter(n => n > 0).map(n => n <= 12 ? 1 : n <= 24 ? 2 : 3);
   if (dzs.length === 3 && dzs[2] === 1 && dzs[1] === 2 && dzs[0] === 3) {
-    return { active: true, sequence: dzs, nextTerminal: null }; // D1→D2→D3 complete, expect D1
+    return { active: true, sequence: dzs, nextTerminal: null, direction: 'dozen' };
   }
-  return { active: false, sequence: [], nextTerminal: null };
+  return { active: false, sequence: [], nextTerminal: null, direction: '' };
 };
 
-// REED rule: max 4 rounds without hit, then stop
+// #15: Terminal Repetido — mesmo terminal 2x seguidas
+const detectTerminalRepetido = (nums: number[]): { active: boolean; terminal: number } => {
+  if (nums.length < 2) return { active: false, terminal: -1 };
+  const t0 = nums[0] % 10, t1 = nums[1] % 10;
+  return { active: t0 === t1, terminal: t0 };
+};
+
+// #17: Terminal Alternado — ímpares vs pares dominando
+const detectTerminalAlternado = (nums: number[], window = 10): 'odd' | 'even' | null => {
+  const terms = nums.slice(0, window).map(n => n % 10);
+  const oddCount = terms.filter(t => t % 2 === 1).length;
+  const evenCount = terms.filter(t => t % 2 === 0).length;
+  if (oddCount >= window * 0.7) return 'odd'; // ímpares dominam → entrar pares
+  if (evenCount >= window * 0.7) return 'even';
+  return null;
+};
+
+// #74/#75: Central Crescente/Decrescente
+const detectCentralProgression = (nums: number[]): { active: boolean; direction: string; next: number | null } => {
+  const recent = nums.slice(0, 4);
+  for (let i = 0; i < recent.length - 1; i++) {
+    const idxA = CENTRAL_SEQUENCE.indexOf(recent[i+1]);
+    const idxB = CENTRAL_SEQUENCE.indexOf(recent[i]);
+    if (idxA >= 0 && idxB >= 0 && idxB === idxA + 1) {
+      const nextIdx = idxB + 1;
+      if (nextIdx < CENTRAL_SEQUENCE.length) return { active: true, direction: 'asc', next: CENTRAL_SEQUENCE[nextIdx] };
+    }
+    if (idxA >= 0 && idxB >= 0 && idxB === idxA - 1) {
+      const nextIdx = idxB - 1;
+      if (nextIdx >= 0) return { active: true, direction: 'desc', next: CENTRAL_SEQUENCE[nextIdx] };
+    }
+  }
+  return { active: false, direction: '', next: null };
+};
+
+// #82: Padrão de Cores — 3+ mesma cor
+const detectColorStreak = (nums: number[]): { active: boolean; color: string; count: number } => {
+  if (nums.length < 3) return { active: false, color: '', count: 0 };
+  const colors = nums.slice(0, 10).map(n => getColor(n));
+  let streak = 1;
+  for (let i = 1; i < colors.length; i++) {
+    if (colors[i] === colors[0] && colors[0] !== 'green') streak++;
+    else break;
+  }
+  return { active: streak >= 3, color: colors[0], count: streak };
+};
+
+// #83: Par-Ímpar com Terminal
+const detectParImparBias = (nums: number[], window = 10): 'par' | 'impar' | null => {
+  const recent = nums.slice(0, window).filter(n => n > 0);
+  const pares = recent.filter(n => n % 2 === 0).length;
+  if (pares >= window * 0.65) return 'par';
+  if (pares <= window * 0.35) return 'impar';
+  return null;
+};
+
+// #84: Alternância Alto-Baixo
+const detectAltoLowAlternation = (nums: number[]): { active: boolean; next: 'high' | 'low' | null } => {
+  if (nums.length < 3) return { active: false, next: null };
+  const hilo = nums.slice(0, 5).filter(n => n > 0).map(n => n >= 19 ? 'H' : 'L');
+  if (hilo.length >= 3 && hilo[0] !== hilo[1] && hilo[1] !== hilo[2]) {
+    return { active: true, next: hilo[0] === 'H' ? 'low' : 'high' };
+  }
+  return { active: false, next: null };
+};
+
+// #65: Espelho numérico — check if mirror exists and is due
+const detectMirrorDue = (nums: number[]): number[] => {
+  const last = nums[0];
+  const mirror = NUMERIC_MIRRORS[last];
+  if (mirror === undefined) return [];
+  // Check if mirror hasn't appeared in last 10
+  const recent10 = nums.slice(0, 10);
+  if (!recent10.includes(mirror)) return [mirror];
+  return [];
+};
+
+// #70: Zero após vizinhos saírem
+const detectZeroAfterNeighbors = (nums: number[]): boolean => {
+  const recent5 = nums.slice(0, 5);
+  const zeroNeighborsHit = [32, 15, 26, 3].filter(n => recent5.includes(n)).length;
+  return zeroNeighborsHit >= 2 && !recent5.includes(0);
+};
+
+// #81: Gatilho Perfeito — 3 confirmações simultâneas
+const detectGatilhoPerfeito = (nums: number[], hotTerminal: number, pullNums: number[]): { active: boolean; numbers: number[] } => {
+  const recent10 = nums.slice(0, 10);
+  const termNums = TERMINALS_MAP[hotTerminal] || [];
+  // 1. Terminal quente
+  const termCount = recent10.filter(n => termNums.includes(n)).length;
+  const termActive = termCount >= 3;
+  // 2. Puxados ativos
+  const pullActive = pullNums.length > 0;
+  // 3. Vizinhança ativa (neighbors of hot terminal numbers appearing)
+  const vizActive = termNums.some(tn => {
+    const neigh = getNeighbors(tn, 2);
+    return neigh.some(nn => recent10.includes(nn));
+  });
+  if (termActive && pullActive && vizActive) {
+    const combined = [...new Set([...termNums, ...pullNums.slice(0, 4)])];
+    return { active: true, numbers: combined.slice(0, 10) };
+  }
+  return { active: false, numbers: [] };
+};
+
 const REED_MAX = 4;
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
