@@ -341,6 +341,11 @@ const Index = () => {
                       <span key={i} className="text-[7px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-semibold">{r}</span>
                     ))}
                   </div>
+                  {sniperData.signal.diagnostic && (
+                    <div className="text-[8px] text-primary/70 italic mt-1 px-1">
+                      ⚡ {sniperData.signal.diagnostic}
+                    </div>
+                  )}
                   {sniperData.topCandidates && (
                     <div className="flex items-center gap-1 mt-1">
                       <span className="text-[8px] text-muted-foreground">Top 5:</span>
