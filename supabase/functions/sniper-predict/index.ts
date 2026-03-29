@@ -794,9 +794,81 @@ serve(async (req) => {
     });
 
     // ==========================================
-    // DUEL: Pick the best strategy
+    // 7. DYNAMIC STRATEGY FROM INSIGHTS — AI-generated pattern-based plays
     // ==========================================
-    // Weight: higher payout strategies get a small bonus (risk/reward)
+    const insightTopNums = Object.entries(insightNumbers)
+      .map(([n, score]) => ({ num: Number(n), score }))
+      .filter(x => x.score > 1)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12)
+      .map(x => x.num);
+    if (insightTopNums.length >= 5) {
+      const insScore = sumScores(insightTopNums) + insightTopNums.length * 1.5;
+      const insBt = backtestSet(insightTopNums);
+      strategies.push({
+        type: 'insight_pattern', label: 'Padrão IA Detectado', emoji: '🧬',
+        numbers: insightTopNums, coverage: (insightTopNums.length / 37) * 100, payout: Math.round(36 / insightTopNums.length),
+        score: insScore + insBt * 20,
+        probability: Math.min(98, Math.round(50 + insScore * 1.5 + insBt * 30)),
+        justification: `Padrões detectados pela IA convergem em ${insightTopNums.length} números. Backtesting: ${(insBt * 100).toFixed(0)}%.`,
+      });
+    }
+
+    // 8. SURPRISE RECOVERY — plays numbers that frequently appear when predictions miss
+    if (surpriseNumbers.length >= 5) {
+      const surpriseNums = surpriseNumbers.slice(0, 10);
+      const srpScore = sumScores(surpriseNums) + surpriseNums.length * 2;
+      const srpBt = backtestSet(surpriseNums);
+      strategies.push({
+        type: 'surprise_recovery', label: 'Recuperação Surpresa', emoji: '🎲',
+        numbers: surpriseNums, coverage: (surpriseNums.length / 37) * 100, payout: Math.round(36 / surpriseNums.length),
+        score: srpScore + srpBt * 18,
+        probability: Math.min(98, Math.round(45 + srpScore * 1.8 + srpBt * 28)),
+        justification: `Números que saem quando erramos: ${surpriseNums.slice(0, 5).join(',')}. Aprendido com ${Object.values(numberMissFreq).reduce((a, b) => a + b, 0)} erros.`,
+      });
+    }
+
+    // 9. CROSS-DELAY ATTACK — numbers with multiple simultaneous delays
+    if (crossDelayTargets.length >= 3) {
+      const crossNums = crossDelayTargets.slice(0, 8).map(t => t.num);
+      const neighbors: number[] = [];
+      crossNums.slice(0, 3).forEach(n => getNeighbors(n, 2).forEach(nb => { if (!crossNums.includes(nb) && !neighbors.includes(nb)) neighbors.push(nb); }));
+      const fullCrossNums = [...crossNums, ...neighbors.slice(0, 4)];
+      const crossScore = sumScores(fullCrossNums) + crossDelayTargets.slice(0, 5).reduce((a, t) => a + t.total * 0.1, 0);
+      const crossBt = backtestSet(fullCrossNums);
+      strategies.push({
+        type: 'cross_delay', label: 'Atraso Cruzado', emoji: '💥',
+        numbers: fullCrossNums, coverage: (fullCrossNums.length / 37) * 100, payout: Math.round(36 / fullCrossNums.length),
+        score: crossScore + crossBt * 22,
+        probability: Math.min(98, Math.round(48 + crossScore * 2 + crossBt * 30)),
+        justification: `${crossDelayTargets.length} números com atraso em múltiplos grupos. Explosão iminente: ${crossNums.slice(0, 4).join(',')}.`,
+      });
+    }
+
+    // 10. HISTORICAL WINNERS — numbers that historically hit when predicted
+    const histWinners = Object.entries(numberHitFreq)
+      .filter(([, c]) => c >= 2)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([n]) => Number(n));
+    if (histWinners.length >= 4) {
+      const hwNeighbors: number[] = [];
+      histWinners.slice(0, 3).forEach(n => getNeighbors(n, 1).forEach(nb => { if (!histWinners.includes(nb) && !hwNeighbors.includes(nb)) hwNeighbors.push(nb); }));
+      const hwNums = [...histWinners, ...hwNeighbors.slice(0, 4)];
+      const hwScore = sumScores(hwNums) + histWinners.reduce((a, n) => a + (numberHitFreq[n] || 0) * 1.5, 0);
+      const hwBt = backtestSet(hwNums);
+      strategies.push({
+        type: 'historical_winners', label: 'Campeões Históricos', emoji: '🏆',
+        numbers: hwNums, coverage: (hwNums.length / 37) * 100, payout: Math.round(36 / hwNums.length),
+        score: hwScore + hwBt * 20,
+        probability: Math.min(98, Math.round(50 + hwScore * 1.5 + hwBt * 30)),
+        justification: `Números com histórico comprovado de acertos: ${histWinners.slice(0, 5).join(',')}. Total: ${histWinners.reduce((a, n) => a + (numberHitFreq[n] || 0), 0)} acertos.`,
+      });
+    }
+
+    // ==========================================
+    // DUEL: Pick the best strategy with performance-based weighting
+    // ==========================================
     strategies.forEach(st => {
       // Bonus for high payout low coverage (more profitable if hits)
       st.score += (st.payout > 10 ? 3 : st.payout > 3 ? 1 : 0);
@@ -804,6 +876,19 @@ serve(async (req) => {
       if (mesaMode === 'fisico' && ['sniper', 'voisins'].includes(st.type)) st.score += 5;
       // Mathematical mode bonus for terminal-based strategies
       if (mesaMode === 'matematico' && ['cavalos', 'duzias'].includes(st.type)) st.score += 5;
+
+      // PERFORMANCE-BASED WEIGHT: boost strategies that historically perform well
+      const perf = strategyPerformance[st.type];
+      if (perf && perf.total >= 5) {
+        // Reward winning strategies, penalize losing ones
+        const winBonus = (perf.winRate - 0.3) * 30; // baseline 30% hit rate
+        st.score += winBonus;
+        // Recent trend matters more than overall
+        const trendBonus = (perf.recentTrend - 0.3) * 20;
+        st.score += trendBonus;
+        // Calibration: if high-prob predictions aren't hitting, lower score
+        if (perf.avgProb > 80 && perf.winRate < 0.25) st.score -= 10;
+      }
     });
 
     // If two strategies tie, prefer higher payout
