@@ -448,12 +448,17 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Parse sampleSize from request body (default 100, range 10-500)
+    // Parse request body — accepts sampleSize and optional clientNumbers for instant reaction
     let sampleSize = 100;
+    let clientNumbers: number[] | null = null;
     try {
       const body = await req.json();
       if (body?.sampleSize && typeof body.sampleSize === 'number') {
         sampleSize = Math.max(10, Math.min(500, Math.round(body.sampleSize)));
+      }
+      // Accept client-side numbers for faster response (before DB sync)
+      if (body?.numbers && Array.isArray(body.numbers)) {
+        clientNumbers = body.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 500);
       }
     } catch { /* no body or invalid JSON — use default */ }
 
