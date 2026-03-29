@@ -731,6 +731,46 @@ const Index = () => {
             </div>
           </div>
 
+          {/* TOP ALTERNATIVAS — mostra as 3 melhores jogadas alternativas */}
+          {sniperData?.topAlternatives?.length > 0 && (
+            <div className="bg-card/90 rounded-xl border border-border p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart3 className="w-4 h-4 text-cyan-400" />
+                <span className="font-display text-[10px] tracking-[0.15em] font-bold text-cyan-400">JOGADAS ALTERNATIVAS</span>
+                <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold">
+                  TOP {sniperData.topAlternatives.length}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {sniperData.topAlternatives.map((alt: any, i: number) => (
+                  <div key={i} className="bg-secondary/40 rounded-lg p-2.5 border border-border hover:border-primary/30 transition-all">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-sm">{alt.emoji}</span>
+                      <span className="text-[9px] font-bold text-foreground truncate">{alt.label}</span>
+                      <span className={`ml-auto text-[10px] font-mono font-bold ${alt.probability >= 80 ? 'text-primary' : alt.probability >= 65 ? 'text-yellow-400' : 'text-muted-foreground'}`}>
+                        {alt.probability}%
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-0.5 mb-1.5">
+                      {alt.numbers?.slice(0, 8).map((n: number, j: number) => (
+                        <div key={j} className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ${colorClass(n)} border border-white/10`}>
+                          {n}
+                        </div>
+                      ))}
+                      {alt.numbers?.length > 8 && <span className="text-[7px] text-muted-foreground self-center">+{alt.numbers.length - 8}</span>}
+                    </div>
+                    <p className="text-[7px] text-muted-foreground line-clamp-2">{alt.justification}</p>
+                    <div className="flex items-center gap-2 mt-1 text-[7px] text-muted-foreground">
+                      <span>Payout: {alt.payout}x</span>
+                      <span>•</span>
+                      <span>{alt.coverage}% cobertura</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* === ANÁLISE AVANÇADA (COLAPSÁVEL) === */}
           {sniperData && (
             <div className="bg-card rounded-xl border border-border overflow-hidden">

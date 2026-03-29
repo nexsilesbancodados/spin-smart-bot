@@ -2752,8 +2752,71 @@ serve(async (req) => {
       });
     }
 
-    
-    // DIVERSITY: check last 15 predictions (not just 5) for stronger anti-repetition
+
+    // 20. RITMO CALIBRADO — strategy based on directional arc prediction (blocoP)
+    if (ritmoCalibration.alvo !== null && ritmoCalibration.confianca >= 70) {
+      const alvoNeighbors = getNeighbors(ritmoCalibration.alvo, 4);
+      const ritmoNums = [...new Set([ritmoCalibration.alvo, ...alvoNeighbors])];
+      const ritmoScore = sumScores(ritmoNums) + ritmoCalibration.confianca * 0.3 + (100 - ritmoCalibration.estabilidade) * 0.5;
+      const ritmoBt = backtestSet(ritmoNums);
+      strategies.push({
+        type: 'ritmo_calibrado', label: `🎯 Ritmo → ${ritmoCalibration.alvo}`, emoji: '🎯',
+        numbers: ritmoNums, coverage: (ritmoNums.length / 37) * 100, payout: Math.round(36 / ritmoNums.length),
+        score: ritmoScore + ritmoBt * 25 + (ritmoCalibration.confianca >= 90 ? 15 : ritmoCalibration.confianca >= 80 ? 8 : 0),
+        probability: Math.min(98, Math.round(ritmoCalibration.confianca * 0.8 + ritmoBt * 25)),
+        justification: `Arco direcional calibrado: alvo ${ritmoCalibration.alvo} (σ=${ritmoCalibration.estabilidade}, confiança ${ritmoCalibration.confianca}%). ${ritmoCalibration.mensagem}`,
+      });
+    }
+
+    // 21. ARCHETYPE FUSION — combines numbers from all active archetypes
+    if (activeArchetypes.length >= 2) {
+      const archNums: Record<number, number> = {};
+      activeArchetypes.forEach(a => {
+        a.predictedNums.forEach((n: number) => { archNums[n] = (archNums[n] || 0) + (a.strength / 100); });
+      });
+      const fusionNums = Object.entries(archNums)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 12)
+        .map(([n]) => Number(n));
+      if (fusionNums.length >= 5) {
+        const fusionScore = sumScores(fusionNums) + activeArchetypes.length * 5 + activeArchetypes.reduce((a, ar) => a + ar.strength, 0) * 0.05;
+        const fusionBt = backtestSet(fusionNums);
+        strategies.push({
+          type: 'archetype_fusion', label: `🏛️ Fusão de ${activeArchetypes.length} Arquétipos`, emoji: '🏛️',
+          numbers: fusionNums, coverage: (fusionNums.length / 37) * 100, payout: Math.round(36 / fusionNums.length),
+          score: fusionScore + fusionBt * 22 + activeArchetypes.length * 3,
+          probability: Math.min(98, Math.round(50 + fusionScore * 1.5 + fusionBt * 30 + activeArchetypes.length * 3)),
+          justification: `${activeArchetypes.length} arquétipos convergem: ${activeArchetypes.map(a => a.emoji + a.name.split(' ')[0]).join(', ')}. Top: ${fusionNums.slice(0, 5).join(',')}.`,
+        });
+      }
+    }
+
+    // 22. CONVERGÊNCIA MATRICIAL — combines predicted sector + dozen + terminal from transition matrices
+    if (transitionMatrix.predictedSector && transitionMatrix.predictedDozen && transitionMatrix.predictedTerminal !== null) {
+      const sectorPool = transitionMatrix.predictedSector === 'Voisins' ? VOISINS : transitionMatrix.predictedSector === 'Tiers' ? TIERS : ORPHELINS;
+      const dozenPool = Array.from({ length: 12 }, (_, i) => (transitionMatrix.predictedDozen! - 1) * 12 + i + 1);
+      const tripleNums = sectorPool.filter(n =>
+        dozenPool.includes(n) && n % 10 === transitionMatrix.predictedTerminal
+      );
+      const doubleNums = sectorPool.filter(n =>
+        (dozenPool.includes(n) || n % 10 === transitionMatrix.predictedTerminal!) &&
+        !tripleNums.includes(n)
+      ).slice(0, 8);
+      const matrixNums = [...tripleNums, ...doubleNums].slice(0, 12);
+      if (matrixNums.length >= 3) {
+        const mfScore = sumScores(matrixNums) + tripleNums.length * 8 + transitionMatrix.mesaModeStrength * 0.1;
+        const mfBt = backtestSet(matrixNums);
+        strategies.push({
+          type: 'matrix_fusion', label: `🔮 Convergência Matricial`, emoji: '🔮',
+          numbers: matrixNums, coverage: (matrixNums.length / 37) * 100, payout: Math.round(36 / matrixNums.length),
+          score: mfScore + mfBt * 25 + tripleNums.length * 10,
+          probability: Math.min(98, Math.round(55 + mfScore * 2 + mfBt * 30 + tripleNums.length * 8)),
+          justification: `Convergência tripla: Setor ${transitionMatrix.predictedSector} + Dúzia ${transitionMatrix.predictedDozen} + Terminal ${transitionMatrix.predictedTerminal}. ${tripleNums.length} na interseção total.`,
+        });
+      }
+    }
+
+    // DIVERSITY:
     const recentPreds = resolvedHistory.slice(0, 15);
     const recentStratTypes = recentPreds.map(p => p.strategy_type);
     const recentNumbers = recentPreds.flatMap(p => p.predicted_numbers?.slice(0, 3) || []);
@@ -2923,15 +2986,15 @@ serve(async (req) => {
       aiLearnings.push(`🔑 Assinatura terminal: T${mesaDNA.terminalSignature.join(',T')} consistentes`);
     }
 
-    const mode = totalLayers >= 1250 && finalProbability >= 88 ? 'sniper'
-      : totalLayers >= 1100 && finalProbability >= 80 ? 'alert'
+    const mode = totalLayers >= 1100 && finalProbability >= 82 ? 'sniper'
+      : totalLayers >= 900 && finalProbability >= 70 ? 'alert'
       : 'monitoring';
 
     const message = mode === 'sniper'
-      ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/1500`
+      ? `🎯 JOGADA CERTEIRA: ${winner.emoji} ${winner.label} — ${totalLayers}/1700`
       : mode === 'alert'
-      ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/1500`
-      : `👁️ Analisando... ${totalLayers}/1500 — aguardando convergência`;
+      ? `⚡ ALERTA: ${winner.emoji} ${winner.label} — ${totalLayers}/1700`
+      : `👁️ Analisando... ${totalLayers}/1700 — aguardando convergência`;
 
     const diagnostic = mode === 'sniper'
       ? `Convergência Suprema (1500 camadas): ${winner.justification}`
@@ -2941,7 +3004,7 @@ serve(async (req) => {
 
     // Save prediction to history — ONLY when truly confident (sniper or strong alert)
     // The AI must be selective: only commit when multiple layers converge strongly
-    const shouldSave = isNewNumber && mode === 'sniper' && winner.numbers.length > 0 && finalProbability >= 85;
+    const shouldSave = isNewNumber && (mode === 'sniper' || (mode === 'alert' && finalProbability >= 80)) && winner.numbers.length > 0;
     if (shouldSave) {
       await supabase.from('prediction_history').insert({
         strategy_type: winner.type,
@@ -3010,6 +3073,23 @@ serve(async (req) => {
         bets.push({ type: 'vizinhos', label: `Vizinhos do ${mainNum}`, detail: `Pleno no ${mainNum} + vizinhos: ${nums.slice(1, 5).join(', ')}`, emoji: '🎯' });
       } else if (t === 'numero_exato') {
         bets.push({ type: 'pleno', label: `Pleno no ${nums[0]}`, detail: `Aposte Pleno (straight) no ${nums[0]} — paga 35:1`, emoji: '💎' });
+      } else if (t === 'ritmo_calibrado') {
+        bets.push({ type: 'ritmo', label: `Ritmo Calibrado → ${nums[0]}`, detail: `Alvo calculado por arco direcional do dealer: Pleno ${nums[0]} + ${nums.length - 1} vizinhos`, emoji: '🎯' });
+      } else if (t === 'archetype_fusion') {
+        bets.push({ type: 'fusao', label: `Fusão de Arquétipos`, detail: `Convergência de múltiplos padrões: ${nums.slice(0, 6).join(', ')}`, emoji: '🏛️' });
+      } else if (t === 'matrix_fusion') {
+        bets.push({ type: 'matriz', label: `Convergência Matricial`, detail: `Interseção Setor+Dúzia+Terminal: ${nums.slice(0, 6).join(', ')}`, emoji: '🔮' });
+      } else if (t === 'cobertura_area') {
+        bets.push({ type: 'area', label: `Cobertura de Setor`, detail: `Cubra setor via matriz de transição: ${nums.slice(0, 6).join(', ')}`, emoji: '🗺️' });
+      } else if (t === 'terminais_cruzados') {
+        const term = nums.length > 0 ? nums[0] % 10 : 0;
+        bets.push({ type: 'terminal', label: `Terminais Cruzados ${term}`, detail: `Aposte nos terminais ${term}: ${nums.join(', ')}`, emoji: '🐎' });
+      } else if (t === 'pressao_retorno') {
+        const dz = nums[0] <= 12 ? 1 : nums[0] <= 24 ? 2 : 3;
+        bets.push({ type: 'duzia', label: `Pressão D${dz}`, detail: `Dúzia ${dz} em dívida estatística — Retorno iminente`, emoji: '🔥' });
+      } else {
+        // Generic fallback
+        bets.push({ type: 'generico', label: strat.label, detail: `Cubra: ${nums.slice(0, 8).join(', ')}`, emoji: strat.emoji });
       }
 
       // Add complementary bets based on number groupings
@@ -3048,6 +3128,15 @@ serve(async (req) => {
 
     const betInstructions = generateBetInstructions(winner);
 
+    // Generate bet instructions for top 3 alternatives too
+    const topAlternatives = strategies.slice(1, 4).map(s => ({
+      type: s.type, label: s.label, emoji: s.emoji,
+      numbers: s.numbers.slice(0, 12), coverage: +s.coverage.toFixed(1), payout: s.payout,
+      score: +s.score.toFixed(1), probability: s.probability,
+      justification: s.justification,
+      betInstructions: generateBetInstructions(s),
+    }));
+
     return json({
       signal: {
         number: winner.numbers[0],
@@ -3068,6 +3157,7 @@ serve(async (req) => {
         justification: winner.justification,
       },
       betInstructions,
+      topAlternatives,
       allStrategies,
       mesaMode,
       mode, message,

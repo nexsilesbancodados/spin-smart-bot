@@ -13,14 +13,12 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    // Fetch specifically from Roleta Brasileira source
     const response = await fetch('https://www.iamonstro.com.br/apicurso/roleta.php');
     const data = await response.json();
     const numbers: number[] = (data.results || []).map(Number).filter((n: number) => !isNaN(n) && n >= 0 && n <= 36);
 
-    // Validate source is Roleta Brasileira
     const mesa = data.mesa || data.table || 'Roleta Brasileira';
-    const isRoletaBrasileira = /brasil|brazilian/i.test(String(mesa)) || !data.mesa; // default source is Roleta Brasileira
+    const isRoletaBrasileira = /brasil|brazilian/i.test(String(mesa)) || !data.mesa;
 
     if (!isRoletaBrasileira) {
       return new Response(JSON.stringify({ error: 'Fonte não é Roleta Brasileira', results: [] }), {
@@ -28,42 +26,61 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Store new numbers in DB (deduplicate by checking latest stored)
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get the last stored number to detect new ones
+    // Improved deduplication: compare sequences using a fingerprint of last 10 stored
     const { data: lastStored } = await supabase
       .from('roulette_numbers')
       .select('number')
       .order('fetched_at', { ascending: false })
-      .limit(5);
+      .limit(10);
 
     const lastStoredNums = (lastStored || []).map((r: any) => r.number);
     
-    // Find new numbers (ones at the start that don't match recent stored)
     let newNumbers: number[] = [];
     if (lastStoredNums.length === 0) {
-      newNumbers = numbers.slice(0, 100);
+      // First time: store all available
+      newNumbers = numbers.slice(0, 200);
     } else {
-      for (let i = 0; i < Math.min(numbers.length, 20); i++) {
-        if (numbers[i] === lastStoredNums[0] && 
-            (i + 1 >= numbers.length || numbers[i + 1] === lastStoredNums[1])) {
+      // Find where the API sequence matches our stored sequence
+      // We look for the longest matching subsequence starting from position 0 of stored
+      let matchAt = -1;
+      for (let i = 0; i < Math.min(numbers.length, 30); i++) {
+        // Check if numbers[i..i+3] matches lastStoredNums[0..3]
+        let seqMatch = 0;
+        for (let j = 0; j < Math.min(4, lastStoredNums.length); j++) {
+          if (i + j < numbers.length && numbers[i + j] === lastStoredNums[j]) seqMatch++;
+          else break;
+        }
+        // Require at least 3 consecutive matches for confidence
+        if (seqMatch >= Math.min(3, lastStoredNums.length)) {
+          matchAt = i;
           break;
         }
-        newNumbers.push(numbers[i]);
       }
+
+      if (matchAt > 0) {
+        newNumbers = numbers.slice(0, matchAt);
+      } else if (matchAt === -1 && numbers.length > 0) {
+        // No match found — API might have shifted significantly
+        // Only add first number to avoid mass duplicates
+        if (numbers[0] !== lastStoredNums[0]) {
+          newNumbers = [numbers[0]];
+        }
+      }
+      // matchAt === 0 means no new numbers
     }
 
-    if (newNumbers.length > 0) {
+    if (newNumbers.length > 0 && newNumbers.length <= 30) {
+      // Safety cap: never insert more than 30 at once (prevents data pollution)
       const rows = newNumbers.map(n => ({
         number: n,
         color: getColor(n),
       }));
       await supabase.from('roulette_numbers').insert(rows);
 
-      // Also store in resultados_roleta for cross-reference
       const roletaRows = newNumbers.map(n => ({
         numero: String(n),
         mesa: 'Roleta Brasileira',
@@ -72,8 +89,7 @@ Deno.serve(async (req) => {
       await supabase.from('resultados_roleta').insert(roletaRows);
     }
 
-    // Return all numbers from API with mesa tag
-    return new Response(JSON.stringify({ ...data, mesa: 'Roleta Brasileira' }), {
+    return new Response(JSON.stringify({ ...data, mesa: 'Roleta Brasileira', newCount: newNumbers.length }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
