@@ -6595,9 +6595,9 @@ REGRAS:
             
             if (Array.isArray(parsed.numbers) && parsed.numbers.length >= 2) {
               aiAdjustedNumbers = parsed.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 7);
-              aiReasoning = parsed.reasoning || null;
+              aiReasoning = parsed.suggestedBet || parsed.reasoning || null;
               aiConfidence = typeof parsed.confidence === 'number' ? Math.min(100, Math.max(0, parsed.confidence)) : null;
-              aiPatternAnalysis = parsed.patternAnalysis || null;
+              aiPatternAnalysis = parsed.patternIdentified || parsed.patternAnalysis || null;
               aiSectorFocus = parsed.sectorFocus || null;
               aiFeedbackAction = parsed.feedbackAction || null;
               aiLearned = parsed.learned || null;
