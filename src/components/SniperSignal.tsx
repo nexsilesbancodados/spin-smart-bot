@@ -6,7 +6,7 @@ import {
 
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-const PROTECTION_NUMBERS = [24, 29, 35, 11];
+// Protection numbers are now dynamic from sniperData.signal.protection
 const colorClass = (n: number, isProtection = false) => {
   const base = n === 0 ? 'bg-green-600 text-white ring-green-400/40' 
     : RED_NUMBERS.includes(n) ? 'bg-red-600 text-white ring-red-400/30' 
