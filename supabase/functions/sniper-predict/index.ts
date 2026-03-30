@@ -6358,8 +6358,7 @@ serve(async (req) => {
     ])].slice(0, 7);
 
     // ========================================================
-    // 🧠 AI REASONING LAYER — Lovable AI validates the bet
-    // Uses Gemini Flash to analyze context and adjust the pick
+    // 🧠 AI DEEP LEARNING LAYER — Lovable AI analyzes + learns + predicts
     // ========================================================
     let aiReasoning: string | null = null;
     let aiAdjustedNumbers: number[] | null = null;
@@ -6367,44 +6366,102 @@ serve(async (req) => {
     
     try {
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (LOVABLE_API_KEY && numbers.length >= 20) {
-        const last20 = numbers.slice(0, 20);
-        const last5Terms = last20.slice(0, 5).map(n => n % 10);
-        const last5Sectors = last20.slice(0, 5).map(n => getSector(n));
-        const last5Colors = last20.slice(0, 5).map(n => getColor(n));
+      if (LOVABLE_API_KEY && numbers.length >= 15) {
+        const last30 = numbers.slice(0, 30);
+        const last5Terms = last30.slice(0, 5).map(n => n % 10);
+        const last10Terms = last30.slice(0, 10).map(n => n % 10);
+        const last5Sectors = last30.slice(0, 5).map(n => getSector(n));
+        const last5Colors = last30.slice(0, 5).map(n => getColor(n));
         
-        // Build compact context for AI
-        const matrizTop6 = Object.entries(matrizCombinado)
+        // Build rich context for AI
+        const matrizTop8 = Object.entries(matrizCombinado)
           .sort(([,a],[,b]) => (b as number) - (a as number))
-          .slice(0, 6)
+          .slice(0, 8)
           .map(([n, s]) => `${n}(${((matrizProb[Number(n)]||0)*100).toFixed(0)}%)`);
         
         const topStratsInfo = strategies.slice(0, 5).map(s => 
-          `${s.type}:[${s.numbers.slice(0,4).join(',')}] score=${s.score.toFixed(0)} prob=${s.probability}%`
-        ).join(' | ');
+          `${s.type}:[${s.numbers.slice(0,5).join(',')}] score=${s.score.toFixed(0)} prob=${s.probability}% WR=${strategyPerformance[s.type] ? ((strategyPerformance[s.type] as any).winRate*100).toFixed(0)+'%' : '?'}`
+        ).join('\n');
 
-        const pullInfo = (FULL_PULL_MAP[numbers[0]] || []).slice(0, 5).join(',');
-        const hotTermInfo = `T${daniGreen.mod1.terminal}(${daniGreen.mod1.count}x)`;
-        const wrInfo = Object.entries(strategyPerformance)
-          .filter(([,p]) => (p as any).total >= 5)
-          .sort(([,a],[,b]) => (b as any).winRate - (a as any).winRate)
-          .slice(0, 3)
-          .map(([k,p]) => `${k}:${((p as any).winRate*100).toFixed(0)}%`)
-          .join(', ');
+        const pullInfo = (FULL_PULL_MAP[numbers[0]] || []).slice(0, 8).join(',');
+        const hotTermInfo = `T${daniGreen.mod1.terminal}(${daniGreen.mod1.count}x/15)`;
+        const coldTermInfo = `T${daniGreen.mod2.terminal}(atraso ${daniGreen.mod2.delay})`;
+        
+        // Gather learning history for context
+        const recentLearningsContext = learned.slice(0, 10).map(l => {
+          const meta = l.metadata as any;
+          return `[${l.learning_type}] ${l.title}: acurácia ${l.accuracy}% | hot:[${(meta?.hotNumbers || []).slice(0,4).join(',')}]`;
+        }).join('\n');
 
-        const aiPrompt = `Roleta europeia. Últimos 20: [${last20.join(',')}]
-Terminais recentes: [${last5Terms.join(',')}] | Setores: [${last5Sectors.join(',')}] | Cores: [${last5Colors.join(',')}]
-Matriz 37x37 top6: ${matrizTop6.join(', ')}
-Puxada do ${numbers[0]}: [${pullInfo}]
-Terminal quente: ${hotTermInfo} | Entropia: ${(sessionEntropy*100).toFixed(0)}% (${sessionRegime})
-Top estratégias: ${topStratsInfo}
-WR real: ${wrInfo || 'sem dados'}
-Candidatos atuais: [${finalBetNumbers.join(',')}] (top1=${numTop1})
+        // Recent prediction results
+        const recentResults = resolvedHistory.slice(0, 10).map(p => 
+          `${p.strategy_type}: prev=[${(p.predicted_numbers || []).slice(0,3).join(',')}] saiu=${p.actual_number} ${p.hit ? '✅' : '❌'}${p.hit_type === 'exact' ? '🎯' : ''}`
+        ).join('\n');
+
+        // Terminal frequency
+        const termFreq: Record<number, number> = {};
+        for (let t = 0; t <= 9; t++) termFreq[t] = 0;
+        last30.forEach(n => termFreq[n % 10]++);
+        const termFreqStr = Object.entries(termFreq).sort(([,a],[,b]) => b - a).map(([t,c]) => `T${t}:${c}`).join(' ');
+
+        // Gaps (delays) for top candidates
+        const gapInfo = numScores.slice(0, 5).map(s => {
+          const idx = numbers.indexOf(s.num);
+          return `${s.num}(gap=${idx < 0 ? '>50' : idx})`;
+        }).join(', ');
+
+        const aiPrompt = `ROLETA EUROPEIA — ANÁLISE PROFUNDA PARA PRÓXIMO GIRO
+
+## HISTÓRICO (últimos 30)
+[${last30.join(',')}]
+
+## TERMINAIS (frequência em 30 giros)
+${termFreqStr}
+Terminal quente: ${hotTermInfo} | Terminal frio: ${coldTermInfo}
+Entropia: ${(sessionEntropy*100).toFixed(0)}% (${sessionRegime}) | Volatilidade: ${calculateVolatility(numbers).level}
+
+## DEALER
+Arco médio: ${dealerSignature.arcMean.toFixed(1)} | Consistência: ${dealerSignature.consistency} | Modo: ${dealerSignature.dealerMode}
+
+## MATRIZ DE TRANSIÇÃO (top probabilidades após ${numbers[0]})
+${matrizTop8.join(', ')}
+
+## PUXADAS do ${numbers[0]}
+Números puxados: [${pullInfo}]
+Terminais puxados: [${(FULL_PULL_TERMINALS[numbers[0]] || []).join(',')}]
+
+## GAPS dos candidatos
+${gapInfo}
+
+## ESTRATÉGIAS RANKEADAS (com WR real)
+${topStratsInfo}
+
+## ÚLTIMOS RESULTADOS DAS PREVISÕES
+${recentResults || 'Sem dados'}
+
+## APRENDIZADOS ACUMULADOS
+${recentLearningsContext || 'Nenhum'}
+
+## CANDIDATOS ESTATÍSTICOS ATUAIS
+[${finalBetNumbers.join(',')}] (top1=${numTop1})
 Confirmações: ${confirmations}/6
 
-TAREFA: Analise os padrões e responda em JSON:
-{"numbers":[max 8 números mais prováveis],"reasoning":"explicação em 1 frase","confidence":0-100,"adjustTop1":número_principal_ou_null}
-Considere: puxadas, terminais dominantes, setores quentes, Lei do Terço, matriz de transição, vizinhança no cilindro. Priorize padrões CONVERGENTES.`;
+## SUA TAREFA
+1. Analise TODOS os padrões: sequências, terminais, puxadas, gaps, setores, lei do terço, vizinhança
+2. Identifique o PADRÃO MAIS FORTE ativo agora
+3. Aprenda com os acertos e erros recentes — o que funcionou? o que falhou?
+4. Dê UMA jogada clara: qual TIPO de aposta (terminal, vizinhos, setor, dúzia, coluna, cor, pleno)?
+5. Máximo 7 números
+
+Responda APENAS JSON:
+{
+  "numbers": [max 7 números],
+  "betType": "terminal|vizinhos|setor|duzia|coluna|pleno|cavalos",
+  "reasoning": "explicação em 1-2 frases do padrão detectado",
+  "confidence": 0-100,
+  "adjustTop1": número_principal_ou_null,
+  "learned": "o que você aprendeu dos acertos/erros para aplicar agora"
+}`;
 
         const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
@@ -6413,13 +6470,22 @@ Considere: puxadas, terminais dominantes, setores quentes, Lei do Terço, matriz
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
+            model: "google/gemini-2.5-flash",
             messages: [
-              { role: "system", content: "Você é um motor de análise de roleta europeia. Responda APENAS JSON válido. Sem markdown." },
+              { role: "system", content: `Você é o motor de inteligência de um bot de roleta europeia profissional. 
+Seu objetivo: MAXIMIZAR ACERTOS analisando padrões reais do histórico.
+REGRAS:
+- Analise padrões CONVERGENTES: quando terminal + puxada + setor + gap apontam pro mesmo número
+- Aprenda com erros: se um padrão falhou 3x seguidas, EVITE-o
+- Aprenda com acertos: se puxada funcionou, REFORCE-a
+- Priorize números com GAP alto (estatisticamente devidos)
+- Lei do Terço: ~24 números únicos em 37 giros. Foque nos que FALTAM aparecer
+- Dê UMA recomendação clara, sem ambiguidade
+- Responda APENAS JSON válido, sem markdown` },
               { role: "user", content: aiPrompt },
             ],
-            temperature: 0.2,
-            max_tokens: 300,
+            temperature: 0.15,
+            max_tokens: 400,
           }),
         });
 
@@ -6431,43 +6497,60 @@ Considere: puxadas, terminais dominantes, setores quentes, Lei do Terço, matriz
             const parsed = JSON.parse(cleaned);
             
             if (Array.isArray(parsed.numbers) && parsed.numbers.length >= 2) {
-              aiAdjustedNumbers = parsed.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 8);
+              aiAdjustedNumbers = parsed.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 7);
               aiReasoning = parsed.reasoning || null;
               aiConfidence = typeof parsed.confidence === 'number' ? Math.min(100, Math.max(0, parsed.confidence)) : null;
               
-              // MERGE AI numbers with statistical numbers: AI validates/adjusts
-              // Numbers that appear in BOTH statistical AND AI picks get highest priority
+              // MERGE: AI + Statistical consensus
               const aiSet = new Set(aiAdjustedNumbers);
               const statSet = new Set(finalBetNumbers);
-              const consensus = finalBetNumbers.filter(n => aiSet.has(n)); // both agree
-              const aiOnly = (aiAdjustedNumbers || []).filter(n => !statSet.has(n)); // AI adds
-              const statOnly = finalBetNumbers.filter(n => !aiSet.has(n)); // stat only
+              const consensus = finalBetNumbers.filter(n => aiSet.has(n));
+              const aiOnly = (aiAdjustedNumbers || []).filter(n => !statSet.has(n));
+              const statOnly = finalBetNumbers.filter(n => !aiSet.has(n));
               
-              // Rebuild: consensus first, then AI additions, then stat-only, max 8
+              // Rebuild: consensus first, then AI top pick, then AI new, then stat-only
               const merged = [...new Set([
                 ...consensus,
-                // AI's top pick always included
                 ...(parsed.adjustTop1 !== null && parsed.adjustTop1 !== undefined ? [parsed.adjustTop1] : []),
                 ...aiOnly.slice(0, 3),
                 ...statOnly,
-              ])].filter(n => n >= 0 && n <= 36).slice(0, 8);
+              ])].filter(n => n >= 0 && n <= 36).slice(0, 7);
               
               if (merged.length >= 3) {
                 finalBetNumbers = merged;
-                aiLearnings.unshift(`🧠 IA VALIDOU: ${aiReasoning || 'Padrão confirmado'} (confiança ${aiConfidence || '?'}%)`);
+                // Update top1 if AI suggests
+                if (parsed.adjustTop1 !== null && parsed.adjustTop1 !== undefined && typeof parsed.adjustTop1 === 'number') {
+                  numTop1 = parsed.adjustTop1;
+                }
+                aiLearnings.unshift(`🧠 IA ANALISOU: ${aiReasoning || 'Padrão confirmado'} (${aiConfidence || '?'}% confiança)`);
                 
                 if (consensus.length >= 3) {
-                  aiLearnings.push(`✅ CONSENSO FORTE: ${consensus.length} números confirmados por IA + Estatística`);
+                  aiLearnings.push(`✅ CONSENSO FORTE: ${consensus.length} números validados por IA + Estatística`);
                 }
-                if (parsed.adjustTop1 !== null && parsed.adjustTop1 !== undefined && parsed.adjustTop1 !== numTop1) {
-                  aiLearnings.push(`🔄 IA ajustou top1: ${numTop1} → ${parsed.adjustTop1}`);
-                }
+              }
+
+              // Save AI learning to DB for future reference
+              if (isNewNumber && parsed.learned) {
+                await supabase.from('ai_learned_patterns').insert({
+                  learning_type: 'ai_reasoning',
+                  title: `IA Spin ${numbers[0]}: ${(parsed.betType || 'geral').toUpperCase()}`,
+                  knowledge: `${parsed.reasoning || ''} | Aprendizado: ${parsed.learned} | Tipo: ${parsed.betType || 'geral'}`,
+                  accuracy: aiConfidence || 50,
+                  data_points: numbers.length,
+                  metadata: {
+                    hotNumbers: aiAdjustedNumbers,
+                    betType: parsed.betType || 'geral',
+                    learned: parsed.learned,
+                    confidence: aiConfidence,
+                    lastNumber: numbers[0],
+                    consensus: consensus.length,
+                  },
+                });
               }
             }
           } catch { 
-            // AI returned non-JSON, use as reasoning text
             if (aiContent.length > 10) {
-              aiReasoning = aiContent.slice(0, 200);
+              aiReasoning = aiContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim().slice(0, 200);
               aiLearnings.push(`🧠 IA: ${aiReasoning}`);
             }
           }
