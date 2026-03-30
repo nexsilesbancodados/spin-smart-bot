@@ -12,8 +12,8 @@ const VOISINS = [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25];
 const TIERS = [27,13,36,11,30,8,23,10,5,24,16,33];
 const ORPHELINS = [1,20,14,31,9,17,34,6];
 const JEU_ZERO = [12,35,3,26,0,32,15];
-// Números de proteção baseados em erros REAIS desta mesa
-const PROTECTION_NUMBERS: number[] = [24, 29, 35, 11];
+// PROTECTION_NUMBERS removido — agora é dinâmico via realProtection (baseado em erros reais)
+const PROTECTION_NUMBERS_LEGACY: number[] = [24, 29, 35, 11]; // fallback only
 
 const OCTAVES: Record<string, number[]> = {
   O1:[0,32,15,19,4], O2:[21,2,25,17], O3:[34,6,27,13], O4:[36,11,30,8],
@@ -5842,6 +5842,103 @@ serve(async (req) => {
       if (st.probability < 55) st.score -= 5;
     });
 
+    // ══════════════════════════════════════════════════════════════
+    // ANTI-ESTAGNAÇÃO: Detecta se a IA está presa no mesmo tipo de jogada
+    // com WR declinante e FORÇA rotação para a melhor alternativa
+    // ══════════════════════════════════════════════════════════════
+    (() => {
+      if (resolvedHistory.length < 5) return;
+      // Check last 5 predictions — same strategy type?
+      const last5Strats = resolvedHistory.slice(0, 5).map(p => p.strategy_type);
+      const last5Types = new Set(last5Strats);
+      if (last5Types.size > 1) return; // already diverse, no action needed
+      
+      const stuckType = last5Strats[0];
+      const stuckPerf = strategyPerformance[stuckType];
+      if (!stuckPerf) return;
+      
+      // Only force rotation if WR is below 30% OR declining
+      const isStuckAndFailing = stuckPerf.recentTrend < 0.30 || (stuckPerf.winRate < 0.25 && stuckPerf.total >= 5);
+      if (!isStuckAndFailing) return; // strategy is working, keep it
+      
+      // Find best alternative from a DIFFERENT category
+      const stuckCategory = (() => {
+        if (['sniper','voisins','setor_oposto','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','jeu_zero'].includes(stuckType)) return 'setor';
+        if (['cavalos','cavalos_comp','cavalo_split'].includes(stuckType)) return 'cavalos';
+        if (['terminal_alternation','duplo_terminal','terminais_cruzados','poucas_fichas','terminal_alto_baixo'].includes(stuckType)) return 'terminal';
+        if (['duzia_unica','dozen_phase','duzias','pressao_retorno','duzia_progressiva'].includes(stuckType)) return 'duzia';
+        if (['fusao_suprema','convergencia_absoluta','matrix_fusion','archetype_fusion','combo_ouro','combo_prata','ensemble_supremo'].includes(stuckType)) return 'fusao';
+        return stuckType;
+      })();
+      
+      const getCat = (type: string) => {
+        if (['sniper','voisins','setor_oposto','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','jeu_zero'].includes(type)) return 'setor';
+        if (['cavalos','cavalos_comp','cavalo_split'].includes(type)) return 'cavalos';
+        if (['terminal_alternation','duplo_terminal','terminais_cruzados','poucas_fichas','terminal_alto_baixo'].includes(type)) return 'terminal';
+        if (['duzia_unica','dozen_phase','duzias','pressao_retorno','duzia_progressiva'].includes(type)) return 'duzia';
+        if (['fusao_suprema','convergencia_absoluta','matrix_fusion','archetype_fusion','combo_ouro','combo_prata','ensemble_supremo'].includes(type)) return 'fusao';
+        return type;
+      };
+      
+      // Boost ALL strategies from different categories
+      const rotationBoost = stuckPerf.recentTrend < 0.15 ? 25 : 15; // more aggressive if really failing
+      for (const st of strategies) {
+        const cat = getCat(st.type);
+        if (cat !== stuckCategory) {
+          st.score += rotationBoost;
+        } else if (st.type === stuckType) {
+          st.score -= rotationBoost; // penalize the stuck strategy
+        }
+      }
+      
+      aiLearnings.push(`🔄 ANTI-ESTAGNAÇÃO: ${stuckType} repetiu 5x com ${(stuckPerf.recentTrend*100).toFixed(0)}% WR → forçando rotação (+${rotationBoost}pts alternativas)`);
+    })();
+
+    // ══════════════════════════════════════════════════════════════
+    // TRANSIÇÃO DE MODO DE MESA: quando o modo muda (fisico↔matematico),
+    // boost extra para estratégias alinhadas com o NOVO modo
+    // ══════════════════════════════════════════════════════════════
+    (() => {
+      if (resolvedHistory.length < 3) return;
+      // Check if previous predictions had a different mesa_mode
+      const prevModes = resolvedHistory.slice(0, 5)
+        .map(p => p.mesa_mode)
+        .filter(Boolean);
+      if (prevModes.length < 2) return;
+      
+      const prevDominantMode = prevModes[0]; // most recent resolved
+      if (prevDominantMode === mesaMode) return; // no transition
+      
+      // Mode changed! Boost aligned strategies
+      const transitionBoost = 18;
+      for (const st of strategies) {
+        if (mesaMode === 'fisico' && ['sniper','voisins','ultra_sniper','ritmo_calibrado','cylinder_bias','setor_oposto','cluster_regional'].includes(st.type)) {
+          st.score += transitionBoost;
+        }
+        if (mesaMode === 'matematico' && ['cavalos','terminal_alternation','duplo_terminal','duzias','duzia_progressiva','poucas_fichas','coluna','column_cycle'].includes(st.type)) {
+          st.score += transitionBoost;
+        }
+        if (mesaMode === 'misto' && ['fusao_suprema','convergencia_absoluta','matrix_fusion','archetype_fusion','ensemble_supremo','combo_ouro'].includes(st.type)) {
+          st.score += transitionBoost;
+        }
+      }
+      
+      aiLearnings.push(`⚡ TRANSIÇÃO: Mesa mudou de ${prevDominantMode} → ${mesaMode} — rebalanceando estratégias (+${transitionBoost}pts alinhadas)`);
+    })();
+
+    // ══════════════════════════════════════════════════════════════
+    // BEST-OF-MOMENT: se a melhor simulação interna (miniSimResults)
+    // diverge do winner atual, dar boost ao tipo que simulou melhor
+    // ══════════════════════════════════════════════════════════════
+    if (bestSim && bestSim[1] > 0.35) {
+      const simType = bestSim[0];
+      for (const st of strategies) {
+        if (st.type === simType || st.type.includes(simType)) {
+          st.score += Math.round(bestSim[1] * 20);
+        }
+      }
+    }
+
     // If two strategies tie, prefer higher payout
     // STRATEGY FILTER — if user selected a category, only keep matching strategies
     if (strategyFilterParam) {
@@ -6357,8 +6454,6 @@ serve(async (req) => {
         : 999;
 
       if (!latestPrediction || (latestPrediction.hit !== null && secondsSinceLatestPrediction > 18)) {
-        // Always merge protection numbers into predicted numbers
-        const predictedWithProtection = [...new Set([...winner.numbers, ...PROTECTION_NUMBERS])];
         await supabase.from('prediction_history').insert({
           strategy_type: winner.type,
           strategy_label: winner.label,
@@ -6698,8 +6793,8 @@ serve(async (req) => {
     const combinedSorted = Object.entries(combinedNumFreq)
       .sort(([,a],[,b]) => b.count - a.count || b.totalProb - a.totalProb)
       .map(([n, info]) => ({ num: Number(n), ...info }));
-    // Add protection
-    PROTECTION_NUMBERS.forEach(pn => {
+    // Add dynamic protection (not hardcoded)
+    realProtection.forEach(pn => {
       if (!combinedSorted.find(c => c.num === pn)) {
         combinedSorted.push({ num: pn, count: 0, totalProb: 0, sources: ['🛡️'] });
       }

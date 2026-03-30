@@ -6,7 +6,7 @@ import {
 
 
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-const PROTECTION_NUMBERS = [24, 29, 35, 11];
+// Protection numbers are now dynamic from sniperData.signal.protection
 const colorClass = (n: number, isProtection = false) => {
   const base = n === 0 ? 'bg-green-600 text-white ring-green-400/40' 
     : RED_NUMBERS.includes(n) ? 'bg-red-600 text-white ring-red-400/30' 
@@ -362,7 +362,8 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
           supportPool.forEach((n: number) => { scoreCount[n] = (scoreCount[n] || 0) + 1; });
           const sortedSupport = [...new Set(supportPool)].sort((a, b) => (scoreCount[b] || 0) - (scoreCount[a] || 0));
 
-          const PROT = PROTECTION_NUMBERS.filter(n => n !== ensTop1);
+          const dynamicProtection: number[] = sniperData?.signal?.protection || sniperData?.strategy?.protection || [];
+          const PROT = dynamicProtection.filter((n: number) => n !== ensTop1);
           const support = sortedSupport.slice(0, 8);
           const finalNumbers: number[] = [...new Set([ensTop1, ...support, ...PROT])].slice(0, 12);
 
@@ -607,7 +608,7 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                       {finalNumbers.map((n: number) => {
                         const isMain = n === ensTop1;
                         const isHC = highConviction.includes(n) && !isMain;
-                        const isProt = PROTECTION_NUMBERS.includes(n) && !isMain && !isHC;
+                        const isProt = dynamicProtection.includes(n) && !isMain && !isHC;
                         return (
                           <motion.div
                             key={n}
