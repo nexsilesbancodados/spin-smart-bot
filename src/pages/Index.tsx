@@ -451,24 +451,32 @@ const Index = () => {
           {/* ════ ÚLTIMOS NÚMEROS ════ */}
           <Last12Numbers allNumbers={allNumbers} />
 
-          {/* ════ SNIPER SIGNAL (HERO) ════ */}
-          {aiEnabled ? (
-            <SniperSignal
-              sniperData={sniperData}
-              sniperCountdown={sniperCountdown}
-              sniperStale={sniperStale}
-              lastPredResult={lastPredResult}
-              confidenceFilter={confidenceFilter}
-              rtInsights={rtInsights}
-              allNumbers={allNumbers}
-            />
-          ) : (
-            <div className="bg-card rounded-2xl border border-destructive/30 p-12 text-center">
-              <Power className="w-10 h-10 text-destructive/40 mx-auto mb-3" />
-              <p className="text-sm font-bold text-destructive">IA DESLIGADA</p>
-              <p className="text-xs text-muted-foreground mt-1">Clique "IA ON" para reativar</p>
+          {/* ════ SNIPER SIGNAL + LOG LADO A LADO ════ */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              {aiEnabled ? (
+                <SniperSignal
+                  sniperData={sniperData}
+                  sniperCountdown={sniperCountdown}
+                  sniperStale={sniperStale}
+                  lastPredResult={lastPredResult}
+                  confidenceFilter={confidenceFilter}
+                  rtInsights={rtInsights}
+                  allNumbers={allNumbers}
+                />
+              ) : (
+                <div className="bg-card rounded-2xl border border-destructive/30 p-12 text-center h-full flex flex-col items-center justify-center">
+                  <Power className="w-10 h-10 text-destructive/40 mb-3" />
+                  <p className="text-sm font-bold text-destructive">IA DESLIGADA</p>
+                  <p className="text-xs text-muted-foreground mt-1">Clique "IA ON" para reativar</p>
+                </div>
+              )}
             </div>
-          )}
+            <div className="lg:col-span-1 space-y-3">
+              <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} rtInsights={rtInsights} />
+              <ManualInput onAddNumbers={handleManualNumbers} />
+            </div>
+          </div>
 
           {/* ════ APRENDIZADO APLICADO ════ */}
           {sniperData?.learnedBetInfluence?.length > 0 && (
@@ -481,7 +489,7 @@ const Index = () => {
                   {sniperData.learnedBetInfluence.length} padrões
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {sniperData.learnedBetInfluence.slice(0, 6).map((inf: any, i: number) => (
                   <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/40 border border-border">
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black shrink-0 ${colorClass(inf.num)}`}>{inf.num}</div>
@@ -493,6 +501,27 @@ const Index = () => {
                 ))}
               </div>
             </motion.div>
+          )}
+
+          {/* ════ AI INSIGHTS (sempre visível quando há dados) ════ */}
+          {sniperData?.aiLearnings?.length > 0 && (
+            <div className="bg-card rounded-xl border border-purple-500/20 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Brain className="w-4 h-4 text-purple-400" />
+                <span className="font-display text-[10px] tracking-[0.15em] font-bold text-purple-400">ANÁLISE IA</span>
+                <span className="text-[8px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold font-mono ml-auto">
+                  {sniperData.aiLearnings.length} insights
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {sniperData.aiLearnings.slice(0, 8).map((learning: string, i: number) => (
+                  <div key={i} className="flex items-start gap-1.5 px-2.5 py-2 rounded-lg bg-secondary/40 border border-border">
+                    <Sparkles className="w-3 h-3 text-purple-400 mt-0.5 shrink-0" />
+                    <span className="text-[9px] text-foreground/90 leading-tight">{learning}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* ════ COLLAPSIBLE SECTIONS ════ */}
@@ -513,28 +542,6 @@ const Index = () => {
                 </div>
               </div>
             </CollapsibleSection>
-
-            {/* AI Insights */}
-            {sniperData?.aiLearnings?.length > 0 && (
-              <CollapsibleSection
-                title="🧠 ANÁLISE IA"
-                badge={`${sniperData.aiLearnings.length} insights`}
-                isOpen={activeSection === 'ai'}
-                onToggle={() => toggleSection('ai')}
-              >
-                <div className="space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {sniperData.aiLearnings.slice(0, 8).map((learning: string, i: number) => (
-                      <div key={i} className="flex items-start gap-1.5 px-2.5 py-2 rounded-lg bg-secondary/40 border border-border">
-                        <Sparkles className="w-3 h-3 text-purple-400 mt-0.5 shrink-0" />
-                        <span className="text-[9px] text-foreground/90 leading-tight">{learning}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} rtInsights={rtInsights} />
-                </div>
-              </CollapsibleSection>
-            )}
 
             {/* Rankings & Radar */}
             <CollapsibleSection
