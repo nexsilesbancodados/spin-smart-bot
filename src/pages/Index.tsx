@@ -1,13 +1,8 @@
-import { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition, lazy, Suspense } from 'react';
-
+import { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Activity, MonitorPlay, RefreshCw, Brain, Sparkles, TrendingUp,
-  Hash, Flame, Snowflake, Target, BarChart3, ChevronDown,
-  Zap, Clock, GraduationCap, Crosshair, Eye, AlertTriangle, Power
+  Activity, Brain, ChevronDown, GraduationCap, Sparkles, Power, MonitorPlay, Crosshair
 } from 'lucide-react';
-import Scanner500 from '@/components/Scanner500';
-import PatternPanel24h from '@/components/PatternPanel24h';
 import PredictionHistory from '@/components/PredictionHistory';
 import BetPanel from '@/components/BetPanel';
 import AILearningLog from '@/components/AILearningLog';
@@ -15,54 +10,18 @@ import NumberDNADialog from '@/components/NumberDNADialog';
 import PullRadar from '@/components/PullRadar';
 import StrategyLeaderboard from '@/components/StrategyLeaderboard';
 import Navbar from '@/components/Navbar';
-import StatsBar from '@/components/StatsBar';
 import Last12Numbers from '@/components/Last12Numbers';
 import ZeroPressure from '@/components/ZeroPressure';
 import SessionSummary from '@/components/SessionSummary';
 import SniperSignal from '@/components/SniperSignal';
 import ManualInput from '@/components/ManualInput';
 import WheelMap from '@/components/WheelMap';
+import Scanner500 from '@/components/Scanner500';
+import PatternPanel24h from '@/components/PatternPanel24h';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 
-// Sound feedback via Web Audio API
-const playSound = (type: 'hit' | 'miss' | 'signal', enabled: boolean) => {
-  if (!enabled) return;
-  try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    if (type === 'hit') {
-      osc.frequency.setValueAtTime(523, ctx.currentTime);
-      osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1);
-      osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.5);
-    } else if (type === 'miss') {
-      osc.frequency.setValueAtTime(200, ctx.currentTime);
-      osc.frequency.setValueAtTime(150, ctx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.3);
-    } else if (type === 'signal') {
-      osc.frequency.setValueAtTime(440, ctx.currentTime);
-      osc.frequency.setValueAtTime(554, ctx.currentTime + 0.08);
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.25);
-    }
-  } catch { /* áudio não disponível */ }
-};
-
-const CAVALOS_258 = [2, 5, 8, 12, 15, 18, 22, 25, 28, 32, 35];
 const WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 const WL = WHEEL.length;
 const VOISINS_NUMS = [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25];
@@ -76,64 +35,67 @@ const CAVALOS_GROUPS: Record<string, number[]> = {
 };
 
 const DUPLICATE_SPIN_WINDOW_MS = 5000;
-
-const getPrependedNumbers = (next: number[], previous: number[]) => {
-  if (previous.length === 0) return next;
-
-  const maxOffset = Math.min(12, next.length);
-
-  for (let offset = 0; offset <= maxOffset; offset++) {
-    const compareCount = Math.min(10, previous.length, next.length - offset);
-    if (compareCount <= 0) continue;
-
-    let matches = true;
-    for (let i = 0; i < compareCount; i++) {
-      if (next[offset + i] !== previous[i]) {
-        matches = false;
-        break;
-      }
-    }
-
-    if (matches) return next.slice(0, offset);
-  }
-
-  return [];
-};
-
-const wheelIdx = (n: number) => WHEEL.indexOf(n);
-const wheelDist = (a: number, b: number) => {
-  const ia = wheelIdx(a), ib = wheelIdx(b);
-  if (ia === -1 || ib === -1) return 99;
-  const d = Math.abs(ia - ib);
-  return Math.min(d, WL - d);
-};
-const getSectorName = (n: number) => VOISINS_NUMS.includes(n) ? 'Voisins' : TIERS_NUMS.includes(n) ? 'Tiers' : ORPHELINS_NUMS.includes(n) ? 'Orphelins' : 'Zero';
-const getCavaloGroup = (n: number) => { for (const [k, v] of Object.entries(CAVALOS_GROUPS)) if (v.includes(n)) return k; return null; };
-const colorClass = (n: number) => {
-  if (n === 0) return 'bg-roulette-green text-white';
-  return RED_NUMBERS.includes(n) ? 'bg-roulette-red text-white' : 'bg-roulette-black text-white';
-};
-
 const ROULETTE_TABLES = [
   { id: 'brasileira', name: 'Roleta Brasileira', provider: 'Playtech', iframeUrl: 'https://onabet.com/casino/roleta-brasileira' },
   { id: 'brasileira2', name: 'Roleta Brasileira 2', provider: 'Playtech', iframeUrl: 'https://onabet.com/casino/roleta-ao-vivo' },
 ];
 
-const PATTERN_ICONS: Record<string, typeof Brain> = {
-  streak: TrendingUp, terminal: Hash, dozen: BarChart3, column: BarChart3,
-  hot: Flame, cold: Snowflake, parity: RefreshCw, sector: Target,
-  frequency_bias: Flame, terminal_pattern: Hash, color_tendency: TrendingUp,
-  dozen_cycle: BarChart3, cavalos_pattern: Target, timing_pattern: Clock,
-  streak_behavior: TrendingUp, sector_concentration: Target,
+const colorClass = (n: number) => {
+  if (n === 0) return 'bg-emerald-600 text-white';
+  return RED_NUMBERS.has(n) ? 'bg-red-600 text-white' : 'bg-zinc-800 text-white';
+};
+const getSectorName = (n: number) => VOISINS_NUMS.includes(n) ? 'Voisins' : TIERS_NUMS.includes(n) ? 'Tiers' : ORPHELINS_NUMS.includes(n) ? 'Orphelins' : 'Zero';
+const getCavaloGroup = (n: number) => { for (const [k, v] of Object.entries(CAVALOS_GROUPS)) if (v.includes(n)) return k; return null; };
+
+const playSound = (type: 'hit' | 'miss' | 'signal', enabled: boolean) => {
+  if (!enabled) return;
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    if (type === 'hit') {
+      osc.frequency.setValueAtTime(523, ctx.currentTime);
+      osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.5);
+    } else if (type === 'miss') {
+      osc.frequency.setValueAtTime(200, ctx.currentTime);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    } else {
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.25);
+    }
+  } catch { /* no audio */ }
 };
 
-// Memoized history grid — avoids hundreds of motion.div re-renders
-const HistoryGrid = memo(({ historySlice, selectedNum, setSelectedNum, setDnaNumber, setDnaOpen }: {
-  historySlice: number[];
-  selectedNum: number | null;
-  setSelectedNum: (n: number | null) => void;
-  setDnaNumber: (n: number) => void;
-  setDnaOpen: (b: boolean) => void;
+const getPrependedNumbers = (next: number[], previous: number[]) => {
+  if (previous.length === 0) return next;
+  const maxOffset = Math.min(12, next.length);
+  for (let offset = 0; offset <= maxOffset; offset++) {
+    const compareCount = Math.min(10, previous.length, next.length - offset);
+    if (compareCount <= 0) continue;
+    let matches = true;
+    for (let i = 0; i < compareCount; i++) {
+      if (next[offset + i] !== previous[i]) { matches = false; break; }
+    }
+    if (matches) return next.slice(0, offset);
+  }
+  return [];
+};
+
+// Memoized history grid
+const HistoryGrid = memo(({ historySlice, selectedNum, setSelectedNum }: {
+  historySlice: number[]; selectedNum: number | null; setSelectedNum: (n: number | null) => void;
 }) => {
   const rows = useMemo(() => {
     const r: number[][] = [];
@@ -142,23 +104,18 @@ const HistoryGrid = memo(({ historySlice, selectedNum, setSelectedNum, setDnaNum
   }, [historySlice]);
 
   return (
-    <div className="space-y-1.5">
-      {rows.map((row, rowIdx) => (
-        <div key={rowIdx} className="flex gap-1 flex-wrap">
-          {row.map((n, i) => {
-            const isSelected = selectedNum === n;
-            const isDimmed = selectedNum !== null && selectedNum !== n;
-            return (
-              <div key={`${rowIdx}-${i}-${n}`}
-                onClick={() => setSelectedNum(selectedNum === n ? null : n)}
-                onDoubleClick={() => { setDnaNumber(n); setDnaOpen(true); }}
-                style={{ opacity: isDimmed ? 0.25 : 1 }}
-                className={`w-[32px] h-[32px] rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm cursor-pointer border transition-transform duration-100
-                  ${isSelected ? 'ring-2 ring-primary scale-110 bg-primary text-primary-foreground border-primary' : `${colorClass(n)} border-white/10 hover:scale-110`}`}>
-                {n}
-              </div>
-            );
-          })}
+    <div className="space-y-1">
+      {rows.map((row, ri) => (
+        <div key={ri} className="flex gap-1 flex-wrap">
+          {row.map((n, i) => (
+            <div key={`${ri}-${i}-${n}`}
+              onClick={() => setSelectedNum(selectedNum === n ? null : n)}
+              style={{ opacity: selectedNum !== null && selectedNum !== n ? 0.2 : 1 }}
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold cursor-pointer border transition-all
+                ${selectedNum === n ? 'ring-2 ring-primary scale-110 bg-primary text-primary-foreground border-primary' : `${colorClass(n)} border-white/10 hover:scale-105`}`}>
+              {n}
+            </div>
+          ))}
         </div>
       ))}
     </div>
@@ -173,10 +130,9 @@ const Index = () => {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showAllHistory, setShowAllHistory] = useState(false);
   const prevNumbersRef = useRef<string>('');
   const [sniperData, setSniperData] = useState<any>(null);
-  const [rtInsights, setRtInsights] = useState<{ type: string; numbers: number[]; score: number; reason: string; confidence: number }[]>([]);
+  const [rtInsights, setRtInsights] = useState<any[]>([]);
   const [sniperCountdown, setSniperCountdown] = useState(13);
   const sniperPrevKey = useRef<string>('');
   const sniperSameCount = useRef(0);
@@ -184,29 +140,19 @@ const Index = () => {
   const [lastPredResult, setLastPredResult] = useState<{ hit: boolean | null; hitType: string | null; predicted: number | null; actual: number | null; label: string } | null>(null);
   const [autoLearnStatus, setAutoLearnStatus] = useState<'idle' | 'learning' | 'analyzing' | 'backtesting'>('idle');
   const [showCasino, setShowCasino] = useState(false);
-  const [predStats, setPredStats] = useState<{ hits: number; misses: number; exact: number; total: number }>({ hits: 0, misses: 0, exact: 0, total: 0 });
+  const [predStats, setPredStats] = useState({ hits: 0, misses: 0, exact: 0, total: 0 });
   const [historyLimit, setHistoryLimit] = useState(100);
   const [selectedNum, setSelectedNum] = useState<number | null>(null);
   const [dnaNumber, setDnaNumber] = useState<number | null>(null);
   const [dnaOpen, setDnaOpen] = useState(false);
   const [confidenceFilter, setConfidenceFilter] = useState(true);
-  const [sampleSize, setSampleSize] = useState(100);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [sampleSize] = useState(100);
   const [showPredHistory, setShowPredHistory] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
   const [strategyFilter, setStrategyFilter] = useState<string>('all');
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled] = useState(true);
   const [activePatternCount, setActivePatternCount] = useState(0);
-
-  const sessionMode = useMemo(() => {
-    if (!sniperData?.trendEngine) return null;
-    const te = sniperData.trendEngine;
-    if (Number(te.confidence) >= 70) return { label: '🎯 PADRÃO FORTE', color: 'text-green-400' };
-    if (Number(te.confidence) >= 50) return { label: '⚡ PADRÃO ATIVO', color: 'text-yellow-400' };
-    if (sniperData.mode === 'observing') return { label: '👁️ OBSERVANDO', color: 'text-muted-foreground' };
-    if (sniperData.mode === 'calibrating') return { label: '🔄 CALIBRANDO', color: 'text-blue-400' };
-    return null;
-  }, [sniperData?.trendEngine?.confidence, sniperData?.mode]);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
   const handleManualNumbers = (nums: number[]) => {
     setApiNumbers(prev => [...nums, ...prev].slice(0, 1000));
@@ -214,25 +160,22 @@ const Index = () => {
 
   // Pattern count polling
   useEffect(() => {
-    const loadPatternCount = async () => {
-      const { count } = await supabase
-        .from('pattern_insights')
-        .select('*', { count: 'exact', head: true })
-        .gt('confidence', 45);
+    const load = async () => {
+      const { count } = await supabase.from('pattern_insights').select('*', { count: 'exact', head: true }).gt('confidence', 45);
       setActivePatternCount(count || 0);
     };
-    loadPatternCount();
-    const interval = setInterval(loadPatternCount, 30000);
+    load();
+    const interval = setInterval(load, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Track if sniper is already being fetched to avoid double calls
   const sniperFetchingRef = useRef(false);
   const lastSniperTriggerRef = useRef(0);
   const lastSpinSignatureRef = useRef('');
   const apiSnapshotRef = useRef<number[]>([]);
   const lastAcceptedSpinRef = useRef<{ number: number | null; timestamp: number }>({ number: null, timestamp: 0 });
   const processedPredictionEventsRef = useRef<Record<string, number>>({});
+  const spinCountSinceMicroLearnRef = useRef(0);
 
   const isBurstDuplicate = useCallback((number: number) => {
     const { number: lastNumber, timestamp } = lastAcceptedSpinRef.current;
@@ -245,47 +188,32 @@ const Index = () => {
 
   const shouldProcessPredictionEvent = useCallback((row: { id: string; hit: boolean | null; hit_type: string | null; actual_number: number | null }) => {
     const now = Date.now();
-    Object.keys(processedPredictionEventsRef.current).forEach((key) => {
+    Object.keys(processedPredictionEventsRef.current).forEach(key => {
       if (now - processedPredictionEventsRef.current[key] > 15000) delete processedPredictionEventsRef.current[key];
     });
-
     const eventKey = `${row.id}-${row.hit}-${row.hit_type}-${row.actual_number}`;
     if (processedPredictionEventsRef.current[eventKey]) return false;
     processedPredictionEventsRef.current[eventKey] = now;
     return true;
   }, []);
 
-  const handleNewSpin = useCallback((signature: string, latestNumber?: number) => {
+  const handleNewSpin = useCallback((signature: string) => {
     if (!signature || signature === lastSpinSignatureRef.current) return;
     lastSpinSignatureRef.current = signature;
     sniperSameCount.current = 0;
     setSniperStale(false);
     setSniperCountdown(13);
     playSound('signal', soundEnabled);
-    // Disparar realtime-patterns a cada giro novo — captura padrões do momento
     if (aiEnabled) {
       supabase.functions.invoke('realtime-patterns')
-        .then(res => {
-          if (res.data?.all_insights?.length > 0) {
-            setRtInsights(res.data.all_insights.slice(0, 6));
-          }
-        })
+        .then(res => { if (res.data?.all_insights?.length > 0) setRtInsights(res.data.all_insights.slice(0, 6)); })
         .catch(() => {});
     }
   }, [soundEnabled, aiEnabled]);
 
-  // Track spins for micro-learning trigger
-  const spinCountSinceMicroLearnRef = useRef(0);
-
   const triggerMicroLearn = useCallback(async () => {
     if (!aiEnabled) return;
-    try {
-      // Rodar em paralelo: auto-analyze + realtime-patterns
-      await Promise.allSettled([
-        supabase.functions.invoke('auto-analyze-patterns'),
-        supabase.functions.invoke('realtime-patterns'),
-      ]);
-    } catch { /* silent */ }
+    try { await Promise.allSettled([supabase.functions.invoke('auto-analyze-patterns'), supabase.functions.invoke('realtime-patterns')]); } catch { /* */ }
   }, [aiEnabled]);
 
   const fetchSniper = useCallback(async (retryCount = 0) => {
@@ -297,42 +225,23 @@ const Index = () => {
     lastSniperTriggerRef.current = now;
     try {
       const clientNums = apiNumbers.length > 0 ? apiNumbers.slice(0, sampleSize) : undefined;
-      const res = await supabase.functions.invoke('sniper-predict', { 
-        body: { sampleSize, numbers: clientNums, strategyFilter: strategyFilter !== 'all' ? strategyFilter : undefined } 
+      const res = await supabase.functions.invoke('sniper-predict', {
+        body: { sampleSize, numbers: clientNums, strategyFilter: strategyFilter !== 'all' ? strategyFilter : undefined }
       });
       if (res.error) {
-        console.error('Sniper invoke error:', res.error);
-        // Auto-retry up to 2 times with delay
-        if (retryCount < 2) {
-          sniperFetchingRef.current = false;
-          setTimeout(() => fetchSniper(retryCount + 1), 2000 * (retryCount + 1));
-          return;
-        }
+        if (retryCount < 2) { sniperFetchingRef.current = false; setTimeout(() => fetchSniper(retryCount + 1), 2000 * (retryCount + 1)); return; }
       }
       if (res.data) {
         const key = `${res.data.strategy?.type}-${res.data.signal?.number}-${res.data.mode}`;
-        if (key !== sniperPrevKey.current) {
-          sniperPrevKey.current = key;
-          sniperSameCount.current = 0;
-          setSniperStale(false);
-        } else {
-          sniperSameCount.current++;
-          if (sniperSameCount.current >= 3) setSniperStale(true);
-        }
+        if (key !== sniperPrevKey.current) { sniperPrevKey.current = key; sniperSameCount.current = 0; setSniperStale(false); }
+        else { sniperSameCount.current++; if (sniperSameCount.current >= 3) setSniperStale(true); }
         setSniperData(res.data);
       }
-    } catch (err) { 
-      console.error('Sniper error:', err);
-      if (retryCount < 2) {
-        sniperFetchingRef.current = false;
-        setTimeout(() => fetchSniper(retryCount + 1), 2000 * (retryCount + 1));
-        return;
-      }
-    }
-    finally { sniperFetchingRef.current = false; }
+    } catch (err) {
+      if (retryCount < 2) { sniperFetchingRef.current = false; setTimeout(() => fetchSniper(retryCount + 1), 2000 * (retryCount + 1)); return; }
+    } finally { sniperFetchingRef.current = false; }
   }, [sampleSize, aiEnabled, apiNumbers, strategyFilter]);
 
-  // === Data Fetching ===
   const fetchNumbers = useCallback(async () => {
     try {
       const res = await supabase.functions.invoke('proxy-roleta');
@@ -343,7 +252,6 @@ const Index = () => {
         const previousSnapshot = apiSnapshotRef.current;
         const newNumbers = getPrependedNumbers(nums, previousSnapshot);
         const key = nums.slice(0, 20).join(',');
-
         if (previousSnapshot.length === 0) {
           apiSnapshotRef.current = nums;
           setApiNumbers(nums);
@@ -353,41 +261,32 @@ const Index = () => {
           apiSnapshotRef.current = nums;
           setApiNumbers(prev => [...newNumbers, ...prev].slice(0, 1000));
           setLastUpdate(new Date());
-
           if (!isBurstDuplicate(newNumbers[0])) {
             markAcceptedSpin(newNumbers[0]);
-            handleNewSpin(nums.slice(0, 3).join(','), newNumbers[0]);
+            handleNewSpin(nums.slice(0, 3).join(','));
             fetchSniper();
           }
-
           prevNumbersRef.current = key;
         }
         setError(null);
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro');
-    }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Erro'); }
   }, [fetchSniper, handleNewSpin, isBurstDuplicate, markAcceptedSpin]);
 
   const fetchStored = useCallback(async () => {
-    const { data } = await supabase
-      .from('roulette_numbers')
-      .select('number')
-      .order('fetched_at', { ascending: false })
-      .limit(1000);
+    const { data } = await supabase.from('roulette_numbers').select('number').order('fetched_at', { ascending: false }).limit(1000);
     if (data) setStoredNumbers(data.map((r: any) => r.number));
   }, []);
 
+  // Polling
   useEffect(() => {
-    fetchNumbers();
-    fetchStored();
-    fetchSniper();
+    fetchNumbers(); fetchStored(); fetchSniper();
     if (!isPolling) return;
     const interval = setInterval(() => { fetchNumbers(); fetchStored(); fetchSniper(); }, 3000);
     return () => clearInterval(interval);
   }, [fetchNumbers, fetchStored, fetchSniper, isPolling]);
 
-  // Also trigger sniper instantly via realtime when a new number is inserted
+  // Realtime trigger
   useEffect(() => {
     const ch = supabase.channel('sniper_trigger_rt')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'roulette_numbers' }, (payload: any) => {
@@ -396,47 +295,35 @@ const Index = () => {
           markAcceptedSpin(row.number);
           apiSnapshotRef.current = [row.number, ...apiSnapshotRef.current].slice(0, 1000);
           setApiNumbers(prev => prev[0] === row.number ? prev : [row.number, ...prev].slice(0, 1000));
-          handleNewSpin(`${row.number}-${row.fetched_at ?? ''}`, row.number);
+          handleNewSpin(`${row.number}-${row.fetched_at ?? ''}`);
           setLastUpdate(new Date());
           fetchSniper();
-          
-          // Micro-learn every 10 spins
           spinCountSinceMicroLearnRef.current++;
-          if (spinCountSinceMicroLearnRef.current >= 10) {
-            spinCountSinceMicroLearnRef.current = 0;
-            triggerMicroLearn();
-          }
+          if (spinCountSinceMicroLearnRef.current >= 10) { spinCountSinceMicroLearnRef.current = 0; triggerMicroLearn(); }
         }
-      })
-      .subscribe();
+      }).subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [fetchSniper, handleNewSpin, isBurstDuplicate, markAcceptedSpin]);
+  }, [fetchSniper, handleNewSpin, isBurstDuplicate, markAcceptedSpin, triggerMicroLearn]);
 
-  // Listener para mensagens vindas da extensão (via window.postMessage)
+  // Extension message listener
   useEffect(() => {
-    const handleExtMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'AUTOBET_STATUS') {
-        console.log('[Autobet] Status da extensão:', event.data);
-      }
+    const handler = (event: MessageEvent) => {
       if (event.data?.type === 'NUMBER_FROM_EXTENSION') {
         const n = event.data.number;
-        if (typeof n === 'number' && n >= 0 && n <= 36) {
-          setApiNumbers(prev => [n, ...prev].slice(0, 1000));
-        }
+        if (typeof n === 'number' && n >= 0 && n <= 36) setApiNumbers(prev => [n, ...prev].slice(0, 1000));
       }
     };
-    window.addEventListener('message', handleExtMessage);
-    return () => window.removeEventListener('message', handleExtMessage);
-  }, [fetchSniper, handleNewSpin, isBurstDuplicate, markAcceptedSpin]);
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
 
+  // Countdown
   useEffect(() => {
-    const timer = setInterval(() => {
-      setSniperCountdown(prev => Math.max(0, prev - 1));
-    }, 1000);
+    const timer = setInterval(() => setSniperCountdown(prev => Math.max(0, prev - 1)), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // === Data loading ===
+  // Pred stats
   const loadPredStats = useCallback(async () => {
     const { data } = await supabase.from('prediction_history').select('hit, hit_type').not('hit', 'is', null).limit(500);
     if (data) {
@@ -445,677 +332,235 @@ const Index = () => {
       setPredStats({ hits, misses: data.length - hits, exact, total: data.length });
     }
   }, []);
-
   useEffect(() => { loadPredStats(); }, [loadPredStats]);
 
-  // === Auto Learning — Autonomous 24/7 ===
-  const autoLearnRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Auto learn loop
   const cycleRef = useRef(0);
   const autoLearnErrorCount = useRef(0);
   const autoLearnDisabled = useRef(false);
   const consecutiveSuccessRef = useRef(0);
-  const currentIntervalRef = useRef(60_000); // 60s inicial, mínimo 30s
+  const currentIntervalRef = useRef(60_000);
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-    const runContinuousLearn = async () => {
-      if (!aiEnabled || autoLearnDisabled.current) {
-        setAutoLearnStatus('idle');
-        scheduleNext();
-        return;
-      }
+    const run = async () => {
+      if (!aiEnabled || autoLearnDisabled.current) { setAutoLearnStatus('idle'); schedule(); return; }
       const cycle = cycleRef.current++;
       try {
-        // Realtime-patterns SEMPRE roda em paralelo — captura padrões do momento
         supabase.functions.invoke('realtime-patterns').catch(() => {});
-
-        const phase = cycle % 9; // 9 fases agora
-        
+        const phase = cycle % 9;
         if (phase === 0 || phase === 4) {
           setAutoLearnStatus('learning');
-          const res = await supabase.functions.invoke('ai-learn');
-          if (res?.error || res?.data?.error) throw new Error(res?.data?.error || res?.error?.message || 'ai-learn failed');
+          await supabase.functions.invoke('ai-learn');
         } else if (phase === 1 || phase === 5) {
           setAutoLearnStatus('analyzing');
-          const res = await supabase.functions.invoke('auto-analyze-patterns');
-          if (res?.error || res?.data?.error) throw new Error(res?.data?.error || res?.error?.message || 'auto-analyze failed');
+          await supabase.functions.invoke('auto-analyze-patterns');
         } else if (phase === 3 || phase === 7) {
-          // Fase dedicada ao realtime — análise profunda do momento
           setAutoLearnStatus('analyzing');
-          await Promise.allSettled([
-            supabase.functions.invoke('realtime-patterns'),
-            // A cada 4 ciclos da fase 7, recalibrar constantes
-            phase === 7 ? supabase.functions.invoke('calibrate-constants') : Promise.resolve(),
-          ]);
-        } else if (phase === 2 || phase === 6) {
-          setAutoLearnStatus('backtesting');
-          await supabase.functions.invoke('sniper-predict', {
-            body: { sampleSize: 200 }
-          });
+          await Promise.allSettled([supabase.functions.invoke('realtime-patterns'), phase === 7 ? supabase.functions.invoke('calibrate-constants') : Promise.resolve()]);
         } else {
           setAutoLearnStatus('backtesting');
-          await supabase.functions.invoke('sniper-predict', {
-            body: { sampleSize: 50 }
-          });
+          await supabase.functions.invoke('sniper-predict', { body: { sampleSize: phase === 2 || phase === 6 ? 200 : 50 } });
         }
-        
         autoLearnErrorCount.current = 0;
         consecutiveSuccessRef.current++;
-        
-        // Speed up when productive (min 30s — mesa rápida)
-        if (consecutiveSuccessRef.current >= 3) {
-          currentIntervalRef.current = Math.max(30_000, currentIntervalRef.current * 0.8);
-        }
+        if (consecutiveSuccessRef.current >= 3) currentIntervalRef.current = Math.max(30_000, currentIntervalRef.current * 0.8);
       } catch (err: any) {
         autoLearnErrorCount.current++;
         consecutiveSuccessRef.current = 0;
         const msg = err?.message || String(err);
-        
-        if (/402|429|[Cc]redit|[Rr]ate|exhausted|payment/i.test(msg)) {
+        if (/402|429|[Cc]redit|[Rr]ate/i.test(msg)) {
           currentIntervalRef.current = Math.min(600_000, currentIntervalRef.current * 3);
-          console.warn(`[AutoLearn] Rate limited — interval: ${(currentIntervalRef.current/1000).toFixed(0)}s`);
-          if (autoLearnErrorCount.current >= 5) {
-            autoLearnDisabled.current = true;
-            console.warn('[AutoLearn] Disabled after 5 consecutive credit errors.');
-          }
-        } else {
-          currentIntervalRef.current = Math.min(300_000, currentIntervalRef.current * 1.5);
-        }
-      } finally {
-        setAutoLearnStatus('idle');
-        scheduleNext();
-      }
+          if (autoLearnErrorCount.current >= 5) autoLearnDisabled.current = true;
+        } else { currentIntervalRef.current = Math.min(300_000, currentIntervalRef.current * 1.5); }
+      } finally { setAutoLearnStatus('idle'); schedule(); }
     };
-
-    const scheduleNext = () => {
-      if (autoLearnDisabled.current) return;
-      timeoutId = setTimeout(runContinuousLearn, currentIntervalRef.current);
-    };
-
-    timeoutId = setTimeout(runContinuousLearn, 15_000);
+    const schedule = () => { if (!autoLearnDisabled.current) timeoutId = setTimeout(run, currentIntervalRef.current); };
+    timeoutId = setTimeout(run, 15_000);
     return () => { if (timeoutId) clearTimeout(timeoutId); };
   }, [aiEnabled]);
 
-  // === Realtime — counter update with optimistic + DB reload ===
+  // Realtime prediction results
   useEffect(() => {
     const ch = supabase.channel('prediction_result_rt').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'prediction_history' }, (payload: any) => {
       const row = payload.new;
       if (row && row.hit !== null && row.actual_number !== null) {
         if (!shouldProcessPredictionEvent(row)) return;
-
         const isHit = row.hit === true;
-        const hitType = row.hit_type;
-        const label = row.strategy_label || row.strategy_type || 'Previsão';
-        setLastPredResult({ hit: isHit, hitType, predicted: row.predicted_main, actual: row.actual_number, label });
-
-        // Optimistic instant counter update
-        setPredStats(prev => ({
-          hits: prev.hits + (isHit ? 1 : 0),
-          misses: prev.misses + (isHit ? 0 : 1),
-          exact: prev.exact + (hitType === 'exact' ? 1 : 0),
-          total: prev.total + 1,
-        }));
-
-        if (isHit) {
-          console.log(`${hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO VIZINHO!'} ${label} — Previsto: ${row.predicted_main}, Saiu: ${row.actual_number}`);
-        } else {
-          console.log(`❌ ERRO — ${label} — Previsto: ${row.predicted_main}, Saiu: ${row.actual_number}`);
-        }
-
-        // Sound feedback
+        setLastPredResult({ hit: isHit, hitType: row.hit_type, predicted: row.predicted_main, actual: row.actual_number, label: row.strategy_label || '' });
+        setPredStats(prev => ({ hits: prev.hits + (isHit ? 1 : 0), misses: prev.misses + (isHit ? 0 : 1), exact: prev.exact + (row.hit_type === 'exact' ? 1 : 0), total: prev.total + 1 }));
         playSound(isHit ? 'hit' : 'miss', soundEnabled);
-
-        // Also sync from DB after a short delay to stay accurate
         setTimeout(() => loadPredStats(), 2000);
       }
     }).subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [loadPredStats, shouldProcessPredictionEvent]);
+  }, [loadPredStats, shouldProcessPredictionEvent, soundEnabled]);
 
-  // Periodic stats reload every 30s as fallback
-  useEffect(() => {
-    const interval = setInterval(() => loadPredStats(), 30000);
-    return () => clearInterval(interval);
-  }, [loadPredStats]);
+  useEffect(() => { const i = setInterval(() => loadPredStats(), 30000); return () => clearInterval(i); }, [loadPredStats]);
 
   const triggerLearn = async () => {
     setIsAnalyzing(true);
     try {
       setAutoLearnStatus('learning');
       const r1 = await supabase.functions.invoke('ai-learn');
-      if (!r1.error && !r1.data?.error) {
-        setAutoLearnStatus('analyzing');
-        const r2 = await supabase.functions.invoke('auto-analyze-patterns');
-        if (!r2.error && !r2.data?.error) {
-          setAutoLearnStatus('backtesting');
-          await supabase.functions.invoke('sniper-predict');
-        }
-      }
-      const status = r1.error?.context?.status;
-      const message = r1.data?.error || r1.error?.message || '';
-      if (status === 402 || message.includes('Credits')) { console.warn('Créditos esgotados.'); }
-      if (status === 429 || message.includes('Rate')) { console.warn('Rate limit.'); }
-    } catch (err) { console.error(err); }
+      if (!r1.error) { setAutoLearnStatus('analyzing'); await supabase.functions.invoke('auto-analyze-patterns'); }
+      setAutoLearnStatus('backtesting');
+      await supabase.functions.invoke('sniper-predict');
+    } catch { /* */ }
     finally { setIsAnalyzing(false); setAutoLearnStatus('idle'); }
   };
 
-  // === Computed (memoized) ===
+  // Computed
   const allNumbers = useMemo(() => apiNumbers.length > 0 ? apiNumbers : storedNumbers, [apiNumbers, storedNumbers]);
   const historySlice = useMemo(() => allNumbers.slice(0, historyLimit), [allNumbers, historyLimit]);
 
-  const terminalFreq = useMemo(() => allNumbers.slice(0, 200).reduce<Record<number, number>>((acc, n) => {
-    const t = n % 10; acc[t] = (acc[t] || 0) + 1; return acc;
-  }, {}), [allNumbers]);
-  const maxTerminalFreq = useMemo(() => Math.max(...Object.values(terminalFreq), 1), [terminalFreq]);
-
-  const computedCavalos = useMemo(() => {
-    const slice = allNumbers.slice(0, 50);
-    if (slice.length < 5) return [];
-    const freq: Record<string, number> = { '258': 0, '147': 0, '03': 0, '69': 0 };
-    slice.forEach(n => { const g = getCavaloGroup(n); if (g) freq[g]++; });
-    return Object.entries(freq).sort(([, a], [, b]) => b - a);
-  }, [allNumbers]);
-
-  const computedSectors = useMemo(() => {
-    const slice = allNumbers.slice(0, 100);
-    if (slice.length < 5) return {};
-    const freq: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0, Zero: 0 };
-    slice.forEach(n => { freq[getSectorName(n)]++; });
-    return freq;
-  }, [allNumbers]);
+  const toggleSection = (name: string) => setActiveSection(prev => prev === name ? null : name);
 
   return (
-    <div className="min-h-screen bg-gradient-casino flex flex-col relative">
-      {/* Ambient background glow */}
+    <div className="min-h-screen bg-gradient-casino flex flex-col">
+      {/* Background glow */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/3 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/3 rounded-full blur-[120px]" />
+        <div className="absolute top-0 left-1/4 w-80 h-80 bg-primary/3 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-accent/3 rounded-full blur-[120px]" />
       </div>
-      {/* ═══════ NAVBAR ═══════ */}
+
       <Navbar
         isPolling={isPolling} setIsPolling={setIsPolling}
         isAnalyzing={isAnalyzing} triggerLearn={triggerLearn}
         confidenceFilter={confidenceFilter} setConfidenceFilter={setConfidenceFilter}
         lastUpdate={lastUpdate} fetchNumbers={fetchNumbers} fetchStored={fetchStored}
-        autoLearnStatus={autoLearnStatus}
-        onShowHistory={() => setShowPredHistory(!showPredHistory)}
+        autoLearnStatus={autoLearnStatus} onShowHistory={() => setShowPredHistory(!showPredHistory)}
         aiEnabled={aiEnabled} setAiEnabled={setAiEnabled}
         strategyFilter={strategyFilter} setStrategyFilter={setStrategyFilter}
         predStats={predStats} setPredStats={setPredStats}
         activePatternCount={activePatternCount}
-        soundEnabled={soundEnabled} setSoundEnabled={setSoundEnabled}
-        sessionMode={sessionMode}
       />
 
-      {/* ═══════ PREDICTION HISTORY (COLLAPSIBLE) ═══════ */}
+      {/* Prediction History */}
       <AnimatePresence>
         {showPredHistory && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-b border-border"
-          >
-            <div className="max-w-[1400px] mx-auto p-3">
-              <PredictionHistory />
-            </div>
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-b border-border">
+            <div className="max-w-[1400px] mx-auto p-3"><PredictionHistory /></div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ═══════ MAIN CONTENT ═══════ */}
       <div className="flex-1 overflow-y-auto relative z-10">
-        <div className="max-w-[1400px] mx-auto p-4 space-y-4">
+        <div className="max-w-[1200px] mx-auto p-4 space-y-4">
 
-          {/* ─── SEÇÃO 1: Últimos 12 ─── */}
+          {/* ════ ÚLTIMOS NÚMEROS ════ */}
           <Last12Numbers allNumbers={allNumbers} />
 
-          {/* ─── SEÇÃO 2: SNIPER (PRINCIPAL) ─── */}
-          <div className="space-y-3">
-            {aiEnabled ? (
-              <SniperSignal
-                sniperData={sniperData}
-                sniperCountdown={sniperCountdown}
-                sniperStale={sniperStale}
-                lastPredResult={lastPredResult}
-                confidenceFilter={confidenceFilter}
-                rtInsights={rtInsights}
-                allNumbers={allNumbers}
-              />
-            ) : (
-              <div className="bg-card rounded-2xl border border-destructive/30 p-8 h-full flex items-center justify-center">
-                <div className="text-center space-y-3">
-                  <div className="w-14 h-14 rounded-full bg-destructive/10 border-2 border-destructive/30 flex items-center justify-center mx-auto">
-                    <Power className="w-7 h-7 text-destructive" />
-                  </div>
-                  <p className="text-sm font-bold text-destructive">IA DESLIGADA</p>
-                  <p className="text-xs text-muted-foreground">Clique em "IA ON" na barra superior para reativar</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ─── FERRAMENTAS (COLAPSÁVEL) ─── */}
-          <details className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden relative">
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-            <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none text-sm font-bold text-foreground hover:bg-primary/5 transition-colors">
-              <ChevronDown className="w-4 h-4 text-primary/60 transition-transform" />
-              <span className="font-display text-[10px] tracking-[0.15em] text-primary">🛠️ FERRAMENTAS</span>
-            </summary>
-            <div className="p-4 border-t border-border/40 space-y-3">
-              {/* Sample Size */}
-              <div className="bg-secondary/40 rounded-xl border border-border/60 p-3 flex items-center gap-3">
-                <span className="text-[9px] text-muted-foreground font-medium whitespace-nowrap font-display tracking-wider">📊 BASE</span>
-                <input type="range" min={10} max={500} step={10} value={sampleSize}
-                  onChange={e => setSampleSize(Number(e.target.value))}
-                  className="flex-1 accent-primary h-2 cursor-pointer" />
-                <span className="text-sm font-bold text-primary font-mono min-w-[70px] text-right">{sampleSize} <span className="text-[8px] text-muted-foreground">jogadas</span></span>
-              </div>
-
-              {/* Pressão do Zero */}
-              <ZeroPressure allNumbers={allNumbers} />
-
-              {/* Resumo da Sessão */}
-              <SessionSummary allNumbers={allNumbers} />
-
-              {/* Mapa + Bet */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                <WheelMap allNumbers={allNumbers} sniperData={sniperData} />
-                <BetPanel sniperData={sniperData} allNumbers={allNumbers} />
-              </div>
+          {/* ════ SNIPER SIGNAL (HERO) ════ */}
+          {aiEnabled ? (
+            <SniperSignal
+              sniperData={sniperData}
+              sniperCountdown={sniperCountdown}
+              sniperStale={sniperStale}
+              lastPredResult={lastPredResult}
+              confidenceFilter={confidenceFilter}
+              rtInsights={rtInsights}
+              allNumbers={allNumbers}
+            />
+          ) : (
+            <div className="bg-card rounded-2xl border border-destructive/30 p-12 text-center">
+              <Power className="w-10 h-10 text-destructive/40 mx-auto mb-3" />
+              <p className="text-sm font-bold text-destructive">IA DESLIGADA</p>
+              <p className="text-xs text-muted-foreground mt-1">Clique "IA ON" para reativar</p>
             </div>
-          </details>
+          )}
 
-
-
-          {/* ─── APRENDIZADO APLICADO À JOGADA (SEMPRE VISÍVEL) ─── */}
+          {/* ════ APRENDIZADO APLICADO ════ */}
           {sniperData?.learnedBetInfluence?.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-r from-emerald-500/10 via-card to-primary/10 rounded-xl border border-emerald-500/40 p-4 shadow-lg shadow-emerald-500/5">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="bg-card rounded-xl border border-emerald-500/30 p-4">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-md bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                  <GraduationCap className="w-3.5 h-3.5 text-emerald-400" />
-                </div>
-                <span className="font-display text-[10px] tracking-[0.2em] font-bold text-emerald-400">🧠 APRENDIZADO → JOGADA</span>
-                <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold font-mono ml-auto">
-                  {sniperData.learnedBetInfluence.length} padrões aplicados
+                <GraduationCap className="w-4 h-4 text-emerald-400" />
+                <span className="font-display text-[10px] tracking-[0.15em] font-bold text-emerald-400">APRENDIZADO → JOGADA</span>
+                <span className="text-[8px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold ml-auto">
+                  {sniperData.learnedBetInfluence.length} padrões
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {sniperData.learnedBetInfluence.map((inf: any, i: number) => (
-                  <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
-                      inf.num === 0 ? 'bg-green-600 text-white' : [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(inf.num) ? 'bg-red-600 text-white' : 'bg-zinc-800 text-white'
-                    }`}>
-                      {inf.num}
+              <div className="grid grid-cols-2 gap-2">
+                {sniperData.learnedBetInfluence.slice(0, 6).map((inf: any, i: number) => (
+                  <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/40 border border-border">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black shrink-0 ${colorClass(inf.num)}`}>{inf.num}</div>
+                    <div className="min-w-0">
+                      <span className="text-[8px] text-emerald-300 font-bold block truncate">{inf.source}</span>
+                      <span className="text-[7px] text-muted-foreground">+{inf.boost}pts</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[9px] text-emerald-300 font-bold block truncate">{inf.source}</span>
-                      <span className="text-[7px] text-muted-foreground">+{inf.boost} pontos de confiança</span>
-                    </div>
-                  </motion.div>
+                  </div>
                 ))}
-              </div>
-              <div className="mt-2 text-[8px] text-emerald-400/70 text-center italic">
-                Estes padrões aprendidos pela IA estão influenciando diretamente a jogada recomendada acima
               </div>
             </motion.div>
           )}
 
+          {/* ════ COLLAPSIBLE SECTIONS ════ */}
+          <div className="space-y-2">
 
-          {/* ─── SEÇÃO 4: ANÁLISE AVANÇADA (COLAPSÁVEL) ─── */}
-          {sniperData && (
-            <div className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden relative">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neon-purple/40 to-transparent" />
-              <button onClick={() => setShowAdvanced(!showAdvanced)}
-                className="w-full flex items-center gap-2.5 px-4 py-3.5 hover:bg-neon-purple/5 transition-colors">
-                <div className="w-6 h-6 rounded-md bg-neon-purple/15 border border-neon-purple/30 flex items-center justify-center">
-                  <Brain className="w-3.5 h-3.5 text-neon-purple" />
+            {/* Ferramentas */}
+            <CollapsibleSection
+              title="🛠️ FERRAMENTAS"
+              isOpen={activeSection === 'tools'}
+              onToggle={() => toggleSection('tools')}
+            >
+              <div className="space-y-3">
+                <ZeroPressure allNumbers={allNumbers} />
+                <SessionSummary allNumbers={allNumbers} />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  <WheelMap allNumbers={allNumbers} sniperData={sniperData} />
+                  <BetPanel sniperData={sniperData} allNumbers={allNumbers} />
                 </div>
-                <span className="font-display text-[10px] tracking-[0.2em] font-bold text-neon-purple">ANÁLISE AVANÇADA</span>
-                {sniperData?.aiLearnings?.length > 0 && (
-                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-neon-purple/15 text-neon-purple border border-neon-purple/30 font-bold font-mono">
-                    {sniperData.aiLearnings.length} insights
-                  </span>
-                )}
-                {sniperData?.deepMemory && (
-                  <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-bold font-mono">
-                    1700+ CAMADAS
-                  </span>
-                )}
-                <ChevronDown className={`w-4 h-4 text-muted-foreground ml-auto transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {showAdvanced && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                    <div className="p-4 space-y-4 border-t border-border">
-
-                      {/* AI Learnings */}
-                      {sniperData?.aiLearnings?.length > 0 && (
-                        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
-                          className="bg-gradient-to-r from-purple-500/10 via-card to-blue-500/10 rounded-xl border border-purple-500/30 p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <GraduationCap className="w-4 h-4 text-purple-400" />
-                            <span className="font-display text-[10px] tracking-[0.15em] font-bold text-purple-400">O QUE A IA APRENDEU AGORA</span>
-                            {sniperData.noiseFiltered > 0 && (
-                              <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold ml-auto">
-                                🔇 {sniperData.noiseFiltered} ruídos filtrados
-                              </span>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {sniperData.aiLearnings.map((learning: string, i: number) => (
-                              <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: i * 0.05 }}
-                                className="flex items-start gap-1.5 px-2.5 py-2 rounded-lg bg-secondary/60 border border-border">
-                                <Sparkles className="w-3 h-3 text-purple-400 mt-0.5 shrink-0" />
-                                <span className="text-[9px] text-foreground/90 leading-tight">{learning}</span>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* Deep Memory */}
-                      {sniperData?.deepMemory && (
-                        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
-                          className="bg-gradient-to-r from-blue-500/10 via-card to-emerald-500/10 rounded-xl border border-blue-500/30 p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Eye className="w-4 h-4 text-blue-400" />
-                            <span className="font-display text-[10px] tracking-[0.15em] font-bold text-blue-400">MEMÓRIA PROFUNDA</span>
-                          </div>
-
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-                            <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
-                              <span className="text-[8px] font-bold text-purple-400 block mb-1.5">👻 ANCESTRAIS</span>
-                              {sniperData.deepMemory.ancestralPatterns?.length > 0 ?
-                                sniperData.deepMemory.ancestralPatterns.map((p: any, i: number) => (
-                                  <div key={i} className="text-[8px] text-foreground/80 mb-0.5">
-                                    <span className="font-mono">{p.pattern?.slice(0, 5).join(',')}</span>
-                                    <span className="text-muted-foreground ml-1">({p.occurrences}x)</span>
-                                  </div>
-                                )) : <span className="text-[8px] text-muted-foreground">Coletando...</span>
-                              }
-                            </div>
-                            <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
-                              <span className="text-[8px] font-bold text-emerald-400 block mb-1.5">🧬 DNA MESA</span>
-                              <div className="text-[8px] text-foreground/80 space-y-1">
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Equilíbrio</span>
-                                  <span className="font-mono font-bold">{((sniperData.deepMemory.mesaDNA?.sectorBalance || 0) * 100).toFixed(0)}%</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Vício</span>
-                                  <span className="font-mono font-bold">{sniperData.deepMemory.mesaDNA?.cylinderBias || 0}</span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
-                              <span className="text-[8px] font-bold text-orange-400 block mb-1.5">🔩 VIBRAÇÃO</span>
-                              <div className="text-[8px] text-foreground/80">
-                                {sniperData.deepMemory.cylinderInertia?.biasedNums?.length > 0 && (
-                                  <div><span className="text-muted-foreground">Viciados: </span><span className="font-mono font-bold">{sniperData.deepMemory.cylinderInertia.biasedNums.slice(0, 6).join(',')}</span></div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
-                              <span className="text-[8px] font-bold text-cyan-400 block mb-1.5">🧬 GENÉTICOS</span>
-                              {sniperData.deepMemory.geneticPatterns?.length > 0 ?
-                                sniperData.deepMemory.geneticPatterns.map((gp: any, i: number) => (
-                                  <div key={i} className="text-[8px] text-foreground/80 mb-0.5">
-                                    <span className="font-bold">{gp.name}</span>
-                                    <span className="text-muted-foreground ml-1">→ {gp.numbers?.slice(0, 5).join(',')}</span>
-                                  </div>
-                                )) : <span className="text-[8px] text-muted-foreground">Evoluindo...</span>
-                              }
-                            </div>
-                            <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
-                              <span className="text-[8px] font-bold text-yellow-400 block mb-1.5">🌊 FLUXO</span>
-                              <div className="text-[8px] text-foreground/80">
-                                {sniperData.deepMemory.flowDynamics?.mesaFlowState && (
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Modo</span>
-                                    <span className={`font-bold ${sniperData.deepMemory.flowDynamics.mesaFlowState.mode === 'concentracao' ? 'text-red-400' : 'text-muted-foreground'}`}>
-                                      {sniperData.deepMemory.flowDynamics.mesaFlowState.mode === 'concentracao' ? '🔥' : '⚖️'} {sniperData.deepMemory.flowDynamics.mesaFlowState.mode}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Extra analysis cards */}
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
-                            {sniperData?.randomnessIndex && (
-                              <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
-                                <span className="text-[8px] font-bold text-rose-400 block mb-1">🛡️ RUÍDO</span>
-                                <div className="flex justify-between text-[8px]">
-                                  <span className="text-muted-foreground">Índice</span>
-                                  <span className={`font-bold ${sniperData.randomnessIndex.overall >= 75 ? 'text-destructive' : 'text-green-400'}`}>{sniperData.randomnessIndex.overall}%</span>
-                                </div>
-                              </div>
-                            )}
-                            {sniperData?.kellyBetting && (
-                              <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
-                                <span className="text-[8px] font-bold text-emerald-400 block mb-1">💰 KELLY</span>
-                                <div className="text-[8px] space-y-0.5">
-                                  <div className="flex justify-between"><span className="text-muted-foreground">Unidade</span><span className="font-bold">{sniperData.kellyBetting.unitMultiplier}x</span></div>
-                                  <div className="flex justify-between"><span className="text-muted-foreground">Risco</span><span className="font-bold">{sniperData.kellyBetting.riskLevel}</span></div>
-                                </div>
-                              </div>
-                            )}
-                            {sniperData?.dealerBiometrics && (
-                              <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
-                                <span className="text-[8px] font-bold text-violet-400 block mb-1">🎭 DEALER</span>
-                                <div className="flex justify-between text-[8px]">
-                                  <span className="text-muted-foreground">Perfil</span>
-                                  <span className={`font-bold ${sniperData.dealerBiometrics.profileType === 'mecânico' ? 'text-green-400' : 'text-destructive'}`}>
-                                    {sniperData.dealerBiometrics.profileType}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                            {sniperData?.diamondDeflection?.length > 0 && (
-                              <div className="bg-secondary/40 rounded-lg p-2.5 border border-border">
-                                <span className="text-[8px] font-bold text-sky-400 block mb-1">💎 DEFLETORES</span>
-                                <div className="text-[8px] space-y-0.5">
-                                  {sniperData.diamondDeflection.slice(0, 3).map((d: any, i: number) => (
-                                    <div key={i} className="flex justify-between">
-                                      <span className="text-muted-foreground">D#{d.zone}</span>
-                                      <span className="font-mono font-bold">{(d.deflectionRate * 100).toFixed(0)}%</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* Archetypes */}
-                      {sniperData?.archetypes?.length > 0 && (
-                        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
-                          className="bg-card rounded-xl border border-border p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Target className="w-4 h-4 text-amber-400" />
-                            <span className="font-display text-[10px] tracking-[0.15em] font-bold text-amber-400">ARQUÉTIPOS ATIVOS</span>
-                            <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold ml-auto">
-                              {sniperData.archetypes.filter((a: any) => a.active).length}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                            {sniperData.archetypes.filter((a: any) => a.active).map((arch: any, i: number) => (
-                              <div key={i} className="rounded-lg p-2.5 border text-[8px] bg-amber-500/10 border-amber-500/30">
-                                <div className="flex items-center gap-1 mb-1">
-                                  <span className="text-sm">{arch.emoji}</span>
-                                  <span className="font-bold text-amber-400">{arch.name}</span>
-                                  <span className="ml-auto font-mono font-bold">{arch.strength}%</span>
-                                </div>
-                                <div className="text-foreground/70 mb-1.5">{arch.detail}</div>
-                                {arch.predictedNums?.length > 0 && (
-                                  <div className="flex flex-wrap gap-0.5">
-                                    {arch.predictedNums.slice(0, 6).map((n: number) => (
-                                      <div key={n} className={`w-4 h-4 rounded-full flex items-center justify-center text-[6px] font-bold ${colorClass(n)} border border-white/20`}>{n}</div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* Strategy Leaderboard */}
-                      <StrategyLeaderboard />
-
-                      {/* Pattern 24h + Pull Radar + Error Analysis */}
-                      {sniperData?.transitionMatrix && <PatternPanel24h sniperData={sniperData} />}
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                        {sniperData?.deepMemory?.flowDynamics?.pullPatterns && allNumbers.length > 0 && (
-                          <PullRadar pullPatterns={sniperData.deepMemory.flowDynamics.pullPatterns} latestNumber={allNumbers[0]} />
-                        )}
-                        {sniperData?.errorAnalysis && (
-                          <div className="bg-card/90 rounded-xl border border-destructive/20 p-4">
-                            <div className="flex items-center gap-2 mb-3">
-                              <AlertTriangle className="w-4 h-4 text-destructive" />
-                              <span className="font-display text-[10px] tracking-[0.15em] font-bold text-destructive">ANÁLISE DE ERROS</span>
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                              {Object.entries(sniperData.errorAnalysis.categories || {}).map(([cat, cnt]) => {
-                                const labels: Record<string, { icon: string; name: string }> = {
-                                  dealer_change: { icon: '🎭', name: 'Dealer' },
-                                  wrong_sector: { icon: '🗺️', name: 'Setor' },
-                                  wrong_terminal: { icon: '🔢', name: 'Terminal' },
-                                  deflector_bounce: { icon: '💎', name: 'Defletor' },
-                                  entropy_break: { icon: '🔀', name: 'Entropia' },
-                                };
-                                const info = labels[cat] || { icon: '❓', name: cat };
-                                return (
-                                  <div key={cat} className={`rounded-lg p-2 text-center border ${
-                                    (cnt as number) >= 2 ? 'bg-destructive/10 border-destructive/30' : 'bg-secondary/40 border-border'
-                                  }`}>
-                                    <span className="text-sm block">{info.icon}</span>
-                                    <span className={`text-[10px] font-mono font-bold block ${(cnt as number) >= 2 ? 'text-destructive' : 'text-muted-foreground'}`}>{cnt as number}</span>
-                                    <span className="text-[7px] text-muted-foreground block">{info.name}</span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* AI Learning Log */}
-                      <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} rtInsights={rtInsights} />
-
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-
-          {/* ─── HISTÓRICO & DADOS (COLAPSÁVEL) ─── */}
-          <details className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden relative">
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-            <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none hover:bg-primary/5 transition-colors">
-              <ChevronDown className="w-4 h-4 text-primary/60" />
-              <Activity className="w-3.5 h-3.5 text-primary" />
-              <span className="font-display text-[10px] tracking-[0.2em] font-bold text-primary">HISTÓRICO & DADOS</span>
-              <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-bold font-mono">{allNumbers.length} giros</span>
-            </summary>
-            <div className="p-4 border-t border-border/40 space-y-4">
-          {/* ─── SEÇÃO 5: STATUS BAR ─── */}
-          {(sniperData?.memoryWindows || allNumbers.length >= 10) && (
-            <div className="bg-card/80 rounded-xl border border-border p-3">
-              <div className="flex flex-wrap items-center gap-2 text-[8px]">
-                {sniperData?.memoryWindows?.micro && (
-                  <>
-                    <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/60 border border-border">
-                      <span className="text-muted-foreground">Dealer:</span>
-                      <span className={`font-bold ${
-                        sniperData.memoryWindows.micro.dealerRhythm === 'VICIADO' ? 'text-primary' :
-                        sniperData.memoryWindows.micro.dealerRhythm === 'Regular' ? 'text-green-400' : 'text-destructive'
-                      }`}>{sniperData.memoryWindows.micro.dealerRhythm}</span>
-                    </span>
-                    <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/60 border border-border">
-                      <span className="text-muted-foreground">Arco:</span>
-                      <span className="font-mono font-bold text-foreground">{sniperData.memoryWindows.micro.arcMean}±{sniperData.memoryWindows.micro.arcStd}</span>
-                    </span>
-                  </>
-                )}
-                {computedCavalos.length > 0 && (
-                  <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/60 border border-border">
-                    <span className="text-muted-foreground">Cavalo:</span>
-                    <span className="font-bold text-orange-400">C{computedCavalos[0][0]} ({computedCavalos[0][1]}x)</span>
-                  </span>
-                )}
-                {Object.entries(computedSectors).length > 0 && (() => {
-                  const sorted = Object.entries(computedSectors).sort(([,a], [,b]) => (b as number) - (a as number));
-                  const total = sorted.reduce((a, [,b]) => a + (b as number), 0);
-                  if (total === 0) return null;
-                  const [topSector, topCount] = sorted[0];
-                  return (
-                    <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/60 border border-border">
-                      <span className="text-muted-foreground">Setor:</span>
-                      <span className="font-bold text-cyan-400">{topSector} {(((topCount as number) / total) * 100).toFixed(0)}%</span>
-                    </span>
-                  );
-                })()}
-                {sniperData?.memoryWindows?.macro?.topDebt?.length > 0 && (
-                  <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/60 border border-border">
-                    <span className="text-muted-foreground">Dívida:</span>
-                    <span className="font-mono font-bold text-blue-400">{sniperData.memoryWindows.macro.topDebt.slice(0, 3).join(', ')}</span>
-                  </span>
-                )}
-                {sniperData?.kellyBetting && (
-                  <span className={`flex items-center gap-1 px-2 py-1 rounded-lg border ${
-                    sniperData.kellyBetting.riskLevel === 'conservative'
-                      ? 'bg-green-500/10 border-green-500/20'
-                      : sniperData.kellyBetting.riskLevel === 'aggressive'
-                      ? 'bg-red-500/10 border-red-500/20'
-                      : 'bg-secondary/60 border-border'
-                  }`}>
-                    <span className="text-muted-foreground">Kelly:</span>
-                    <span className={`font-bold ${
-                      sniperData.kellyBetting.riskLevel === 'conservative' ? 'text-green-400' :
-                      sniperData.kellyBetting.riskLevel === 'aggressive' ? 'text-red-400' : 'text-foreground'
-                    }`}>
-                      {sniperData.kellyBetting.unitMultiplier}x
-                    </span>
-                    <span className={`text-[7px] font-semibold ${
-                      sniperData.kellyBetting.riskLevel === 'conservative' ? 'text-green-400/70' :
-                      sniperData.kellyBetting.riskLevel === 'aggressive' ? 'text-red-400/70' : 'text-muted-foreground'
-                    }`}>
-                      {sniperData.kellyBetting.riskLevel === 'conservative' ? '🛡️' :
-                       sniperData.kellyBetting.riskLevel === 'aggressive' ? '🔥' : '⚖️'}
-                    </span>
-                  </span>
-                )}
               </div>
-            </div>
-          )}
+            </CollapsibleSection>
 
-          {/* ─── SEÇÃO 6: HISTÓRICO + TERMINAIS ─── */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            {/* Histórico */}
-            <div className="lg:col-span-3 bg-gradient-card rounded-xl border border-border/60 p-4 relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
-                    <Activity className="w-3.5 h-3.5 text-primary" />
+            {/* AI Insights */}
+            {sniperData?.aiLearnings?.length > 0 && (
+              <CollapsibleSection
+                title="🧠 ANÁLISE IA"
+                badge={`${sniperData.aiLearnings.length} insights`}
+                isOpen={activeSection === 'ai'}
+                onToggle={() => toggleSection('ai')}
+              >
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {sniperData.aiLearnings.slice(0, 8).map((learning: string, i: number) => (
+                      <div key={i} className="flex items-start gap-1.5 px-2.5 py-2 rounded-lg bg-secondary/40 border border-border">
+                        <Sparkles className="w-3 h-3 text-purple-400 mt-0.5 shrink-0" />
+                        <span className="text-[9px] text-foreground/90 leading-tight">{learning}</span>
+                      </div>
+                    ))}
                   </div>
-                  <span className="font-display text-[10px] text-primary tracking-[0.2em] font-bold text-glow-cyan">HISTÓRICO</span>
+                  <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} rtInsights={rtInsights} />
                 </div>
+              </CollapsibleSection>
+            )}
+
+            {/* Rankings & Radar */}
+            <CollapsibleSection
+              title="📊 RANKINGS & RADAR"
+              isOpen={activeSection === 'rankings'}
+              onToggle={() => toggleSection('rankings')}
+            >
+              <div className="space-y-3">
+                <StrategyLeaderboard />
+                <PullRadar pullPatterns={sniperData?.pullPatterns || []} latestNumber={allNumbers[0] ?? 0} />
+                <Scanner500 layerResults={sniperData?.layerResults || null} isScanning={false} />
+                <PatternPanel24h sniperData={sniperData} />
+              </div>
+            </CollapsibleSection>
+
+            {/* Histórico */}
+            <CollapsibleSection
+              title="📜 HISTÓRICO"
+              badge={`${allNumbers.length} giros`}
+              isOpen={activeSection === 'history'}
+              onToggle={() => toggleSection('history')}
+            >
+              <div className="space-y-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   {[50, 100, 250, 500].map(lim => (
-                    <button key={lim} onClick={() => { startTransition(() => { setHistoryLimit(lim); setSelectedNum(null); }); }}
+                    <button key={lim} onClick={() => startTransition(() => { setHistoryLimit(lim); setSelectedNum(null); })}
                       className={`text-[9px] px-2.5 py-1 rounded-lg font-bold transition-all ${
                         historyLimit === lim ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-secondary text-muted-foreground border border-border'
                       }`}>
@@ -1123,262 +568,60 @@ const Index = () => {
                     </button>
                   ))}
                   <ManualInput onAddNumbers={handleManualNumbers} />
-                  <span className="text-[8px] text-muted-foreground font-mono">{Math.min(historyLimit, allNumbers.length)} giros</span>
-                  <button onClick={async () => {
-                    if (!confirm('Limpar todo o histórico?')) return;
-                    await supabase.from('roulette_numbers').delete().not('id', 'is', null);
-                    apiSnapshotRef.current = apiNumbers.length > 0 ? [...apiNumbers] : [...storedNumbers];
-                    lastAcceptedSpinRef.current = { number: null, timestamp: 0 };
-                    lastSpinSignatureRef.current = '';
-                    setStoredNumbers([]);
-                    setApiNumbers([]);
-                    prevNumbersRef.current = apiSnapshotRef.current.slice(0, 20).join(',');
-                  }} className="text-[9px] px-2.5 py-1 rounded-lg font-bold bg-destructive/20 text-destructive border border-destructive/30 hover:bg-destructive/30 transition-all">
-                    🗑️ Limpar
-                  </button>
+                </div>
+
+                {error && <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-2 text-[10px] text-destructive font-semibold">⚠️ {error}</div>}
+
+                {historySlice.length === 0
+                  ? <div className="text-center py-8 text-muted-foreground text-sm">Aguardando dados...</div>
+                  : <HistoryGrid historySlice={historySlice} selectedNum={selectedNum} setSelectedNum={setSelectedNum} />
+                }
+
+                {/* Terminal frequency */}
+                <div className="grid grid-cols-10 gap-1.5">
+                  {Array.from({ length: 10 }, (_, t) => {
+                    const count = allNumbers.slice(0, 200).filter(n => n % 10 === t).length;
+                    const max = Math.max(...Array.from({ length: 10 }, (_, i) => allNumbers.slice(0, 200).filter(n => n % 10 === i).length), 1);
+                    return (
+                      <div key={t} className="text-center">
+                        <div className="h-12 bg-secondary/30 rounded overflow-hidden flex flex-col justify-end">
+                          <div className={`rounded-t transition-all ${count === max ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                            style={{ height: `${(count / max) * 100}%` }} />
+                        </div>
+                        <span className="text-[8px] font-mono font-bold text-foreground mt-1 block">T{t}</span>
+                        <span className="text-[7px] text-muted-foreground">{count}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+            </CollapsibleSection>
 
-              {error && <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-2 text-[10px] text-destructive font-semibold mb-3">⚠️ {error}</div>}
-
-              {selectedNum !== null && (
-                <button onClick={() => setSelectedNum(null)} className="text-[9px] px-2 py-1 rounded-lg font-bold bg-destructive/20 text-destructive border border-destructive/30 mb-3 hover:bg-destructive/30 transition-all">
-                  ✕ Limpar filtro (#{selectedNum})
-                </button>
-              )}
-
-              {historySlice.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">Aguardando dados...</div>
-              ) : (
-                <HistoryGrid historySlice={historySlice} selectedNum={selectedNum} setSelectedNum={setSelectedNum} setDnaNumber={setDnaNumber} setDnaOpen={setDnaOpen} />
-              )}
-
-              {/* Análise do número selecionado */}
-              <AnimatePresence>
-                {selectedNum !== null && historySlice.length > 0 && (() => {
-                  const positions = historySlice.map((n, i) => n === selectedNum ? i : -1).filter(i => i >= 0);
-                  const count = positions.length;
-                  const delays = positions.slice(0, -1).map((p, i) => positions[i + 1] - p);
-                  const avgDelay = delays.length > 0 ? (delays.reduce((a, b) => a + b, 0) / delays.length).toFixed(1) : '—';
-                  const lastDelay = positions[0] !== undefined ? positions[0] : null;
-                  const nextNums: number[] = [];
-                  positions.forEach(p => { if (p + 1 < historySlice.length) nextNums.push(historySlice[p + 1]); });
-                  const nextFreq: Record<number, number> = {};
-                  nextNums.forEach(n => { nextFreq[n] = (nextFreq[n] || 0) + 1; });
-                  const topNext = Object.entries(nextFreq).sort(([, a], [, b]) => b - a).slice(0, 5);
-                  const prevNums: number[] = [];
-                  positions.forEach(p => { if (p - 1 >= 0) prevNums.push(historySlice[p - 1]); });
-                  const prevFreq: Record<number, number> = {};
-                  prevNums.forEach(n => { prevFreq[n] = (prevFreq[n] || 0) + 1; });
-                  const topPrev = Object.entries(prevFreq).sort(([, a], [, b]) => b - a).slice(0, 5);
-                  const isRegular = delays.length >= 3 && delays.every(d => Math.abs(d - delays[0]) <= 2);
-
-                  return (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                      className="mt-4 bg-gradient-to-r from-primary/10 via-card to-primary/5 border border-primary/30 rounded-xl p-4 overflow-hidden">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Crosshair className="w-4 h-4 text-primary" />
-                        <span className="font-display text-[10px] tracking-[0.15em] font-bold text-primary">ANÁLISE #{selectedNum}</span>
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${colorClass(selectedNum)} border border-white/20`}>{selectedNum}</div>
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-                        <div className="bg-secondary/50 rounded-lg p-2.5 text-center border border-border">
-                          <span className="text-lg font-bold font-mono text-foreground">{count}</span>
-                          <span className="text-[7px] text-muted-foreground block">APARIÇÕES/{historyLimit}</span>
-                        </div>
-                        <div className="bg-secondary/50 rounded-lg p-2.5 text-center border border-border">
-                          <span className="text-lg font-bold font-mono text-foreground">{avgDelay}</span>
-                          <span className="text-[7px] text-muted-foreground block">DELAY MÉDIO</span>
-                        </div>
-                        <div className={`rounded-lg p-2.5 text-center border ${lastDelay !== null && lastDelay === 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-secondary/50 border-border'}`}>
-                          <span className={`text-lg font-bold font-mono ${lastDelay !== null && lastDelay <= 10 ? 'text-green-400' : 'text-foreground'}`}>
-                            {lastDelay !== null ? lastDelay : '—'}
-                          </span>
-                          <span className="text-[7px] text-muted-foreground block">GIROS ATRÁS</span>
-                        </div>
-                        <div className={`rounded-lg p-2.5 text-center border ${isRegular ? 'bg-primary/10 border-primary/30' : 'bg-secondary/50 border-border'}`}>
-                          <span className={`text-lg font-bold font-mono ${isRegular ? 'text-primary' : 'text-foreground'}`}>
-                            {isRegular ? '🎯' : '🔀'}
-                          </span>
-                          <span className="text-[7px] text-muted-foreground block">{isRegular ? 'REGULAR' : 'ALEATÓRIO'}</span>
-                        </div>
-                      </div>
-
-                      {isRegular && delays.length >= 3 && (
-                        <div className="bg-primary/10 border border-primary/30 rounded-lg p-2.5 text-center mb-3">
-                          <span className="text-[9px] font-bold text-primary">🎯 ASSINATURA DE MÃO — Intervalo ~{delays[0]} rodadas</span>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="bg-secondary/40 rounded-lg p-3 border border-border">
-                          <span className="text-[8px] font-bold text-foreground block mb-2">⬅️ NÚMEROS ANTES</span>
-                          {topPrev.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {topPrev.map(([num, freq]) => (
-                                <div key={num} className="flex items-center gap-0.5">
-                                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ${colorClass(Number(num))} border border-white/20`}>{num}</div>
-                                  <span className="text-[7px] font-mono text-muted-foreground">{freq}x</span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : <span className="text-[8px] text-muted-foreground">Sem dados</span>}
-                        </div>
-                        <div className="bg-secondary/40 rounded-lg p-3 border border-border">
-                          <span className="text-[8px] font-bold text-foreground block mb-2">➡️ NÚMEROS DEPOIS</span>
-                          {topNext.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {topNext.map(([num, freq]) => (
-                                <div key={num} className="flex items-center gap-0.5">
-                                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ${colorClass(Number(num))} border border-white/20`}>{num}</div>
-                                  <span className="text-[7px] font-mono text-muted-foreground">{freq}x</span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : <span className="text-[8px] text-muted-foreground">Sem dados</span>}
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })()}
-              </AnimatePresence>
-
-              {/* Legend */}
-              <div className="flex items-center gap-3 mt-4 pt-3 border-t border-border">
-                {[
-                  { cls: 'bg-roulette-red', label: 'Vermelho' },
-                  { cls: 'bg-roulette-black', label: 'Preto' },
-                  { cls: 'bg-roulette-green', label: 'Zero' },
-                  { cls: 'bg-yellow-400', label: 'Cavalos 258' },
-                ].map(l => (
-                  <div key={l.label} className="flex items-center gap-1">
-                    <div className={`w-2.5 h-2.5 rounded-full ${l.cls} border border-white/10`} />
-                    <span className="text-[8px] text-muted-foreground">{l.label}</span>
-                  </div>
-                ))}
-                <span className="text-[7px] text-muted-foreground/60 ml-auto">Clique filtrar • 2x DNA</span>
-              </div>
-            </div>
-
-            {/* Terminais */}
-            <div className="lg:col-span-1 bg-gradient-card rounded-xl border border-border/60 p-4 relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
-                  <Hash className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <span className="font-display text-[10px] text-primary tracking-[0.2em] font-bold text-glow-cyan">TERMINAIS</span>
-              </div>
-              <div className="grid grid-cols-5 gap-2">
-                {Array.from({ length: 10 }, (_, t) => {
-                  const freq = terminalFreq[t] || 0;
-                  const pct = maxTerminalFreq > 0 ? (freq / maxTerminalFreq) * 100 : 0;
-                  const isHot = pct > 70;
-                  return (
-                    <div key={t} className="flex flex-col items-center gap-1">
-                      <div className="w-full bg-secondary/50 rounded-lg h-14 flex flex-col-reverse overflow-hidden border border-border/50">
-                        <motion.div className={`rounded-lg ${isHot ? 'bg-gradient-to-t from-primary to-primary/60' : 'bg-gradient-to-t from-muted-foreground/40 to-muted-foreground/20'}`}
-                          animate={{ height: `${pct}%` }} transition={{ duration: 0.5 }} />
-                      </div>
-                      <div className={`w-6 h-6 rounded flex items-center justify-center text-[9px] font-bold border ${
-                        isHot ? 'bg-primary/20 border-primary/50 text-primary' : 'bg-secondary border-border text-muted-foreground'}`}>{t}</div>
-                      <span className={`text-[7px] font-mono font-bold ${isHot ? 'text-primary' : 'text-muted-foreground'}`}>{freq}x</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Dupla Dani Green */}
-              {(() => {
-                const DUPLAS: Record<string, number[]> = {
-                  'T1+T6': [1,11,21,31,6,16,26,36],
-                  'T2+T7': [2,12,22,32,7,17,27],
-                  'T3+T8': [3,13,23,33,8,18,28],
-                  'T4+T9': [4,14,24,34,9,19,29],
-                  'T0+T5': [10,20,30,5,15,25,35],
-                };
-                const TERMINAL_TO_DUPLA: Record<number, string> = {
-                  1:'T1+T6',6:'T1+T6',2:'T2+T7',7:'T2+T7',
-                  3:'T3+T8',8:'T3+T8',4:'T4+T9',9:'T4+T9',0:'T0+T5',5:'T0+T5'
-                };
-                const last15 = allNumbers.slice(0, 15);
-                const tFreq: Record<number,number> = {};
-                last15.forEach(n => { const t = n%10; tFreq[t] = (tFreq[t]||0)+1; });
-                const hotT = Object.entries(tFreq).sort(([,a],[,b])=>b-a)[0];
-                if (!hotT) return null;
-                const hotTerminal = Number(hotT[0]);
-                const dupKey = TERMINAL_TO_DUPLA[hotTerminal];
-                const dupNums = DUPLAS[dupKey] || [];
-                const distintos = Object.keys(tFreq).length;
-                const entropiaLabel = distintos <= 4 ? '🎯 Baixa — Entrar' : distintos <= 7 ? '⚠️ Média' : '🔀 Alta — Aguardar';
-                const entropiaColor = distintos <= 4 ? 'text-green-400' : distintos <= 7 ? 'text-yellow-400' : 'text-red-400';
-
-                return (
-                  <div className="mt-4 pt-3 border-t border-border space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wide">Entropia (15)</span>
-                      <span className={`text-[8px] font-bold ${entropiaColor}`}>{entropiaLabel}</span>
-                    </div>
-                    <div className="bg-primary/10 border border-primary/30 rounded-lg p-2.5">
-                      <div className="flex items-center gap-1 mb-2">
-                        <span className="text-[8px] font-bold text-primary">🔥 DUPLA DANI GREEN</span>
-                        <span className="ml-auto text-[8px] font-mono font-bold text-primary">{dupKey}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {dupNums.map(n => (
-                          <div key={n} className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold border border-white/10 ${colorClass(n)}`}>{n}</div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* ─── SEÇÃO 7: CASSINO AO VIVO ─── */}
-          <div className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden relative">
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-            <button onClick={() => setShowCasino(!showCasino)}
-              className="w-full flex items-center gap-2.5 px-4 py-3.5 border-b border-border/40 hover:bg-primary/5 transition-colors">
-              <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
-                <MonitorPlay className="w-3.5 h-3.5 text-primary" />
-              </div>
-              <span className="font-display text-[10px] text-primary tracking-[0.2em] font-bold text-glow-cyan">CASSINO AO VIVO</span>
-              <span className="text-[9px] text-muted-foreground font-mono ml-1">— {selectedTable.name}</span>
-              <ChevronDown className={`w-4 h-4 text-muted-foreground ml-auto transition-transform ${showCasino ? 'rotate-180' : ''}`} />
-            </button>
-            {showCasino && (
+            {/* Cassino ao vivo */}
+            <CollapsibleSection
+              title="🎰 CASSINO AO VIVO"
+              isOpen={activeSection === 'casino'}
+              onToggle={() => toggleSection('casino')}
+            >
               <div>
-                {/* Seletor de mesa */}
-                <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 bg-secondary/20">
-                  <span className="text-[8px] text-muted-foreground font-bold">MESA:</span>
+                <div className="flex gap-2 mb-3">
                   {ROULETTE_TABLES.map(table => (
-                    <button
-                      key={table.id}
-                      onClick={() => setSelectedTable(table)}
+                    <button key={table.id} onClick={() => setSelectedTable(table)}
                       className={`px-3 py-1 rounded-lg text-[9px] font-bold transition-all border ${
-                        selectedTable.id === table.id
-                          ? 'bg-primary/15 text-primary border-primary/30'
-                          : 'bg-secondary/40 text-muted-foreground border-border hover:text-foreground'
-                      }`}
-                    >
+                        selectedTable.id === table.id ? 'bg-primary/15 text-primary border-primary/30' : 'bg-secondary/40 text-muted-foreground border-border'
+                      }`}>
                       {table.name}
                     </button>
                   ))}
                 </div>
-                <div className="w-full" style={{ height: '550px' }}>
+                <div className="w-full rounded-lg overflow-hidden" style={{ height: '500px' }}>
                   <iframe src={selectedTable.iframeUrl} className="w-full h-full border-0" allowFullScreen
                     allow="autoplay; fullscreen; microphone; camera"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation" />
                 </div>
               </div>
-            )}
+            </CollapsibleSection>
           </div>
-            </div>
-          </details>
-
         </div>
       </div>
 
@@ -1386,5 +629,29 @@ const Index = () => {
     </div>
   );
 };
+
+// Reusable collapsible section
+const CollapsibleSection = memo(({ title, badge, isOpen, onToggle, children }: {
+  title: string; badge?: string; isOpen: boolean; onToggle: () => void; children: React.ReactNode;
+}) => (
+  <div className="bg-card rounded-xl border border-border/60 overflow-hidden">
+    <button onClick={onToggle} className="w-full flex items-center gap-2 px-4 py-3 hover:bg-primary/5 transition-colors">
+      <ChevronDown className={`w-4 h-4 text-primary/60 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      <span className="font-display text-[10px] tracking-[0.15em] font-bold text-primary">{title}</span>
+      {badge && (
+        <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-bold font-mono ml-auto">
+          {badge}
+        </span>
+      )}
+    </button>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+          <div className="p-4 border-t border-border/40">{children}</div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </div>
+));
 
 export default Index;

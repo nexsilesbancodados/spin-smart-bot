@@ -1,17 +1,30 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import {
-  Crosshair, AlertTriangle, Eye, Clock, Shield, Zap, ShieldCheck, Sparkles, Target, TrendingUp
-} from 'lucide-react';
+import { Crosshair, AlertTriangle, Clock, ShieldCheck, Zap } from 'lucide-react';
 
+const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 
-const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-// Protection numbers are now dynamic from sniperData.signal.protection
-const colorClass = (n: number, isProtection = false) => {
-  const base = n === 0 ? 'bg-green-600 text-white ring-green-400/40' 
-    : RED_NUMBERS.includes(n) ? 'bg-red-600 text-white ring-red-400/30' 
-    : 'bg-zinc-800 text-white ring-zinc-500/30';
-  return isProtection ? `${base} ring-2 ring-yellow-400/70` : base;
+const numColor = (n: number) =>
+  n === 0 ? 'bg-emerald-600 text-white' : RED_NUMBERS.has(n) ? 'bg-red-600 text-white' : 'bg-zinc-800 text-white';
+
+const getBetLabel = (type: string) => {
+  const map: Record<string, string> = {
+    pleno: '💎 PLENO', numero_exato: '💎 PLENO',
+    terminal: '🔢 TERMINAIS', terminal_comp: '🔢 TERMINAIS', terminal_alternation: '🔢 TERMINAIS',
+    duplo_terminal: '🔢 TERMINAIS', terminais_cruzados: '🔢 TERMINAIS',
+    cavalos: '🐎 CAVALOS', cavalos_comp: '🐎 CAVALOS', cavalo_split: '🐎 CAVALOS',
+    setor: '🎯 SETOR', vizinhos: '🎯 VIZINHOS', sniper: '🎯 SNIPER', voisins: '🎯 VOISINS',
+    duzia: '🎲 DÚZIA', duzia_unica: '🎲 DÚZIA', dozen_phase: '🎲 DÚZIA', duzias: '🎲 DÚZIAS',
+    coluna: '📐 COLUNA', column_cycle: '📐 COLUNA',
+    cor: '🎨 COR', paridade: '🔄 PAR/ÍMPAR', alto_baixo: '↕️ ALTO/BAIXO',
+    fusao_suprema: '⚡ FUSÃO', convergencia_absoluta: '💠 CONVERGÊNCIA',
+    ultra_sniper: '🔥 ULTRA SNIPER', numeros_puxam: '🧲 PUXADA',
+    pressao_zero: '🟢 ZERO', jeu_zero: '🟢 ZERO',
+    ensemble_supremo: '🌟 ENSEMBLE', matrix_fusion: '🔮 MATRIZ',
+    combo_ouro: '👑 COMBO OURO', combo_prata: '🥈 COMBO PRATA',
+    ritmo_calibrado: '🎯 RITMO',
+  };
+  return map[type] || `📌 ${type.replace(/_/g, ' ').toUpperCase()}`;
 };
 
 interface Props {
@@ -20,703 +33,328 @@ interface Props {
   sniperStale: boolean;
   lastPredResult: { hit: boolean | null; hitType: string | null; predicted: number | null; actual: number | null; label: string } | null;
   confidenceFilter: boolean;
-  rtInsights?: { type: string; numbers: number[]; score: number; reason: string; confidence: number }[];
+  rtInsights?: any[];
   allNumbers?: number[];
 }
 
-const getBetTypeLabel = (type: string) => {
-  switch (type) {
-    case 'pleno': case 'numero_exato': return '💎 PLENO (35:1)';
-    case 'terminal': case 'terminal_comp': case 'terminal_alternation': case 'duplo_terminal': case 'terminais_cruzados': case 'duzia_terminal_corr': return '🔢 TERMINAIS';
-    case 'cavalos': case 'cavalos_comp': case 'cavalo_split': return '🐎 CAVALOS';
-    case 'setor': case 'vizinhos': case 'sniper': case 'voisins': case 'setor_oposto': case 'cluster_regional': return '🎯 VIZINHOS/SETOR';
-    case 'duzia': case 'duzia_unica': case 'dozen_phase': case 'duzias': case 'pressao_retorno': case 'duzia_progressiva': return '🎲 DÚZIA (2:1)';
-    case 'coluna': case 'coluna_comp': case 'column_cycle': case 'coluna_fria': return '📐 COLUNA (2:1)';
-    case 'cor': case 'cor_alternancia': case 'cor_reversa': return '🎨 COR (1:1)';
-    case 'paridade': case 'paridade_reversa': return '🔄 PAR/ÍMPAR (1:1)';
-    case 'alto_baixo': case 'alto_baixo_reversa': return '↕️ ALTO/BAIXO (1:1)';
-    case 'ritmo_calibrado': return '🎯 RITMO CALIBRADO';
-    case 'fusao_suprema': return '⚡ FUSÃO SUPREMA';
-    case 'convergencia_absoluta': return '💠 CONVERGÊNCIA ABSOLUTA';
-    case 'ultra_sniper': return '🔥 ULTRA SNIPER';
-    case 'numeros_puxam': return '🧲 PUXADA';
-    case 'pressao_zero': case 'jeu_zero': return '🟢 PRESSÃO ZERO';
-    case 'crescente': return '📈 CRESCENTE';
-    case 'poucas_fichas': return '💰 CONSERVADOR';
-    case 'matrix_fusion': return '🔮 CONVERGÊNCIA MATRICIAL';
-    case 'cobertura_area': case 'cluster_regional': return '🗺️ COBERTURA DE ÁREA';
-    case 'archetype_fusion': return '🏛️ ARQUÉTIPOS';
-    case 'genetic_cluster': return '🧬 CLUSTER GENÉTICO';
-    case 'cylinder_bias': return '⚙️ VIÉS DO CILINDRO';
-    case 'hot_phase': case 'hiper_quente': return '🔥 FASE QUENTE';
-    case 'cold_phase': return '❄️ FASE FRIA';
-    case 'terminal_alto_baixo': return '📊 TERMINAL ALTO/BAIXO';
-    case 'rua': return '🛣️ RUA (11:1)';
-    case 'multiplos_seq': return '🔢 MÚLTIPLOS';
-    case 'diferenca_const': return '📏 DIFERENÇA CONSTANTE';
-    case 'combo_ouro': return '👑 COMBO OURO';
-    case 'combo_prata': return '🥈 COMBO PRATA';
-    case 'ensemble_supremo': return '🌟 ENSEMBLE SUPREMO';
-    case 'realtime_aprendido': return '⚡ REALTIME APRENDIDO';
-    case 'pull_confirmado_aprendido': return '🧲 PULL CONFIRMADO IA';
-    case 'heat_cluster_ia': return '🔥 CLUSTER QUENTE IA';
-    case 'pattern_consensus': return '📊 CONSENSO DE PADRÕES';
-    case 'realtime_insight': return '⚡ INSIGHT REALTIME';
-    case 'matriz_numerica': return '🔢 MATRIZ NUMÉRICA';
-    case 'auto_repeticao': return '🔁 AUTO-REPETIÇÃO';
-    default: return `📌 ${type.replace(/_/g, ' ').toUpperCase()}`;
-  }
-};
-
-// Explica em linguagem simples COMO apostar cada tipo
-const getHowToBet = (type: string, numbers: number[], mainNumber?: number): string => {
-  const cat = getBetTypeCategory(type);
-  switch (cat) {
-    case 'setor':
-      return `Aposte nos VIZINHOS do ${mainNumber ?? numbers[0]} na roleta. Peça ao dealer: "${mainNumber ?? numbers[0]} e vizinhos" ou coloque fichas direto nos números mostrados.`;
-    case 'cavalos':
-      return `Coloque fichas NO MEIO entre dois números (split). Cada ficha cobre 2 números de uma vez. Payout 17:1.`;
-    case 'terminal':
-      return `Aposte em todos os números que TERMINAM com o mesmo dígito. Ex: terminal 5 = 5, 15, 25, 35. Coloque 1 ficha em cada.`;
-    case 'duzia':
-      if (numbers.length > 0) {
-        const d1 = numbers.some(n => n >= 1 && n <= 12);
-        const d2 = numbers.some(n => n >= 13 && n <= 24);
-        const d3 = numbers.some(n => n >= 25 && n <= 36);
-        const duzias = [];
-        if (d1) duzias.push('1ª (1-12)');
-        if (d2) duzias.push('2ª (13-24)');
-        if (d3) duzias.push('3ª (25-36)');
-        return `Coloque fichas na(s) DÚZIA(S): ${duzias.join(' e ')}. Área marcada "1st 12", "2nd 12" ou "3rd 12" na mesa. Payout 2:1.`;
-      }
-      return 'Coloque fichas na área de DÚZIA na mesa. Payout 2:1.';
-    case 'coluna':
-      return `Coloque fichas no final da COLUNA (embaixo da mesa). Cada coluna cobre 12 números. Payout 2:1.`;
-    case 'cor':
-      const isRed = numbers.some(n => [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(n));
-      return `Aposte em ${isRed ? '🔴 VERMELHO' : '⚫ PRETO'} — área grande no meio da mesa. Payout 1:1 (dobra a aposta).`;
-    case 'paridade':
-      const isEven = numbers.length > 0 && numbers[0] % 2 === 0;
-      return `Aposte em ${isEven ? 'PAR (EVEN)' : 'ÍMPAR (ODD)'} — área grande no meio da mesa. Payout 1:1.`;
-    case 'alto_baixo':
-      const isHigh = numbers.some(n => n >= 19);
-      return `Aposte em ${isHigh ? 'ALTO (19-36) / MANQUE' : 'BAIXO (1-18) / PASSE'} — área no meio da mesa. Payout 1:1.`;
-    case 'zero':
-      return `Aposte nos números próximos ao ZERO: 0, 3, 12, 15, 26, 32, 35. Peça "Jeu Zéro" ao dealer.`;
-    case 'rua':
-      return `Coloque a ficha NA BORDA da linha de 3 números (rua). Cada ficha cobre 3 números. Payout 11:1.`;
-    case 'puxada':
-      return `O último número "puxa" estes. Coloque 1 ficha em cada número mostrado. Baseado em padrão histórico.`;
-    case 'fusao':
-      return `Jogada especial — múltiplas análises convergem nos mesmos números. Coloque 1 ficha em cada número mostrado abaixo.`;
-    case 'hiper_quente':
-      return `Números que estão SAINDO MUITO agora. Coloque fichas diretas (pleno) nos números mostrados. Payout até 35:1.`;
-    default:
-      return `Coloque 1 ficha em cada número mostrado abaixo. Os números em destaque têm maior probabilidade.`;
-  }
-};
-
-const getBetTypeCategory = (type: string): string => {
-  if (['sniper', 'voisins', 'setor_oposto', 'ultra_sniper', 'ritmo_calibrado', 'cylinder_bias', 'cluster_regional', 'jeu_zero'].includes(type)) return 'setor';
-  if (['cavalos', 'cavalos_comp', 'cavalo_split'].includes(type)) return 'cavalos';
-  if (['terminal_alternation', 'duplo_terminal', 'terminais_cruzados', 'poucas_fichas', 'terminal_alto_baixo', 'duzia_terminal_corr'].includes(type)) return 'terminal';
-  if (['duzia_unica', 'dozen_phase', 'duzias', 'pressao_retorno', 'duzia_progressiva'].includes(type)) return 'duzia';
-  if (['coluna', 'column_cycle', 'coluna_fria'].includes(type)) return 'coluna';
-  if (['cor', 'cor_alternancia', 'cor_reversa'].includes(type)) return 'cor';
-  if (['paridade', 'paridade_reversa'].includes(type)) return 'paridade';
-  if (['alto_baixo', 'alto_baixo_reversa'].includes(type)) return 'alto_baixo';
-  if (['fusao_suprema', 'convergencia_absoluta', 'matrix_fusion', 'archetype_fusion', 'combo_ouro', 'combo_prata', 'ensemble_supremo'].includes(type)) return 'fusao';
-  if (['matriz_numerica', 'auto_repeticao'].includes(type)) return 'outro';
-  if (['numeros_puxam'].includes(type)) return 'puxada';
-  if (['pressao_zero'].includes(type)) return 'zero';
-  if (['rua'].includes(type)) return 'rua';
-  if (['hiper_quente'].includes(type)) return 'hiper_quente';
-  if (['multiplos_seq', 'diferenca_const'].includes(type)) return 'sequencia';
-  return 'outro';
-};
-
-const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult, confidenceFilter: confidenceFilterProp, rtInsights = [], allNumbers = [] }: Props) => {
+const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers = [] }: Props) => {
   const [reedCount, setReedCount] = useState(0);
-  const [confidenceFilter, setConfidenceFilter] = useState(confidenceFilterProp);
-  const prevSignalRef = useRef<number | null>(null);
   const prevHitRef = useRef<boolean | null>(null);
 
-  useEffect(() => { setConfidenceFilter(confidenceFilterProp); }, [confidenceFilterProp]);
-
   useEffect(() => {
-    const currentSignal = sniperData?.signal?.number ?? null;
-    if (currentSignal !== null && currentSignal !== prevSignalRef.current) {
-      prevSignalRef.current = currentSignal;
-      setReedCount(0);
-      return;
-    }
     if (!lastPredResult || lastPredResult.hit === null) return;
     if (lastPredResult.hit === prevHitRef.current) return;
     prevHitRef.current = lastPredResult.hit;
-    if (lastPredResult.hit === true) {
-      setReedCount(0);
-    } else if (lastPredResult.hit === false) {
-      setReedCount(prev => Math.min(prev + 1, 4));
-    }
-  }, [sniperData?.signal?.number, lastPredResult?.hit]);
+    if (lastPredResult.hit) setReedCount(0);
+    else setReedCount(prev => Math.min(prev + 1, 4));
+  }, [lastPredResult?.hit]);
 
   const reedStopped = reedCount >= 4;
 
-  // Backtest ao vivo: simular jogada dos últimos 30 giros
-  const backtestVivo = (() => {
-    const nums = sniperData?.strategy?.numbers;
-    if (!nums || !allNumbers || allNumbers.length < 20) return null;
-    let hits = 0, total = 0;
-    for (let i = 1; i < Math.min(31, allNumbers.length); i++) {
-      total++;
-      if (nums.includes(allNumbers[i])) hits++;
+  // Compute final numbers
+  const { ensTop1, finalNumbers, highConviction, displayProb, dynamicProtection } = useMemo(() => {
+    if (!sniperData?.signal || !sniperData?.strategy) {
+      return { ensTop1: 0, finalNumbers: [], highConviction: [], displayProb: 0, dynamicProtection: [] };
     }
-    const wr = total > 0 ? Math.round(hits / total * 100) : 0;
-    const profit = hits * (36 - nums.length) - (total - hits) * nums.length;
-    return { hits, total, wr, profit };
-  })();
 
-  // Anti-streak: detectar mesa caótica (entrar na contramão seria perda)
-  const mesaCaotica = (() => {
-    if (!allNumbers || allNumbers.length < 10) return false;
-    // Entropia alta: muitos terminais distintos em 10 giros
-    const terminais = new Set(allNumbers.slice(0, 10).map(n => n % 10));
-    const entropiaAlta = terminais.size >= 9;
-    // WR recente ruim + entropia alta = mesa caótica
-    const wrRuim = sniperData?.recentWinRate !== undefined && sniperData.recentWinRate < 0.20;
-    return entropiaAlta && wrRuim;
-  })();
+    const top1 = sniperData.ensemble?.top1 ?? sniperData.topCandidates?.[0]?.num ?? sniperData.strategy.numbers[0];
+    const supportPool: number[] = [
+      ...(sniperData.ensemble?.top5 || []),
+      ...(sniperData.strategy.numbers || []),
+      ...(sniperData.topCandidates?.slice(0, 5).map((c: any) => c.num) || []),
+    ].filter((n: number) => n !== top1 && n >= 0 && n <= 36);
 
-  // Cálculo do gap do número #1 (quando saiu pela última vez)
-  const gapInfo = (() => {
-    const num = sniperData?.signal?.number;
-    if (!num || allNumbers.length < 10) return null;
-    const lastIdx = allNumbers.indexOf(num);
-    if (lastIdx < 0) return { delay: allNumbers.length, label: `>${allNumbers.length} giros`, hot: false };
-    if (lastIdx === 0) return { delay: 0, label: 'saiu agora', hot: true };
-    // Gap médio histórico desse número
-    const positions = allNumbers.reduce((acc: number[], n, i) => { if (n === num) acc.push(i); return acc; }, []);
+    const scoreCount: Record<number, number> = {};
+    supportPool.forEach((n: number) => { scoreCount[n] = (scoreCount[n] || 0) + 1; });
+    const sortedSupport = [...new Set(supportPool)].sort((a, b) => (scoreCount[b] || 0) - (scoreCount[a] || 0));
+
+    const prot: number[] = sniperData?.signal?.protection || sniperData?.strategy?.protection || [];
+    const protFiltered = prot.filter((n: number) => n !== top1);
+    const support = sortedSupport.slice(0, 8);
+    const final: number[] = [...new Set([top1, ...support, ...protFiltered])].slice(0, 12);
+
+    const hc = final.filter(n => {
+      const inE = (sniperData.ensemble?.top5 || []).includes(n);
+      const inW = (sniperData.strategy.numbers || []).includes(n);
+      const inC = (sniperData.topCandidates || []).slice(0, 3).some((c: any) => c.num === n);
+      return (inE ? 1 : 0) + (inW ? 1 : 0) + (inC ? 1 : 0) >= 2;
+    });
+
+    const rawProb = sniperData.signal.probability || 0;
+    const coverage = (final.length / 37) * 100;
+    const prob = Math.min(rawProb, Math.round(coverage + 20));
+
+    return { ensTop1: top1, finalNumbers: final, highConviction: hc, displayProb: prob, dynamicProtection: protFiltered };
+  }, [sniperData]);
+
+  // Gap info
+  const gapInfo = useMemo(() => {
+    if (!ensTop1 || allNumbers.length < 10) return null;
+    const lastIdx = allNumbers.indexOf(ensTop1);
+    if (lastIdx < 0) return { delay: allNumbers.length, label: `>${allNumbers.length}`, hot: false };
+    if (lastIdx === 0) return { delay: 0, label: 'agora', hot: true };
+    const positions = allNumbers.reduce((acc: number[], n, i) => { if (n === ensTop1) acc.push(i); return acc; }, []);
     const gaps = positions.slice(0, -1).map((p, i) => positions[i + 1] - p);
     const avgGap = gaps.length > 0 ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length) : 37;
     const progress = Math.min(100, Math.round((lastIdx / avgGap) * 100));
-    const isNear = lastIdx >= avgGap * 0.7;
-    return { delay: lastIdx, avgGap, progress, isNear, label: `${lastIdx}/${avgGap} giros (${progress}%)` };
-  })();
+    return { delay: lastIdx, avgGap, progress, isNear: lastIdx >= avgGap * 0.7 };
+  }, [ensTop1, allNumbers]);
 
+  // Loading state
   if (!sniperData) {
     return (
-      <div className="bg-card rounded-2xl border border-border p-8 h-full flex items-center justify-center">
+      <div className="bg-card rounded-2xl border border-border p-12 flex items-center justify-center">
         <div className="text-center">
-          <Crosshair className="w-10 h-10 text-primary/30 mx-auto mb-3 animate-pulse" />
-          <p className="text-sm text-muted-foreground font-medium">Carregando Sniper IA...</p>
+          <Crosshair className="w-8 h-8 text-primary/30 mx-auto mb-3 animate-pulse" />
+          <p className="text-sm text-muted-foreground">Carregando IA...</p>
         </div>
       </div>
     );
   }
 
+  // Waiting for result
+  if (sniperStale && lastPredResult) {
+    return (
+      <div className="bg-card rounded-2xl border border-border p-8">
+        <div className="flex flex-col items-center gap-3">
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center border-2 ${
+            lastPredResult.hit
+              ? 'bg-green-500/15 border-green-500/40'
+              : 'bg-destructive/15 border-destructive/40'
+          }`}>
+            {lastPredResult.hit
+              ? <ShieldCheck className="w-8 h-8 text-green-400" />
+              : <AlertTriangle className="w-8 h-8 text-destructive" />}
+          </div>
+          <span className={`text-sm font-bold ${lastPredResult.hit ? 'text-green-400' : 'text-destructive'}`}>
+            {lastPredResult.hit
+              ? (lastPredResult.hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO!')
+              : '❌ ERRO'}
+          </span>
+          <div className="flex gap-4 text-xs text-muted-foreground">
+            <span>Previsto: <strong className="text-foreground">{lastPredResult.predicted}</strong></span>
+            <span>Saiu: <strong className="text-foreground">{lastPredResult.actual}</strong></span>
+          </div>
+          <span className="text-[9px] text-muted-foreground/50">Aguardando nova jogada...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // No signal
+  if (!sniperData?.signal || !sniperData?.strategy) {
+    return (
+      <div className="bg-card rounded-2xl border border-border p-8 text-center">
+        <Clock className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+        <p className="text-sm text-muted-foreground">{sniperData?.message || 'Aguardando dados...'}</p>
+      </div>
+    );
+  }
+
+  const isHot = displayProb >= 65;
+  const isMed = displayProb >= 45;
+  const confs = sniperData?.signal?.confirmations || 0;
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-border bg-card overflow-hidden"
+      className="rounded-2xl border-2 overflow-hidden shadow-xl bg-card"
+      style={{
+        borderColor: reedStopped ? 'hsl(var(--destructive) / 0.5)'
+          : isHot ? 'hsl(var(--neon-green) / 0.5)'
+          : isMed ? 'hsl(var(--primary) / 0.4)'
+          : 'hsl(var(--border))',
+      }}
     >
-      {/* ── HEADER ─────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card/80">
+      {/* REED STOP */}
+      {reedStopped && (
+        <div className="bg-destructive/10 border-b border-destructive/30 p-3 text-center">
+          <span className="text-xs font-black text-destructive">⛔ REED STOP — 4 erros seguidos, pause</span>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className={`flex items-center justify-between px-5 py-3 border-b ${
+        isHot ? 'bg-neon-green/5 border-neon-green/20' : 'bg-primary/5 border-border/40'
+      }`}>
         <div className="flex items-center gap-2">
-          <Crosshair className="w-4 h-4 text-primary" />
-          <span className="font-display text-[11px] tracking-[0.2em] font-black text-primary uppercase">
-            Sniper IA
+          <Crosshair className={`w-4 h-4 ${isHot ? 'text-neon-green' : 'text-primary'}`} />
+          <span className="font-display text-[11px] tracking-[0.2em] font-black uppercase text-foreground">
+            {getBetLabel(sniperData.strategy.type)}
           </span>
-          {sniperData?.trendEngine && Number(sniperData.trendEngine.confidence) > 30 && (
-            <div className="flex gap-1 ml-1">
-              {sniperData.trendEngine.colorTrend?.direction && (
-                <span className={`text-[7px] px-1.5 py-0.5 rounded font-bold border ${
-                  sniperData.trendEngine.colorTrend.direction === 'red'
-                    ? 'bg-red-500/15 text-red-400 border-red-500/20'
-                    : 'bg-secondary text-muted-foreground border-border'
-                }`}>
-                  {sniperData.trendEngine.colorTrend.direction === 'red' ? '🔴' : '⚫'}
-                </span>
-              )}
-              {sniperData.trendEngine.dozenTrend?.direction && (
-                <span className="text-[7px] px-1.5 py-0.5 rounded font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
-                  D{sniperData.trendEngine.dozenTrend.direction}
-                </span>
-              )}
-            </div>
-          )}
         </div>
         <div className="flex items-center gap-2">
-          {sniperData?.ultraConservadorMode && (
-            <span className="text-[7px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold">🛡️ CONSERVADOR</span>
-          )}
-          {sniperData?.dealerShift?.detected && (
-            <span className="text-[7px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 font-bold">🎭 NOVO DEALER</span>
-          )}
-          <button onClick={() => setConfidenceFilter(f => !f)}
-            className={`text-[8px] px-2 py-1 rounded-lg border font-bold transition-all ${
-              confidenceFilter
-                ? 'bg-primary/15 text-primary border-primary/30'
-                : 'bg-secondary text-muted-foreground border-border'
+          {sniperData?.recentWinRate !== undefined && (
+            <span className={`text-[9px] font-mono font-bold ${
+              sniperData.recentWinRate >= 0.5 ? 'text-neon-green' : sniperData.recentWinRate < 0.25 ? 'text-destructive' : 'text-muted-foreground'
             }`}>
-            {confidenceFilter ? '🔒 Filtro ON' : '🔓 Filtro OFF'}
-          </button>
+              WR {(sniperData.recentWinRate * 100).toFixed(0)}%
+            </span>
+          )}
+          {confs > 0 && (
+            <span className="text-[8px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-bold">
+              {confs} confirmações
+            </span>
+          )}
         </div>
       </div>
 
-      {/* ── MESA CAÓTICA — não entrar ───────────────────── */}
-      {mesaCaotica && !reedStopped && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="mx-4 mt-3 p-2.5 rounded-lg bg-red-900/20 border border-red-500/40 text-center"
-        >
-          <span className="text-[9px] font-black text-red-400">
-            🌀 MESA CAÓTICA — Aguarde 3+ giros antes de entrar
-          </span>
-        </motion.div>
-      )}
-
-      {/* ── REED STOP ───────────────────────────────────── */}
-      {reedStopped && (
-        <div className="mx-4 mt-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-center animate-pulse">
-          <span className="text-xs font-black text-red-400">⛔ REED STOP — Pause e reanalise</span>
-        </div>
-      )}
-
-      {/* ── DEALER SHIFT ───────────────────────────────── */}
-      {sniperData?.dealerShift?.detected && (
-        <div className="mx-4 mt-2 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center gap-2">
-          <span className="text-[8px] text-purple-400 font-bold">
-            🎭 Arco mudou {sniperData.dealerShift.oldArc} → {sniperData.dealerShift.newArc} — padrão reiniciando
-          </span>
-        </div>
-      )}
-
-      {/* ── AUTO-REPETIÇÃO DETECTADA ───────────────────── */}
-      {sniperData?.signal?.confirmationDetail?.autoRep && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="mx-4 mt-2 px-3 py-2 rounded-lg bg-orange-500/15 border border-orange-500/40 flex items-center gap-2"
-        >
-          <span className="text-lg">🔁</span>
-          <div>
-            <span className="text-[9px] font-black text-orange-400 block">AUTO-REPETIÇÃO ATIVA</span>
-            <span className="text-[7px] text-orange-300/80">
-              #{sniperData.signal.number} saiu {sniperData.signal.confirmationDetail.recentCount}x — padrão confirmado desta mesa
-            </span>
-          </div>
-          <span className="ml-auto text-[8px] font-black text-orange-400">FORTE</span>
-        </motion.div>
-      )}
-
-      <div className={`p-4 transition-opacity ${reedStopped ? 'opacity-40 pointer-events-none' : ''}`}>
-
-        {/* ── AGUARDANDO RESULTADO ───────────────────────── */}
-        {sniperStale && lastPredResult ? (
-          <div className="flex flex-col items-center gap-3 py-6">
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg border-2 ${
-              lastPredResult.hit
-                ? 'bg-green-500/15 border-green-500/40 shadow-green-500/10'
-                : 'bg-destructive/15 border-destructive/40'
-            }`}>
-              {lastPredResult.hit
-                ? <ShieldCheck className="w-8 h-8 text-green-400" />
-                : <AlertTriangle className="w-8 h-8 text-destructive" />}
+      <div className={`p-5 ${reedStopped ? 'opacity-30 pointer-events-none' : ''}`}>
+        {/* Main signal */}
+        <div className="flex items-center gap-6 mb-5">
+          {/* Big number */}
+          <div className="relative shrink-0">
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center text-3xl font-black shadow-2xl ring-4 ${
+              ensTop1 === 0
+                ? 'bg-emerald-600 text-white ring-emerald-400/50'
+                : RED_NUMBERS.has(ensTop1)
+                ? 'bg-red-600 text-white ring-red-400/60'
+                : 'bg-zinc-800 text-white ring-zinc-500/50'
+            } ${isHot ? 'animate-pulse shadow-neon-green' : ''}`}>
+              {ensTop1}
             </div>
-            <span className={`text-sm font-bold ${lastPredResult.hit ? 'text-green-400' : 'text-destructive'}`}>
-              {lastPredResult.hit
-                ? (lastPredResult.hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO!')
-                : '❌ ERRO'}
-            </span>
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span>Previsto: <strong className="text-foreground">{lastPredResult.predicted}</strong></span>
-              <span>|</span>
-              <span>Saiu: <strong className="text-foreground">{lastPredResult.actual}</strong></span>
+            <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-[9px] font-black border-2 border-card">
+              #1
             </div>
-            <span className="text-[9px] text-muted-foreground/50">Aguardando nova jogada...</span>
           </div>
 
-        ) : !sniperData?.signal || !sniperData?.strategy ? (
-          <div className="flex flex-col items-center gap-2 py-8 text-center">
-            <Clock className="w-8 h-8 text-muted-foreground/40" />
-            <p className="text-sm font-semibold text-muted-foreground">
-              {sniperData?.message || 'Aguardando dados...'}
-            </p>
-            {sniperData?.mode === 'calibrating' && (
-              <span className="text-[9px] text-blue-400">🔄 Calibrando padrões...</span>
+          {/* Probability + level */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className={`text-5xl font-black font-mono leading-none ${
+                isHot ? 'text-neon-green' : isMed ? 'text-primary' : 'text-muted-foreground'
+              }`}>
+                {displayProb}%
+              </span>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full h-2.5 bg-secondary/60 rounded-full overflow-hidden mb-3">
+              <motion.div
+                className={`h-full rounded-full ${
+                  isHot ? 'bg-gradient-to-r from-green-500 to-emerald-400'
+                  : isMed ? 'bg-gradient-to-r from-primary to-primary/70'
+                  : 'bg-muted-foreground/40'
+                }`}
+                animate={{ width: `${displayProb}%` }}
+                transition={{ duration: 0.6 }}
+              />
+            </div>
+
+            {/* Action level */}
+            {confs >= 3 || displayProb >= 65 ? (
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-neon-green" />
+                <span className="text-sm font-black text-neon-green">ENTRAR FORTE — {finalNumbers.length} fichas</span>
+              </div>
+            ) : confs >= 2 || displayProb >= 50 ? (
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-primary" />
+                <span className="text-sm font-black text-primary">ENTRAR — top 5 números</span>
+              </div>
+            ) : confs >= 1 || displayProb >= 35 ? (
+              <span className="text-sm font-black text-yellow-400">⚠️ SINAL FRACO — 1-2 fichas no #{ensTop1}</span>
+            ) : (
+              <span className="text-sm font-black text-muted-foreground">⏸ AGUARDAR</span>
+            )}
+
+            {/* Gap indicator */}
+            {gapInfo && gapInfo.avgGap && (
+              <div className="flex items-center gap-2 mt-2 text-[9px]">
+                <span className="text-muted-foreground">
+                  #{ensTop1} ausente {gapInfo.delay}/{gapInfo.avgGap} giros
+                </span>
+                <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full ${gapInfo.isNear ? 'bg-neon-green' : 'bg-primary/50'}`}
+                    style={{ width: `${gapInfo.progress}%` }} />
+                </div>
+                {gapInfo.isNear && <span className="text-neon-green font-bold">🎯 NA HORA</span>}
+              </div>
+            )}
+
+            {/* Confirmations */}
+            {sniperData?.signal?.confirmationDetail && confs > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {sniperData.signal.confirmationDetail.pull && (
+                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-bold">🧲 Puxada</span>
+                )}
+                {sniperData.signal.confirmationDetail.autoRep && (
+                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/30 font-bold">🔁 Repetiu</span>
+                )}
+                {sniperData.signal.confirmationDetail.matriz && (
+                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30 font-bold">🔢 Matriz</span>
+                )}
+                {sniperData.signal.confirmationDetail.ensemble && (
+                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 font-bold">🌟 Ensemble</span>
+                )}
+                {sniperData.signal.confirmationDetail.winner && (
+                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-bold">⚡ Estratégia</span>
+                )}
+              </div>
             )}
           </div>
+        </div>
 
-        ) : (() => {
-          const ensTop1: number = sniperData.ensemble?.top1 ?? sniperData.topCandidates?.[0]?.num ?? sniperData.strategy.numbers[0];
+        {/* Bet numbers */}
+        <div className="border-t border-border/40 pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">
+              👆 Apostar nestes {finalNumbers.length} números
+            </span>
+            <span className="text-[9px] text-muted-foreground font-mono">
+              {(finalNumbers.length / 37 * 100).toFixed(0)}% da mesa · paga {36 - finalNumbers.length}x
+            </span>
+          </div>
 
-          const supportPool: number[] = [
-            ...(sniperData.ensemble?.top5 || []),
-            ...(sniperData.strategy.numbers || []),
-            ...(sniperData.topCandidates?.slice(0, 5).map((c: any) => c.num) || []),
-          ].filter((n: number) => n !== ensTop1 && n >= 0 && n <= 36);
-
-          const scoreCount: Record<number, number> = {};
-          supportPool.forEach((n: number) => { scoreCount[n] = (scoreCount[n] || 0) + 1; });
-          const sortedSupport = [...new Set(supportPool)].sort((a, b) => (scoreCount[b] || 0) - (scoreCount[a] || 0));
-
-          const dynamicProtection: number[] = sniperData?.signal?.protection || sniperData?.strategy?.protection || [];
-          const PROT = dynamicProtection.filter((n: number) => n !== ensTop1);
-          const support = sortedSupport.slice(0, 8);
-          const finalNumbers: number[] = [...new Set([ensTop1, ...support, ...PROT])].slice(0, 12);
-
-          const highConviction: number[] = finalNumbers.filter(n => {
-            const inEnsemble = (sniperData.ensemble?.top5 || []).includes(n);
-            const inWinner = (sniperData.strategy.numbers || []).includes(n);
-            const inCandidates = (sniperData.topCandidates || []).slice(0, 3).some((c: any) => c.num === n);
-            return (inEnsemble ? 1 : 0) + (inWinner ? 1 : 0) + (inCandidates ? 1 : 0) >= 2;
-          });
-
-          const rawProb = sniperData.signal.probability || 0;
-          const coverage = (finalNumbers.length / 37) * 100;
-          const displayProb = Math.min(rawProb, Math.round(coverage + 20));
-
-          const isHot = displayProb >= 65;
-          const isMed = displayProb >= 45;
-
-          return (
-            <div className="space-y-4">
-
-              {confidenceFilter && displayProb < 50 && (
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center">
-                  <Shield className="w-5 h-5 text-amber-400 mx-auto mb-1" />
-                  <span className="text-[10px] font-bold text-amber-400 block">SINAL FRACO — AGUARDAR</span>
-                  <span className="text-[9px] text-muted-foreground">{displayProb}% — abaixo de 50%. Não entrar.</span>
-                </div>
-              )}
-
-              {(!confidenceFilter || displayProb >= 50) && (
-                <div className={`rounded-2xl overflow-hidden border-2 shadow-lg ${
-                  isHot
-                    ? 'border-green-500/50 shadow-green-500/10 bg-gradient-to-br from-green-500/10 via-card to-card'
-                    : isMed
-                    ? 'border-primary/40 shadow-primary/10 bg-gradient-to-br from-primary/10 via-card to-card'
-                    : 'border-border bg-card'
-                }`}>
-
-                  {/* Indicador de ciclo do número */}
-                  {gapInfo && gapInfo.avgGap && (
-                    <div className={`mx-4 mt-2 px-3 py-1.5 rounded-lg border text-[7px] font-bold flex items-center gap-2 ${
-                      gapInfo.isNear
-                        ? 'bg-green-500/10 border-green-500/30 text-green-400'
-                        : 'bg-secondary/50 border-border text-muted-foreground'
-                    }`}>
-                      <span className="flex-1">
-                        ⏱️ #{sniperData.signal.number} ausente {gapInfo.delay} giros | média {gapInfo.avgGap}
-                      </span>
-                      <div className="w-24 h-1.5 bg-secondary rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all ${gapInfo.isNear ? 'bg-green-400' : 'bg-primary/50'}`}
-                          style={{ width: `${gapInfo.progress}%` }} />
-                      </div>
-                      <span>{gapInfo.isNear ? '🎯 NA HORA' : `${gapInfo.progress}%`}</span>
-                    </div>
+          <div className="flex flex-wrap gap-2">
+            {finalNumbers.map((n: number) => {
+              const isMain = n === ensTop1;
+              const isHC = highConviction.includes(n) && !isMain;
+              const isProt = dynamicProtection.includes(n) && !isMain && !isHC;
+              return (
+                <motion.div
+                  key={n}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className={`relative flex items-center justify-center rounded-full font-black shadow-md
+                    ${isMain ? 'w-12 h-12 text-base ring-3' : 'w-9 h-9 text-xs ring-1'}
+                    ${numColor(n)}
+                    ${isMain ? (isHot ? 'ring-neon-green shadow-neon-green' : 'ring-primary shadow-primary/20')
+                      : isHC ? 'ring-yellow-400/60'
+                      : isProt ? 'ring-yellow-600/40 opacity-70'
+                      : 'ring-white/10 opacity-85'}
+                  `}
+                >
+                  {n}
+                  {isMain && (
+                    <span className="absolute -top-1 -right-1 text-[7px] bg-primary text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center font-black">1</span>
                   )}
+                  {isHC && !isMain && <span className="absolute -top-0.5 -right-0.5 text-[6px]">⭐</span>}
+                  {isProt && <span className="absolute -top-0.5 -right-0.5 text-[6px]">🛡️</span>}
+                </motion.div>
+              );
+            })}
+          </div>
 
-                  <div className={`flex items-center gap-3 px-4 py-3 border-b ${
-                    isHot ? 'border-green-500/20 bg-green-500/8' : 'border-primary/15 bg-primary/5'
-                  }`}>
-                    <span className="text-[9px] font-black tracking-[0.2em] text-muted-foreground uppercase">
-                      JOGAR AGORA
-                    </span>
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${
-                      isHot
-                        ? 'bg-green-500/15 text-green-400 border-green-500/30'
-                        : 'bg-primary/10 text-primary border-primary/20'
-                    }`}>
-                      {sniperData.strategy.emoji} {sniperData.strategy.label}
-                    </span>
-                    {sniperData?.recentWinRate !== undefined && (
-                      <span className={`ml-auto text-[7px] font-bold font-mono ${
-                        sniperData.recentWinRate >= 0.5 ? 'text-green-400' :
-                        sniperData.recentWinRate < 0.25 ? 'text-red-400' : 'text-muted-foreground'
-                      }`}>
-                        WR {(sniperData.recentWinRate * 100).toFixed(0)}%
-                      </span>
-                    )}
-                  </div>
+          {/* Legend */}
+          <div className="flex gap-4 mt-3 text-[8px] text-muted-foreground/60">
+            <span>🔴 = #1 alvo</span>
+            <span>⭐ = alta convicção</span>
+            <span>🛡️ = proteção</span>
+          </div>
+        </div>
 
-                  <div className="flex items-center gap-5 px-5 py-5">
-                    <div className="relative flex-shrink-0">
-                      <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-black shadow-2xl ring-4 ${
-                        ensTop1 === 0
-                          ? 'bg-emerald-600 text-white ring-emerald-400/50 shadow-emerald-500/30'
-                          : RED_NUMBERS.includes(ensTop1)
-                          ? 'bg-red-600 text-white ring-red-400/60 shadow-red-500/30'
-                          : 'bg-zinc-800 text-white ring-zinc-500/50 shadow-zinc-600/30'
-                      } ${isHot ? 'animate-pulse' : ''}`}>
-                        {ensTop1}
-                      </div>
-                      <div className="absolute -bottom-1 -right-1 bg-card border border-border rounded-full px-1.5 py-0.5">
-                        <span className="text-[8px] font-black text-primary">#1</span>
-                      </div>
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex items-baseline gap-2 mb-1">
-                        <span className={`text-4xl font-black font-mono leading-none ${
-                          isHot ? 'text-green-400' : isMed ? 'text-primary' : 'text-muted-foreground'
-                        }`}>
-                          {displayProb}%
-                        </span>
-                        <span className="text-[9px] text-muted-foreground font-bold">confiança</span>
-                      </div>
-
-                      <div className="w-full h-2 bg-secondary/60 rounded-full overflow-hidden mb-2">
-                        <motion.div
-                          className={`h-full rounded-full ${
-                            isHot ? 'bg-gradient-to-r from-green-500 to-emerald-400'
-                            : isMed ? 'bg-gradient-to-r from-primary to-primary/70'
-                            : 'bg-muted-foreground/40'
-                          }`}
-                          animate={{ width: `${displayProb}%` }}
-                          transition={{ duration: 0.8, ease: 'easeOut' }}
-                        />
-                      </div>
-
-                      {/* Sistema de 3 níveis de confiança */}
-                      {(() => {
-                        const confs = sniperData?.signal?.confirmations || 0;
-                        const nums = finalNumbers.length;
-                        if (confs >= 3 || displayProb >= 65) {
-                          return (
-                            <div className="space-y-1">
-                              <div className="text-[11px] font-black text-green-400">
-                                ⚡ NÍVEL 1 — ENTRAR FORTE
-                              </div>
-                              <div className="text-[9px] text-green-400/70">
-                                {Math.min(12, nums)} fichas · apostar todos os {finalNumbers.length} números
-                              </div>
-                            </div>
-                          );
-                        }
-                        if (confs >= 2 || displayProb >= 50) {
-                          return (
-                            <div className="space-y-1">
-                              <div className="text-[11px] font-black text-primary">
-                                ✅ NÍVEL 2 — ENTRAR
-                              </div>
-                              <div className="text-[9px] text-primary/70">
-                                5-7 fichas · top 5 números em destaque
-                              </div>
-                            </div>
-                          );
-                        }
-                        if (confs >= 1 || displayProb >= 35) {
-                          return (
-                            <div className="space-y-1">
-                              <div className="text-[11px] font-black text-yellow-400">
-                                ⚠️ NÍVEL 3 — AGUARDAR ou 1-2 fichas
-                              </div>
-                              <div className="text-[9px] text-yellow-400/70">
-                                Só o #{sniperData.signal.number} com 1 ficha se quiser
-                              </div>
-                            </div>
-                          );
-                        }
-                        return (
-                          <div className="text-[11px] font-black text-muted-foreground">
-                            ⏸ AGUARDAR — sinal fraco
-                          </div>
-                        );
-                      })()}
-                      {mesaCaotica && (
-                        <div className="mt-1 text-[9px] font-bold text-red-400 flex items-center gap-1">
-                          <span>🌀</span>
-                          <span>Mesa caótica — aguarde 3+ giros</span>
-                        </div>
-                      )}
-                      {/* Contexto da sessão */}
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        {sniperData?.recentWinRate !== undefined && (
-                          <span className={`text-[7px] px-1.5 py-0.5 rounded border font-bold ${
-                            sniperData.recentWinRate >= 0.5 ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                            sniperData.recentWinRate >= 0.3 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
-                            'bg-red-500/10 text-red-400 border-red-500/20'
-                          }`}>
-                            {sniperData.recentWinRate >= 0.5 ? '🔥' : sniperData.recentWinRate < 0.25 ? '🛡️' : '⚖️'}
-                            {' '}WR {(sniperData.recentWinRate * 100).toFixed(0)}% (últ.10)
-                          </span>
-                        )}
-                        {sniperData?.matrizNumerica?.observacoes >= 10 && (
-                          <span className="text-[7px] px-1.5 py-0.5 rounded border font-bold bg-blue-500/10 text-blue-400 border-blue-500/20">
-                            🔢 Matriz: {sniperData.matrizNumerica.observacoes} obs
-                          </span>
-                        )}
-                        {sniperData?.ensemble?.sources?.length > 0 && (
-                          <span className="text-[7px] px-1.5 py-0.5 rounded border font-bold bg-primary/10 text-primary border-primary/20">
-                            🌟 {sniperData.ensemble.sources.length} fontes
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Confirmações independentes do número #1 */}
-                      {sniperData?.signal?.confirmationDetail && sniperData.signal.confirmations > 0 && (
-                        <div className="mt-2">
-                          <span className="text-[7px] text-muted-foreground font-bold uppercase tracking-wider block mb-1">
-                            {sniperData.signal.confirmations} fonte{sniperData.signal.confirmations !== 1 ? 's' : ''} confirmam o #{sniperData.signal.number}:
-                          </span>
-                          <div className="flex flex-wrap gap-1">
-                            {sniperData.signal.confirmationDetail.pull && (
-                              <span className="text-[7px] px-1.5 py-0.5 rounded border font-bold bg-cyan-500/10 text-cyan-400 border-cyan-500/30">
-                                🧲 Puxada direta
-                              </span>
-                            )}
-                            {sniperData.signal.confirmationDetail.autoRep && (
-                              <span className="text-[7px] px-1.5 py-0.5 rounded border font-bold bg-orange-500/10 text-orange-400 border-orange-500/30">
-                                🔁 Repetiu {sniperData.signal.confirmationDetail.recentCount}x
-                              </span>
-                            )}
-                            {sniperData.signal.confirmationDetail.matriz && (
-                              <span className="text-[7px] px-1.5 py-0.5 rounded border font-bold bg-blue-500/10 text-blue-400 border-blue-500/30">
-                                🔢 Matriz histórica
-                              </span>
-                            )}
-                            {sniperData.signal.confirmationDetail.ensemble && (
-                              <span className="text-[7px] px-1.5 py-0.5 rounded border font-bold bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
-                                🌟 Ensemble
-                              </span>
-                            )}
-                            {sniperData.signal.confirmationDetail.winner && (
-                              <span className="text-[7px] px-1.5 py-0.5 rounded border font-bold bg-primary/10 text-primary border-primary/20">
-                                ⚡ Estratégia
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="px-4 pb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-wider">
-                        👆 Apostar nestes {finalNumbers.length} números:
-                      </span>
-                      <span className="text-[7px] text-muted-foreground">
-                        {(finalNumbers.length / 37 * 100).toFixed(0)}% da mesa · paga {36 - finalNumbers.length}x
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-1.5">
-                      {finalNumbers.map((n: number) => {
-                        const isMain = n === ensTop1;
-                        const isHC = highConviction.includes(n) && !isMain;
-                        const isProt = dynamicProtection.includes(n) && !isMain && !isHC;
-                        return (
-                          <motion.div
-                            key={n}
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            className={`relative flex items-center justify-center rounded-full font-black
-                              ${isMain ? 'w-10 h-10 text-sm ring-2 shadow-lg' : 'w-8 h-8 text-[10px] ring-1'}
-                              ${n === 0 ? 'bg-emerald-600 text-white'
-                                : RED_NUMBERS.includes(n) ? 'bg-red-600 text-white'
-                                : 'bg-zinc-800 text-white'}
-                              ${isMain ? (isHot ? 'ring-green-400 shadow-green-400/30' : 'ring-primary shadow-primary/20')
-                                : isHC ? 'ring-yellow-400/60'
-                                : isProt ? 'ring-yellow-600/40 opacity-70'
-                                : 'ring-white/10 opacity-85'}
-                            `}
-                          >
-                            {n}
-                            {isMain && (
-                              <span className="absolute -top-1 -right-1 text-[7px] bg-primary text-primary-foreground rounded-full w-3.5 h-3.5 flex items-center justify-center font-black">1</span>
-                            )}
-                            {isHC && !isMain && (
-                              <span className="absolute -top-0.5 -right-0.5 text-[5px]">⭐</span>
-                            )}
-                            {isProt && (
-                              <span className="absolute -top-0.5 -right-0.5 text-[5px]">🛡️</span>
-                            )}
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="flex gap-3 mt-2">
-                      <span className="text-[7px] text-muted-foreground flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-primary inline-block" /> Principal
-                      </span>
-                      <span className="text-[7px] text-muted-foreground flex items-center gap-1">
-                        ⭐ Alta convicção
-                      </span>
-                      <span className="text-[7px] text-muted-foreground flex items-center gap-1">
-                        🛡️ Proteção
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="px-4 pb-3 border-t border-border/30 pt-2">
-                    <p className="text-[9px] text-muted-foreground/80 leading-relaxed line-clamp-2">
-                      🧠 {sniperData.strategy.justification}
-                    </p>
-                  </div>
-
-                </div>
-              )}
-
-              {/* Backtest ao vivo */}
-              {backtestVivo && backtestVivo.total >= 10 && (
-                <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border text-[7px] ${
-                  backtestVivo.wr >= 50 ? 'bg-green-500/8 border-green-500/20'
-                  : backtestVivo.wr >= 30 ? 'bg-yellow-500/8 border-yellow-500/20'
-                  : 'bg-red-500/8 border-red-500/20'
-                }`}>
-                  <span className="font-black text-muted-foreground">📊 Backtest 30:</span>
-                  <span className={`font-bold ${backtestVivo.wr >= 50 ? 'text-green-400' : backtestVivo.wr >= 30 ? 'text-yellow-400' : 'text-red-400'}`}>
-                    {backtestVivo.hits}/{backtestVivo.total} = {backtestVivo.wr}%
-                  </span>
-                  <span className={`ml-auto font-bold ${backtestVivo.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {backtestVivo.profit >= 0 ? '+' : ''}{backtestVivo.profit}u
-                  </span>
-                </div>
-              )}
-
-              {sniperData.signal.convergenceReasons?.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {sniperData.signal.convergenceReasons.slice(0, 4).map((r: string, i: number) => (
-                    <span key={i} className="text-[7px] px-2 py-0.5 rounded bg-primary/8 text-primary border border-primary/15 font-semibold">
-                      {r}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* ⚡ Padrões do Momento (realtime-patterns) */}
-              {rtInsights.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  <span className="text-[7px] font-black text-muted-foreground uppercase tracking-wider block">
-                    ⚡ Padrões detectados agora:
-                  </span>
-                  {rtInsights.slice(0, 4).map((ins, i) => (
-                    <div key={i} className={`flex items-center gap-2 px-2 py-1 rounded-lg border text-[7px] ${
-                      ins.confidence >= 80
-                        ? 'bg-orange-500/10 border-orange-500/30 text-orange-400'
-                        : ins.confidence >= 60
-                        ? 'bg-primary/8 border-primary/20 text-primary'
-                        : 'bg-secondary/60 border-border text-muted-foreground'
-                    }`}>
-                      <span className="font-black">{ins.confidence}%</span>
-                      <span className="flex-1 truncate">{ins.reason}</span>
-                      <span className="font-bold shrink-0">[{ins.numbers.slice(0,4).join(',')}]</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-            </div>
-          );
-        })()}
+        {/* Justification */}
+        {sniperData?.strategy?.justification && (
+          <div className="mt-4 p-3 rounded-lg bg-secondary/30 border border-border/40">
+            <span className="text-[9px] text-muted-foreground leading-relaxed">{sniperData.strategy.justification}</span>
+          </div>
+        )}
       </div>
     </motion.div>
   );
-};
+});
 
+SniperSignal.displayName = 'SniperSignal';
 export default SniperSignal;
