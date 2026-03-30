@@ -34,7 +34,7 @@ const CAVALOS_GROUPS: Record<string, number[]> = {
   '69': [6,9,16,19,26,29,36],
 };
 
-const DUPLICATE_SPIN_WINDOW_MS = 5000;
+const DUPLICATE_SPIN_WINDOW_MS = 20000;
 const ROULETTE_TABLES = [
   { id: 'brasileira', name: 'Roleta Brasileira', provider: 'Playtech', iframeUrl: 'https://onabet.com/casino/roleta-brasileira' },
   { id: 'brasileira2', name: 'Roleta Brasileira 2', provider: 'Playtech', iframeUrl: 'https://onabet.com/casino/roleta-ao-vivo' },
@@ -218,7 +218,7 @@ const Index = () => {
 
   const fetchSniper = useCallback(async (retryCount = 0) => {
     const now = Date.now();
-    if (now - lastSniperTriggerRef.current < 1200 && retryCount === 0) return;
+    if (now - lastSniperTriggerRef.current < 15000 && retryCount === 0) return;
     if (sniperFetchingRef.current && retryCount === 0) return;
     if (!aiEnabled) return;
     sniperFetchingRef.current = true;
