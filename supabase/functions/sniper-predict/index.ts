@@ -6332,7 +6332,10 @@ serve(async (req) => {
     ].filter(Boolean).join(' | ');
 
     if (confirmations >= 3) {
-      aiLearnings.unshift(`💎 DECISÃO SUPREMA: nº${numTop1} confirmado por ${confirmations} fontes (pull+matriz+ensemble+rep)`);
+      aiLearnings.unshift(`💎 DECISÃO SUPREMA V3: nº${numTop1} confirmado por ${confirmations} fontes (multi-strat+pull+matriz+ensemble+rep)`);
+    }
+    if (bestMultiStrat && bestMultiStrat.count >= 3) {
+      aiLearnings.push(`🔀 INTERSEÇÃO: nº${bestMultiStrat.num} presente em ${bestMultiStrat.count} estratégias top: ${bestMultiStrat.stratNames.slice(0,3).join(', ')}`);
     }
 
     // Final probability = ULTRA-CALIBRATED V2 — maximum accuracy
