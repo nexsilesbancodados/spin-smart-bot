@@ -413,6 +413,36 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                           </span>
                         )}
                       </div>
+
+                      {/* Confirmações independentes */}
+                      {sniperData?.signal?.confirmationDetail && (() => {
+                        const cd = sniperData.signal.confirmationDetail;
+                        const total = sniperData.signal.confirmations || 0;
+                        const items = [
+                          cd.pull      && { label: '🧲 Puxada', color: 'text-cyan-400 border-cyan-500/30 bg-cyan-500/10' },
+                          cd.autoRep   && { label: `🔁 Repetiu ${cd.recentCount}x`, color: 'text-orange-400 border-orange-500/30 bg-orange-500/10' },
+                          cd.matriz    && { label: '🔢 Matriz', color: 'text-blue-400 border-blue-500/30 bg-blue-500/10' },
+                          cd.ensemble  && { label: '🌟 Ensemble', color: 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10' },
+                          cd.winner    && { label: '⚡ Estratégia', color: 'text-primary border-primary/30 bg-primary/10' },
+                        ].filter(Boolean) as {label: string; color: string}[];
+                        if (items.length === 0) return null;
+                        return (
+                          <div className="mt-2">
+                            <div className="flex items-center gap-1 mb-1">
+                              <span className="text-[7px] text-muted-foreground font-bold uppercase tracking-wider">
+                                {total} fonte{total !== 1 ? 's' : ''} confirmam o #{sniperData.signal.number}:
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {items.map((item, i) => (
+                                <span key={i} className={`text-[7px] px-1.5 py-0.5 rounded border font-bold ${item.color}`}>
+                                  {item.label}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
