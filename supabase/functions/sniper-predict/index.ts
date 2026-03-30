@@ -904,19 +904,26 @@ serve(async (req) => {
     }
 
     for (const insight of patternInsights) {
-      const conf = (insight.confidence || 0) / 100;
-      if (conf < 0.3) continue; // threshold lowered from 0.5 to 0.3
-      const nums = insight.numbers_involved || [];
-      // Boost extra for multi-window confirmed patterns
       const src = (insight.source_data as any) || {};
+      const isRealtime = src.realtime === true; // padrão capturado neste giro
+      const conf = (insight.confidence || 0) / 100;
+      if (conf < 0.25) continue; // threshold ainda mais baixo para não perder sinais
+      const nums = insight.numbers_involved || [];
+      // Janelas confirmadas (multi-window análise)
       const windowsConfirmed = src.windows_confirmed?.length || 1;
       const windowMultiplier = 1 + (windowsConfirmed - 1) * 0.2;
       const btRate = src.backtest_rate || 0;
       const btMultiplier = 1 + btRate;
+      // ⚡ REALTIME tem 3x mais peso — capturado agora, do momento
+      const realtimeMult = isRealtime ? 3.0 : 1.0;
       for (const n of nums) {
         if (n >= 0 && n <= 36) {
-          insightNumbers[n] += conf * 1.5 * windowMultiplier * btMultiplier;
-          insightReasons[n].push(`📊 ${insight.pattern_type}(${windowsConfirmed}W)`);
+          insightNumbers[n] += conf * 1.5 * windowMultiplier * btMultiplier * realtimeMult;
+          insightReasons[n].push(
+            isRealtime
+              ? `⚡RT:${insight.pattern_type}(${insight.confidence}%)`
+              : `📊${insight.pattern_type}(${windowsConfirmed}W)`
+          );
         }
       }
     }
@@ -3593,19 +3600,36 @@ serve(async (req) => {
       const acc = (l.accuracy || 50) / 100;
       const keyNums: number[] = (l.metadata as any)?.key_numbers || [];
       const hotNums: number[] = (l.metadata as any)?.hotNumbers || [];
-      const isSessionSpin = l.learning_type === 'session_spin';
+      const isSessionSpin  = l.learning_type === 'session_spin';
       const isPullConfirmed = l.learning_type === 'pull_confirmed';
-      const recencyBoost = isSessionSpin ? 1.8 : isPullConfirmed ? 2.0 : 1.0;
-      
+      const isHeatCluster   = l.learning_type === 'heat_cluster';
+      const isErrorPattern  = l.learning_type === 'error_pattern';
+      // Padrões realtime (salvos pelo realtime-patterns) têm boost máximo
+      const isRealtimeRT = isSessionSpin && (l.title || '').startsWith('RT_');
+      const recencyBoost = isRealtimeRT ? 3.5
+        : isSessionSpin ? 2.2
+        : isPullConfirmed ? 2.5
+        : isHeatCluster ? 2.0
+        : 1.0;
+
+      // Threshold mais baixo para não perder sinais do momento
+      const accThreshold = isRealtimeRT ? 0.3 : isPullConfirmed ? 0.4 : 0.5;
+
       // Use hotNumbers from metadata (strongest signal)
-      if (hotNums.length > 0 && acc > 0.5) {
+      if (hotNums.length > 0 && acc > accThreshold) {
         for (const hn of hotNums) {
-          if (hn >= 0 && hn <= 36) { learnedSignalBoost[hn] += acc * 2.0 * recencyBoost; learnedSignalReasons[hn].push(`IA: ${l.learning_type}`); }
+          if (hn >= 0 && hn <= 36) {
+            learnedSignalBoost[hn] += acc * 2.5 * recencyBoost;
+            learnedSignalReasons[hn].push(isRealtimeRT ? `⚡RT:${l.title.slice(3,25)}` : `IA:${l.learning_type}`);
+          }
         }
       }
-      if (keyNums.length > 0 && acc > 0.6) {
+      if (keyNums.length > 0 && acc > accThreshold) {
         for (const kn of keyNums) {
-          if (kn >= 0 && kn <= 36) { learnedSignalBoost[kn] += acc * 1.5 * recencyBoost; learnedSignalReasons[kn].push(`IA: ${l.title.slice(0, 30)}`); }
+          if (kn >= 0 && kn <= 36) {
+            learnedSignalBoost[kn] += acc * 2.0 * recencyBoost;
+            learnedSignalReasons[kn].push(`IA:${l.title.slice(0,28)}`);
+          }
         }
       }
       if (l.learning_type === 'terminal_pattern' && acc > 0.6) {

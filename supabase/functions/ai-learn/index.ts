@@ -644,7 +644,13 @@ Aja como SUPERCOMPUTADOR DE ANALÍTICA PREDITIVA. Realize análise transversal c
 21. ENTROPIA: avalie probabilidade de quebra de padrão
 22. EFEITO GANGORRA: preveja transição entre semicírculos
 23. PROBABILIDADE RESIDUAL: priorize os alvos de atraso cruzado
-24. **AUTOCORREÇÃO**: Analise o histórico de erros/acertos. Identifique quais estratégias estão falhando e por quê. Ajuste recomendações para melhorar o win rate. Se uma estratégia erra consistentemente, reduza sua confiança. Se acerta, aumente.`;
+24. **AUTOCORREÇÃO**: Analise o histórico de erros/acertos. Identifique quais estratégias estão falhando e por quê. Ajuste recomendações para melhorar o win rate. Se uma estratégia erra consistentemente, reduza sua confiança. Se acerta, aumente.
+25. **AUTO-REPETIÇÃO**: Detecte números que saíram 2+ vezes nas últimas 5 rodadas — PRIORIDADE MÁXIMA. key_numbers DEVE conter esses números em primeiro lugar.
+26. **PUXADAS DO MOMENTO**: O último número sempre "puxa" relacionados. Inclua os puxados do último número em key_numbers.
+27. **TERMINAL DOMINANTE**: Se um terminal aparece 3+ vezes em 15 rodadas, inclua todos os números desse terminal em key_numbers.
+28. **MATRIZ 37x37**: Se após o último número saiu um padrão consistente (>40%), inclua esses números em key_numbers.
+
+⚠️ REGRA ABSOLUTA: key_numbers NUNCA pode ser vazio []. SEMPRE forneça 3-8 números específicos baseados nos padrões detectados. key_numbers = os números que você RECOMENDA apostar AGORA na próxima rodada. Se não houver padrão forte, use os 5 números mais quentes da sessão.`;
 
     // 4. Call DeepSeek AI
     const aiRes = await fetch("https://api.deepseek.com/chat/completions", {
@@ -982,7 +988,7 @@ Responda APENAS via tool call store_learnings. Seja preciso, específico e acion
                       accuracy: { type: "number" },
                       key_numbers: { type: "array", items: { type: "integer" } }
                     },
-                    required: ["learning_type","title","knowledge","data_points","accuracy"]
+                    required: ["learning_type","title","knowledge","data_points","accuracy","key_numbers"]
                   }
                 }
               },

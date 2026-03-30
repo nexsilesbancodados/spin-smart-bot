@@ -20,6 +20,7 @@ interface Props {
   sniperStale: boolean;
   lastPredResult: { hit: boolean | null; hitType: string | null; predicted: number | null; actual: number | null; label: string } | null;
   confidenceFilter: boolean;
+  rtInsights?: { type: string; numbers: number[]; score: number; reason: string; confidence: number }[];
 }
 
 const getBetTypeLabel = (type: string) => {
@@ -128,7 +129,7 @@ const getBetTypeCategory = (type: string): string => {
   return 'outro';
 };
 
-const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult, confidenceFilter: confidenceFilterProp }: Props) => {
+const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult, confidenceFilter: confidenceFilterProp, rtInsights = [] }: Props) => {
   const [reedCount, setReedCount] = useState(0);
   const [confidenceFilter, setConfidenceFilter] = useState(confidenceFilterProp);
   const prevSignalRef = useRef<number | null>(null);
@@ -544,6 +545,28 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                     <span key={i} className="text-[7px] px-2 py-0.5 rounded bg-primary/8 text-primary border border-primary/15 font-semibold">
                       {r}
                     </span>
+                  ))}
+                </div>
+              )}
+
+              {/* ⚡ Padrões do Momento (realtime-patterns) */}
+              {rtInsights.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <span className="text-[7px] font-black text-muted-foreground uppercase tracking-wider block">
+                    ⚡ Padrões detectados agora:
+                  </span>
+                  {rtInsights.slice(0, 4).map((ins, i) => (
+                    <div key={i} className={`flex items-center gap-2 px-2 py-1 rounded-lg border text-[7px] ${
+                      ins.confidence >= 80
+                        ? 'bg-orange-500/10 border-orange-500/30 text-orange-400'
+                        : ins.confidence >= 60
+                        ? 'bg-primary/8 border-primary/20 text-primary'
+                        : 'bg-secondary/60 border-border text-muted-foreground'
+                    }`}>
+                      <span className="font-black">{ins.confidence}%</span>
+                      <span className="flex-1 truncate">{ins.reason}</span>
+                      <span className="font-bold shrink-0">[{ins.numbers.slice(0,4).join(',')}]</span>
+                    </div>
                   ))}
                 </div>
               )}

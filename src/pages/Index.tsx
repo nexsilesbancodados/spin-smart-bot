@@ -176,6 +176,7 @@ const Index = () => {
   const [showAllHistory, setShowAllHistory] = useState(false);
   const prevNumbersRef = useRef<string>('');
   const [sniperData, setSniperData] = useState<any>(null);
+  const [rtInsights, setRtInsights] = useState<{ type: string; numbers: number[]; score: number; reason: string; confidence: number }[]>([]);
   const [sniperCountdown, setSniperCountdown] = useState(13);
   const sniperPrevKey = useRef<string>('');
   const sniperSameCount = useRef(0);
@@ -261,7 +262,17 @@ const Index = () => {
     setSniperStale(false);
     setSniperCountdown(13);
     playSound('signal', soundEnabled);
-  }, [soundEnabled]);
+    // Disparar realtime-patterns a cada giro novo — captura padrões do momento
+    if (aiEnabled) {
+      supabase.functions.invoke('realtime-patterns')
+        .then(res => {
+          if (res.data?.all_insights?.length > 0) {
+            setRtInsights(res.data.all_insights.slice(0, 6));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [soundEnabled, aiEnabled]);
 
   // Track spins for micro-learning trigger
   const spinCountSinceMicroLearnRef = useRef(0);
@@ -269,7 +280,11 @@ const Index = () => {
   const triggerMicroLearn = useCallback(async () => {
     if (!aiEnabled) return;
     try {
-      await supabase.functions.invoke('auto-analyze-patterns');
+      // Rodar em paralelo: auto-analyze + realtime-patterns
+      await Promise.allSettled([
+        supabase.functions.invoke('auto-analyze-patterns'),
+        supabase.functions.invoke('realtime-patterns'),
+      ]);
     } catch { /* silent */ }
   }, [aiEnabled]);
 
@@ -437,7 +452,10 @@ const Index = () => {
       }
       const cycle = cycleRef.current++;
       try {
-        const phase = cycle % 8;
+        // Realtime-patterns SEMPRE roda em paralelo — captura padrões do momento
+        supabase.functions.invoke('realtime-patterns').catch(() => {});
+
+        const phase = cycle % 9; // 9 fases agora
         
         if (phase === 0 || phase === 4) {
           setAutoLearnStatus('learning');
@@ -447,6 +465,10 @@ const Index = () => {
           setAutoLearnStatus('analyzing');
           const res = await supabase.functions.invoke('auto-analyze-patterns');
           if (res?.error || res?.data?.error) throw new Error(res?.data?.error || res?.error?.message || 'auto-analyze failed');
+        } else if (phase === 3 || phase === 7) {
+          // Fase dedicada ao realtime — análise profunda do momento
+          setAutoLearnStatus('analyzing');
+          await supabase.functions.invoke('realtime-patterns');
         } else if (phase === 2 || phase === 6) {
           setAutoLearnStatus('backtesting');
           await supabase.functions.invoke('sniper-predict', {
@@ -639,6 +661,7 @@ const Index = () => {
                 sniperStale={sniperStale}
                 lastPredResult={lastPredResult}
                 confidenceFilter={confidenceFilter}
+                rtInsights={rtInsights}
               />
             ) : (
               <div className="bg-card rounded-2xl border border-destructive/30 p-8 h-full flex items-center justify-center">
@@ -998,7 +1021,7 @@ const Index = () => {
                       </div>
 
                       {/* AI Learning Log */}
-                      <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} />
+                      <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} rtInsights={rtInsights} />
 
                     </div>
                   </motion.div>

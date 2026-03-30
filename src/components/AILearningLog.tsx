@@ -27,9 +27,10 @@ interface Props {
   allNumbers: number[];
   sniperData: any;
   autoLearnStatus: 'idle' | 'learning' | 'analyzing' | 'backtesting';
+  rtInsights?: { type: string; numbers: number[]; score: number; reason: string; confidence: number }[];
 }
 
-const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus }: Props) => {
+const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [] }: Props) => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
@@ -189,6 +190,30 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus }: Props) => {
 
     return () => timers.forEach(clearTimeout);
   }, [allNumbers[0]]);
+
+  // Log padrões realtime quando detectados
+  useEffect(() => {
+    if (!rtInsights || rtInsights.length === 0) return;
+    const top = rtInsights[0];
+    if (top.confidence >= 70) {
+      const typeLabels: Record<string, string> = {
+        auto_repeticao_rt: '🔁 AUTO-REPETIÇÃO',
+        streak_consecutivo: '🔥 STREAK',
+        triple_pull: '🔱 TRIPLE PULL',
+        double_pull: '🔗 DOUBLE PULL',
+        puxada_momento: '🧲 PUXADA',
+        terminal_dominante_rt: '🔢 TERMINAL',
+        zero_pressao_rt: '🟢 ZERO',
+        combo_ouro_rt: '👑 COMBO OURO',
+        matriz_momento: '🔮 MATRIZ',
+        near_miss_rt: '📍 NEAR MISS',
+        hot_momento: '🔥 HOT',
+        setor_dominante_rt: '🎯 SETOR',
+      };
+      const label = typeLabels[top.type] || `⚡ ${top.type}`;
+      addLog(`${label}: ${top.reason.slice(0, 80)} → apostar [${top.numbers.slice(0,5).join(',')}]`, 'alert');
+    }
+  }, [rtInsights]);
 
   // Log confirmações quando sniper atualiza
   useEffect(() => {
