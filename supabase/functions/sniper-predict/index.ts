@@ -6499,6 +6499,22 @@ serve(async (req) => {
       aiLearnings.push(`🔑 Assinatura terminal: T${mesaDNA.terminalSignature.join(',T')} consistentes`);
     }
 
+    // APRENDIZADO APLICADO: mostrar quais padrões aprendidos influenciaram a jogada
+    const topInfluence = learnedInfluence
+      .filter(li => finalBetNumbers.includes(li.num))
+      .sort((a, b) => b.boost - a.boost)
+      .slice(0, 5);
+    if (topInfluence.length > 0) {
+      aiLearnings.unshift(`🧠 APRENDIZADO APLICADO: ${topInfluence.length} padrões aprendidos influenciaram a jogada`);
+      topInfluence.forEach(ti => {
+        aiLearnings.push(`🎓 nº${ti.num} (+${ti.boost}pts): ${ti.source}`);
+      });
+    }
+    const totalLearnedBoost = Object.values(learnedBoosts).reduce((a, b) => a + b, 0);
+    if (totalLearnedBoost > 10) {
+      aiLearnings.push(`📚 ${learned.length} padrões aprendidos aplicados (+${totalLearnedBoost.toFixed(0)}pts distribuídos)`);
+    }
+
     // MODE thresholds calibrados para probabilidades realistas (max ~40% com 8 números)
     const mode = (winner.type === 'convergencia_absoluta' && finalProbability >= 35) ? 'sniper'
       : confirmations >= 3 && finalProbability >= 25 ? 'sniper'
