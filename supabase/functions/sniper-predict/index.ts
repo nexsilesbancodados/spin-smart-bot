@@ -6696,8 +6696,8 @@ serve(async (req) => {
     const combinedSorted = Object.entries(combinedNumFreq)
       .sort(([,a],[,b]) => b.count - a.count || b.totalProb - a.totalProb)
       .map(([n, info]) => ({ num: Number(n), ...info }));
-    // Add protection
-    PROTECTION_NUMBERS.forEach(pn => {
+    // Add dynamic protection (not hardcoded)
+    realProtection.forEach(pn => {
       if (!combinedSorted.find(c => c.num === pn)) {
         combinedSorted.push({ num: pn, count: 0, totalProb: 0, sources: ['🛡️'] });
       }
