@@ -6439,7 +6439,7 @@ serve(async (req) => {
 
         const pullInfo = (FULL_PULL_MAP[numbers[0]] || []).slice(0, 8).join(',');
         const hotTermInfo = `T${daniGreen.mod1.terminal}(${daniGreen.mod1.count}x/15)`;
-        const coldTermInfo = `T${daniGreen.mod2.terminal}(atraso ${daniGreen.mod2.delay})`;
+        const coldTermInfo = `T${daniGreen.mod1Cold.terminal}(atraso ${daniGreen.mod1Cold.delay})`;
         
         // Gather learning history for context
         const recentLearningsContext = learned.slice(0, 10).map(l => {
