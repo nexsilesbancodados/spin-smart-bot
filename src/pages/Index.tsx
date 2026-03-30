@@ -727,74 +727,8 @@ const Index = () => {
             </div>
           </details>
 
-          {/* ─── SEÇÃO 3: JOGADAS ALTERNATIVAS (COLAPSÁVEL) ─── */}
-          {sniperData?.topAlternatives?.length > 0 && (
-            <details className="bg-gradient-card rounded-xl border border-border/60 overflow-hidden relative">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-              <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none hover:bg-primary/5 transition-colors">
-                <ChevronDown className="w-4 h-4 text-primary/60 transition-transform" />
-                <BarChart3 className="w-3.5 h-3.5 text-primary" />
-                <span className="font-display text-[10px] tracking-[0.2em] font-bold text-primary">JOGADAS ALTERNATIVAS</span>
-                <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-bold font-mono">
-                  TOP {sniperData.topAlternatives.length}
-                </span>
-              </summary>
-              <div className="p-4 border-t border-border/40">
-                <p className="text-[9px] text-muted-foreground mb-3">💡 Outras opções de aposta detectadas pela IA. Escolha UMA por vez.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {sniperData.topAlternatives.map((alt: any, i: number) => {
-                    const getSimpleType = (type: string) => {
-                      if (type?.includes('duzia') || type?.includes('dozen')) return { icon: '🎲', tip: 'Aposte na área de DÚZIA da mesa' };
-                      if (type?.includes('coluna') || type?.includes('column')) return { icon: '📐', tip: 'Aposte no final da COLUNA' };
-                      if (type?.includes('cor')) return { icon: '🎨', tip: 'Aposte em VERMELHO ou PRETO' };
-                      if (type?.includes('terminal')) return { icon: '🔢', tip: '1 ficha em cada número com mesmo final' };
-                      if (type?.includes('cavalos') || type?.includes('split')) return { icon: '🐎', tip: 'Ficha entre 2 números (split)' };
-                      if (type?.includes('setor') || type?.includes('voisin') || type?.includes('cluster')) return { icon: '🎯', tip: 'Peça vizinhos ao dealer' };
-                      if (type?.includes('puxad')) return { icon: '🧲', tip: '1 ficha em cada número mostrado' };
-                      if (type?.includes('genetic')) return { icon: '🧬', tip: '1 ficha em cada número mostrado' };
-                      return { icon: '📌', tip: '1 ficha em cada número abaixo' };
-                    };
-                    const { icon, tip } = getSimpleType(alt.type || '');
-                    return (
-                      <div key={i} className="bg-secondary/40 rounded-xl p-3.5 border border-border hover:border-primary/30 transition-all space-y-2">
-                        {/* Header */}
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-base">{alt.emoji || icon}</span>
-                          <span className="text-[10px] font-bold text-foreground truncate flex-1">{alt.label}</span>
-                          <span className={`text-xs font-mono font-black px-1.5 py-0.5 rounded ${alt.probability >= 80 ? 'bg-primary/15 text-primary' : alt.probability >= 65 ? 'bg-yellow-500/15 text-yellow-400' : 'bg-secondary text-muted-foreground'}`}>
-                            {alt.probability}%
-                          </span>
-                        </div>
 
-                        {/* Números */}
-                        <div>
-                          <span className="text-[8px] text-muted-foreground font-bold block mb-1">📍 Aposte em:</span>
-                          <div className="flex flex-wrap gap-1">
-                            {alt.numbers?.slice(0, 10).map((n: number, j: number) => (
-                              <div key={j} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold ${colorClass(n)} border border-white/10`}>{n}</div>
-                            ))}
-                            {alt.numbers?.length > 10 && <span className="text-[8px] text-muted-foreground self-center">+{alt.numbers.length - 10}</span>}
-                          </div>
-                        </div>
 
-                        {/* Como apostar — dica simples */}
-                        <div className="bg-primary/5 rounded-lg px-2.5 py-1.5 border border-primary/10">
-                          <p className="text-[8px] text-foreground/80">👆 {tip}</p>
-                        </div>
-
-                        {/* Stats */}
-                        <div className="flex items-center gap-2 text-[8px] text-muted-foreground pt-0.5">
-                          <span>💰 Ganho: <strong className="text-foreground">{alt.payout}x</strong></span>
-                          <span className="text-border">•</span>
-                          <span>📊 <strong className="text-foreground">{alt.coverage}%</strong> mesa</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </details>
-          )}
 
           {/* ─── SEÇÃO 4: ANÁLISE AVANÇADA (COLAPSÁVEL) ─── */}
           {sniperData && (
