@@ -6186,9 +6186,9 @@ serve(async (req) => {
     const ensembleTop1 = ensembleRanking[0] || null;
     const ensembleTop5 = ensembleRanking.slice(0, 5).map(e => e.num);
 
-    // ESTRATÉGIA ENSEMBLE SUPREMO
+    // ESTRATÉGIA ENSEMBLE SUPREMO — SEM proteção hardcoded, só convergência real
     if (ensembleTop5.length >= 3 && ensembleTop1) {
-      const ensNums = [...new Set([...ensembleTop5, ...PROTECTION_NUMBERS_LEGACY])];
+      const ensNums = [...new Set(ensembleTop5)]; // REMOVIDO: PROTECTION_NUMBERS_LEGACY poluía a jogada
       const ensScore = sumScores(ensNums) + ensembleTop1.score * 0.5;
       const ensBt = backtestSet(ensNums);
       strategies.push({
@@ -6199,8 +6199,8 @@ serve(async (req) => {
         coverage: (ensNums.length / 37) * 100,
         payout: 36 - ensNums.length,
         score: ensScore + ensBt * 40 + ensembleRanking[0].sources.length * 5,
-        probability: Math.min(95, Math.round(
-          45 + ensBt * 35 + ensembleRanking[0].sources.length * 4 + (matrizTotal > 50 ? 8 : 0)
+        probability: Math.min(85, Math.round(
+          35 + ensBt * 35 + ensembleRanking[0].sources.length * 4 + (matrizTotal > 50 ? 5 : 0)
         )),
         justification: `ENSEMBLE de ${ensembleRanking.length} candidatos × ${strategies.length} estratégias × Matriz 37×37 (${matrizTotal} obs). Convergência máxima em ${ensembleTop1.num}: ${ensembleTop1.sources.slice(0,3).join(', ')}.`,
       });
