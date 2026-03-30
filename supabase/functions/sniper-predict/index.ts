@@ -3512,7 +3512,7 @@ serve(async (req) => {
       if (colorStreak >= 4) {
         const reverseColor = firstColor === 'red' ? 'black' : 'red';
         const reverseNums = Array.from({length: 37}, (_, n) => n).filter(n => getColor(n) === reverseColor);
-        const breakProb = Math.min(98, 60 + colorStreak * 6);
+        const breakProb = Math.min(75, 60 + colorStreak * 6);
         archetypes.push({ name: 'Quebra de Entropia', emoji: '🔥', active: colorStreak >= 5, strength: breakProb, detail: `${colorStreak}x ${firstColor === 'red' ? 'Vermelho' : 'Preto'} seguidos — Reversão para ${reverseColor === 'red' ? 'Vermelho' : 'Preto'} (${breakProb}%)`, predictedNums: reverseNums });
         if (colorStreak >= 5) aiLearnings.push(`🔥 ENTROPIA: ${colorStreak}x mesma cor — Reversão iminente (${breakProb}%)`);
       }
@@ -4429,7 +4429,7 @@ serve(async (req) => {
         type: 'sniper', label: 'Sniper (Setor)', emoji: '🎯',
         numbers: sniperNums, coverage: (9/37)*100, payout: 36,
         score: sniperScore + bt * 20,
-        probability: Math.min(98, Math.round(50 + sniperScore * 2.5 + bt * 30)),
+        probability: Math.min(75, Math.round(50 + sniperScore * 2.5 + bt * 30)),
         justification: `Viciação de Dealer detectada. Alvo ${sniperTarget.num} + 4 vizinhos. ${sniperTarget.reasons.slice(0,3).join(', ')}`,
       });
     }
@@ -4443,7 +4443,7 @@ serve(async (req) => {
       type: 'cavalos', label: `Cavalos ${bestCavaloGroup[0]}`, emoji: '🐴',
       numbers: cavaloNums, coverage: (cavaloNums.length/37)*100, payout: 36 - cavaloNums.length,
       score: cavaloScore + cavBt * 18,
-      probability: Math.min(98, Math.round(45 + cavaloScore * 1.8 + cavBt * 25)),
+      probability: Math.min(75, Math.round(45 + cavaloScore * 1.8 + cavBt * 25)),
       justification: `Ciclo matemático favorece grupo C${bestCavaloGroup[0]} (${bestCavaloGroup[1]}x em 30). Terminais ${sortedTerminals.slice(0,2).map(([t])=>t).join(',')} dominantes.`,
     });
 
@@ -4457,7 +4457,7 @@ serve(async (req) => {
       type: 'duzias', label: `Dúzias ${dz1}+${dz2}`, emoji: '📊',
       numbers: dozenNums, coverage: (24/37)*100, payout: 3,
       score: dzScore + dzBt * 15,
-      probability: Math.min(98, Math.round(55 + dzBt * 35 + dzScore * 0.8)),
+      probability: Math.min(75, Math.round(55 + dzBt * 35 + dzScore * 0.8)),
       justification: `Recuperação de banca: Dúzias ${dz1} e ${dz2} cobrindo 64% da mesa. ${recoveryMode ? 'Modo recuperação ativo.' : ''}`,
     });
 
@@ -4468,7 +4468,7 @@ serve(async (req) => {
       type: 'voisins', label: 'Vizinhos do Zero', emoji: '🎰',
       numbers: [...VOISINS], coverage: (17/37)*100, payout: 36 - 17,
       score: voisinsScore + voisBt * 16 + (mesaMode === 'fisico' ? 5 : 0),
-      probability: Math.min(98, Math.round(50 + voisinsScore * 1.2 + voisBt * 28)),
+      probability: Math.min(75, Math.round(50 + voisinsScore * 1.2 + voisBt * 28)),
       justification: `Atração física do centro do cilindro. Setor Voisins com ${sectorFreq['Voisins']}x em 30. ${seesawBias === 'zero' ? 'Gangorra favorece Zero.' : ''}`,
     });
 
@@ -4484,7 +4484,7 @@ serve(async (req) => {
       type: 'setor_oposto', label: opLabel, emoji: '🔄',
       numbers: [...opSector], coverage: (opSector.length/37)*100, payout: 36 - opSector.length,
       score: opScore + opBt * 16,
-      probability: Math.min(98, Math.round(45 + opScore * 1.5 + opBt * 28)),
+      probability: Math.min(75, Math.round(45 + opScore * 1.5 + opBt * 28)),
       justification: `Balanço de cilindro favorece ${opLabel}. ${seesawBias === 'opposite' ? 'Gangorra detectada contra Zero.' : `${opLabel} com concentração recente.`}`,
     });
 
@@ -4503,7 +4503,7 @@ serve(async (req) => {
       type: 'quebra', label: `Quebra: ${breakLabel}`, emoji: '⚡',
       numbers: breakNums.slice(0, 18), coverage: (18/37)*100, payout: 2,
       score: breakScore + breakBt * 12,
-      probability: Math.min(98, Math.round(48 + breakBt * 35 + breakExtra * 3)),
+      probability: Math.min(75, Math.round(48 + breakBt * 35 + breakExtra * 3)),
       justification: `Alta entropia (${entropy.toFixed(2)}) sugere reversão. ${breakLabel}. Sequência de ${breakExtra} a mais.`,
     });
 
@@ -4528,7 +4528,7 @@ serve(async (req) => {
       type: 'cor', label: betOnRed ? '🔴 Vermelho' : '⚫ Preto', emoji: betOnRed ? '🔴' : '⚫',
       numbers: colorNums, coverage: (18/37)*100, payout: 2,
       score: colorImbalance * 3 + colorBtRate * 25 + colorTrendBonus,
-      probability: Math.min(98, Math.round(45 + colorBtRate * 40 + colorImbalance * 2 + colorTrendBonus)),
+      probability: Math.min(75, Math.round(45 + colorBtRate * 40 + colorImbalance * 2 + colorTrendBonus)),
       justification: trendEngine.colorTrend.shouldFollow
         ? `${betOnRed ? 'Vermelho' : 'Preto'} A FAVOR DO ALGORITMO: tendência acelerando (${trendEngine.colorTrend.strength}% força). Backtest: ${(colorBtRate*100).toFixed(0)}%.`
         : `${betOnRed ? 'Vermelho' : 'Preto'} ${trendEngine.colorTrend.direction ? 'por reversão' : 'atrasado'} (${betOnRed ? redNums30 : blackNums30}x vs ${betOnRed ? blackNums30 : redNums30}x em 30). Backtest: ${(colorBtRate*100).toFixed(0)}%.`,
@@ -4550,7 +4550,7 @@ serve(async (req) => {
       type: 'paridade', label: betOnEven ? '🔵 Par' : '🟠 Ímpar', emoji: betOnEven ? '🔵' : '🟠',
       numbers: parityNums, coverage: (18/37)*100, payout: 2,
       score: parityImbalance * 3 + parityBtRate * 25 + parityTrendBonus,
-      probability: Math.min(98, Math.round(45 + parityBtRate * 40 + parityImbalance * 2 + parityTrendBonus)),
+      probability: Math.min(75, Math.round(45 + parityBtRate * 40 + parityImbalance * 2 + parityTrendBonus)),
       justification: trendEngine.parityTrend.shouldFollow
         ? `${betOnEven ? 'Par' : 'Ímpar'} A FAVOR DO ALGORITMO: tendência acelerando. Backtest: ${(parityBtRate*100).toFixed(0)}%.`
         : `${betOnEven ? 'Par' : 'Ímpar'} ${trendEngine.parityTrend.direction ? 'por reversão' : 'atrasado'} (${betOnEven ? even30 : odd30}x vs ${betOnEven ? odd30 : even30}x em 30). Backtest: ${(parityBtRate*100).toFixed(0)}%.`,
@@ -4572,7 +4572,7 @@ serve(async (req) => {
       type: 'alto_baixo', label: betOnHigh ? '⬆️ Alto (19-36)' : '⬇️ Baixo (1-18)', emoji: betOnHigh ? '⬆️' : '⬇️',
       numbers: hlNums, coverage: (18/37)*100, payout: 2,
       score: hlImbalance * 3 + hlBtRate * 25 + hlTrendBonus,
-      probability: Math.min(98, Math.round(45 + hlBtRate * 40 + hlImbalance * 2 + hlTrendBonus)),
+      probability: Math.min(75, Math.round(45 + hlBtRate * 40 + hlImbalance * 2 + hlTrendBonus)),
       justification: trendEngine.highLowTrend.shouldFollow
         ? `${betOnHigh ? 'Alto' : 'Baixo'} A FAVOR DO ALGORITMO: tendência acelerando. Backtest: ${(hlBtRate*100).toFixed(0)}%.`
         : `${betOnHigh ? 'Alto' : 'Baixo'} ${trendEngine.highLowTrend.direction ? 'por reversão' : 'atrasado'} (${betOnHigh ? high30 : low30}x vs ${betOnHigh ? low30 : high30}x em 30). Backtest: ${(hlBtRate*100).toFixed(0)}%.`,
@@ -4589,7 +4589,7 @@ serve(async (req) => {
       type: 'coluna', label: `📐 Coluna ${coldestCol}`, emoji: '📐',
       numbers: [...colNums], coverage: (12/37)*100, payout: 3,
       score: (10 - colDelay) * 2 + colBtRate * 22,
-      probability: Math.min(98, Math.round(30 + colBtRate * 45 + (10 - colDelay) * 3)),
+      probability: Math.min(75, Math.round(30 + colBtRate * 45 + (10 - colDelay) * 3)),
       justification: `Coluna ${coldestCol} com apenas ${colDelay}x em 30 (atrasada). Backtest: ${(colBtRate*100).toFixed(0)}%.`,
     });
 
@@ -4604,7 +4604,7 @@ serve(async (req) => {
       type: 'duzia_unica', label: `🎲 Dúzia ${coldestDz}`, emoji: '🎲',
       numbers: dzNums, coverage: (12/37)*100, payout: 3,
       score: (10 - dzDelay) * 2 + dzBtSingle * 22,
-      probability: Math.min(98, Math.round(30 + dzBtSingle * 45 + (10 - dzDelay) * 3)),
+      probability: Math.min(75, Math.round(30 + dzBtSingle * 45 + (10 - dzDelay) * 3)),
       justification: `Dúzia ${coldestDz} (${(coldestDz-1)*12+1}-${coldestDz*12}) com ${dzDelay}x em 30. Backtest: ${(dzBtSingle*100).toFixed(0)}%.`,
     });
 
@@ -4621,7 +4621,7 @@ serve(async (req) => {
         type: 'numero_exato', label: `💎 Pleno no ${topNum.num}`, emoji: '💎',
         numbers: [topNum.num], coverage: (1/37)*100, payout: 36,
         score: topNum.score * 3 + numBtRate * 100,
-        probability: Math.min(98, Math.round(5 + topNum.score * 5 + numBtRate * 80)),
+        probability: Math.min(75, Math.round(5 + topNum.score * 5 + numBtRate * 80)),
         justification: `Número ${topNum.num} com convergência máxima: ${topNum.reasons.slice(0,4).join(', ')}. Backtest: ${(numBtRate*100).toFixed(0)}%.`,
       });
     }
@@ -4642,7 +4642,7 @@ serve(async (req) => {
         type: 'insight_pattern', label: 'Padrão IA Detectado', emoji: '🧬',
         numbers: insightTopNums, coverage: (insightTopNums.length / 37) * 100, payout: 36 - insightTopNums.length,
         score: insScore + insBt * 20,
-        probability: Math.min(98, Math.round(50 + insScore * 1.5 + insBt * 30)),
+        probability: Math.min(75, Math.round(50 + insScore * 1.5 + insBt * 30)),
         justification: `Padrões detectados pela IA convergem em ${insightTopNums.length} números. Backtesting: ${(insBt * 100).toFixed(0)}%.`,
       });
     }
@@ -4656,7 +4656,7 @@ serve(async (req) => {
         type: 'surprise_recovery', label: 'Recuperação Surpresa', emoji: '🎲',
         numbers: surpriseNums, coverage: (surpriseNums.length / 37) * 100, payout: 36 - surpriseNums.length,
         score: srpScore + srpBt * 18,
-        probability: Math.min(98, Math.round(45 + srpScore * 1.8 + srpBt * 28)),
+        probability: Math.min(75, Math.round(45 + srpScore * 1.8 + srpBt * 28)),
         justification: `Números que saem quando erramos: ${surpriseNums.slice(0, 5).join(',')}. Aprendido com ${Object.values(numberMissFreq).reduce((a, b) => a + b, 0)} erros.`,
       });
     }
@@ -4673,7 +4673,7 @@ serve(async (req) => {
         type: 'cross_delay', label: 'Atraso Cruzado', emoji: '💥',
         numbers: fullCrossNums, coverage: (fullCrossNums.length / 37) * 100, payout: 36 - fullCrossNums.length,
         score: crossScore + crossBt * 22,
-        probability: Math.min(98, Math.round(48 + crossScore * 2 + crossBt * 30)),
+        probability: Math.min(75, Math.round(48 + crossScore * 2 + crossBt * 30)),
         justification: `${crossDelayTargets.length} números com atraso em múltiplos grupos. Explosão iminente: ${crossNums.slice(0, 4).join(',')}.`,
       });
     }
@@ -4701,7 +4701,7 @@ serve(async (req) => {
           type: 'terminal_alternation', label: `🔄 Terminal ${predictedTerm} (Alternância)`, emoji: '🔄',
           numbers: termNums, coverage: (termNums.length/37)*100, payout: 36 - termNums.length,
           score: taScore + taBt * 22,
-          probability: Math.min(98, Math.round(40 + taScore * 2 + taBt * 35)),
+          probability: Math.min(75, Math.round(40 + taScore * 2 + taBt * 35)),
           justification: `Alternância de terminais detectada: T${lastTerm}→T${predictedTerm} (${nextTermCandidates[0].count}x). Padrão cíclico ativo.`,
         });
       }
@@ -4729,7 +4729,7 @@ serve(async (req) => {
           type: 'column_cycle', label: `📐 Coluna ${predictedCol} (Ciclo)`, emoji: '📐',
           numbers: [...ccNums], coverage: (12/37)*100, payout: 3,
           score: ccScore + ccBt * 22,
-          probability: Math.min(98, Math.round(35 + ccScore * 1.8 + ccBt * 40)),
+          probability: Math.min(75, Math.round(35 + ccScore * 1.8 + ccBt * 40)),
           justification: `Rotação de colunas: Col${lastCol}→Col${predictedCol} (${nextColCandidates[0].count}x). Ciclo previsível.`,
         });
       }
@@ -4757,7 +4757,7 @@ serve(async (req) => {
           type: 'dozen_phase', label: `🎯 Dúzia ${predictedDz} (Fase)`, emoji: '🎯',
           numbers: dpNums, coverage: (12/37)*100, payout: 3,
           score: dpScore + dpBt * 22,
-          probability: Math.min(98, Math.round(35 + dpScore * 1.8 + dpBt * 40)),
+          probability: Math.min(75, Math.round(35 + dpScore * 1.8 + dpBt * 40)),
           justification: `Fase de dúzias: D${lastDz}→D${predictedDz} (${nextDzCandidates[0].count}x). Momento cíclico.`,
         });
       }
@@ -4773,7 +4773,7 @@ serve(async (req) => {
         type: 'cobertura_area', label: `🗺️ Cobertura ${transitionMatrix.predictedSector}`, emoji: '🗺️',
         numbers: sectorNums, coverage: (sectorNums.length / 37) * 100, payout: 36 - sectorNums.length,
         score: caScore + caBt * 22 + (transitionMatrix.mesaModeLabel === 'ALTERNÂNCIA' ? 10 : 0),
-        probability: Math.min(98, Math.round(45 + caScore * 1.5 + caBt * 30)),
+        probability: Math.min(75, Math.round(45 + caScore * 1.5 + caBt * 30)),
         justification: `Matriz de transição: ${getSector(numbers[0])}→${transitionMatrix.predictedSector} (modo ${transitionMatrix.mesaModeLabel}). Fidelidade ${transitionMatrix.mesaModeStrength}%.`,
       });
     }
@@ -4787,7 +4787,7 @@ serve(async (req) => {
         type: 'terminais_cruzados', label: `🐎 Terminal ${transitionMatrix.predictedTerminal} (Cruzado)`, emoji: '🐎',
         numbers: crossTermNums, coverage: (crossTermNums.length / 37) * 100, payout: 36 - crossTermNums.length,
         score: ctScore + ctBt * 22,
-        probability: Math.min(98, Math.round(42 + ctScore * 2 + ctBt * 35)),
+        probability: Math.min(75, Math.round(42 + ctScore * 2 + ctBt * 35)),
         justification: `Terminal cruzado: T${numbers[0] % 10}→T${transitionMatrix.predictedTerminal} via matriz de 200 giros.`,
       });
     }
@@ -4802,7 +4802,7 @@ serve(async (req) => {
         type: 'pressao_retorno', label: `🔥 Pressão D${pDz} (Retorno)`, emoji: '🔥',
         numbers: prNums, coverage: (12 / 37) * 100, payout: 3,
         score: prScore + prBt * 25 + transitionMatrix.dozenPressureTrigger.delay,
-        probability: Math.min(98, Math.round(50 + prScore * 1.5 + prBt * 35)),
+        probability: Math.min(75, Math.round(50 + prScore * 1.5 + prBt * 35)),
         justification: `Gatilho de Pressão: Dúzia ${pDz} ausente há ${transitionMatrix.dozenPressureTrigger.delay} giros, mas dominou ${transitionMatrix.dozenPressureTrigger.historicalDominance}% em 500. Retorno iminente.`,
       });
     }
@@ -4823,7 +4823,7 @@ serve(async (req) => {
         type: 'hot_phase', label: '🔥 Fase Quente (Repetições)', emoji: '🔥',
         numbers: hotNums, coverage: (hotNums.length/37)*100, payout: 36 - hotNums.length,
         score: hotScore + hotBt * 20,
-        probability: Math.min(98, Math.round(45 + hotScore * 1.5 + hotBt * 30)),
+        probability: Math.min(75, Math.round(45 + hotScore * 1.5 + hotBt * 30)),
         justification: `Mesa em fase quente: ${uniqueRepeated.join(',')} repetidos. Taxa repetição: ${(repeatRatio*100).toFixed(0)}%.`,
       });
     } else if (uniqueIn10 >= 9) {
@@ -4836,7 +4836,7 @@ serve(async (req) => {
         type: 'cold_phase', label: '❄️ Fase Fria (Dispersão)', emoji: '❄️',
         numbers: topCold, coverage: (topCold.length/37)*100, payout: 36 - topCold.length,
         score: coldScore + coldBt * 20,
-        probability: Math.min(98, Math.round(42 + coldScore * 1.5 + coldBt * 30)),
+        probability: Math.min(75, Math.round(42 + coldScore * 1.5 + coldBt * 30)),
         justification: `Mesa dispersando: ${uniqueIn10}/10 únicos. Top alvos frios: ${topCold.slice(0,5).join(',')}.`,
       });
     }
@@ -4857,7 +4857,7 @@ serve(async (req) => {
         type: 'historical_winners', label: 'Campeões Históricos', emoji: '🏆',
         numbers: hwNums, coverage: (hwNums.length / 37) * 100, payout: 36 - hwNums.length,
         score: hwScore + hwBt * 20,
-        probability: Math.min(98, Math.round(50 + hwScore * 1.5 + hwBt * 30)),
+        probability: Math.min(75, Math.round(50 + hwScore * 1.5 + hwBt * 30)),
         justification: `Números com histórico comprovado de acertos: ${histWinners.slice(0, 5).join(',')}. Total: ${histWinners.reduce((a, n) => a + (numberHitFreq[n] || 0), 0)} acertos.`,
       });
     }
@@ -4871,7 +4871,7 @@ serve(async (req) => {
         type: 'genetic_cluster', label: `🧬 ${geneticPatterns[0].name}`, emoji: '🧬',
         numbers: gpNums, coverage: (gpNums.length / 37) * 100, payout: 36 - gpNums.length,
         score: gpScore + gpBt * 22,
-        probability: Math.min(98, Math.round(45 + gpScore * 1.5 + gpBt * 30)),
+        probability: Math.min(75, Math.round(45 + gpScore * 1.5 + gpBt * 30)),
         justification: `Padrão genético auto-descoberto: ${geneticPatterns[0].name}. Co-ocorrência forte: ${gpNums.slice(0, 5).join(',')}.`,
       });
     }
@@ -4887,7 +4887,7 @@ serve(async (req) => {
         type: 'cylinder_bias', label: '🔩 Vício do Cilindro', emoji: '🔩',
         numbers: cyNums.slice(0, 15), coverage: (Math.min(15, cyNums.length) / 37) * 100, payout: 36 - Math.min(15, cyNums.length),
         score: cyScore + cyBt * 20 + (cylinderInertia.pinStrength > 20 ? 10 : 0),
-        probability: Math.min(98, Math.round(48 + cyScore * 1.5 + cyBt * 28)),
+        probability: Math.min(75, Math.round(48 + cyScore * 1.5 + cyBt * 28)),
         justification: `Micro-imperfeição detectada: ${cylinderInertia.biasedNums.length} posições viciadas. ${cylinderInertia.dominantPin !== null ? `Pino #${cylinderInertia.dominantPin + 1} dominante.` : ''}`,
       });
     }
@@ -5000,7 +5000,7 @@ serve(async (req) => {
         const absBt = backtestSet(absNums);
         
         // Probability based on dimension count (geometric confidence)
-        const dimProb = Math.min(98, Math.round(50 + best.dimensions.length * 6 + best.totalWeight * 0.8 + absBt * 25));
+        const dimProb = Math.min(75, Math.round(50 + best.dimensions.length * 6 + best.totalWeight * 0.8 + absBt * 25));
         
         strategies.push({
           type: 'convergencia_absoluta', label: `💠 Convergência Absoluta → ${best.num}`, emoji: '💠',
@@ -5027,7 +5027,7 @@ serve(async (req) => {
         type: 'ritmo_calibrado', label: `🎯 Ritmo → ${ritmoCalibration.alvo}`, emoji: '🎯',
         numbers: ritmoNums, coverage: (ritmoNums.length / 37) * 100, payout: 36 - ritmoNums.length,
         score: ritmoScore + ritmoBt * 25 + (ritmoCalibration.confianca >= 90 ? 15 : ritmoCalibration.confianca >= 80 ? 8 : 0),
-        probability: Math.min(98, Math.round(ritmoCalibration.confianca * 0.8 + ritmoBt * 25)),
+        probability: Math.min(75, Math.round(ritmoCalibration.confianca * 0.8 + ritmoBt * 25)),
         justification: `Arco direcional calibrado: alvo ${ritmoCalibration.alvo} (σ=${ritmoCalibration.estabilidade}, confiança ${ritmoCalibration.confianca}%). ${ritmoCalibration.mensagem}`,
       });
     }
@@ -5049,7 +5049,7 @@ serve(async (req) => {
           type: 'archetype_fusion', label: `🏛️ Fusão de ${activeArchetypes.length} Arquétipos`, emoji: '🏛️',
           numbers: fusionNums, coverage: (fusionNums.length / 37) * 100, payout: 36 - fusionNums.length,
           score: fusionScore + fusionBt * 22 + activeArchetypes.length * 3,
-          probability: Math.min(98, Math.round(50 + fusionScore * 1.5 + fusionBt * 30 + activeArchetypes.length * 3)),
+          probability: Math.min(75, Math.round(50 + fusionScore * 1.5 + fusionBt * 30 + activeArchetypes.length * 3)),
           justification: `${activeArchetypes.length} arquétipos convergem: ${activeArchetypes.map(a => a.emoji + a.name.split(' ')[0]).join(', ')}. Top: ${fusionNums.slice(0, 5).join(',')}.`,
         });
       }
@@ -5099,7 +5099,7 @@ serve(async (req) => {
         type: 'ultra_sniper', label: `🔥 Ultra Sniper → ${ultraTarget.num}`, emoji: '🔥',
         numbers: ultraNums, coverage: (ultraNums.length / 37) * 100, payout: 36 - ultraNums.length,
         score: ultraScore + ultraBt * 30 + (ultraTarget.reasons.length >= 6 ? 15 : ultraTarget.reasons.length >= 4 ? 8 : 0),
-        probability: Math.min(98, Math.round(55 + ultraScore * 2 + ultraBt * 30 + ultraBonus * 0.5)),
+        probability: Math.min(75, Math.round(55 + ultraScore * 2 + ultraBt * 30 + ultraBonus * 0.5)),
         justification: `CONVERGÊNCIA SUPREMA: ${ultraTarget.num} com ${ultraTarget.reasons.length} sinais simultâneos. Chain: ${deepPullChain[ultraTarget.num].toFixed(0)}pts. ${ultraTarget.reasons.slice(0, 4).join(', ')}.`,
       });
     }
@@ -5136,7 +5136,7 @@ serve(async (req) => {
         type: 'fusao_suprema', label: `⚡ Fusão Suprema`, emoji: '⚡',
         numbers: fusionFinalNums, coverage: (fusionFinalNums.length / 37) * 100, payout: 36 - fusionFinalNums.length,
         score: fusionScore + fusionBt * 22 + fusionCandidates.length * 2,
-        probability: Math.min(98, Math.round(45 + fusionScore * 1.4 + fusionBt * 25 + fusionCandidates.length * 3)),
+        probability: Math.min(75, Math.round(45 + fusionScore * 1.4 + fusionBt * 25 + fusionCandidates.length * 3)),
         justification: `${fusionCandidates.length} números aparecem em 3+ estratégias simultâneas. Convergência máxima: ${topFusionInfo}. Interseção validada por backtest.`,
       });
     }
@@ -5156,7 +5156,7 @@ serve(async (req) => {
         type: 'duplo_terminal', label: `🎰 Duplo T${t1}+T${t2}`, emoji: '🎰',
         numbers: mod1Nums, coverage: (mod1Nums.length / 37) * 100, payout: 36 - mod1Nums.length,
         score: mod1Score + mod1Bt * 25 + daniGreen.mod1.count * 4,
-        probability: Math.min(98, Math.round(45 + mod1Score * 1.8 + mod1Bt * 30 + daniGreen.mod1.count * 3)),
+        probability: Math.min(75, Math.round(45 + mod1Score * 1.8 + mod1Bt * 30 + daniGreen.mod1.count * 3)),
         justification: `MÓD1 Dani Green: Terminal ${t1} quente (${daniGreen.mod1.count}x/15) + par T${t2}. Cobertura: ${mod1Nums.length} números. REED: max ${REED_MAX} rodadas.`,
       });
     }
@@ -5178,7 +5178,7 @@ serve(async (req) => {
           type: 'terminal_alto_baixo', label: `📊 Terminais ${isHi ? 'Altos' : 'Baixos'} T${hotT}+T${pairT}`, emoji: '📊',
           numbers: mod2Filtered, coverage: (mod2Filtered.length / 37) * 100, payout: 36 - mod2Filtered.length,
           score: mod2Score + mod2Bt * 22 + 8,
-          probability: Math.min(98, Math.round(48 + mod2Score * 2 + mod2Bt * 30)),
+          probability: Math.min(75, Math.round(48 + mod2Score * 2 + mod2Bt * 30)),
           justification: `MÓD2: Mesa puxando ${isHi ? 'ALTO' : 'BAIXO'} + Terminais T${hotT}+T${pairT} filtrados. ${mod2Filtered.length} alvos.`,
         });
       }
@@ -5195,7 +5195,7 @@ serve(async (req) => {
           type: 'poucas_fichas', label: `💰 Conservador T${singleT}`, emoji: '💰',
           numbers: mod3Nums, coverage: (mod3Nums.length / 37) * 100, payout: 36 - mod3Nums.length,
           score: mod3Score + mod3Bt * 20 + (daniGreen.mod1.count >= 4 ? 10 : 0),
-          probability: Math.min(98, Math.round(35 + mod3Score * 2.5 + mod3Bt * 35)),
+          probability: Math.min(75, Math.round(35 + mod3Score * 2.5 + mod3Bt * 35)),
           justification: `MÓD3 Poucas Fichas: Terminal ${singleT} (${mod3Nums.join(',')}) com ${mod3Nums.length} fichas. Stop loss: 3 rounds. Meta: +12 fichas.`,
         });
       }
@@ -5211,7 +5211,7 @@ serve(async (req) => {
         type: 'pressao_zero', label: `🟢 Pressão Zero (${daniGreen.mod4.delay}r)`, emoji: '🟢',
         numbers: uniqueMod4, coverage: (uniqueMod4.length / 37) * 100, payout: 36 - uniqueMod4.length,
         score: mod4Score + mod4Bt * 25 + (daniGreen.mod4.delay >= 20 ? 15 : 8),
-        probability: Math.min(98, Math.round(40 + mod4Score * 1.5 + mod4Bt * 30 + daniGreen.mod4.delay * 0.8)),
+        probability: Math.min(75, Math.round(40 + mod4Score * 1.5 + mod4Bt * 30 + daniGreen.mod4.delay * 0.8)),
         justification: `MÓD4: Zero ausente há ${daniGreen.mod4.delay} giros. ${daniGreen.mod4.neighborsActive} vizinhos ativos. Gatilho confirmado!`,
       });
     }
@@ -5231,7 +5231,7 @@ serve(async (req) => {
         type: 'numeros_puxam', label: `🧲 Puxada do ${daniGreen.mod5LastNum}`, emoji: '🧲',
         numbers: finalMod5, coverage: (finalMod5.length / 37) * 100, payout: 36 - finalMod5.length,
         score: mod5Score + mod5Bt * 22 + daniGreen.mod5Pull.length * 1.5,
-        probability: Math.min(98, Math.round(45 + mod5Score * 1.5 + mod5Bt * 28)),
+        probability: Math.min(75, Math.round(45 + mod5Score * 1.5 + mod5Bt * 28)),
         justification: `MÓD5: ${daniGreen.mod5LastNum} puxa ${daniGreen.mod5Pull.slice(0,6).join(',')} + vizinhos. REED: max ${REED_MAX} rodadas sem acerto.`,
       });
     }
@@ -5245,7 +5245,7 @@ serve(async (req) => {
         type: 'crescente', label: `📈 Crescente → T${daniGreen.mod6.nextTerminal}`, emoji: '📈',
         numbers: mod6TermNums, coverage: (mod6TermNums.length / 37) * 100, payout: 36 - mod6TermNums.length,
         score: mod6Score + mod6Bt * 25 + 10,
-        probability: Math.min(98, Math.round(42 + mod6Score * 2 + mod6Bt * 32)),
+        probability: Math.min(75, Math.round(42 + mod6Score * 2 + mod6Bt * 32)),
         justification: `MÓD6: Sequência crescente T${daniGreen.mod6.sequence.join('→T')} detectada → próximo T${daniGreen.mod6.nextTerminal}. Max 2 tentativas.`,
       });
     }
@@ -5263,7 +5263,7 @@ serve(async (req) => {
           type: 'dupla_terminal', label: `🎰 Dupla ${dKey}`, emoji: '🎰',
           numbers: dNums, coverage: (dNums.length / 37) * 100, payout: 36 - dNums.length,
           score: duplaScore + duplaBt * 25 + daniGreen.mod1.count * 3 + (sessionEntropy < 0.5 ? 10 : 0),
-          probability: Math.min(98, Math.round(45 + duplaScore * 1.8 + duplaBt * 30)),
+          probability: Math.min(75, Math.round(45 + duplaScore * 1.8 + duplaBt * 30)),
           justification: `Dupla de Terminais ${dKey}: ${dNums.length} números. Sessão ${sessionRegime}. Entropia ${(sessionEntropy * 100).toFixed(0)}%.`,
         });
         break; // only add one dupla
@@ -5293,7 +5293,7 @@ serve(async (req) => {
           type: 'duzia_progressiva', label: `🎲 Dúzia Progressiva → D${nextDz}`, emoji: '🎲',
           numbers: dzNums, coverage: (12 / 37) * 100, payout: 2,
           score: dzScore + dzBt * 20 + 10,
-          probability: Math.min(98, Math.round(40 + dzScore * 1.5 + dzBt * 25)),
+          probability: Math.min(75, Math.round(40 + dzScore * 1.5 + dzBt * 25)),
           justification: `S5: Sequência de dúzias D${dzSeq.join('→D')} → próxima D${nextDz}. Cobertura 32,4%. Paga 2:1.`,
         });
       }
@@ -5316,7 +5316,7 @@ serve(async (req) => {
           type: 'cor_alternancia', label: `🔴⚫ Alternância → ${nextColor === 'red' ? 'Vermelho' : 'Preto'}`, emoji: nextColor === 'red' ? '🔴' : '⚫',
           numbers: colorNums, coverage: (18 / 37) * 100, payout: 1,
           score: cScore + cBt * 15 + 8,
-          probability: Math.min(98, Math.round(38 + cScore * 1.2 + cBt * 20)),
+          probability: Math.min(75, Math.round(38 + cScore * 1.2 + cBt * 20)),
           justification: `S6: Alternância V-P-V-P detectada por ${recentColors.length} rodadas. Próxima: ${nextColor === 'red' ? 'Vermelho' : 'Preto'}. Paga 1:1.`,
         });
       }
@@ -5335,7 +5335,7 @@ serve(async (req) => {
           type: 'cor_reversa', label: `🎨 Reversão → ${oppositeColor === 'red' ? 'Vermelho' : 'Preto'} (${streakCount}x streak)`, emoji: '🎨',
           numbers: oppNums, coverage: (18 / 37) * 100, payout: 1,
           score: sScore + sBt * 15 + streakCount * 3,
-          probability: Math.min(98, Math.round(35 + sScore * 1 + sBt * 18 + streakCount * 3)),
+          probability: Math.min(75, Math.round(35 + sScore * 1 + sBt * 18 + streakCount * 3)),
           justification: `S7: ${recentColors[0] === 'red' ? 'Vermelho' : 'Preto'} saiu ${streakCount}x seguidas. Tendência de reversão para ${oppositeColor === 'red' ? 'Vermelho' : 'Preto'}. Paga 1:1.`,
         });
       }
@@ -5359,7 +5359,7 @@ serve(async (req) => {
                   type: 'multiplos_seq', label: `🔢 Múltiplos ×${mult} → ${nextNum}`, emoji: '🔢',
                   numbers: mNums, coverage: (mNums.length / 37) * 100, payout: 36 - mNums.length,
                   score: mScore + mBt * 20 + 8,
-                  probability: Math.min(98, Math.round(35 + mScore * 2 + mBt * 25)),
+                  probability: Math.min(75, Math.round(35 + mScore * 2 + mBt * 25)),
                   justification: `S10: Sequência de múltiplos ×${mult}: ${last3[2]}→${last3[1]}→${last3[0]}→${nextNum}. ${mNums.length} números cobertos.`,
                 });
               }
@@ -5383,7 +5383,7 @@ serve(async (req) => {
             type: 'diferenca_const', label: `📏 Diferença +${d1} → ${nextDiff}`, emoji: '📏',
             numbers: dfNums, coverage: (dfNums.length / 37) * 100, payout: 36 - dfNums.length,
             score: dfScore + dfBt * 20 + 6,
-            probability: Math.min(98, Math.round(32 + dfScore * 2 + dfBt * 25)),
+            probability: Math.min(75, Math.round(32 + dfScore * 2 + dfBt * 25)),
             justification: `S12: Diferença constante ${d1 > 0 ? '+' : ''}${d1}: ${numbers[2]}→${numbers[1]}→${numbers[0]}→${nextDiff}. Vizinhos incluídos.`,
           });
         }
@@ -5407,7 +5407,7 @@ serve(async (req) => {
           type: 'hiper_quente', label: `🔥 Hiper-Quente ${hhNum} (2x/5)`, emoji: '🔥',
           numbers: unique, coverage: (unique.length / 37) * 100, payout: 36 - unique.length,
           score: hhScore + hhBt * 22 + 15,
-          probability: Math.min(98, Math.round(50 + hhScore * 1.8 + hhBt * 28)),
+          probability: Math.min(75, Math.round(50 + hhScore * 1.8 + hhBt * 28)),
           justification: `F3: Número ${hhNum} apareceu 2x nas últimas 5 rodadas! Terminal T${hhTerminal} + vizinhos 3. ${unique.length} números.`,
         });
       }
@@ -5427,7 +5427,7 @@ serve(async (req) => {
           type: 'cluster_regional', label: `🗺️ Cluster ${hotSector[0]} (${hotSector[1]}x/10)`, emoji: '🗺️',
           numbers: [...sectorPool], coverage: (sectorPool.length / 37) * 100, payout: 36 - sectorPool.length,
           score: crScore + crBt * 20 + Number(hotSector[1]) * 4,
-          probability: Math.min(98, Math.round(42 + crScore * 1.5 + crBt * 22 + Number(hotSector[1]) * 3)),
+          probability: Math.min(75, Math.round(42 + crScore * 1.5 + crBt * 22 + Number(hotSector[1]) * 3)),
           justification: `F4: ${hotSector[1]}x resultados no setor ${hotSector[0]} em 10 rodadas. Concentração forte. ${sectorPool.length} números.`,
         });
       }
@@ -5454,7 +5454,7 @@ serve(async (req) => {
             type: 'duzia_terminal_corr', label: `📊 D${domDz + 1} × Terminais`, emoji: '📊',
             numbers: c4Nums, coverage: (c4Nums.length / 37) * 100, payout: 36 - c4Nums.length,
             score: c4Score + c4Bt * 20 + 8,
-            probability: Math.min(98, Math.round(40 + c4Score * 1.8 + c4Bt * 25)),
+            probability: Math.min(75, Math.round(40 + c4Score * 1.8 + c4Bt * 25)),
             justification: `C4: Dúzia ${domDz + 1} domina (${dzCount[domDz]}x/15). Terminais cruzados: ${c4Nums.length} alvos dentro da dúzia.`,
           });
         }
@@ -5479,7 +5479,7 @@ serve(async (req) => {
           type: 'rua', label: `🛣️ Rua ${bestStreet[0]}-${bestStreet[2]} (${bestStreetCount}x/10)`, emoji: '🛣️',
           numbers: bestStreet, coverage: (3 / 37) * 100, payout: 11,
           score: stScore + stBt * 30 + bestStreetCount * 5,
-          probability: Math.min(98, Math.round(30 + stScore * 2.5 + stBt * 35)),
+          probability: Math.min(75, Math.round(30 + stScore * 2.5 + stBt * 35)),
           justification: `Rua ${bestStreet.join('-')}: ${bestStreetCount} hits em 10 rodadas. Paga 11:1. Alta rentabilidade.`,
         });
       }
@@ -5508,7 +5508,7 @@ serve(async (req) => {
           type: 'cavalo_split', label: `🐎 Cavalo ${bestSplit[0]}/${bestSplit[1]}`, emoji: '🐎',
           numbers: bestSplit, coverage: (2 / 37) * 100, payout: 17,
           score: bestSplitScore + spBt * 30 + 8,
-          probability: Math.min(98, Math.round(28 + bestSplitScore * 2 + spBt * 35)),
+          probability: Math.min(75, Math.round(28 + bestSplitScore * 2 + spBt * 35)),
           justification: `Cavalo ${bestSplit[0]}/${bestSplit[1]}: ambos aparecem no histórico recente. Paga 17:1. Aposta cirúrgica.`,
         });
       }
@@ -5530,7 +5530,7 @@ serve(async (req) => {
           type: 'paridade_reversa', label: `🔄 Reversão ${dominant === 'par' ? 'Ímpar' : 'Par'} (${Math.max(pares, impares)}x/15)`, emoji: '🔄',
           numbers: oppNums, coverage: (18 / 37) * 100, payout: 1,
           score: piScore + piBt * 15 + Math.max(pares, impares) * 2,
-          probability: Math.min(98, Math.round(35 + piScore * 1 + piBt * 18 + Math.max(pares, impares) * 2)),
+          probability: Math.min(75, Math.round(35 + piScore * 1 + piBt * 18 + Math.max(pares, impares) * 2)),
           justification: `Par/Ímpar: ${dominant} dominou ${Math.max(pares, impares)}x em 15. Reversão para ${dominant === 'par' ? 'Ímpar' : 'Par'}. Paga 1:1.`,
         });
       }
@@ -5552,7 +5552,7 @@ serve(async (req) => {
           type: 'alto_baixo_reversa', label: `↕️ Reversão ${dominant === 'alto' ? 'Baixo' : 'Alto'} (${Math.max(altos, baixos)}x/15)`, emoji: '↕️',
           numbers: oppNums, coverage: (18 / 37) * 100, payout: 1,
           score: abScore + abBt * 15 + Math.max(altos, baixos) * 2,
-          probability: Math.min(98, Math.round(35 + abScore * 1 + abBt * 18 + Math.max(altos, baixos) * 2)),
+          probability: Math.min(75, Math.round(35 + abScore * 1 + abBt * 18 + Math.max(altos, baixos) * 2)),
           justification: `Alto/Baixo: ${dominant} dominou ${Math.max(altos, baixos)}x em 15. Reversão para ${dominant === 'alto' ? 'Baixo (1-18)' : 'Alto (19-36)'}. Paga 1:1.`,
         });
       }
@@ -5573,7 +5573,7 @@ serve(async (req) => {
           type: 'coluna_fria', label: `📐 Coluna ${coldCol + 1} Fria (${cols[coldCol]}x/15)`, emoji: '📐',
           numbers: [...colNums], coverage: (12 / 37) * 100, payout: 2,
           score: colScore + colBt * 20 + (5 - cols[coldCol]) * 4,
-          probability: Math.min(98, Math.round(38 + colScore * 1.5 + colBt * 22)),
+          probability: Math.min(75, Math.round(38 + colScore * 1.5 + colBt * 22)),
           justification: `Coluna ${coldCol + 1} com apenas ${cols[coldCol]} hits em 15 rodadas. Dívida estatística. Paga 2:1.`,
         });
       }
@@ -5615,7 +5615,7 @@ serve(async (req) => {
           type: 'combo_prata', label: `🥈 Combo PRATA (F1+C2+G4) → ${last}`, emoji: '🥈',
           numbers: silverNums, coverage: (silverNums.length / 37) * 100, payout: 36 - silverNums.length,
           score: silverScore + silverBt * 25 + 18,
-          probability: Math.min(98, Math.round(55 + silverScore * 1.5 + silverBt * 28)),
+          probability: Math.min(75, Math.round(55 + silverScore * 1.5 + silverBt * 28)),
           justification: `PRATA: ${last} hiper-quente (${hotCheck}x/10) + Terminal T${lastTerminal} + Vizinhos 3 na roda. ${silverNums.length} números.`,
         });
       }
@@ -5632,7 +5632,7 @@ serve(async (req) => {
           type: 'jeu_zero', label: `🟢 Jeu Zero (${zeroDelay}r ausente)`, emoji: '🟢',
           numbers: [...JEU_ZERO], coverage: (7 / 37) * 100, payout: 36 - 7,
           score: jzScore + jzBt * 25 + (zeroDelay >= 30 ? 15 : 8),
-          probability: Math.min(98, Math.round(38 + jzScore * 1.5 + jzBt * 25 + zeroDelay * 0.6)),
+          probability: Math.min(75, Math.round(38 + jzScore * 1.5 + jzBt * 25 + zeroDelay * 0.6)),
           justification: `P3: Zero ausente há ${zeroDelay} giros. Jeu Zero: 7 números próximos ao zero. Paga 5:1. ${zeroDelay >= 30 ? 'PRIORIDADE ALTA!' : ''}`,
         });
       }
@@ -5716,7 +5716,7 @@ serve(async (req) => {
           type: 'matrix_fusion', label: `🔮 Convergência Matricial`, emoji: '🔮',
           numbers: matrixNums, coverage: (matrixNums.length / 37) * 100, payout: 36 - matrixNums.length,
           score: mfScore + mfBt * 25 + tripleNums.length * 10,
-          probability: Math.min(98, Math.round(55 + mfScore * 2 + mfBt * 30 + tripleNums.length * 8)),
+          probability: Math.min(75, Math.round(55 + mfScore * 2 + mfBt * 30 + tripleNums.length * 8)),
           justification: `Convergência tripla: Setor ${transitionMatrix.predictedSector} + Dúzia ${transitionMatrix.predictedDozen} + Terminal ${transitionMatrix.predictedTerminal}. ${tripleNums.length} na interseção total.`,
         });
       }
