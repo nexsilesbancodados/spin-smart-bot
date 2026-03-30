@@ -2799,6 +2799,12 @@ serve(async (req) => {
       for (let t2 = 0; t2 <= 9; t2++) transitionMatrix.terminalMatrix[t][t2] = 0;
     }
 
+    let matrizTotal = 0;
+    const matrizProb: Record<number, number> = {};
+    const matrizCombinado: Record<number, number> = {};
+    let maxMatriz = 0.001;
+    let lastNum0 = numbers[0];
+
     if (numbers.length >= 50) {
       // Build sector transition matrix from last 200
       const sectorSeq200 = numbers.slice(0, Math.min(200, numbers.length)).map(n => getSector(n)).filter(s => s !== 'Zero');
@@ -2832,10 +2838,9 @@ serve(async (req) => {
       for (let i = 0; i < numMatrixN - 1; i++) {
         numMatrix[numbers[i + 1]][numbers[i]]++;
       }
-      const lastNum0 = numbers[0];
+      lastNum0 = numbers[0];
       const matrizRow = numMatrix[lastNum0] || {};
-      const matrizTotal = Object.values(matrizRow).reduce((a, b) => a + b, 0);
-      const matrizProb: Record<number, number> = {};
+      matrizTotal = Object.values(matrizRow).reduce((a, b) => a + b, 0);
       if (matrizTotal >= 10) {
         for (let n = 0; n <= 36; n++) {
           matrizProb[n] = (matrizRow[n] || 0) / matrizTotal;
@@ -2853,13 +2858,12 @@ serve(async (req) => {
         const total3 = Object.values(row3).reduce((a, b) => a + b, 0);
         if (total3 >= 8) for (let n = 0; n <= 36; n++) matrizProb3[n] = (row3[n] || 0) / total3;
       }
-      const matrizCombinado: Record<number, number> = {};
       for (let n = 0; n <= 36; n++) {
         matrizCombinado[n] = (matrizProb[n] || 0) * 3 +
                               (matrizProb2[n] || 0) * 2 +
                               (matrizProb3[n] || 0) * 1;
       }
-      const maxMatriz = Math.max(...Object.values(matrizCombinado), 0.001);
+      maxMatriz = Math.max(...Object.values(matrizCombinado), 0.001);
 
       // PREDICT next sector from transition matrix
       const lastSector = getSector(numbers[0]);
