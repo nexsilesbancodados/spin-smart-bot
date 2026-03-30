@@ -6228,12 +6228,37 @@ serve(async (req) => {
     }));
 
     // ══════════════════════════════════════════════════════════
-    // DECISÃO SUPREMA — Número #1 sempre pelo numScore composto
-    // O numScore já integra: pull, matriz, ensemble, IA, auto-rep, terminal, etc.
-    // A estratégia winner serve apenas como pool de suporte.
+    // DECISÃO SUPREMA V3 — Interseção Multi-Estratégia
+    // Em vez de confiar apenas no numScore #1, cruzar TODAS as estratégias
+    // e priorizar números que aparecem em múltiplas estratégias top
     // ══════════════════════════════════════════════════════════
-    const numTop1: number = numScores[0]?.num ?? winner.numbers[0];
-    const numTop1Score: number = numScores[0]?.score ?? 0;
+    
+    // Contagem de aparição: quantas das top 10 estratégias incluem cada número
+    const multiStratCount: Record<number, { count: number; stratNames: string[]; totalScore: number }> = {};
+    const top10Strats = strategies.slice(0, 10);
+    for (const st of top10Strats) {
+      for (const n of st.numbers.slice(0, 8)) {
+        if (!multiStratCount[n]) multiStratCount[n] = { count: 0, stratNames: [], totalScore: 0 };
+        multiStratCount[n].count++;
+        multiStratCount[n].stratNames.push(st.type);
+        multiStratCount[n].totalScore += st.score;
+      }
+    }
+    
+    // Ranking por interseção: números em 3+ estratégias são os mais confiáveis
+    const multiStratRanking = Object.entries(multiStratCount)
+      .map(([n, info]) => ({ num: Number(n), ...info }))
+      .sort((a, b) => b.count - a.count || b.totalScore - a.totalScore);
+    
+    // O numTop1 é o número com MAIS interseções, não apenas maior numScore
+    const bestMultiStrat = multiStratRanking[0];
+    const numScoreTop = numScores[0];
+    
+    // Usar interseção multi-estratégia SE tem 3+ confirmações, senão fallback para numScore
+    const numTop1: number = (bestMultiStrat && bestMultiStrat.count >= 3) 
+      ? bestMultiStrat.num 
+      : numScoreTop?.num ?? winner.numbers[0];
+    const numTop1Score: number = numScoreTop?.score ?? 0;
     const numMaxScore: number = Math.max(...numScores.map(s => s.score), 1);
 
     // Confirmações independentes do numTop1
@@ -6243,53 +6268,57 @@ serve(async (req) => {
     const pullConfirms   = (FULL_PULL_MAP[numbers[0]] || []).includes(numTop1);
     const recentCount    = numbers.slice(0, 5).filter(n => n === numTop1).length;
     const autoRepConfirms = recentCount >= 2;
-    const confirmations  = [ensConfirms, winnerConfirms, matrizConfirms, pullConfirms, autoRepConfirms].filter(Boolean).length;
+    const multiStratConfirms = (multiStratCount[numTop1]?.count || 0) >= 3;
+    const confirmations  = [ensConfirms, winnerConfirms, matrizConfirms, pullConfirms, autoRepConfirms, multiStratConfirms].filter(Boolean).length;
 
-    // ── SCORE GAP ANALYSIS V2: exigir convergência real, não apenas score ──
+    // ── SELEÇÃO DE SUPORTE V3: Interseção + Score + Backtest ──
     const top1Score = numScores[0]?.score ?? 0;
-    const scoreThreshold = top1Score * 0.35; // suporte deve ter pelo menos 35% do score do #1 (era 25%)
+    const scoreThreshold = top1Score * 0.30;
 
-    // Suporte: números confirmados por MÚLTIPLAS fontes E com score significativo
-    const supportCandidates = numScores
-      .slice(1, 25)
-      .filter(ns => {
-        if (ns.score < scoreThreshold) return false;
-        const inPull     = (FULL_PULL_MAP[numTop1] || []).includes(ns.num);
-        const inWinner   = winner.numbers.includes(ns.num);
-        const inEnsemble = ensembleTop5.includes(ns.num);
-        const highMatriz = (matrizProb[ns.num] || 0) > 0.08;
-        const inPullFromLast = (FULL_PULL_MAP[numbers[0]] || []).includes(ns.num);
-        // Exigir pelo menos 2 confirmações independentes (era 1)
-        const confirmCount = [inPull, inWinner, inEnsemble, highMatriz, inPullFromLast].filter(Boolean).length;
-        return confirmCount >= 2;
+    // Números de suporte: priorizar os que aparecem em 2+ estratégias E têm bom score
+    const supportCandidates = multiStratRanking
+      .filter(ms => {
+        if (ms.num === numTop1) return false;
+        if (ms.count < 2) return false; // precisa estar em pelo menos 2 estratégias
+        const ns = numScores.find(s => s.num === ms.num);
+        if (!ns || ns.score < scoreThreshold) return false;
+        return true;
       })
-      .map(ns => ns.num)
-      .slice(0, 5); // max 5 suporte (era 6)
+      .map(ms => ms.num)
+      .slice(0, 4); // max 4 suporte (focado)
+    
+    // Se a interseção não deu suporte suficiente, complementar com numScores tradicionais
+    if (supportCandidates.length < 2) {
+      numScores.slice(1, 15).forEach(ns => {
+        if (supportCandidates.length >= 4) return;
+        if (supportCandidates.includes(ns.num) || ns.num === numTop1) return;
+        if (ns.score < scoreThreshold) return;
+        const inPull = (FULL_PULL_MAP[numbers[0]] || []).includes(ns.num);
+        const inWinner = winner.numbers.includes(ns.num);
+        const inEnsemble = ensembleTop5.includes(ns.num);
+        const confirmCount = [inPull, inWinner, inEnsemble].filter(Boolean).length;
+        if (confirmCount >= 2) supportCandidates.push(ns.num);
+      });
+    }
 
-    // Proteção DINÂMICA: usar surpriseNumbers + números com alta dívida estatística
+    // Proteção DINÂMICA mínima: apenas 1 número de surpresa + 1 de dívida
     const dynamicProtection: number[] = [];
-    // 1. Números que saem quando erramos (anti-padrão) — apenas os top 2
-    surpriseNumbers.slice(0, 2).forEach(n => {
-      if (n !== numTop1 && !supportCandidates.includes(n) && !dynamicProtection.includes(n)) {
-        dynamicProtection.push(n);
-      }
+    surpriseNumbers.slice(0, 1).forEach(n => {
+      if (n !== numTop1 && !supportCandidates.includes(n)) dynamicProtection.push(n);
     });
-    // 2. Números com alta dívida estatística (ausentes há muito tempo) — top 2
-    const debtNums = Object.entries(dynStatDebt).sort(([,a],[,b]) => (b as number) - (a as number)).slice(0, 2);
+    const debtNums = Object.entries(dynStatDebt).sort(([,a],[,b]) => (b as number) - (a as number)).slice(0, 1);
     debtNums.forEach(([n]) => {
       const num = Number(n);
-      if (num !== numTop1 && !supportCandidates.includes(num) && !dynamicProtection.includes(num)) {
-        dynamicProtection.push(num);
-      }
+      if (num !== numTop1 && !supportCandidates.includes(num) && !dynamicProtection.includes(num)) dynamicProtection.push(num);
     });
-    const realProtection = dynamicProtection.slice(0, 2); // max 2 proteções (era 3)
+    const realProtection = dynamicProtection.slice(0, 2);
 
-    // Jogada final: top1 + suporte convergente + proteção mínima, máximo 8 (era 10)
+    // Jogada final: top1 + suporte convergente + proteção mínima, máximo 7
     const finalBetNumbers: number[] = [...new Set([
       numTop1,
       ...supportCandidates,
       ...realProtection,
-    ])].slice(0, 8);
+    ])].slice(0, 7);
 
     // Justificativa clara
     const decisionJustification = [
