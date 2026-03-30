@@ -6543,17 +6543,22 @@ ${recentLearningsContext || 'Nenhum'}
 Confirmações: ${confirmations}/6
 
 ## PROTOCOLO DE RESPOSTA OBRIGATÓRIO
+Analise SIMULTANEAMENTE: Dúzias, Colunas, Vizinhos do Zero, Tiers, Orphelins, Cores e Paridade.
+Identifique qual mercado está em TENDÊNCIA ou ATRASO.
+Verifique o feedback anterior: se acertou, reforce; se errou, descarte e busque novo padrão.
+Escolha UMA ÚNICA jogada — a de maior probabilidade.
+
 Responda APENAS JSON:
 {
-  "numbers": [max 7 números mais prováveis],
-  "betType": "terminal|vizinhos|setor|duzia|coluna|pleno|cavalos",
-  "patternAnalysis": "O que MUDOU na estatística da mesa com o número ${numbers[0]} — qual padrão se formou ou se quebrou",
-  "reasoning": "Explicação da jogada em 1-2 frases: POR QUE estes números e este tipo de aposta",
+  "numbers": [max 7 números],
+  "betType": "terminal|vizinhos|setor|duzia|coluna|pleno|cavalos|cor|paridade|alto_baixo",
+  "suggestedBet": "Descrição clara da jogada (ex: Dúzia 2 / Vizinhos do 17 / Preto)",
+  "patternIdentified": "Padrão detectado (ex: Quebra na 3ª dúzia + Acúmulo Tiers)",
+  "learned": "O que aprendi da mesa",
   "confidence": 0-100,
-  "adjustTop1": número_principal_ou_null,
-  "learned": "O que você APRENDEU dos acertos/erros anteriores e como aplicou agora",
+  "adjustTop1": numero_ou_null,
   "sectorFocus": "Voisins|Tiers|Orphelins|Zero|misto",
-  "feedbackAction": "reforçar|ajustar|manter — o que fazer em relação à previsão anterior"
+  "feedbackAction": "reforçar|ajustar|descartar"
 }`;
 
         const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -6565,15 +6570,15 @@ Responda APENAS JSON:
           body: JSON.stringify({
             model: "google/gemini-2.5-flash",
             messages: [
-              { role: "system", content: `Você é o motor de inteligência de um bot de roleta europeia profissional.
-REGRAS DE EXECUÇÃO:
-1. CONSOLIDAÇÃO: Use TODO o histórico para detectar padrões de repetição, desvios de frequência e saturação de setores.
-2. FEEDBACK LOOP: Compare o resultado real com a previsão anterior. Identifique POR QUE falhou ou acertou. Ajuste os pesos.
-3. ASSINATURA DA MESA: Baseie a sugestão nos padrões detectados nas últimas 30 rodadas — não dê palpites aleatórios.
-4. COBERTURA DE SETORES: Priorize setores (Voisins, Tiers, Orphelins, Zero) ao invés de números isolados, para maior taxa de acerto.
-5. CONVERGÊNCIA: Quando terminal + puxada + setor + gap apontam pro mesmo alvo = sinal fortíssimo.
-6. LEI DO TERÇO: ~24 números únicos em 37 giros. Foque nos AUSENTES com mais tempo de atraso.
-7. Responda APENAS JSON válido, sem markdown, sem explicações fora do JSON.` },
+              { role: "system", content: `Você é o motor estatístico de um app de roleta europeia profissional. Sua função é analisar o histórico, aprender padrões da mesa em tempo real e ditar a jogada mais assertiva.
+
+REGRAS:
+1. CRUZAMENTO: A cada novo número, analise simultaneamente Dúzias, Colunas, Vizinhos do Zero, Tiers, Orphelins, Cores e Paridade.
+2. VALIDAÇÃO: Identifique qual mercado está em TENDÊNCIA (repetição) ou ATRASO (compensação devida).
+3. FEEDBACK: Verifique o resultado anterior. Se o padrão acertou, reforce-o. Se falhou, DESCARTE imediatamente e busque a nova assinatura da mesa.
+4. DECISÃO: Escolha UMA ÚNICA jogada — a de maior probabilidade após cruzar todos os padrões validados.
+5. Nunca dê palpites aleatórios. Toda sugestão deve ser matematicamente justificada pelo cruzamento de dados.
+6. Responda APENAS JSON válido, sem markdown, sem texto fora do JSON.` },
               { role: "user", content: aiPrompt },
             ],
             temperature: 0.12,
@@ -6590,9 +6595,9 @@ REGRAS DE EXECUÇÃO:
             
             if (Array.isArray(parsed.numbers) && parsed.numbers.length >= 2) {
               aiAdjustedNumbers = parsed.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 7);
-              aiReasoning = parsed.reasoning || null;
+              aiReasoning = parsed.suggestedBet || parsed.reasoning || null;
               aiConfidence = typeof parsed.confidence === 'number' ? Math.min(100, Math.max(0, parsed.confidence)) : null;
-              aiPatternAnalysis = parsed.patternAnalysis || null;
+              aiPatternAnalysis = parsed.patternIdentified || parsed.patternAnalysis || null;
               aiSectorFocus = parsed.sectorFocus || null;
               aiFeedbackAction = parsed.feedbackAction || null;
               aiLearned = parsed.learned || null;
@@ -7359,14 +7364,14 @@ REGRAS DE EXECUÇÃO:
       },
       // AI Reasoning Layer
       aiReasoning: {
-        reasoning: aiReasoning,
+        suggestedBet: aiReasoning,
+        patternIdentified: aiPatternAnalysis,
+        learned: aiLearned,
         confidence: aiConfidence,
         adjustedNumbers: aiAdjustedNumbers,
         consensus: aiAdjustedNumbers ? finalBetNumbers.filter(n => (aiAdjustedNumbers || []).includes(n)).length : 0,
-        patternAnalysis: aiPatternAnalysis,
         sectorFocus: aiSectorFocus,
         feedbackAction: aiFeedbackAction,
-        learned: aiLearned,
       },
       ...baseResponse, recoveryMode,
       topCandidates: numScores.slice(0, 8).map(s => ({ num: s.num, score: +s.score.toFixed(1), reasons: s.reasons })),
