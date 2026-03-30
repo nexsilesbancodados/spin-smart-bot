@@ -81,6 +81,10 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
     lastAction: string;
     lastNumber: number | null;
     extConnected: boolean;
+    bettingPhase: 'open' | 'closed' | 'unknown';
+    extProfit: number;
+    extWins: number;
+    extLosses: number;
   } | null>(null);
 
   // Escutar mensagens da extensão
@@ -88,20 +92,48 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
     const handler = (event: MessageEvent) => {
       const d = event.data;
       if (!d || typeof d !== 'object') return;
+
       if (d.type === 'AUTOBET_STATUS') {
-        setExtStatus({
+        setExtStatus(prev => ({
           lastAction: d.status,
-          lastNumber: d.number || null,
+          lastNumber: d.resultNumber || d.number || prev?.lastNumber || null,
           extConnected: true,
+          bettingPhase: prev?.bettingPhase || 'unknown',
+          extProfit: d.stats?.profit ?? prev?.extProfit ?? 0,
+          extWins: d.stats?.wins ?? prev?.extWins ?? 0,
+          extLosses: d.stats?.losses ?? prev?.extLosses ?? 0,
+        }));
+        // Resolver bet local baseado no retorno da extensão
+        if (d.status === 'win' && d.resultNumber !== null && stats.waitingResult) {
+          setStats(prev => ({
+            ...prev, waitingResult: false, wins: prev.wins + 1,
+            profit: prev.profit + (d.profit || 0),
+            currentGaleStep: 0, consecutiveLosses: 0,
+          }));
+        }
+        if (d.status === 'loss' && d.resultNumber !== null && stats.waitingResult) {
+          setStats(prev => ({
+            ...prev, waitingResult: false, losses: prev.losses + 1,
+            profit: prev.profit + (d.profit || 0),
+            consecutiveLosses: prev.consecutiveLosses + 1,
+          }));
+        }
+      }
+
+      if (d.type === 'BETTING_PHASE') {
+        setExtStatus(prev => prev ? { ...prev, bettingPhase: d.phase, extConnected: true } : {
+          lastAction: '', lastNumber: null, extConnected: true,
+          bettingPhase: d.phase, extProfit: 0, extWins: 0, extLosses: 0,
         });
       }
+
       if (d.type === 'NUMBER_FROM_EXTENSION') {
-        setExtStatus(prev => prev ? { ...prev, lastNumber: d.number } : null);
+        setExtStatus(prev => prev ? { ...prev, lastNumber: d.number, extConnected: true } : null);
       }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, []);
+  }, [stats.waitingResult]);
 
   // Auto-reset waitingResult after 60s to prevent stuck state
   useEffect(() => {
@@ -578,25 +610,77 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           </div>
         )}
 
-        {/* Status da extensão */}
-        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[8px] border ${
-          extStatus?.extConnected
-            ? 'bg-green-500/10 text-green-400 border-green-500/20'
-            : 'bg-secondary/60 text-muted-foreground border-border'
-        }`}>
-          <div className={`w-1.5 h-1.5 rounded-full ${extStatus?.extConnected ? 'bg-green-400 animate-pulse' : 'bg-muted-foreground/40'}`} />
-          <span>{extStatus?.extConnected ? '🔌 Extensão ativa' : '🔌 Instale a extensão'}</span>
-        </div>
+        {/* Status da extensão + fase do jogo */}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[8px] border flex-1 ${
+              extStatus?.extConnected
+                ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                : 'bg-secondary/60 text-muted-foreground border-border'
+            }`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${extStatus?.extConnected ? 'bg-green-400 animate-pulse' : 'bg-muted-foreground/40'}`} />
+              <span>{extStatus?.extConnected ? '🔌 Extensão ativa' : '🔌 Instale a extensão'}</span>
+            </div>
 
-        {extStatus?.lastAction === 'bet_placed' && (
-          <motion.div
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-primary/15 border border-primary/30 rounded-lg px-3 py-2 text-center"
-          >
-            <span className="text-[9px] font-bold text-primary">🎰 APOSTA COLOCADA NO CASSINO</span>
-          </motion.div>
-        )}
+            {/* Fase do jogo */}
+            {extStatus?.extConnected && (
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] border font-bold ${
+                extStatus.bettingPhase === 'open'
+                  ? 'bg-green-500/15 text-green-400 border-green-500/30 animate-pulse'
+                  : extStatus.bettingPhase === 'closed'
+                  ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                  : 'bg-secondary/60 text-muted-foreground border-border'
+              }`}>
+                {extStatus.bettingPhase === 'open'   ? '🟢 APOSTAS ABERTAS'
+                 : extStatus.bettingPhase === 'closed' ? '🔴 APOSTAS FECHADAS'
+                 : '⚪ Aguardando...'}
+              </div>
+            )}
+          </div>
+
+          {/* Resultado da última aposta na roleta */}
+          {extStatus?.lastAction === 'win' && (
+            <motion.div initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }}
+              className="bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2 flex items-center gap-2">
+              <span className="text-base">🟢</span>
+              <div>
+                <span className="text-[9px] font-black text-green-400 block">ACERTO NA ROLETA!</span>
+                <span className="text-[8px] text-green-400/70">
+                  Nº {extStatus.lastNumber} | +R${extStatus.extProfit?.toFixed(2)} total
+                </span>
+              </div>
+            </motion.div>
+          )}
+          {extStatus?.lastAction === 'loss' && (
+            <motion.div initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }}
+              className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 flex items-center gap-2">
+              <span className="text-base">🔴</span>
+              <div>
+                <span className="text-[9px] font-black text-red-400 block">Saiu {extStatus.lastNumber}</span>
+                <span className="text-[8px] text-muted-foreground">
+                  {extStatus.extWins}✅ {extStatus.extLosses}❌ | R${extStatus.extProfit?.toFixed(2)}
+                </span>
+              </div>
+            </motion.div>
+          )}
+          {extStatus?.lastAction === 'bet_placed' && (
+            <motion.div initial={{ opacity:0, y:-5 }} animate={{ opacity:1, y:0 }}
+              className="bg-primary/15 border border-primary/30 rounded-lg px-3 py-2 text-center">
+              <span className="text-[9px] font-bold text-primary">🎰 APOSTANDO NA ROLETA...</span>
+            </motion.div>
+          )}
+          {extStatus?.lastAction === 'pending' && (
+            <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }}
+              className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2 text-center">
+              <span className="text-[9px] font-bold text-yellow-400">⏳ Aguardando apostas abrirem...</span>
+            </motion.div>
+          )}
+          {extStatus?.lastAction === 'error' && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-center">
+              <span className="text-[8px] text-red-400">⚠️ Erro na extensão — verifique os seletores</span>
+            </div>
+          )}
+        </div>
 
         {/* Action buttons — bold gradient style */}
         <div className="flex gap-2.5 pt-1">

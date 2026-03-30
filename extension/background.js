@@ -1,100 +1,58 @@
-// Background Service Worker — keeps extension alive and manages alarms
+// SPIN SMART BOT — Background Service Worker v2
+const WEBHOOK = 'https://wyhvrblozyblbqogikoz.supabase.co/functions/v1/webhook-roulette';
+const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5aHZyYmxvenlibGJxb2dpa296Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NTA1MzgsImV4cCI6MjA5MDMyNjUzOH0.DGwZhzapdySHGb6mtDvMI_w7KEiSp_-kmvwOHoUR1bM';
+
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('[RoulettePro] Extension installed v2.0');
-  
-  // Set defaults on first install
-  chrome.storage.local.get(['roulette_first_run'], (result) => {
-    if (!result['roulette_first_run']) {
+  chrome.storage.local.get(['ssb_installed'], r => {
+    if (!r['ssb_installed']) {
       chrome.storage.local.set({
-        'roulette_first_run': true,
-        'roulette_webhook_url': 'https://wyhvrblozyblbqogikoz.supabase.co/functions/v1/webhook-roulette',
-        'roulette_autobet_config': {
-          apiUrl: 'https://wyhvrblozyblbqogikoz.supabase.co/functions/v1/sniper-predict',
-          betValue: 1,
-          stopLoss: -50,
-          stopWin: 100,
-          minProbability: 85,
-          useGale: false,
-          maxGaleSteps: 3,
-          galeFactor: 2,
-          enabled: false,
+        'ssb_installed': true,
+        'ssb_config_v4': {
+          enabled: false, betValue: 1, stopLoss: -100, stopWin: 200,
+          minProbability: 50, minConfirmations: 2,
+          useGale: false, maxGaleSteps: 2, galeFactor: 2, autoBetDelay: 900,
         },
       });
     }
   });
+  console.log('[SSB-BG] Instalado v4');
 });
 
-// Listen for messages from content scripts
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   if (msg.type === 'NUMBER_CAPTURED') {
-    // Forward to webhook
-    chrome.storage.local.get(['roulette_webhook_url', 'roulette_tracker_paused'], (result) => {
-      if (result['roulette_tracker_paused']) return;
-      const url = result['roulette_webhook_url'];
-      if (!url) return;
+    // Enviar ao Supabase webhook
+    fetch(WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON },
+      body: JSON.stringify({ number: msg.number, source: 'extension', timestamp: Date.now() }),
+    })
+    .then(r => respond({ ok: r.ok }))
+    .catch(e => respond({ ok: false, error: e.message }));
 
-      fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number: msg.number, source: 'extension', timestamp: Date.now() }),
-      })
-        .then(res => {
-          if (res.ok) {
-            // Log success
-            chrome.storage.local.get(['roulette_sent_log'], (r) => {
-              const log = r['roulette_sent_log'] || [];
-              log.unshift({ number: msg.number, time: new Date().toISOString(), status: 'ok' });
-              chrome.storage.local.set({ 'roulette_sent_log': log.slice(0, 100) });
-            });
-          }
-          sendResponse({ ok: res.ok });
-        })
-        .catch(err => {
-          console.error('[RoulettePro] Webhook error:', err);
-          sendResponse({ ok: false, error: err.message });
-        });
+    // Salvar localmente
+    chrome.storage.local.get(['ssb_numbers'], r => {
+      const arr = r['ssb_numbers'] || [];
+      arr.unshift({ number: msg.number, time: new Date().toISOString() });
+      chrome.storage.local.set({ 'ssb_numbers': arr.slice(0, 500) });
     });
-    return true; // async sendResponse
+    return true;
   }
 
-  if (msg.type === 'BET_RESULT') {
-    // Update autobet stats
-    chrome.storage.local.get(['roulette_autobet_stats', 'roulette_autobet_config'], (result) => {
-      const stats = result['roulette_autobet_stats'] || { totalBets: 0, wins: 0, losses: 0, profit: 0, currentGaleStep: 0, consecutiveLosses: 0, stopped: false, stopReason: '' };
-      const config = result['roulette_autobet_config'] || {};
-
-      if (msg.won) {
-        stats.wins++;
-        stats.profit += msg.profit;
-        stats.currentGaleStep = 0;
-        stats.consecutiveLosses = 0;
-      } else {
-        stats.losses++;
-        stats.profit -= msg.cost;
-        stats.consecutiveLosses++;
-        if (config.useGale && stats.currentGaleStep < (config.maxGaleSteps || 3)) {
-          stats.currentGaleStep++;
-        } else {
-          stats.currentGaleStep = 0;
-        }
-      }
-
-      if (stats.profit <= (config.stopLoss || -50)) {
-        stats.stopped = true;
-        stats.stopReason = `Stop Loss: R$${stats.profit.toFixed(2)}`;
-        config.enabled = false;
-        chrome.storage.local.set({ 'roulette_autobet_config': config });
-      }
-      if (stats.profit >= (config.stopWin || 100)) {
-        stats.stopped = true;
-        stats.stopReason = `Stop Win: R$${stats.profit.toFixed(2)}`;
-        config.enabled = false;
-        chrome.storage.local.set({ 'roulette_autobet_config': config });
-      }
-
-      chrome.storage.local.set({ 'roulette_autobet_stats': stats });
-      sendResponse({ ok: true, stats });
+  if (msg.type === 'GET_STATS') {
+    chrome.storage.local.get(['ssb_stats_v4','ssb_config_v4','ssb_numbers'], r => {
+      respond({ stats: r['ssb_stats_v4']||{}, config: r['ssb_config_v4']||{}, numbers: (r['ssb_numbers']||[]).slice(0,10) });
     });
+    return true;
+  }
+
+  if (msg.type === 'SET_CONFIG') {
+    chrome.storage.local.set({ 'ssb_config_v4': msg.config }, () => respond({ ok: true }));
+    return true;
+  }
+
+  if (msg.type === 'RESET_STATS') {
+    const emptyStats = { totalBets:0,wins:0,losses:0,profit:0,currentGaleStep:0,lastBetNumbers:[],lastBetAmount:0,consecutiveLosses:0,stopped:false,stopReason:'',waitingResult:false,lastBetTs:0 };
+    chrome.storage.local.set({ 'ssb_stats_v4': emptyStats }, () => respond({ ok: true }));
     return true;
   }
 });

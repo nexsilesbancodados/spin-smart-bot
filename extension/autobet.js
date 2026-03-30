@@ -1,365 +1,204 @@
-// Roulette Auto-Bet Module
-// Reads sniper signals and places bets with human-like behavior
-
+// SPIN SMART BOT — AutoBet v4 SUPREMO
+// Detecta fase do jogo, aposta automaticamente, resolve resultado
 (function () {
-  const CONFIG_KEY = 'roulette_autobet_config';
-  const STATS_KEY = 'roulette_autobet_stats';
-  const AUTOBET_ACTIVE_KEY = 'roulette_autobet_active';
+  'use strict';
+  const CONFIG_KEY = 'ssb_config_v4', STATS_KEY = 'ssb_stats_v4', LOG_KEY = 'ssb_log_v4';
+  const SNIPER_URL = 'https://wyhvrblozyblbqogikoz.supabase.co/functions/v1/sniper-predict';
+  const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5aHZyYmxvenlibGJxb2dpa296Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NTA1MzgsImV4cCI6MjA5MDMyNjUzOH0.DGwZhzapdySHGb6mtDvMI_w7KEiSp_-kmvwOHoUR1bM';
+  let cfg={enabled:false,betValue:1,stopLoss:-100,stopWin:200,minProbability:50,minConfirmations:2,useGale:false,maxGaleSteps:2,galeFactor:2,autoBetDelay:900};
+  let stats={totalBets:0,wins:0,losses:0,profit:0,currentGaleStep:0,lastBetNumbers:[],lastBetAmount:0,consecutiveLosses:0,stopped:false,stopReason:'',waitingResult:false,lastBetTs:0};
+  let pendingSignal=null,isPlacingBet=false,bettingOpen=false,pollInterval=null,phaseInterval=null;
 
-  let config = {
-    enabled: false,
-    apiUrl: '', // URL do painel sniper (supabase edge function)
-    betValue: 1.0,
-    stopLoss: -50,
-    stopWin: 100,
-    minProbability: 85,
-    useGale: false,
-    maxGaleSteps: 3,
-    galeFactor: 2.0,
-  };
-
-  let stats = {
-    totalBets: 0,
-    wins: 0,
-    losses: 0,
-    profit: 0,
-    sessionStart: null,
-    currentGaleStep: 0,
-    lastBetAmount: 0,
-    consecutiveLosses: 0,
-    stopped: false,
-    stopReason: '',
-  };
-
-  let isPlacingBet = false;
-  let pollInterval = null;
-
-  // Load config
-  chrome.storage.local.get([CONFIG_KEY, STATS_KEY], (result) => {
-    if (result[CONFIG_KEY]) Object.assign(config, result[CONFIG_KEY]);
-    if (result[STATS_KEY]) Object.assign(stats, result[STATS_KEY]);
-    console.log('[AutoBet] Config loaded, enabled:', config.enabled);
-    if (config.enabled && !stats.stopped) startPolling();
+  chrome.storage.local.get([CONFIG_KEY,STATS_KEY],res=>{
+    if(res[CONFIG_KEY]) Object.assign(cfg,res[CONFIG_KEY]);
+    if(res[STATS_KEY])  Object.assign(stats,res[STATS_KEY]);
+    if(cfg.enabled&&!stats.stopped) init();
+  });
+  chrome.storage.onChanged.addListener(changes=>{
+    if(!changes[CONFIG_KEY]) return;
+    const nc=changes[CONFIG_KEY].newValue||{};
+    const was=cfg.enabled; Object.assign(cfg,nc);
+    if(cfg.enabled&&!was&&!stats.stopped) init();
+    else if(!cfg.enabled&&was) cleanup();
   });
 
-  chrome.storage.onChanged.addListener((changes) => {
-    if (changes[CONFIG_KEY]) {
-      const newConfig = changes[CONFIG_KEY].newValue || {};
-      const wasEnabled = config.enabled;
-      Object.assign(config, newConfig);
+  function save(){ chrome.storage.local.set({[STATS_KEY]:stats,[CONFIG_KEY]:cfg}); }
+  function addLog(e){ chrome.storage.local.get([LOG_KEY],r=>{const l=r[LOG_KEY]||[];l.unshift({...e,ts:Date.now()});chrome.storage.local.set({[LOG_KEY]:l.slice(0,300)});}); }
+  function ms(b,p){return Math.round(b+(Math.random()*2-1)*b*(p||0.3));}
+  function delay(t){return new Promise(r=>setTimeout(r,t));}
 
-      if (config.enabled && !wasEnabled) {
-        stats.stopped = false;
-        stats.stopReason = '';
-        saveStats();
-        startPolling();
-      } else if (!config.enabled && wasEnabled) {
-        stopPolling();
-      }
-    }
-    if (changes[AUTOBET_ACTIVE_KEY] && !changes[AUTOBET_ACTIVE_KEY].newValue) {
-      stopPolling();
-    }
-  });
-
-  function saveStats() {
-    chrome.storage.local.set({ [STATS_KEY]: stats });
+  function detectPhase(){
+    const txt=(document.body?.innerText||'').toLowerCase();
+    const CLOSED=['no more bets','rien ne va plus','sem mais apostas','betting closed','nenhuma aposta'];
+    const OPEN=['place your bets','faça suas apostas','placez vos mises','betting open','apostas abertas','make your bets'];
+    for(const s of CLOSED) if(txt.includes(s)) return 'closed';
+    for(const s of OPEN) if(txt.includes(s)) return 'open';
+    const cSels=['[class*="noMoreBets"]','[class*="no-more-bets"]','[class*="bettingClosed"]'];
+    const oSels=['[class*="placeYourBets"]','[class*="bettingOpen"]','[class*="place-bets"]'];
+    for(const s of cSels) if(document.querySelector(s)) return 'closed';
+    for(const s of oSels) if(document.querySelector(s)) return 'open';
+    return 'unknown';
   }
 
-  function saveConfig() {
-    chrome.storage.local.set({ [CONFIG_KEY]: config });
-  }
-
-  // =============================================
-  // HUMAN-LIKE MOUSE/CLICK SIMULATION
-  // =============================================
-
-  function randomDelay(min, max) {
-    return new Promise((resolve) =>
-      setTimeout(resolve, min + Math.random() * (max - min))
-    );
-  }
-
-  function humanClick(element) {
-    if (!element) return;
-
-    const rect = element.getBoundingClientRect();
-    const x = rect.left + rect.width * (0.3 + Math.random() * 0.4);
-    const y = rect.top + rect.height * (0.3 + Math.random() * 0.4);
-
-    // Simulate mousemove -> mouseover -> mousedown -> mouseup -> click
-    const events = ['mousemove', 'mouseover', 'mouseenter', 'mousedown', 'mouseup', 'click'];
-    for (const type of events) {
-      const evt = new MouseEvent(type, {
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        clientX: x,
-        clientY: y,
-        button: 0,
-      });
-      element.dispatchEvent(evt);
-    }
-  }
-
-  // =============================================
-  // BET PLACEMENT SELECTORS (Onabet/Playtech)
-  // =============================================
-
-  const SELECTORS = {
-    // Chip/value selectors - common patterns in live casino UIs
-    chipButtons: [
-      '.chip-button', '.chip', '.bet-chip',
-      '[data-chip]', '[data-value]',
-      '.stake-button', '.denomination',
-    ],
-    // Number buttons on the roulette board
-    numberButtons: [
-      '.bet-spot[data-number]',
-      '.number-spot[data-number]',
-      '.roulette-number[data-number]',
-      '[data-bet-spot]',
-      'td[data-number]',
-      '.cell[data-number]',
-    ],
-    // Confirm/place bet
-    confirmButtons: [
-      '.confirm-bet', '.place-bet', '.bet-confirm',
-      'button[data-action="confirm"]',
-      '.submit-bet', '.ok-button',
-      '#confirmBet', '#placeBet',
-    ],
-    // Repeat/double bet
-    repeatButtons: [
-      '.repeat-bet', '.rebet', '.double-bet',
-    ],
-    // Clear bet
-    clearButtons: [
-      '.clear-bet', '.undo-bet', '.cancel-bet',
-    ],
-    // Bet input field (some UIs have a text input)
-    betInput: [
-      'input[data-bet-amount]', 'input.bet-amount',
-      'input.stake-input', '#betAmount',
-    ],
-  };
-
-  function findElement(selectorList) {
-    for (const sel of selectorList) {
-      const el = document.querySelector(sel);
-      if (el && el.offsetParent !== null) return el; // visible element
+  function findNumBtn(n){
+    const sels=[`[data-number="${n}"]`,`[data-id="${n}"]`,`[data-bet-type="straight"][data-value="${n}"]`,`[data-position="${n}"]`,`[data-cell="${n}"]`,`.bet-spot[data-number="${n}"]`,`[aria-label="${n}"]`,`[aria-label="Number ${n}"]`,`td[data-number="${n}"]`];
+    for(const s of sels){try{const el=document.querySelector(s);if(el&&el.getBoundingClientRect().width>0)return el;}catch{}}
+    for(const el of document.querySelectorAll('td,[class*="number"],[class*="spot"],[class*="cell"]')){
+      if(el.textContent?.trim()===String(n)&&el.getBoundingClientRect().width>2)return el;
     }
     return null;
   }
-
-  function findNumberButton(number) {
-    // Try data attributes first
-    const dataSelectors = [
-      `[data-number="${number}"]`,
-      `[data-bet-spot="${number}"]`,
-      `[data-value="${number}"]`,
-      `td[data-number="${number}"]`,
-    ];
-
-    for (const sel of dataSelectors) {
-      const el = document.querySelector(sel);
-      if (el && el.offsetParent !== null) return el;
+  function findChipBtn(v){
+    const sels=[`[data-value="${v}"]`,`[data-chip-value="${v}"]`,`[data-denomination="${v}"]`];
+    for(const s of sels){const el=document.querySelector(s);if(el&&el.getBoundingClientRect().width>0)return el;}
+    let best=null,diff=Infinity;
+    for(const c of document.querySelectorAll('[data-value],[data-chip-value],[class*="chip"]')){
+      const cv=parseFloat(c.getAttribute('data-value')||c.getAttribute('data-chip-value')||c.textContent||'NaN');
+      if(!isNaN(cv)&&Math.abs(cv-v)<diff){diff=Math.abs(cv-v);best=c;}
     }
-
-    // Try text content match
-    const allCells = document.querySelectorAll('td, .cell, .number-spot, .bet-spot');
-    for (const cell of allCells) {
-      if (cell.textContent?.trim() === String(number)) {
-        return cell;
-      }
-    }
-
+    return best;
+  }
+  function findConfirmBtn(){
+    const sels=['[data-action="confirm"]','[data-action="place"]','.confirm-bet','[class*="confirmBet"]','[class*="placeBet"]','button[aria-label*="confirm" i]','button[aria-label*="place" i]','button[aria-label*="confirmar" i]'];
+    for(const s of sels){const el=document.querySelector(s);if(el&&el.getBoundingClientRect().width>0)return el;}
     return null;
   }
 
-  // =============================================
-  // BETTING LOGIC
-  // =============================================
+  async function click(el){
+    if(!el) return false;
+    const r=el.getBoundingClientRect();
+    if(!r.width) return false;
+    const x=r.left+r.width*(0.3+Math.random()*0.4),y=r.top+r.height*(0.3+Math.random()*0.4);
+    const opts={bubbles:true,cancelable:true,view:window,clientX:x,clientY:y,button:0};
+    for(const t of['mouseover','mouseenter','mousemove','mousedown','mouseup','click']) el.dispatchEvent(new MouseEvent(t,opts));
+    el.click?.();
+    return true;
+  }
 
-  async function placeBet(targetNumber, neighbors, probability) {
-    if (isPlacingBet || stats.stopped) return;
-    isPlacingBet = true;
-
-    console.log(`[AutoBet] 🎯 Placing bet on ${targetNumber} + neighbors [${neighbors}] (${probability}%)`);
-
-    try {
-      // Calculate bet amount (with Gale if active)
-      let betAmount = config.betValue;
-      if (config.useGale && stats.currentGaleStep > 0) {
-        betAmount = config.betValue * Math.pow(config.galeFactor, stats.currentGaleStep);
-        console.log(`[AutoBet] Gale step ${stats.currentGaleStep}, bet: R$${betAmount.toFixed(2)}`);
+  async function bet(numbers,betAmount,probability){
+    if(isPlacingBet||stats.stopped||!cfg.enabled) return false;
+    isPlacingBet=true;
+    let placed=0;
+    try{
+      const phase=detectPhase();
+      if(phase==='closed'){
+        pendingSignal={numbers,betAmount,probability};
+        notify('pending',numbers,betAmount,probability);
+        return false;
       }
-
-      // Step 1: Small random delay before acting (human behavior)
-      await randomDelay(300, 900);
-
-      // Step 2: Click on the target number
-      const allNumbers = [targetNumber, ...neighbors];
-      for (const num of allNumbers) {
-        const btn = findNumberButton(num);
-        if (btn) {
-          await randomDelay(150, 500);
-          humanClick(btn);
-          console.log(`[AutoBet] Clicked number ${num}`);
-        } else {
-          console.warn(`[AutoBet] Number button ${num} not found`);
-        }
-      }
-
-      // Step 3: Wait a bit before confirming (human delay)
-      await randomDelay(500, 1500);
-
-      // Step 4: Try to confirm
-      const confirmBtn = findElement(SELECTORS.confirmButtons);
-      if (confirmBtn) {
-        humanClick(confirmBtn);
-        console.log('[AutoBet] ✅ Bet confirmed');
+      await delay(ms(cfg.autoBetDelay));
+      const input=document.querySelector('input[type="number"],[class*="betInput"],[class*="stakeInput"]');
+      if(input){
+        const s=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')?.set;
+        s?.call(input,String(betAmount));
+        input.dispatchEvent(new Event('input',{bubbles:true}));
+        input.dispatchEvent(new Event('change',{bubbles:true}));
+        await delay(200);
       } else {
-        console.warn('[AutoBet] ⚠️ Confirm button not found, bet may auto-submit');
+        const chip=findChipBtn(betAmount);
+        if(chip){await click(chip);await delay(ms(350));}
       }
-
-      // Record the bet
-      stats.totalBets++;
-      stats.lastBetAmount = betAmount * allNumbers.length;
-      saveStats();
-
-      // Log to extension storage
-      chrome.storage.local.get(['roulette_autobet_log'], (result) => {
-        const log = result['roulette_autobet_log'] || [];
-        log.unshift({
-          time: new Date().toISOString(),
-          number: targetNumber,
-          neighbors,
-          betAmount,
-          probability,
-          galeStep: stats.currentGaleStep,
-        });
-        chrome.storage.local.set({ 'roulette_autobet_log': log.slice(0, 100) });
-      });
-
-    } catch (err) {
-      console.error('[AutoBet] Error placing bet:', err);
-    } finally {
-      isPlacingBet = false;
-    }
+      for(const n of numbers){
+        const btn=findNumBtn(n);
+        if(btn){await delay(ms(200,0.5));await click(btn);placed++;}
+        else console.warn('[SSB] Nº'+n+' não encontrado');
+      }
+      if(placed===0){notify('error',numbers,betAmount,probability,'Seletores não encontrados');return false;}
+      await delay(ms(500,0.3));
+      const cb=findConfirmBtn();
+      if(cb) await click(cb);
+      stats.totalBets++;stats.lastBetNumbers=numbers;stats.lastBetAmount=betAmount;
+      stats.waitingResult=true;stats.lastBetTs=Date.now();
+      save();addLog({type:'bet',numbers,betAmount,probability,placed});
+      notify('bet_placed',numbers,betAmount,probability);
+      console.log('[SSB] 🎯 '+placed+'/'+numbers.length+' apostados R$'+betAmount+' '+probability+'%');
+      return true;
+    }catch(err){
+      console.error('[SSB]',err);notify('error',numbers,betAmount,probability,String(err));return false;
+    }finally{isPlacingBet=false;}
   }
 
-  // =============================================
-  // RESULT TRACKING (win/loss)
-  // =============================================
+  function resolve(n){
+    if(!stats.waitingResult||!stats.lastBetNumbers.length) return;
+    if(Date.now()-stats.lastBetTs<2000) return;
+    stats.waitingResult=false;
+    const won=stats.lastBetNumbers.includes(n),N=stats.lastBetNumbers.length,amt=stats.lastBetAmount;
+    if(won){
+      const lucro=amt*35-amt*(N-1);stats.profit+=lucro;stats.wins++;stats.currentGaleStep=0;stats.consecutiveLosses=0;
+      notify('win',stats.lastBetNumbers,amt,0,'',n,lucro);
+      console.log('[SSB] 🟢 ACERTO! '+n+' +R$'+lucro.toFixed(2));
+    }else{
+      const custo=amt*N;stats.profit-=custo;stats.losses++;stats.consecutiveLosses++;
+      if(cfg.useGale&&stats.currentGaleStep<cfg.maxGaleSteps) stats.currentGaleStep++;
+      else stats.currentGaleStep=0;
+      notify('loss',stats.lastBetNumbers,amt,0,'',n,-custo);
+      console.log('[SSB] 🔴 ERRO! '+n+' -R$'+custo.toFixed(2));
+    }
+    if(stats.profit<=cfg.stopLoss){stats.stopped=true;stats.stopReason='Stop Loss: R$'+stats.profit.toFixed(2);cfg.enabled=false;save();cleanup();notify('stopped',[],0,0,stats.stopReason);}
+    if(stats.profit>=cfg.stopWin){stats.stopped=true;stats.stopReason='Stop Win: R$'+stats.profit.toFixed(2);cfg.enabled=false;save();cleanup();notify('stopped',[],0,0,stats.stopReason);}
+    save();
+  }
 
-  function checkResult(resultNumber) {
-    if (stats.totalBets === 0) return;
+  function notify(status,numbers,betAmount,probability,error,resultNumber,profit){
+    const msg={type:'AUTOBET_STATUS',status,numbers,betAmount,probability,error:error||null,resultNumber:resultNumber??null,profit:profit??null,stats:{...stats}};
+    window.postMessage(msg,'*');
+    try{window.parent?.postMessage(msg,'*');}catch{}
+  }
 
-    // Get last bet from log
-    chrome.storage.local.get(['roulette_autobet_log'], (result) => {
-      const log = result['roulette_autobet_log'] || [];
-      if (log.length === 0) return;
+  async function pollSniper(){
+    if(!cfg.enabled||stats.stopped||isPlacingBet) return;
+    try{
+      const res=await fetch(SNIPER_URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':ANON_KEY},body:JSON.stringify({sampleSize:100})});
+      if(!res.ok) return;
+      const data=await res.json();
+      if((data.mode==='sniper'||data.mode==='alert')&&data.signal){
+        const prob=data.signal.probability||0,confs=data.signal.confirmations||0,nums=data.strategy?.numbers||[];
+        if(prob>=cfg.minProbability&&confs>=cfg.minConfirmations&&nums.length>0) await bet(nums,cfg.betValue,prob);
+      }
+    }catch{}
+  }
 
-      const lastBet = log[0];
-      const allNumbers = [lastBet.number, ...(lastBet.neighbors || [])];
-      const won = allNumbers.includes(resultNumber);
+  window.addEventListener('message',async evt=>{
+    const d=evt.data;
+    if(!d||typeof d!=='object') return;
+    if(d.type==='SNIPER_BET_SIGNAL'){
+      if(!cfg.enabled||stats.stopped) return;
+      const phase=detectPhase();
+      if(phase==='closed'){pendingSignal={numbers:d.numbers,betAmount:d.betAmount||cfg.betValue,probability:d.probability||0};}
+      else{await delay(ms(cfg.autoBetDelay,0.3));await bet(d.numbers,d.betAmount||cfg.betValue,d.probability||0);}
+    }
+    if(d.type==='NUMBER_CAPTURED'||d.type==='ROULETTE_NUMBER'){
+      const n=d.number;
+      if(typeof n==='number'&&n>=0&&n<=36){resolve(n);try{window.parent?.postMessage({type:'NUMBER_FROM_EXTENSION',number:n},'*');}catch{}}
+    }
+  });
 
-      if (won) {
-        // Straight up pays 35:1
-        const payout = lastBet.betAmount * 35;
-        const cost = lastBet.betAmount * allNumbers.length;
-        stats.profit += payout - cost;
-        stats.wins++;
-        stats.currentGaleStep = 0;
-        stats.consecutiveLosses = 0;
-        console.log(`[AutoBet] 🟢 WIN! Number ${resultNumber}. Profit: R$${stats.profit.toFixed(2)}`);
-      } else {
-        const cost = lastBet.betAmount * allNumbers.length;
-        stats.profit -= cost;
-        stats.losses++;
-        stats.consecutiveLosses++;
-
-        if (config.useGale && stats.currentGaleStep < config.maxGaleSteps) {
-          stats.currentGaleStep++;
-          console.log(`[AutoBet] 🔴 LOSS. Gale step → ${stats.currentGaleStep}`);
-        } else {
-          stats.currentGaleStep = 0;
-          console.log(`[AutoBet] 🔴 LOSS. Max gale reached, reset.`);
+  function init(){
+    if(!cfg.enabled) return;
+    if(!phaseInterval){
+      phaseInterval=setInterval(async()=>{
+        const phase=detectPhase(),wasOpen=bettingOpen;
+        bettingOpen=phase==='open';
+        if(!wasOpen&&bettingOpen&&pendingSignal&&!isPlacingBet&&cfg.enabled&&!stats.stopped){
+          const sig=pendingSignal;pendingSignal=null;
+          await delay(ms(700,0.3));await bet(sig.numbers,sig.betAmount,sig.probability);
         }
-      }
-
-      // Check stop conditions
-      if (stats.profit <= config.stopLoss) {
-        stats.stopped = true;
-        stats.stopReason = `Stop Loss atingido: R$${stats.profit.toFixed(2)}`;
-        config.enabled = false;
-        saveConfig();
-        stopPolling();
-        console.log(`[AutoBet] 🛑 STOP LOSS! ${stats.stopReason}`);
-      }
-
-      if (stats.profit >= config.stopWin) {
-        stats.stopped = true;
-        stats.stopReason = `Stop Win atingido: R$${stats.profit.toFixed(2)}`;
-        config.enabled = false;
-        saveConfig();
-        stopPolling();
-        console.log(`[AutoBet] 🏆 STOP WIN! ${stats.stopReason}`);
-      }
-
-      saveStats();
-    });
-  }
-
-  // Hook into the existing number detection to track results
-  const originalSendNumber = window._rtSendNumber;
-  window._rtCheckResult = checkResult;
-
-  // =============================================
-  // SNIPER SIGNAL POLLING
-  // =============================================
-
-  async function fetchSniperSignal() {
-    if (!config.apiUrl || stats.stopped || isPlacingBet) return;
-
-    try {
-      const res = await fetch(config.apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-
-      if (!res.ok) return;
-      const data = await res.json();
-
-      if (data.mode === 'sniper' && data.signal) {
-        const prob = data.signal.probability || 0;
-        if (prob >= config.minProbability) {
-          console.log(`[AutoBet] 🎯 SNIPER SIGNAL: ${data.signal.number} (${prob}%)`);
-          await placeBet(data.signal.number, data.signal.neighbors || [], prob);
-        }
-      }
-    } catch (err) {
-      console.error('[AutoBet] Polling error:', err);
+        const msg={type:'BETTING_PHASE',phase,bettingOpen};
+        window.postMessage(msg,'*');try{window.parent?.postMessage(msg,'*');}catch{}
+      },1000);
     }
+    if(!pollInterval) pollInterval=setInterval(pollSniper,10000);
+    notify('ready',[],0,0);
+    console.log('[SSB] 🤖 v4 SUPREMO ativo');
+  }
+  function cleanup(){
+    if(pollInterval){clearInterval(pollInterval);pollInterval=null;}
+    if(phaseInterval){clearInterval(phaseInterval);phaseInterval=null;}
+    pendingSignal=null;console.log('[SSB] ⛔ Desativado');
   }
 
-  function startPolling() {
-    if (pollInterval) return;
-    stats.sessionStart = stats.sessionStart || new Date().toISOString();
-    saveStats();
-    pollInterval = setInterval(fetchSniperSignal, 3000);
-    console.log('[AutoBet] 🟢 Polling started');
-  }
-
-  function stopPolling() {
-    if (pollInterval) {
-      clearInterval(pollInterval);
-      pollInterval = null;
-    }
-    console.log('[AutoBet] 🔴 Polling stopped');
-  }
-
-  console.log('[AutoBet] 🤖 Auto-bet module loaded');
+  window._ssb={bet,resolve,enable:()=>{cfg.enabled=true;save();init();},disable:()=>{cfg.enabled=false;save();cleanup();},getStats:()=>({...stats}),getConfig:()=>({...cfg}),getPhase:detectPhase};
+  const _orig=window._rtCheckResult;
+  window._rtCheckResult=n=>{resolve(n);if(_orig)_orig(n);window.postMessage({type:'NUMBER_FROM_EXTENSION',number:n},'*');try{window.parent?.postMessage({type:'NUMBER_FROM_EXTENSION',number:n},'*');}catch{}};
+  if(cfg.enabled&&!stats.stopped) init();
 })();

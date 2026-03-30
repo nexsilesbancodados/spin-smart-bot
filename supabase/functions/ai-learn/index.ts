@@ -1054,6 +1054,61 @@ Responda APENAS via tool call store_learnings. Seja preciso, específico e acion
       }
     }
 
+    // 6A. GROQ (Llama-3.3-70B) — análise rápida em paralelo GRATUITA
+    const groqKey = Deno.env.get("GROQ_API_KEY");
+    if (groqKey && numbers.length >= 20) {
+      try {
+        const freq: Record<number,number> = {};
+        numbers.slice(0,100).forEach(n => { freq[n] = (freq[n]||0)+1; });
+        const hot5 = Object.entries(freq).sort(([,a],[,b])=>b-a).slice(0,5).map(([n,c])=>`${n}(${c}x)`).join(' ');
+        const cold5 = Object.entries(freq).sort(([,a],[,b])=>a-b).slice(0,5).map(([n])=>n).join(',');
+        const last20 = numbers.slice(0,20).join(',');
+        const terms = numbers.slice(0,20).map(n=>n%10).join('');
+
+        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${groqKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            max_tokens: 500,
+            temperature: 0.1,
+            messages: [{
+              role: "user",
+              content: `Analyze this roulette data and return ONLY valid JSON, no text:
+Últimos 20: ${last20}
+Hot (100): ${hot5}
+Cold: ${cold5}
+Terminais: ${terms}
+
+Return: {"hot_numbers":[top5],"predicted_next":[top3 mais prováveis],"hot_terminal":0-9,"confidence":0-100,"pattern":"descrição em 1 frase pt-br"}`
+            }],
+          }),
+        });
+
+        if (groqRes.ok) {
+          const groqData = await groqRes.json();
+          const txt = groqData.choices?.[0]?.message?.content || '';
+          try {
+            const g = JSON.parse(txt.replace(/```json|```/g,'').trim());
+            const hotNums = [...new Set([...(g.hot_numbers||[]), ...(g.predicted_next||[])])].filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0,8);
+            if (hotNums.length >= 2) {
+              const titulo = 'GROQ Vote: números confirmados';
+              const { data: exG } = await supabase.from('ai_learned_patterns').select('id').eq('learning_type','heat_cluster').eq('title',titulo).maybeSingle();
+              const rowG = {
+                knowledge: `GROQ Llama-3.3-70B confirma: [${hotNums.join(',')}]. Padrão: ${g.pattern||''}. Confiança: ${g.confidence||60}%. Terminal quente: T${g.hot_terminal??'?'}.`,
+                data_points: numbers.length,
+                accuracy: Math.min(90, Math.max(40, g.confidence || 60)),
+                metadata: { hotNumbers: hotNums, key_numbers: hotNums, groqTerminal: g.hot_terminal, predicted: g.predicted_next||[], lastSeen: new Date().toISOString() },
+                updated_at: new Date().toISOString(),
+              };
+              if (exG?.id) await supabase.from('ai_learned_patterns').update(rowG).eq('id', exG.id).catch(()=>{});
+              else await supabase.from('ai_learned_patterns').insert({ learning_type:'heat_cluster', title:titulo, ...rowG }).catch(()=>{});
+            }
+          } catch { /* GROQ retornou formato inválido */ }
+        }
+      } catch { /* GROQ opcional — não bloquear */ }
+    }
+
     // 6. Quick pattern insights
     const patternRes = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
