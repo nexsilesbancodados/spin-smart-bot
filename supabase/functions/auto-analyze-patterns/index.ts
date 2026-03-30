@@ -760,15 +760,18 @@ Deno.serve(async (req) => {
     const { data: memoria } = await supabase
       .from('pattern_insights')
       .select('id, pattern_type, confidence')
-      .gt('confidence', 35)
+      .gt('confidence', 25)
       .order('created_at', { ascending: false })
       .limit(100);
 
     for (const mem of (memoria || []) as any[]) {
       const redetected = topPatterns.find(p => p.type === mem.pattern_type);
       if (redetected) {
+        // Reforço proporcional ao backtest real (2 a 6 pts)
+        const btRate = redetected.bt || 0;
+        const reinforcement = Math.max(2, Math.round(btRate * 6));
         await supabase.from('pattern_insights')
-          .update({ confidence: Math.min(85, (mem.confidence || 50) + 3) })
+          .update({ confidence: Math.min(88, (mem.confidence || 50) + reinforcement) })
           .eq('id', mem.id);
       }
     }

@@ -161,18 +161,52 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus }: Props) => {
       }
     }, 1700));
 
-    // Score final da rodada
+    // Auto-repetição — o padrão mais forte desta mesa
+    timers.push(setTimeout(() => {
+      const last5 = allNumbers.slice(0, 5);
+      const repCount: Record<number,number> = {};
+      last5.forEach(n => { repCount[n] = (repCount[n]||0)+1; });
+      const hotRep = Object.entries(repCount).find(([,c]) => Number(c) >= 2);
+      if (hotRep) {
+        const rn = Number(hotRep[0]);
+        const cnt = Number(hotRep[1]);
+        addLog(`🔁 AUTO-REPETIÇÃO: ${rn} saiu ${cnt}x em 5 — padrão FORTE desta mesa (13→13→13: 15x em 500)`, 'alert');
+      }
+    }, 1350));
+
+    // Score final da rodada com confirmações
     timers.push(setTimeout(() => {
       setScanProgress(100);
       const score = sniperData?.signal?.probability || 0;
-      const action = score >= 75 ? '⚡ ENTRAR FORTE' : score >= 50 ? '✅ ENTRAR' : score >= 25 ? '⚠️ AGUARDAR' : '⏸ NÃO ENTRAR';
-      const fichas = score >= 75 ? ` (${Math.round(8 + (score-75)/5)} fichas)` : '';
-      addLog(`🎯 Score: ${score}% → ${action}${fichas}`, score >= 60 ? 'alert' : 'info');
+      const confirmations = sniperData?.signal?.confirmations || 0;
+      const num1 = sniperData?.signal?.number;
+      const action = score >= 65 ? '⚡ ENTRAR FORTE' : score >= 50 ? '✅ ENTRAR' : score >= 35 ? '⚠️ AGUARDAR' : '⏸ NÃO ENTRAR';
+      const fichas = score >= 65 ? ` (${Math.round(8 + (score-65)/5)} fichas)` : score >= 50 ? ' (5 fichas)' : '';
+      const confStr = confirmations >= 3 ? ` | ${confirmations} fontes ✅` : '';
+      addLog(`🎯 #${num1} → ${score}% ${action}${fichas}${confStr}`, score >= 55 ? 'alert' : 'info');
       setScanning(false);
     }, 2000));
 
     return () => timers.forEach(clearTimeout);
   }, [allNumbers[0]]);
+
+  // Log confirmações quando sniper atualiza
+  useEffect(() => {
+    if (!sniperData?.signal?.confirmations) return;
+    const c = sniperData.signal.confirmations;
+    const cd = sniperData.signal.confirmationDetail;
+    const num = sniperData.signal.number;
+    if (c >= 3) {
+      const srcs = [
+        cd?.pull && 'Puxada',
+        cd?.autoRep && `Rep${cd.recentCount}x`,
+        cd?.matriz && 'Matriz',
+        cd?.ensemble && 'Ensemble',
+        cd?.winner && 'Estrat.',
+      ].filter(Boolean).join('+');
+      addLog(`💎 ${c} confirmações em #${num}: ${srcs} — CONFIANÇA MÁXIMA`, 'alert');
+    }
+  }, [sniperData?.signal?.number]);
 
   // Log archetype activity from sniper
   useEffect(() => {

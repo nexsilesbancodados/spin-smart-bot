@@ -232,6 +232,24 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
         </div>
       )}
 
+      {/* ── AUTO-REPETIÇÃO DETECTADA ───────────────────── */}
+      {sniperData?.signal?.confirmationDetail?.autoRep && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="mx-4 mt-2 px-3 py-2 rounded-lg bg-orange-500/15 border border-orange-500/40 flex items-center gap-2"
+        >
+          <span className="text-lg">🔁</span>
+          <div>
+            <span className="text-[9px] font-black text-orange-400 block">AUTO-REPETIÇÃO ATIVA</span>
+            <span className="text-[7px] text-orange-300/80">
+              #{sniperData.signal.number} saiu {sniperData.signal.confirmationDetail.recentCount}x — padrão confirmado desta mesa
+            </span>
+          </div>
+          <span className="ml-auto text-[8px] font-black text-orange-400">FORTE</span>
+        </motion.div>
+      )}
+
       <div className={`p-4 transition-opacity ${reedStopped ? 'opacity-40 pointer-events-none' : ''}`}>
 
         {/* ── AGUARDANDO RESULTADO ───────────────────────── */}
@@ -414,35 +432,41 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                         )}
                       </div>
 
-                      {/* Confirmações independentes */}
-                      {sniperData?.signal?.confirmationDetail && (() => {
-                        const cd = sniperData.signal.confirmationDetail;
-                        const total = sniperData.signal.confirmations || 0;
-                        const items = [
-                          cd.pull      && { label: '🧲 Puxada', color: 'text-cyan-400 border-cyan-500/30 bg-cyan-500/10' },
-                          cd.autoRep   && { label: `🔁 Repetiu ${cd.recentCount}x`, color: 'text-orange-400 border-orange-500/30 bg-orange-500/10' },
-                          cd.matriz    && { label: '🔢 Matriz', color: 'text-blue-400 border-blue-500/30 bg-blue-500/10' },
-                          cd.ensemble  && { label: '🌟 Ensemble', color: 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10' },
-                          cd.winner    && { label: '⚡ Estratégia', color: 'text-primary border-primary/30 bg-primary/10' },
-                        ].filter(Boolean) as {label: string; color: string}[];
-                        if (items.length === 0) return null;
-                        return (
-                          <div className="mt-2">
-                            <div className="flex items-center gap-1 mb-1">
-                              <span className="text-[7px] text-muted-foreground font-bold uppercase tracking-wider">
-                                {total} fonte{total !== 1 ? 's' : ''} confirmam o #{sniperData.signal.number}:
+                      {/* Confirmações independentes do número #1 */}
+                      {sniperData?.signal?.confirmationDetail && sniperData.signal.confirmations > 0 && (
+                        <div className="mt-2">
+                          <span className="text-[7px] text-muted-foreground font-bold uppercase tracking-wider block mb-1">
+                            {sniperData.signal.confirmations} fonte{sniperData.signal.confirmations !== 1 ? 's' : ''} confirmam o #{sniperData.signal.number}:
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {sniperData.signal.confirmationDetail.pull && (
+                              <span className="text-[7px] px-1.5 py-0.5 rounded border font-bold bg-cyan-500/10 text-cyan-400 border-cyan-500/30">
+                                🧲 Puxada direta
                               </span>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {items.map((item, i) => (
-                                <span key={i} className={`text-[7px] px-1.5 py-0.5 rounded border font-bold ${item.color}`}>
-                                  {item.label}
-                                </span>
-                              ))}
-                            </div>
+                            )}
+                            {sniperData.signal.confirmationDetail.autoRep && (
+                              <span className="text-[7px] px-1.5 py-0.5 rounded border font-bold bg-orange-500/10 text-orange-400 border-orange-500/30">
+                                🔁 Repetiu {sniperData.signal.confirmationDetail.recentCount}x
+                              </span>
+                            )}
+                            {sniperData.signal.confirmationDetail.matriz && (
+                              <span className="text-[7px] px-1.5 py-0.5 rounded border font-bold bg-blue-500/10 text-blue-400 border-blue-500/30">
+                                🔢 Matriz histórica
+                              </span>
+                            )}
+                            {sniperData.signal.confirmationDetail.ensemble && (
+                              <span className="text-[7px] px-1.5 py-0.5 rounded border font-bold bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
+                                🌟 Ensemble
+                              </span>
+                            )}
+                            {sniperData.signal.confirmationDetail.winner && (
+                              <span className="text-[7px] px-1.5 py-0.5 rounded border font-bold bg-primary/10 text-primary border-primary/20">
+                                ⚡ Estratégia
+                              </span>
+                            )}
                           </div>
-                        );
-                      })()}
+                        </div>
+                      )}
                     </div>
                   </div>
 

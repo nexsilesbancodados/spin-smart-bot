@@ -2799,12 +2799,6 @@ serve(async (req) => {
       for (let t2 = 0; t2 <= 9; t2++) transitionMatrix.terminalMatrix[t][t2] = 0;
     }
 
-    let matrizTotal = 0;
-    const matrizProb: Record<number, number> = {};
-    const matrizCombinado: Record<number, number> = {};
-    let maxMatriz = 0.001;
-    let lastNum0 = numbers[0];
-
     if (numbers.length >= 50) {
       // Build sector transition matrix from last 200
       const sectorSeq200 = numbers.slice(0, Math.min(200, numbers.length)).map(n => getSector(n)).filter(s => s !== 'Zero');
@@ -2838,9 +2832,10 @@ serve(async (req) => {
       for (let i = 0; i < numMatrixN - 1; i++) {
         numMatrix[numbers[i + 1]][numbers[i]]++;
       }
-      lastNum0 = numbers[0];
+      const lastNum0 = numbers[0];
       const matrizRow = numMatrix[lastNum0] || {};
-      matrizTotal = Object.values(matrizRow).reduce((a, b) => a + b, 0);
+      const matrizTotal = Object.values(matrizRow).reduce((a, b) => a + b, 0);
+      const matrizProb: Record<number, number> = {};
       if (matrizTotal >= 10) {
         for (let n = 0; n <= 36; n++) {
           matrizProb[n] = (matrizRow[n] || 0) / matrizTotal;
@@ -2858,12 +2853,13 @@ serve(async (req) => {
         const total3 = Object.values(row3).reduce((a, b) => a + b, 0);
         if (total3 >= 8) for (let n = 0; n <= 36; n++) matrizProb3[n] = (row3[n] || 0) / total3;
       }
+      const matrizCombinado: Record<number, number> = {};
       for (let n = 0; n <= 36; n++) {
         matrizCombinado[n] = (matrizProb[n] || 0) * 3 +
                               (matrizProb2[n] || 0) * 2 +
                               (matrizProb3[n] || 0) * 1;
       }
-      maxMatriz = Math.max(...Object.values(matrizCombinado), 0.001);
+      const maxMatriz = Math.max(...Object.values(matrizCombinado), 0.001);
 
       // PREDICT next sector from transition matrix
       const lastSector = getSector(numbers[0]);
@@ -4010,8 +4006,18 @@ serve(async (req) => {
       if (sectorCount10 >= 4) { s += 4; r.push(`📚 F4:Cluster!(${nSector})`); signalFlags['F4'] = true; }
       else if (sectorCount10 >= 3) { s += 2.5; r.push(`📚 F4:Cluster(${nSector})`); signalFlags['F4'] = true; }
       
-      // P3: ZERO AUSENTE — pressure zone (20 pts)
-      if (n === 0 && daniGreen.mod4.delay >= 25) { s += 4; r.push(`📚 P3:ZeroPress(${daniGreen.mod4.delay}r)`); signalFlags['P3'] = true; }
+      // P3: ZERO AUSENTE — pressure zone escalada por delay
+      const VOISINS_ZERO = [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25];
+      const JEU_ZERO_L   = [12,35,3,26,0,32,15];
+      if (n === 0) {
+        if (daniGreen.mod4.delay >= 60)      { s += 12; r.push(`🚨 P3:ZeroANOMALIA(${daniGreen.mod4.delay}r)`); signalFlags['P3'] = true; }
+        else if (daniGreen.mod4.delay >= 40) { s += 8;  r.push(`🔴 P3:ZeroCRÍTICO(${daniGreen.mod4.delay}r)`);  signalFlags['P3'] = true; }
+        else if (daniGreen.mod4.delay >= 25) { s += 5;  r.push(`📚 P3:ZeroPress(${daniGreen.mod4.delay}r)`);    signalFlags['P3'] = true; }
+      } else if (JEU_ZERO_L.includes(n) && daniGreen.mod4.delay >= 25) {
+        s += 2; r.push(`🟡 JeuZero(${daniGreen.mod4.delay}r)`);
+      } else if (VOISINS_ZERO.includes(n) && daniGreen.mod4.delay >= 40) {
+        s += 3; r.push(`🟢 VizZero(${daniGreen.mod4.delay}r)`); signalFlags['P3'] = true;
+      }
       
       // VALIDATED MATRIX: dados reais 500 giros desta mesa
       const VALIDATED_MATRIX: Record<number, {target: number; prob: number}[]> = {
@@ -4080,6 +4086,12 @@ serve(async (req) => {
       else if (signalFlags['S3'] && signalFlags['F5']) { s += 6; r.push('🥉 COMBO BRONZE'); }
       // COMBO ZERO: P3 + G4 = zero ausente + vizinhos quentes
       else if (signalFlags['P3'] && signalFlags['G4']) { s += 5; r.push('🟢 COMBO ZERO'); }
+      // COMBO SUPREMO: AutoRep + Pull = repetição confirmada + puxada
+      if (signalFlags['DOUBLE_REP'] && signalFlags['C1']) { s += 15; r.push('💥 COMBO SUPREMO'); }
+      if (signalFlags['TRIPLE_REP']) { s += 10; r.push('🔱 TRIPLA'); }
+      // COMBO VALIDATED: matriz real + pull
+      if (signalFlags['VALIDATED'] && signalFlags['C1']) { s += 10; r.push('🏆 VALIDATED+PULL'); }
+      if (signalFlags['VALIDATED'] && signalFlags['DOUBLE_REP']) { s += 12; r.push('🏆 VALIDATED+REP'); }
       // COMBO SUPREMO: auto-repetição + puxado = certeza máxima
       if (signalFlags['DOUBLE_REP'] && signalFlags['C1']) {
         s += 15; r.push('💥 COMBO SUPREMO: RepDupla+Puxa');
@@ -4252,35 +4264,6 @@ serve(async (req) => {
       else if (volatility.level === 'extrema') { s *= 0.85; } // extreme volatility = less trustworthy
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
-      // ── TRIPLO PULL CONFIRMADO + AUTO-REP ──
-      if (signalFlags['TRIPLE_REP'] && signalFlags['C1']) {
-        s += 15; r.push('💥 SUPREMO: AutoRep+Pull');
-      }
-
-      // ── VALIDATED MATRIX BOOST (já processada, reforço combinado) ──
-      const validMBoost = validatedPairs.find(vp => vp.target === n);
-      if (validMBoost && signalFlags['C1']) {
-        s += validMBoost.prob * 8;
-        r.push(`✅ValidMesa+Pull`);
-      }
-
-      // ── PULL CONFIRMADO NO BANCO ──
-      if (learnedSignalReasons[n]?.some((lr: string) => lr.includes('Pull Confirmado') || lr.includes('pull_confirmed'))) {
-        s += 4; r.push('🏦 PullBanco');
-      }
-
-      // ── ZERO PRESSÃO REFORÇADA ──
-      if (n === 0 && daniGreen.mod4.delay >= 40) {
-        s += 8; r.push(`🚨 ZeroAusente${daniGreen.mod4.delay}r`);
-      } else if (n === 0 && daniGreen.mod4.delay >= 25 && !signalFlags['P3']) {
-        s += 5; r.push(`⚠️ ZeroPressão`);
-      }
-      if (daniGreen.mod4.delay >= 40 && VOISINS.includes(n) && n !== 0) {
-        s += 3; r.push('🟢 VizZeroCrítico');
-      } else if (daniGreen.mod4.delay >= 25 && JEU_ZERO.includes(n) && n !== 0) {
-        s += 2; r.push('🟡 JeuZero');
-      }
-
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
     }
     numScores.sort((a, b) => b.score - a.score);
@@ -5899,117 +5882,166 @@ serve(async (req) => {
       sources: ensembleTop1?.sources?.slice(0, 5) ?? [],
     };
 
-    // ══════════════════════════════════════════════════════
-    // DECISÃO SUPREMA — Número #1 sempre pelo numScore composto
-    // ══════════════════════════════════════════════════════
-    const numTop1 = numScores[0]?.num ?? winner.numbers[0];
-    const numTop1Score = numScores[0]?.score ?? 0;
-
-    const ensTop1Dec = ensembleTop1?.num ?? null;
-    const ensConfirms = ensTop1Dec === numTop1;
-    const winnerConfirms = winner.numbers.includes(numTop1);
-    const matrizConfirms = (matrizProb[numTop1] || 0) > 0.10;
-    const pullConfirms = (FULL_PULL_MAP[numbers[0]] || []).includes(numTop1);
-    const recentCountTop1 = numbers.slice(0, 5).filter((n: number) => n === numTop1).length;
-    const autoRepConfirms = recentCountTop1 >= 2;
-
-    const confirmations = [ensConfirms, winnerConfirms, matrizConfirms, pullConfirms, autoRepConfirms]
-      .filter(Boolean).length;
-
-    const supportNums = numScores
-      .slice(1, 20)
-      .filter(ns => {
-        const isPulled = (FULL_PULL_MAP[numTop1] || []).includes(ns.num);
-        const inWinner = winner.numbers.includes(ns.num);
-        const inEnsemble = ensembleTop5.includes(ns.num);
-        const highMatriz = (matrizProb[ns.num] || 0) > 0.08;
-        return isPulled || inWinner || inEnsemble || highMatriz;
-      })
-      .map(ns => ns.num);
-
-    const protNums = surpriseNumbers.slice(0, 3).filter((n: number) => n !== numTop1);
-
-    const finalBetNumbers = [...new Set([
-      numTop1,
-      ...supportNums.slice(0, 6),
-      ...protNums.slice(0, 2),
-      ...PROTECTION_NUMBERS.filter((n: number) => n !== numTop1),
-    ])].slice(0, 10);
-
-    const confirmationBonus = confirmations * 8;
-    const coveragePct = (finalBetNumbers.length / 37) * 100;
-    const maxRealisticProbFinal = Math.round(coveragePct + 20);
-
-    // Override winner with number-first decision
-    const overriddenWinner = {
-      ...winner,
-      numbers: finalBetNumbers,
-      coverage: +(finalBetNumbers.length / 37 * 100).toFixed(1),
-      payout: 36 - finalBetNumbers.length,
-      justification: [
-        `Número #1: ${numTop1} (score ${numTop1Score.toFixed(0)}pts)`,
-        confirmations >= 3 ? `${confirmations} fontes independentes confirmam` : '',
-        autoRepConfirms ? `Auto-repetição: ${numTop1} saiu ${recentCountTop1}x recente` : '',
-        pullConfirms ? `Puxado pelo ${numbers[0]}` : '',
-        matrizConfirms ? `Matriz: ${((matrizProb[numTop1] || 0)*100).toFixed(0)}% histórico` : '',
-        ensConfirms ? `Ensemble confirma` : '',
-        winner.justification,
-      ].filter(Boolean).join(' | '),
-    };
-
     const allStrategies = strategies.map(s => ({
       type: s.type, label: s.label, emoji: s.emoji,
       numbers: s.numbers, coverage: +s.coverage.toFixed(1), payout: s.payout,
       score: +s.score.toFixed(1), probability: s.probability,
     }));
 
-    // Final probability = NUMBER-FIRST CALIBRATED
-    let finalProbability = Math.min(
-      maxRealisticProbFinal,
-      Math.max(20,
-        Math.round(
-          (numTop1Score / Math.max(...numScores.map(s => s.score), 1)) * 70
-          + confirmationBonus
-          + (autoRepConfirms ? 10 : 0)
-          + (matrizConfirms ? 8 : 0)
-          + (pullConfirms ? 5 : 0)
-        )
-      )
-    );
+    // ══════════════════════════════════════════════════════════
+    // DECISÃO SUPREMA — Número #1 sempre pelo numScore composto
+    // O numScore já integra: pull, matriz, ensemble, IA, auto-rep, terminal, etc.
+    // A estratégia winner serve apenas como pool de suporte.
+    // ══════════════════════════════════════════════════════════
+    const numTop1: number = numScores[0]?.num ?? winner.numbers[0];
+    const numTop1Score: number = numScores[0]?.score ?? 0;
+    const numMaxScore: number = Math.max(...numScores.map(s => s.score), 1);
 
-    // Dealer consistency bonus
-    if (arcStdDev < 1.5) finalProbability += 8;
-    else if (arcStdDev < 2.5) finalProbability += 4;
-    else if (arcStdDev > 6) finalProbability -= 3;
+    // Confirmações independentes do numTop1
+    const ensConfirms    = ensembleTop1?.num === numTop1;
+    const winnerConfirms = winner.numbers.includes(numTop1);
+    const matrizConfirms = (matrizProb[numTop1] || 0) > 0.10;
+    const pullConfirms   = (FULL_PULL_MAP[numbers[0]] || []).includes(numTop1);
+    const recentCount    = numbers.slice(0, 5).filter(n => n === numTop1).length;
+    const autoRepConfirms = recentCount >= 2;
+    const confirmations  = [ensConfirms, winnerConfirms, matrizConfirms, pullConfirms, autoRepConfirms].filter(Boolean).length;
 
-    // Entropy calibration
-    if (sessionEntropy < 0.3) finalProbability += 5;
-    else if (sessionEntropy > 0.85) finalProbability -= 8;
+    // Suporte: números confirmados por múltiplas fontes, até 7
+    const supportCandidates = numScores
+      .slice(1, 25)
+      .filter(ns => {
+        const inPull     = (FULL_PULL_MAP[numTop1] || []).includes(ns.num);
+        const inWinner   = winner.numbers.includes(ns.num);
+        const inEnsemble = ensembleTop5.includes(ns.num);
+        const highMatriz = (matrizProb[ns.num] || 0) > 0.08;
+        const inPullFromLast = (FULL_PULL_MAP[numbers[0]] || []).includes(ns.num);
+        return inPull || inWinner || inEnsemble || highMatriz || inPullFromLast;
+      })
+      .map(ns => ns.num)
+      .slice(0, 7);
 
-    // Randomness guard
-    if (randomnessIndex.overall >= 75) finalProbability -= 10;
-    else if (randomnessIndex.overall < 25) finalProbability += 4;
+    // Números que saem quando erramos — proteção real
+    const realProtection = surpriseNumbers.slice(0, 3).filter(n => n !== numTop1 && !supportCandidates.includes(n));
 
-    // COMBO boost from numScore
-    const topReasons0 = numScores[0]?.reasons || [];
-    if (topReasons0.some(r => r.includes('COMBO OURO'))) { finalProbability += 8; aiLearnings.push('👑 COMBO OURO no #1'); }
-    else if (topReasons0.some(r => r.includes('COMBO PRATA'))) { finalProbability += 5; }
+    // Jogada final: top1 + suporte + proteção real, máximo 10
+    const finalBetNumbers: number[] = [...new Set([
+      numTop1,
+      ...supportCandidates,
+      ...realProtection,
+      ...PROTECTION_NUMBERS.filter(n => n !== numTop1),
+    ])].slice(0, 10);
 
-    // Cap
-    finalProbability = Math.min(maxRealisticProbFinal, Math.max(20, Math.round(finalProbability)));
+    // Justificativa clara
+    const decisionJustification = [
+      `#1: ${numTop1} (${numTop1Score.toFixed(0)}pts de ${numMaxScore.toFixed(0)} máx)`,
+      confirmations >= 3 ? `${confirmations}/5 fontes confirmam` : '',
+      autoRepConfirms ? `🔁 Auto-rep ${recentCount}x em 5` : '',
+      pullConfirms    ? `🧲 Puxado pelo ${numbers[0]}` : '',
+      matrizConfirms  ? `🔢 Matriz ${(matrizProb[numTop1]*100).toFixed(0)}%` : '',
+      ensConfirms     ? `🌟 Ensemble confirma` : '',
+      winner.justification.slice(0, 120),
+    ].filter(Boolean).join(' | ');
+
+    if (confirmations >= 3) {
+      aiLearnings.unshift(`💎 DECISÃO SUPREMA: nº${numTop1} confirmado por ${confirmations} fontes (pull+matriz+ensemble+rep)`);
+    }
+
+    // Final probability = ULTRA-CALIBRATED V2 — maximum accuracy
+    // Base: winner probability × convergence ratio (normalized to 1700 layers)
+    let finalProbability = winner.probability * Math.min(1.2, totalLayers / 1100);
     
-    // Bayesian calibration from strategy performance
+    // CALIBRAÇÃO BAYESIANA — win rate real tem peso crescente com dados
     const winnerPerfCal = strategyPerformance[winner.type];
-    if (winnerPerfCal && winnerPerfCal.total >= 5) {
-      if (winnerPerfCal.recentTrend < 0.20) {
-        finalProbability -= 10;
-        aiLearnings.push(`🚫 ${winner.label}: ${(winnerPerfCal.recentTrend*100).toFixed(0)}% recente → -10%`);
+    if (winnerPerfCal && winnerPerfCal.total >= 3) {
+      const dataWeight = Math.min(0.65, winnerPerfCal.total / 30);
+      const modelProb = finalProbability;
+      const historicalProb = winnerPerfCal.winRate * 100;
+      finalProbability = modelProb * (1 - dataWeight) + historicalProb * dataWeight;
+
+      // Penalização agressiva por WR recente baixo
+      if (winnerPerfCal.recentTrend < 0.20 && winnerPerfCal.total >= 5) {
+        finalProbability -= 25;
+        aiLearnings.push(`🚫 ${winner.label} em COLAPSO: ${(winnerPerfCal.recentTrend*100).toFixed(0)}% recente → penalidade -25%`);
+        strategyWeightAdjust[winner.type] = (strategyWeightAdjust[winner.type] || 0) - 30;
+      } else if (winnerPerfCal.recentTrend < 0.30 && winnerPerfCal.total >= 5) {
+        finalProbability -= 12;
+        strategyWeightAdjust[winner.type] = (strategyWeightAdjust[winner.type] || 0) - 15;
       } else if (winnerPerfCal.recentTrend > 0.50) {
-        finalProbability += 5;
+        finalProbability += 8;
+        aiLearnings.push(`🔥 ${winner.label} em SÉRIE: ${(winnerPerfCal.recentTrend*100).toFixed(0)}% recente → boost +8%`);
+      }
+
+      if (winnerPerfCal.winRate < 0.20 && winnerPerfCal.total >= 8) {
+        finalProbability -= 20;
+        aiLearnings.push(`⚠️ Calibração: ${winner.label} WR ${(winnerPerfCal.winRate*100).toFixed(0)}% — confiança reduzida`);
       }
     }
-    finalProbability = Math.min(maxRealisticProbFinal, Math.max(20, Math.round(finalProbability)));
-
+    
+    // CONVERGÊNCIA ABSOLUTA gets special treatment — multi-dimensional confirmation
+    if (winner.type === 'convergencia_absoluta') {
+      const dimCount = (winner.justification.match(/(\d+) dimensões/) || [])[1];
+      const dims = parseInt(dimCount || '5');
+      if (dims >= 8) finalProbability = Math.max(finalProbability, 95);
+      else if (dims >= 7) finalProbability = Math.max(finalProbability, 90);
+      else if (dims >= 6) finalProbability = Math.max(finalProbability, 83);
+      else if (dims >= 5) finalProbability = Math.max(finalProbability, 76);
+    }
+    
+    // COMBO DETECTION BOOST — if winner numbers have combo flags (OURO = max boost)
+    const winnerNumScores = numScores.filter(ns => winner.numbers.includes(ns.num));
+    const hasComboOuro = winnerNumScores.some(ns => ns.reasons.some(r => r.includes('COMBO OURO')));
+    const hasComboPrata = winnerNumScores.some(ns => ns.reasons.some(r => r.includes('COMBO PRATA')));
+    if (hasComboOuro) { finalProbability += 10; aiLearnings.push('👑 COMBO OURO DETECTADO: F5+C1+S3 — confiança máxima'); }
+    else if (hasComboPrata) { finalProbability += 6; aiLearnings.push('🥈 COMBO PRATA: F1+C2+G4 — boa confiança'); }
+    
+    // Dealer consistency boost (stronger for mechanical dealers)
+    if (arcStdDev < 1.5) finalProbability += 10;
+    else if (arcStdDev < 2) finalProbability += 7;
+    else if (arcStdDev < 3) finalProbability += 4;
+    else if (arcStdDev > 6) finalProbability -= 5; // chaotic dealer penalty
+    
+    // Entropy calibration (stronger gating)
+    if (sessionEntropy < 0.3) finalProbability += 10; // ultra concentrated = ideal
+    else if (sessionEntropy < 0.5) finalProbability += 6;
+    else if (sessionEntropy > 0.85) finalProbability -= 15; // high dispersion = bad
+    else if (sessionEntropy > 0.75) finalProbability -= 8;
+    
+    // Entropy DRIFT bonus — session organizing = great moment
+    if (isEntropyDroppingConsistently) finalProbability += 5;
+    
+    // Kelly alignment
+    if (kellyBetting.unitMultiplier >= 3) finalProbability += 5;
+    else if (kellyBetting.unitMultiplier <= 0.5) finalProbability -= 6;
+    
+    // Randomness guard (stronger)
+    if (randomnessIndex.overall >= 75) finalProbability -= 15;
+    else if (randomnessIndex.overall >= 60) finalProbability -= 8;
+    else if (randomnessIndex.overall >= 50) finalProbability -= 4;
+    else if (randomnessIndex.overall < 25) finalProbability += 6; // very stable
+    
+    // Consecutive hit streak boost
+    const winnerChBoost = consecutiveHitBoost[winner.type] || 0;
+    if (winnerChBoost >= 24) finalProbability += 10; // 3+ consecutive hits
+    else if (winnerChBoost >= 16) finalProbability += 6;
+    
+    // MULTIPLE SIGNAL DENSITY: if top number has 5+ distinct signal categories, boost
+    if (numScores.length > 0) {
+      const topReasonCategories = new Set(numScores[0].reasons.map(r => r.split(':')[0].replace(/[^a-zA-Z]/g, '')));
+      if (topReasonCategories.size >= 6) finalProbability += 6;
+      else if (topReasonCategories.size >= 5) finalProbability += 3;
+    }
+    
+    // COVERAGE-BASED PROBABILITY CEILING — probabilidade não pode exceder expectativa real ajustada
+    // Random baseline = coverage%. Com análise boa, +15-25% acima do baseline é realista.
+    const coveragePercent = winner.coverage; // e.g. 38% for 14 numbers
+    const maxRealisticProb = Math.min(99, coveragePercent + 25); // 14 nums = 38% + 25 = 63% max
+    if (finalProbability > maxRealisticProb) {
+      finalProbability = maxRealisticProb;
+    }
+    
+    // Cap
+    finalProbability = Math.min(99, Math.max(20, Math.round(finalProbability)));
+    
     // Add strategy performance learnings
     const winnerPerf = strategyPerformance[winner.type];
     if (winnerPerf && winnerPerf.total >= 5) {
@@ -6077,11 +6109,12 @@ serve(async (req) => {
         : 999;
 
       if (!latestPrediction || (latestPrediction.hit !== null && secondsSinceLatestPrediction > 18)) {
-        const predictedWithProtection = finalBetNumbers;
+        // Always merge protection numbers into predicted numbers
+        const predictedWithProtection = [...new Set([...winner.numbers, ...PROTECTION_NUMBERS])];
         await supabase.from('prediction_history').insert({
           strategy_type: winner.type,
           strategy_label: winner.label,
-          predicted_numbers: predictedWithProtection,
+          predicted_numbers: finalBetNumbers,
           predicted_main: numTop1,
           probability: finalProbability,
           convergence_score: totalLayers,
@@ -6364,7 +6397,7 @@ serve(async (req) => {
       return { bets, summary };
     };
 
-    const betInstructions = generateBetInstructions(overriddenWinner);
+    const betInstructions = generateBetInstructions(winner);
 
     // Generate diverse alternatives — pick from DIFFERENT bet categories
     const getBetCategory = (type: string): string => {
@@ -6442,7 +6475,8 @@ serve(async (req) => {
     };
 
     // Merge protection numbers into winner
-    const winnerNumbersWithProtection = finalBetNumbers; // já inclui proteção
+    // finalBetNumbers já construído acima com numTop1 + suporte + proteção real
+    const winnerNumbersWithProtection = finalBetNumbers;
 
     // ── ANTI-PADRÃO: salvar números que saem QUANDO erramos ──
     if (isNewNumber && Object.keys(numberMissFreq).length >= 3) {
@@ -6487,7 +6521,7 @@ serve(async (req) => {
       signal: {
         number: numTop1,
         neighbors: finalBetNumbers.slice(1),
-        protection: PROTECTION_NUMBERS,
+        protection: realProtection,
         probability: finalProbability,
         reasons: numScores[0]?.reasons?.slice(0, 6) ?? [],
         convergenceReasons: reasons,
@@ -6498,20 +6532,20 @@ serve(async (req) => {
           matriz: matrizConfirms,
           pull: pullConfirms,
           autoRep: autoRepConfirms,
-          recentCount: recentCountTop1,
+          recentCount,
         },
         diagnostic,
       },
       strategy: {
-        type: overriddenWinner.type,
-        label: overriddenWinner.label,
-        emoji: overriddenWinner.emoji,
+        type: winner.type,
+        label: winner.label,
+        emoji: winner.emoji,
         numbers: finalBetNumbers,
-        protection: PROTECTION_NUMBERS,
-        coverage: overriddenWinner.coverage,
-        payout: overriddenWinner.payout,
+        protection: realProtection,
+        coverage: +(finalBetNumbers.length / 37 * 100).toFixed(1),
+        payout: 36 - finalBetNumbers.length,
         probability: finalProbability,
-        justification: overriddenWinner.justification,
+        justification: decisionJustification,
       },
       betInstructions,
       topAlternatives,
