@@ -4315,8 +4315,8 @@ serve(async (req) => {
       if (transitionMatrix.dozenPressureTrigger?.active && getDozen(n) === transitionMatrix.dozenPressureTrigger.dozen) {
         s += 3; r.push(`🔥 Pressão D${transitionMatrix.dozenPressureTrigger.dozen}`);
       }
-      // AI LEARNED PATTERNS BOOST — knowledge accumulated from history
-      if (learnedBoosts[n] > 0) { s += learnedBoosts[n]; r.push(`🧠 IA Aprendeu(+${learnedBoosts[n].toFixed(1)})`); }
+      // AI LEARNED PATTERNS BOOST — V3 AMPLIFIED knowledge from history
+      if (learnedBoosts[n] > 0) { s += learnedBoosts[n] * 1.5; r.push(`🧠 IA Aprendeu(+${(learnedBoosts[n]*1.5).toFixed(1)})`); }
       // ====== ADVANCED: Recency-Weighted Frequency ======
       const rFreq = recencyFreq[n] || 0;
       if (rFreq > 2.5) { s += Math.min(4, rFreq * 0.8); r.push(`⏳ Recência(${rFreq.toFixed(1)})`); }
