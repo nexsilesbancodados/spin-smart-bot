@@ -6360,7 +6360,7 @@ serve(async (req) => {
       return { bets, summary };
     };
 
-    const betInstructions = generateBetInstructions(winner);
+    const betInstructions = generateBetInstructions(overriddenWinner);
 
     // Generate diverse alternatives — pick from DIFFERENT bet categories
     const getBetCategory = (type: string): string => {
@@ -6481,24 +6481,33 @@ serve(async (req) => {
 
     return json({
       signal: {
-        number: winner.numbers[0],
-        neighbors: winner.numbers.slice(1),
+        number: numTop1,
+        neighbors: finalBetNumbers.slice(1),
         protection: PROTECTION_NUMBERS,
         probability: finalProbability,
-        reasons: numScores.slice(0, 3).map(s => s.reasons).flat().slice(0, 5),
+        reasons: numScores[0]?.reasons?.slice(0, 6) ?? [],
         convergenceReasons: reasons,
+        confirmations,
+        confirmationDetail: {
+          ensemble: ensConfirms,
+          winner: winnerConfirms,
+          matriz: matrizConfirms,
+          pull: pullConfirms,
+          autoRep: autoRepConfirms,
+          recentCount: recentCountTop1,
+        },
         diagnostic,
       },
       strategy: {
-        type: winner.type,
-        label: winner.label,
-        emoji: winner.emoji,
-        numbers: winnerNumbersWithProtection,
+        type: overriddenWinner.type,
+        label: overriddenWinner.label,
+        emoji: overriddenWinner.emoji,
+        numbers: finalBetNumbers,
         protection: PROTECTION_NUMBERS,
-        coverage: +winner.coverage.toFixed(1),
-        payout: winner.payout,
+        coverage: overriddenWinner.coverage,
+        payout: overriddenWinner.payout,
         probability: finalProbability,
-        justification: winner.justification,
+        justification: overriddenWinner.justification,
       },
       betInstructions,
       topAlternatives,
