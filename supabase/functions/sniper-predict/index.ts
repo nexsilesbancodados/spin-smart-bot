@@ -2840,6 +2840,15 @@ serve(async (req) => {
       transitionMatrix.terminalMatrix[t] = {};
       for (let t2 = 0; t2 <= 9; t2++) transitionMatrix.terminalMatrix[t][t2] = 0;
     }
+    // Hoist matrix variables so they're accessible outside the if block
+    let matrizTotal = 0;
+    const matrizProb: Record<number, number> = {};
+    const matrizProb2: Record<number, number> = {};
+    const matrizProb3: Record<number, number> = {};
+    const matrizCombinado: Record<number, number> = {};
+    for (let n = 0; n <= 36; n++) matrizCombinado[n] = 0;
+    let maxMatriz = 0.001;
+    let lastNum0 = numbers.length > 0 ? numbers[0] : 0;
 
     if (numbers.length >= 50) {
       // Build sector transition matrix from last 200
