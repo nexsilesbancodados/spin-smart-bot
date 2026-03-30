@@ -4159,37 +4159,28 @@ serve(async (req) => {
         }
       }
 
-      // ====== COMBO DETECTION (OURO/PRATA/BRONZE from documentation) ======
+      // ====== COMBO DETECTION (OURO/PRATA/BRONZE) — SEM DUPLICATAS ======
       const signalCount = Object.keys(signalFlags).length;
-      // COMBO OURO: F5 + C1 + S3 = terminal dom + puxados + sequência (máxima confiança)
-      if (signalFlags['F5'] && signalFlags['C1'] && signalFlags['S3']) { s += 12; r.push('👑 COMBO OURO'); }
-      // COMBO PRATA: F1 + C2 + G4 = quente + terminal + vizinho roda
-      else if (signalFlags['F1'] && signalFlags['C2'] && signalFlags['G4']) { s += 8; r.push('🥈 COMBO PRATA'); }
-      // COMBO BRONZE: S3 + F5 = sequência + terminal dominante
-      else if (signalFlags['S3'] && signalFlags['F5']) { s += 6; r.push('🥉 COMBO BRONZE'); }
-      // COMBO ZERO: P3 + G4 = zero ausente + vizinhos quentes
-      else if (signalFlags['P3'] && signalFlags['G4']) { s += 5; r.push('🟢 COMBO ZERO'); }
-      // COMBO SUPREMO: AutoRep + Pull = repetição confirmada + puxada
-      if (signalFlags['DOUBLE_REP'] && signalFlags['C1']) { s += 15; r.push('💥 COMBO SUPREMO'); }
-      if (signalFlags['TRIPLE_REP']) { s += 10; r.push('🔱 TRIPLA'); }
-      // COMBO VALIDATED: matriz real + pull
-      if (signalFlags['VALIDATED'] && signalFlags['C1']) { s += 10; r.push('🏆 VALIDATED+PULL'); }
-      if (signalFlags['VALIDATED'] && signalFlags['DOUBLE_REP']) { s += 12; r.push('🏆 VALIDATED+REP'); }
-      // COMBO SUPREMO: auto-repetição + puxado = certeza máxima
-      if (signalFlags['DOUBLE_REP'] && signalFlags['C1']) {
-        s += 15; r.push('💥 COMBO SUPREMO: RepDupla+Puxa');
-      }
-      if (signalFlags['TRIPLE_REP']) {
-        s += 10; r.push('🔱 TRIPLA — continuar até parar');
-      }
-      if (signalFlags['VALIDATED'] && signalFlags['C1']) {
-        s += 10; r.push('🏆 VALIDADO+PUXA: máxima certeza');
-      }
-      if (signalFlags['VALIDATED'] && signalFlags['DOUBLE_REP']) {
-        s += 12; r.push('🏆 VALIDADO+REPEAT: jogar forte');
-      }
-      // DIVERSITY BONUS from documentation (2=+10, 3=+15, 4+=+25)
-      if (signalCount >= 4) { s += 5; r.push(`🔥 ${signalCount} sinais`); }
+      let comboApplied = false;
+      // COMBO SUPREMO: AutoRep + Pull = certeza máxima (mais forte, testa primeiro)
+      if (!comboApplied && signalFlags['DOUBLE_REP'] && signalFlags['C1']) { s += 18; r.push('💥 COMBO SUPREMO: RepDupla+Puxa'); comboApplied = true; }
+      if (!comboApplied && signalFlags['TRIPLE_REP'] && signalFlags['C1']) { s += 20; r.push('🔱 TRIPLA+PUXA'); comboApplied = true; }
+      // COMBO VALIDATED + REP
+      if (!comboApplied && signalFlags['VALIDATED'] && signalFlags['DOUBLE_REP']) { s += 15; r.push('🏆 VALIDADO+REP'); comboApplied = true; }
+      if (!comboApplied && signalFlags['VALIDATED'] && signalFlags['C1']) { s += 12; r.push('🏆 VALIDADO+PUXA'); comboApplied = true; }
+      // COMBO OURO: F5 + C1 + S3
+      if (!comboApplied && signalFlags['F5'] && signalFlags['C1'] && signalFlags['S3']) { s += 12; r.push('👑 COMBO OURO'); comboApplied = true; }
+      // COMBO PRATA: F1 + C2 + G4
+      if (!comboApplied && signalFlags['F1'] && signalFlags['C2'] && signalFlags['G4']) { s += 8; r.push('🥈 COMBO PRATA'); comboApplied = true; }
+      // COMBO BRONZE: S3 + F5
+      if (!comboApplied && signalFlags['S3'] && signalFlags['F5']) { s += 6; r.push('🥉 COMBO BRONZE'); comboApplied = true; }
+      // COMBO ZERO: P3 + G4
+      if (!comboApplied && signalFlags['P3'] && signalFlags['G4']) { s += 5; r.push('🟢 COMBO ZERO'); comboApplied = true; }
+      // Standalone TRIPLE_REP (sem pull)
+      if (!comboApplied && signalFlags['TRIPLE_REP']) { s += 12; r.push('🔱 TRIPLA'); comboApplied = true; }
+      // DIVERSITY BONUS (2=+1.5, 3=+3, 4+=+5, 5+=+8)
+      if (signalCount >= 5) { s += 8; r.push(`🔥 ${signalCount} sinais`); }
+      else if (signalCount >= 4) { s += 5; r.push(`🔥 ${signalCount} sinais`); }
       else if (signalCount >= 3) { s += 3; }
       else if (signalCount >= 2) { s += 1.5; }
       
