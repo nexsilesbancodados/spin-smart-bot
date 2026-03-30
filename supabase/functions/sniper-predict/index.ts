@@ -6440,10 +6440,12 @@ serve(async (req) => {
       aiLearnings.push(`🔑 Assinatura terminal: T${mesaDNA.terminalSignature.join(',T')} consistentes`);
     }
 
-    const mode = (winner.type === 'convergencia_absoluta' && finalProbability >= 80) ? 'sniper'
-      : totalLayers >= 900 && finalProbability >= 75 ? 'sniper'
-      : totalLayers >= 600 && finalProbability >= 60 ? 'alert'
-      : totalLayers >= 400 ? 'observing'
+    // MODE thresholds calibrados para probabilidades realistas (max ~40% com 8 números)
+    const mode = (winner.type === 'convergencia_absoluta' && finalProbability >= 35) ? 'sniper'
+      : confirmations >= 3 && finalProbability >= 25 ? 'sniper'
+      : totalLayers >= 700 && finalProbability >= 22 ? 'sniper'
+      : totalLayers >= 500 && finalProbability >= 18 ? 'alert'
+      : totalLayers >= 300 ? 'observing'
       : 'monitoring';
 
     const message = mode === 'sniper' && winner.type === 'convergencia_absoluta'
