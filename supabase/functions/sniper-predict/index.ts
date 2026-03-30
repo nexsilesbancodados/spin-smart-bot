@@ -6357,8 +6357,6 @@ serve(async (req) => {
         : 999;
 
       if (!latestPrediction || (latestPrediction.hit !== null && secondsSinceLatestPrediction > 18)) {
-        // Always merge protection numbers into predicted numbers
-        const predictedWithProtection = [...new Set([...winner.numbers, ...PROTECTION_NUMBERS])];
         await supabase.from('prediction_history').insert({
           strategy_type: winner.type,
           strategy_label: winner.label,
