@@ -6391,18 +6391,24 @@ serve(async (req) => {
       else if (topReasonCategories.size >= 5) finalProbability += 3;
     }
     
-    // COVERAGE-BASED PROBABILITY CEILING — calibrado por tamanho da jogada
-    // Jogadas com menos números têm teto mais apertado
+    // COVERAGE-BASED PROBABILITY CEILING V2 — mais realista
+    // Probabilidade real = cobertura base + bônus limitado por confirmações
     const coveragePercent = +(finalBetNumbers.length / 37 * 100).toFixed(1);
-    // Bônus máximo escala com confirmações: 3+ confirmações = até +20%, senão +12%
-    const maxBonus = confirmations >= 4 ? 22 : confirmations >= 3 ? 18 : confirmations >= 2 ? 14 : 10;
-    const maxRealisticProb = Math.min(95, coveragePercent + maxBonus);
+    // Com 8 números = 21.6% cobertura base. Bônus máximo reduzido.
+    const maxBonus = confirmations >= 4 ? 16 : confirmations >= 3 ? 12 : confirmations >= 2 ? 8 : 5;
+    const maxRealisticProb = Math.min(85, coveragePercent + maxBonus); // teto 85% (era 95%)
     if (finalProbability > maxRealisticProb) {
       finalProbability = maxRealisticProb;
     }
     
-    // Cap
-    finalProbability = Math.min(99, Math.max(20, Math.round(finalProbability)));
+    // BACKTEST VALIDATION do top1 — se o número #1 não acertaria no backtest recente, penalizar
+    const top1BtHits = numbers.slice(1, 31).filter(n => n === numTop1).length;
+    if (top1BtHits === 0 && numbers.length >= 30) {
+      finalProbability -= 8; // #1 nunca saiu nos últimos 30 = penalizar
+    }
+    
+    // Cap — mais honesto
+    finalProbability = Math.min(85, Math.max(15, Math.round(finalProbability)));
     
     // Add strategy performance learnings
     const winnerPerf = strategyPerformance[winner.type];
