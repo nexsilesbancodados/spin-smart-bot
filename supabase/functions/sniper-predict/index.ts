@@ -4336,8 +4336,11 @@ serve(async (req) => {
       // ====== ADVANCED: Volatility Adjustment ======
       if (volatility.level === 'baixa') { s *= 1.1; } // low volatility = patterns more reliable
       else if (volatility.level === 'extrema') { s *= 0.85; } // extreme volatility = less trustworthy
-      if (numbers.slice(0, 3).includes(n)) s -= 3;
-      else if (numbers.slice(3, 7).includes(n)) s -= 1;
+      // Penalidade por recência: NÃO penalizar se auto-repetição detectada
+      if (!signalFlags['DOUBLE_REP'] && !signalFlags['TRIPLE_REP']) {
+        if (numbers.slice(0, 3).includes(n) && !signalFlags['C1']) s -= 2;
+        else if (numbers.slice(3, 7).includes(n)) s -= 0.5;
+      }
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
     }
     numScores.sort((a, b) => b.score - a.score);
