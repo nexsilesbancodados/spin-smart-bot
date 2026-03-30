@@ -7147,7 +7147,7 @@ Considere: puxadas, terminais dominantes, setores quentes, Lei do Terço, matriz
       mesaMode,
       mode, message,
       memoryWindows,
-      aiLearnings: aiLearnings.slice(0, 15),
+      aiLearnings: aiLearnings.slice(0, 20),
       learnedBetInfluence: learnedInfluence.sort((a, b) => b.boost - a.boost).slice(0, 8),
       noiseFiltered: noiseCount,
       dealerChaos: chaoticDealer,
@@ -7176,6 +7176,13 @@ Considere: puxadas, terminais dominantes, setores quentes, Lei do Terço, matriz
         geneticPatterns: geneticPatterns.slice(0, 3),
         backpropWeights,
         flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression },
+      },
+      // AI Reasoning Layer
+      aiReasoning: {
+        reasoning: aiReasoning,
+        confidence: aiConfidence,
+        adjustedNumbers: aiAdjustedNumbers,
+        consensus: aiAdjustedNumbers ? finalBetNumbers.filter(n => (aiAdjustedNumbers || []).includes(n)).length : 0,
       },
       ...baseResponse, recoveryMode,
       topCandidates: numScores.slice(0, 8).map(s => ({ num: s.num, score: +s.score.toFixed(1), reasons: s.reasons })),
