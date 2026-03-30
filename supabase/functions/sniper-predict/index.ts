@@ -6351,11 +6351,132 @@ serve(async (req) => {
     const realProtection = dynamicProtection.slice(0, 2);
 
     // Jogada final: top1 + suporte convergente + proteção mínima, máximo 7
-    const finalBetNumbers: number[] = [...new Set([
+    let finalBetNumbers: number[] = [...new Set([
       numTop1,
       ...supportCandidates,
       ...realProtection,
     ])].slice(0, 7);
+
+    // ========================================================
+    // 🧠 AI REASONING LAYER — Lovable AI validates the bet
+    // Uses Gemini Flash to analyze context and adjust the pick
+    // ========================================================
+    let aiReasoning: string | null = null;
+    let aiAdjustedNumbers: number[] | null = null;
+    let aiConfidence: number | null = null;
+    
+    try {
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (LOVABLE_API_KEY && numbers.length >= 20) {
+        const last20 = numbers.slice(0, 20);
+        const last5Terms = last20.slice(0, 5).map(n => n % 10);
+        const last5Sectors = last20.slice(0, 5).map(n => getSector(n));
+        const last5Colors = last20.slice(0, 5).map(n => getColor(n));
+        
+        // Build compact context for AI
+        const matrizTop6 = Object.entries(matrizCombinado)
+          .sort(([,a],[,b]) => (b as number) - (a as number))
+          .slice(0, 6)
+          .map(([n, s]) => `${n}(${((matrizProb[Number(n)]||0)*100).toFixed(0)}%)`);
+        
+        const topStratsInfo = strategies.slice(0, 5).map(s => 
+          `${s.type}:[${s.numbers.slice(0,4).join(',')}] score=${s.score.toFixed(0)} prob=${s.probability}%`
+        ).join(' | ');
+
+        const pullInfo = (FULL_PULL_MAP[numbers[0]] || []).slice(0, 5).join(',');
+        const hotTermInfo = `T${daniGreen.mod1.terminal}(${daniGreen.mod1.count}x)`;
+        const wrInfo = Object.entries(strategyPerformance)
+          .filter(([,p]) => (p as any).total >= 5)
+          .sort(([,a],[,b]) => (b as any).winRate - (a as any).winRate)
+          .slice(0, 3)
+          .map(([k,p]) => `${k}:${((p as any).winRate*100).toFixed(0)}%`)
+          .join(', ');
+
+        const aiPrompt = `Roleta europeia. Últimos 20: [${last20.join(',')}]
+Terminais recentes: [${last5Terms.join(',')}] | Setores: [${last5Sectors.join(',')}] | Cores: [${last5Colors.join(',')}]
+Matriz 37x37 top6: ${matrizTop6.join(', ')}
+Puxada do ${numbers[0]}: [${pullInfo}]
+Terminal quente: ${hotTermInfo} | Entropia: ${(sessionEntropy*100).toFixed(0)}% (${sessionRegime})
+Top estratégias: ${topStratsInfo}
+WR real: ${wrInfo || 'sem dados'}
+Candidatos atuais: [${finalBetNumbers.join(',')}] (top1=${numTop1})
+Confirmações: ${confirmations}/6
+
+TAREFA: Analise os padrões e responda em JSON:
+{"numbers":[max 8 números mais prováveis],"reasoning":"explicação em 1 frase","confidence":0-100,"adjustTop1":número_principal_ou_null}
+Considere: puxadas, terminais dominantes, setores quentes, Lei do Terço, matriz de transição, vizinhança no cilindro. Priorize padrões CONVERGENTES.`;
+
+        const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-lite",
+            messages: [
+              { role: "system", content: "Você é um motor de análise de roleta europeia. Responda APENAS JSON válido. Sem markdown." },
+              { role: "user", content: aiPrompt },
+            ],
+            temperature: 0.2,
+            max_tokens: 300,
+          }),
+        });
+
+        if (aiRes.ok) {
+          const aiData = await aiRes.json();
+          const aiContent = aiData.choices?.[0]?.message?.content || '';
+          try {
+            const cleaned = aiContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            const parsed = JSON.parse(cleaned);
+            
+            if (Array.isArray(parsed.numbers) && parsed.numbers.length >= 2) {
+              aiAdjustedNumbers = parsed.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 8);
+              aiReasoning = parsed.reasoning || null;
+              aiConfidence = typeof parsed.confidence === 'number' ? Math.min(100, Math.max(0, parsed.confidence)) : null;
+              
+              // MERGE AI numbers with statistical numbers: AI validates/adjusts
+              // Numbers that appear in BOTH statistical AND AI picks get highest priority
+              const aiSet = new Set(aiAdjustedNumbers);
+              const statSet = new Set(finalBetNumbers);
+              const consensus = finalBetNumbers.filter(n => aiSet.has(n)); // both agree
+              const aiOnly = (aiAdjustedNumbers || []).filter(n => !statSet.has(n)); // AI adds
+              const statOnly = finalBetNumbers.filter(n => !aiSet.has(n)); // stat only
+              
+              // Rebuild: consensus first, then AI additions, then stat-only, max 8
+              const merged = [...new Set([
+                ...consensus,
+                // AI's top pick always included
+                ...(parsed.adjustTop1 !== null && parsed.adjustTop1 !== undefined ? [parsed.adjustTop1] : []),
+                ...aiOnly.slice(0, 3),
+                ...statOnly,
+              ])].filter(n => n >= 0 && n <= 36).slice(0, 8);
+              
+              if (merged.length >= 3) {
+                finalBetNumbers = merged;
+                aiLearnings.unshift(`🧠 IA VALIDOU: ${aiReasoning || 'Padrão confirmado'} (confiança ${aiConfidence || '?'}%)`);
+                
+                if (consensus.length >= 3) {
+                  aiLearnings.push(`✅ CONSENSO FORTE: ${consensus.length} números confirmados por IA + Estatística`);
+                }
+                if (parsed.adjustTop1 !== null && parsed.adjustTop1 !== undefined && parsed.adjustTop1 !== numTop1) {
+                  aiLearnings.push(`🔄 IA ajustou top1: ${numTop1} → ${parsed.adjustTop1}`);
+                }
+              }
+            }
+          } catch { 
+            // AI returned non-JSON, use as reasoning text
+            if (aiContent.length > 10) {
+              aiReasoning = aiContent.slice(0, 200);
+              aiLearnings.push(`🧠 IA: ${aiReasoning}`);
+            }
+          }
+        }
+      }
+    } catch (aiErr) {
+      // AI call failed — continue with statistical prediction only
+      console.error("AI reasoning error:", aiErr);
+    }
 
     // Justificativa clara
     const decisionJustification = [
@@ -7026,7 +7147,7 @@ serve(async (req) => {
       mesaMode,
       mode, message,
       memoryWindows,
-      aiLearnings: aiLearnings.slice(0, 15),
+      aiLearnings: aiLearnings.slice(0, 20),
       learnedBetInfluence: learnedInfluence.sort((a, b) => b.boost - a.boost).slice(0, 8),
       noiseFiltered: noiseCount,
       dealerChaos: chaoticDealer,
@@ -7055,6 +7176,13 @@ serve(async (req) => {
         geneticPatterns: geneticPatterns.slice(0, 3),
         backpropWeights,
         flowDynamics: { mesaFlowState, pullPatterns: pullPatterns.slice(0, 3), neighborJumps: neighborJumpCount, terminalProgression },
+      },
+      // AI Reasoning Layer
+      aiReasoning: {
+        reasoning: aiReasoning,
+        confidence: aiConfidence,
+        adjustedNumbers: aiAdjustedNumbers,
+        consensus: aiAdjustedNumbers ? finalBetNumbers.filter(n => (aiAdjustedNumbers || []).includes(n)).length : 0,
       },
       ...baseResponse, recoveryMode,
       topCandidates: numScores.slice(0, 8).map(s => ({ num: s.num, score: +s.score.toFixed(1), reasons: s.reasons })),
