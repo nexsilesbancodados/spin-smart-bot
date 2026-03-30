@@ -6609,6 +6609,12 @@ Considere: puxadas, terminais dominantes, setores quentes, Lei do Terço, matriz
       finalProbability = Math.max(finalProbability, 70);
     }
     
+    // APRENDIZADO APLICADO: mostrar quais padrões aprendidos influenciaram a jogada
+    const topInfluence = learnedInfluence
+      .filter(li => finalBetNumbers.includes(li.num))
+      .sort((a, b) => b.boost - a.boost)
+      .slice(0, 5);
+
     // APRENDIZADO APLICADO: cada padrão aprendido que confirma a jogada → +2%
     const appliedLearningCount = topInfluence.length;
     if (appliedLearningCount >= 3) finalProbability += 8;
@@ -6648,11 +6654,6 @@ Considere: puxadas, terminais dominantes, setores quentes, Lei do Terço, matriz
       aiLearnings.push(`🔑 Assinatura terminal: T${mesaDNA.terminalSignature.join(',T')} consistentes`);
     }
 
-    // APRENDIZADO APLICADO: mostrar quais padrões aprendidos influenciaram a jogada
-    const topInfluence = learnedInfluence
-      .filter(li => finalBetNumbers.includes(li.num))
-      .sort((a, b) => b.boost - a.boost)
-      .slice(0, 5);
     if (topInfluence.length > 0) {
       aiLearnings.unshift(`🧠 APRENDIZADO APLICADO: ${topInfluence.length} padrões aprendidos influenciaram a jogada`);
       topInfluence.forEach(ti => {
