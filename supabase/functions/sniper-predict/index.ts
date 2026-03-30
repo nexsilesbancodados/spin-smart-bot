@@ -6413,6 +6413,10 @@ serve(async (req) => {
     let aiReasoning: string | null = null;
     let aiAdjustedNumbers: number[] | null = null;
     let aiConfidence: number | null = null;
+    let aiPatternAnalysis: string | null = null;
+    let aiSectorFocus: string | null = null;
+    let aiFeedbackAction: string | null = null;
+    let aiLearned: string | null = null;
     
     try {
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
