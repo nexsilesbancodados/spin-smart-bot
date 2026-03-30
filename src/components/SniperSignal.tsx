@@ -56,6 +56,11 @@ const getBetTypeLabel = (type: string) => {
     case 'combo_ouro': return '👑 COMBO OURO';
     case 'combo_prata': return '🥈 COMBO PRATA';
     case 'ensemble_supremo': return '🌟 ENSEMBLE SUPREMO';
+    case 'realtime_aprendido': return '⚡ REALTIME APRENDIDO';
+    case 'pull_confirmado_aprendido': return '🧲 PULL CONFIRMADO IA';
+    case 'heat_cluster_ia': return '🔥 CLUSTER QUENTE IA';
+    case 'pattern_consensus': return '📊 CONSENSO DE PADRÕES';
+    case 'realtime_insight': return '⚡ INSIGHT REALTIME';
     case 'matriz_numerica': return '🔢 MATRIZ NUMÉRICA';
     case 'auto_repeticao': return '🔁 AUTO-REPETIÇÃO';
     default: return `📌 ${type.replace(/_/g, ' ').toUpperCase()}`;

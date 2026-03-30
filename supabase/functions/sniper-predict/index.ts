@@ -747,7 +747,9 @@ serve(async (req) => {
       const meta = lp.metadata as any;
       const isRecent = recentLearned.includes(lp);
       const recencyMultiplier = isRecent ? 2.5 : 1.0; // Recent patterns get 2.5x weight
-      const accuracyScale = (lp.accuracy || 50) / 50;
+      // Normalizar accuracy: se 1% (bug antigo do DeepSeek), usar 50% como default
+      const rawAcc = lp.accuracy || 50;
+      const accuracyScale = (rawAcc < 5 ? 50 : rawAcc) / 50;
       
       if (meta?.hotNumbers && Array.isArray(meta.hotNumbers)) {
         for (const hn of meta.hotNumbers) {
@@ -3628,21 +3630,22 @@ serve(async (req) => {
         : 1.0;
 
       // Threshold mais baixo para não perder sinais do momento
-      const accThreshold = isRealtimeRT ? 0.3 : isPullConfirmed ? 0.4 : 0.5;
+      // Sem threshold mínimo — qualquer learning é usado
+      // acc já normalizado: se banco tem 1 → trata como 50 (default seguro)
+      const effectiveAcc = acc < 0.05 ? 0.50 : acc; // corrige learnings com acc 1% (bug antigo)
 
-      // Use hotNumbers from metadata (strongest signal)
-      if (hotNums.length > 0 && acc > accThreshold) {
+      if (hotNums.length > 0) {
         for (const hn of hotNums) {
           if (hn >= 0 && hn <= 36) {
-            learnedSignalBoost[hn] += acc * 2.5 * recencyBoost;
+            learnedSignalBoost[hn] += effectiveAcc * 2.5 * recencyBoost;
             learnedSignalReasons[hn].push(isRealtimeRT ? `⚡RT:${l.title.slice(3,25)}` : `IA:${l.learning_type}`);
           }
         }
       }
-      if (keyNums.length > 0 && acc > accThreshold) {
+      if (keyNums.length > 0) {
         for (const kn of keyNums) {
           if (kn >= 0 && kn <= 36) {
-            learnedSignalBoost[kn] += acc * 2.0 * recencyBoost;
+            learnedSignalBoost[kn] += effectiveAcc * 2.0 * recencyBoost;
             learnedSignalReasons[kn].push(`IA:${l.title.slice(0,28)}`);
           }
         }
@@ -5853,6 +5856,154 @@ serve(async (req) => {
       for (const st of strategies) {
         if ((st as any).coverage > 40) {
           (st as any).score = Math.min((st as any).score, Math.round(maxInternalScore * 0.85));
+        }
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ESTRATÉGIAS DINÂMICAS — construídas do conhecimento aprendido
+    // Cada learning que tem hotNumbers vira uma estratégia candidata
+    // ══════════════════════════════════════════════════════════════
+
+    // 1. ESTRATÉGIA REALTIME — do padrão mais forte do momento
+    const rtLearnings = learned.filter(lp =>
+      lp.learning_type === 'session_spin' &&
+      (lp.title || '').startsWith('RT_') &&
+      Array.isArray((lp.metadata as any)?.hotNumbers) &&
+      (lp.metadata as any).hotNumbers.length >= 2
+    );
+    if (rtLearnings.length > 0) {
+      // Usar o RT learning mais recente (maior accuracy)
+      const topRT = rtLearnings.sort((a, b) => (b.accuracy || 0) - (a.accuracy || 0))[0];
+      const rtNums: number[] = ((topRT.metadata as any)?.hotNumbers || []).filter((n: any) => n >= 0 && n <= 36).slice(0, 8);
+      if (rtNums.length >= 2) {
+        const rtScore = sumScores(rtNums) + (topRT.accuracy || 50) * 0.6;
+        const rtBt = backtestSet(rtNums);
+        const rtType = (topRT.metadata as any)?.realtimeType || 'realtime';
+        const rtLabel = {
+          'auto_repeticao_rt': '🔁 Auto-Repetição RT',
+          'streak_consecutivo': '🔥 Streak RT',
+          'triple_pull': '🔱 Triple Pull RT',
+          'double_pull': '🔗 Double Pull RT',
+          'puxada_momento': '🧲 Puxada RT',
+          'terminal_dominante_rt': '🔢 Terminal RT',
+          'combo_ouro_rt': '👑 Combo Ouro RT',
+          'matriz_momento': '🔮 Matriz RT',
+        }[rtType] || `⚡ RT ${rtType}`;
+        strategies.push({
+          type: 'realtime_aprendido',
+          label: rtLabel,
+          emoji: '⚡',
+          numbers: rtNums,
+          coverage: +(rtNums.length / 37 * 100).toFixed(1),
+          payout: 36 - rtNums.length,
+          score: rtScore + rtBt * 25 + 30, // +30 boost: padrão do momento
+          probability: Math.min(95, Math.round(50 + (topRT.accuracy || 50) * 0.5 + rtBt * 30)),
+          justification: `⚡ REALTIME: ${topRT.knowledge?.slice(0, 120) || rtLabel}. Números: [${rtNums.join(',')}].`,
+        });
+        aiLearnings.push(`⚡ Estratégia RT criada: ${rtLabel} → [${rtNums.slice(0,5).join(',')}]`);
+      }
+    }
+
+    // 2. ESTRATÉGIA PULL CONFIRMADO — puxadas validadas pelo sistema
+    const pullLearnings = learned.filter(lp =>
+      lp.learning_type === 'pull_confirmed' &&
+      Array.isArray((lp.metadata as any)?.hotNumbers) &&
+      (lp.metadata as any).hotNumbers.length >= 2
+    );
+    if (pullLearnings.length > 0 && numbers.length > 0) {
+      const lastN = numbers[0];
+      const relevantPull = pullLearnings.find(lp =>
+        ((lp.metadata as any)?.source === lastN || (lp.metadata as any)?.hotNumbers?.includes(lastN))
+      ) || pullLearnings[0];
+      const pullNums: number[] = ((relevantPull.metadata as any)?.hotNumbers || []).filter((n: any) => n >= 0 && n <= 36).slice(0, 8);
+      if (pullNums.length >= 2) {
+        const pScore = sumScores(pullNums) + (relevantPull.accuracy || 50) * 0.5;
+        const pBt = backtestSet(pullNums);
+        strategies.push({
+          type: 'pull_confirmado_aprendido',
+          label: `🧲 Puxada Confirmada IA (${pullNums.length} nums)`,
+          emoji: '🧲',
+          numbers: pullNums,
+          coverage: +(pullNums.length / 37 * 100).toFixed(1),
+          payout: 36 - pullNums.length,
+          score: pScore + pBt * 22 + 20, // +20: validação do banco
+          probability: Math.min(90, Math.round(45 + (relevantPull.accuracy || 50) * 0.4 + pBt * 25)),
+          justification: `🧲 Pull validado pelo sistema: ${relevantPull.knowledge?.slice(0, 100) || ''}. [${pullNums.join(',')}]`,
+        });
+      }
+    }
+
+    // 3. ESTRATÉGIA HEAT CLUSTER — números quentes confirmados por 2+ IAs
+    const heatLearnings = learned.filter(lp =>
+      lp.learning_type === 'heat_cluster' &&
+      Array.isArray((lp.metadata as any)?.hotNumbers) &&
+      (lp.metadata as any).hotNumbers.length >= 2
+    );
+    if (heatLearnings.length > 0) {
+      const allHeatNums = [...new Set(heatLearnings.flatMap(lp =>
+        ((lp.metadata as any)?.hotNumbers || []).filter((n: any) => n >= 0 && n <= 36)
+      ))].slice(0, 8);
+      if (allHeatNums.length >= 2) {
+        const hScore = sumScores(allHeatNums) + heatLearnings.length * 5;
+        const hBt = backtestSet(allHeatNums);
+        strategies.push({
+          type: 'heat_cluster_ia',
+          label: `🔥 Cluster Quente IA (${heatLearnings.length} fontes)`,
+          emoji: '🔥',
+          numbers: allHeatNums,
+          coverage: +(allHeatNums.length / 37 * 100).toFixed(1),
+          payout: 36 - allHeatNums.length,
+          score: hScore + hBt * 20 + heatLearnings.length * 8,
+          probability: Math.min(90, Math.round(45 + heatLearnings.length * 6 + hBt * 25)),
+          justification: `🔥 ${heatLearnings.length} fontes de IA confirmam cluster: [${allHeatNums.join(',')}]`,
+        });
+      }
+    }
+
+    // 4. ESTRATÉGIA PATTERN_INSIGHTS — do auto-analyze multi-janela
+    const topInsights = patternInsights
+      .filter(pi => (pi.confidence as number) >= 55 && (pi.numbers_involved as number[])?.length >= 2)
+      .sort((a, b) => (b.confidence as number) - (a.confidence as number))
+      .slice(0, 3);
+    if (topInsights.length >= 2) {
+      // Interseção dos top insights (consenso de padrões)
+      const consensusNums = (topInsights[0].numbers_involved as number[])
+        .filter(n => topInsights.some((pi, i) => i > 0 && (pi.numbers_involved as number[]).includes(n)));
+      const allInsightNums = [...new Set(topInsights.flatMap(pi => pi.numbers_involved as number[]))].slice(0, 8);
+      const iNums = consensusNums.length >= 2 ? consensusNums : allInsightNums;
+      if (iNums.length >= 2) {
+        const iScore = sumScores(iNums) + topInsights.length * 6;
+        const iBt = backtestSet(iNums);
+        const src = (topInsights[0].source_data as any) || {};
+        const isRT = src.realtime === true;
+        strategies.push({
+          type: isRT ? 'realtime_insight' : 'pattern_consensus',
+          label: isRT ? `⚡ Consenso RT (${topInsights.length} padrões)` : `📊 Consenso de Padrões (${topInsights.length})`,
+          emoji: isRT ? '⚡' : '📊',
+          numbers: iNums,
+          coverage: +(iNums.length / 37 * 100).toFixed(1),
+          payout: 36 - iNums.length,
+          score: iScore + iBt * 22 + (isRT ? 25 : 12),
+          probability: Math.min(90, Math.round(50 + topInsights.length * 5 + iBt * 25 + (isRT ? 10 : 0))),
+          justification: `${isRT ? '⚡ REALTIME: ' : '📊 '}Consenso de ${topInsights.length} padrões: ${topInsights.map(pi => pi.pattern_type).join(', ')}. [${iNums.join(',')}]`,
+        });
+      }
+    }
+
+    // 5. SELEÇÃO AUTOMÁTICA ADAPTATIVA — atualiza pesos baseado no que funciona
+    // Estratégias com WR > 50% recentes ganham boost; com WR < 20% perdem
+    for (const st of strategies) {
+      const perf = strategyPerformance[st.type] as any;
+      if (perf && perf.total >= 3) {
+        const wr = perf.recentTrend ?? perf.winRate ?? 0;
+        if (wr > 0.55) {
+          (st as any).score *= 1.25; // em alta: +25%
+          (st as any).justification = `✅ WR ${(wr*100).toFixed(0)}% recente | ` + (st as any).justification;
+        } else if (wr < 0.20 && perf.total >= 5) {
+          (st as any).score *= 0.55; // em baixa: -45%
+        } else if (wr < 0.30 && perf.total >= 5) {
+          (st as any).score *= 0.75;
         }
       }
     }

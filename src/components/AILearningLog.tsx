@@ -215,6 +215,15 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
     }
   }, [rtInsights]);
 
+  // Log quando estratégia aprendida é escolhida
+  useEffect(() => {
+    if (!sniperData?.strategy?.type) return;
+    const learnedTypes = ['realtime_aprendido','pull_confirmado_aprendido','heat_cluster_ia','pattern_consensus','realtime_insight'];
+    if (learnedTypes.includes(sniperData.strategy.type)) {
+      addLog(`🧠 IA ESCOLHEU estratégia aprendida: ${sniperData.strategy.label} → [${(sniperData.strategy.numbers||[]).slice(0,5).join(',')}]`, 'alert');
+    }
+  }, [sniperData?.strategy?.type, sniperData?.signal?.number]);
+
   // Log confirmações quando sniper atualiza
   useEffect(() => {
     if (!sniperData?.signal?.confirmations) return;
