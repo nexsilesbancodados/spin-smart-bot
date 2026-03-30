@@ -6277,10 +6277,12 @@ serve(async (req) => {
       else if (topReasonCategories.size >= 5) finalProbability += 3;
     }
     
-    // COVERAGE-BASED PROBABILITY CEILING — probabilidade não pode exceder expectativa real ajustada
-    // Random baseline = coverage%. Com análise boa, +15-25% acima do baseline é realista.
-    const coveragePercent = winner.coverage; // e.g. 38% for 14 numbers
-    const maxRealisticProb = Math.min(99, coveragePercent + 25); // 14 nums = 38% + 25 = 63% max
+    // COVERAGE-BASED PROBABILITY CEILING — calibrado por tamanho da jogada
+    // Jogadas com menos números têm teto mais apertado
+    const coveragePercent = +(finalBetNumbers.length / 37 * 100).toFixed(1);
+    // Bônus máximo escala com confirmações: 3+ confirmações = até +20%, senão +12%
+    const maxBonus = confirmations >= 4 ? 22 : confirmations >= 3 ? 18 : confirmations >= 2 ? 14 : 10;
+    const maxRealisticProb = Math.min(95, coveragePercent + maxBonus);
     if (finalProbability > maxRealisticProb) {
       finalProbability = maxRealisticProb;
     }
