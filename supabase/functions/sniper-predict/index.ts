@@ -6638,8 +6638,9 @@ serve(async (req) => {
         }
       }
 
-      // ALWAYS add protection numbers to every play
-      bets.push({ type: 'protecao', label: 'Proteção 24-29-35-11', detail: 'Sempre marque: 24, 29, 35 e 11 como proteção fixa em toda jogada (4 fichas extras)', emoji: '🛡️' });
+      // ALWAYS add protection — dinâmica baseada em erros reais
+      const protLabel = realProtection.length > 0 ? realProtection.join('-') : '(nenhuma)';
+      bets.push({ type: 'protecao', label: `Proteção ${protLabel}`, detail: `Proteção dinâmica baseada em números que saem quando erramos: ${realProtection.join(', ')}${realProtection.length === 0 ? ' (não aplicável)' : ` (${realProtection.length} fichas extras)`}`, emoji: '🛡️' });
 
       const summary = bets.map(b => `${b.emoji} ${b.label}`).join(' • ');
       return { bets, summary };
