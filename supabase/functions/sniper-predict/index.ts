@@ -4396,7 +4396,7 @@ serve(async (req) => {
         tests++;
         const nextNum = numbers[w - 1]; // número que veio DEPOIS de numbers[w]
         if (nums.includes(nextNum)) hits += 1;
-        else if (w >= 2 && nums.includes(numbers[w - 2])) hits += 0.4; // +1 spin
+        // REMOVIDO: vizinho parcial (+0.4) inflava scores sem acerto real
       }
       return tests > 0 ? hits / tests : 0;
     };
