@@ -856,19 +856,19 @@ serve(async (req) => {
     // Pattern insights → extract actionable numbers
     const insightNumbers: Record<number, number> = {};
     const insightReasons: Record<number, string[]> = {};
-    const learnedBonus: Record<number, number> = {};
-    const learnedReasons: Record<number, string[]> = {};
-    for (let n = 0; n <= 36; n++) { insightNumbers[n] = 0; insightReasons[n] = []; learnedBonus[n] = 0; learnedReasons[n] = []; }
+    const learnedSignalBoost: Record<number, number> = {};
+    const learnedSignalReasons: Record<number, string[]> = {};
+    for (let n = 0; n <= 36; n++) { insightNumbers[n] = 0; insightReasons[n] = []; learnedSignalBoost[n] = 0; learnedSignalReasons[n] = []; }
 
-    // Process learned patterns for learnedBonus/learnedReasons
+    // Process learned patterns for learnedSignalBoost/learnedSignalReasons
     for (const lp of learned) {
       const meta = lp.metadata as any;
       if (lp.learning_type === 'error_pattern') {
         const keyNums = (meta as any)?.key_numbers || [];
         for (const kn of keyNums) {
           if (typeof kn === 'number' && kn >= 0 && kn <= 36) {
-            learnedBonus[kn] += 1.5;
-            learnedReasons[kn].push('error_pattern');
+            learnedSignalBoost[kn] += 1.5;
+            learnedSignalReasons[kn].push('error_pattern');
           }
         }
       }
@@ -877,8 +877,8 @@ serve(async (req) => {
         const keyNums: number[] = (meta as any)?.key_numbers || [];
         for (const kn of keyNums) {
           if (typeof kn === 'number' && kn >= 0 && kn <= 36) {
-            learnedBonus[kn] += (lp.accuracy || 50) / 100 * recencyBoostHit;
-            learnedReasons[kn].push('✅ hit_pattern');
+            learnedSignalBoost[kn] += (lp.accuracy || 50) / 100 * recencyBoostHit;
+            learnedSignalReasons[kn].push('✅ hit_pattern');
           }
         }
       }
@@ -896,9 +896,9 @@ serve(async (req) => {
         : 1.0;
       for (const n of insNums) {
         if (n >= 0 && n <= 36) {
-          learnedBonus[n] = (learnedBonus[n] || 0) + ((ins.confidence as number) / 100) * boostMult;
-          learnedReasons[n] = learnedReasons[n] || [];
-          learnedReasons[n].push(`Padrão:${ins.pattern_type}(${ins.confidence}%)`);
+          learnedSignalBoost[n] = (learnedSignalBoost[n] || 0) + ((ins.confidence as number) / 100) * boostMult;
+          learnedSignalReasons[n] = learnedSignalReasons[n] || [];
+          learnedSignalReasons[n].push(`Padrão:${ins.pattern_type}(${ins.confidence}%)`);
         }
       }
     }
@@ -1277,6 +1277,8 @@ serve(async (req) => {
     const dealerShiftDetected = Math.abs(recentMean5 - olderMean20) > 5;
     const isNewDealer = dealerShiftDetected && recentArcs5.length >= 3;
 
+    const strategyWeightAdjust: Record<string, number> = {};
+
     if (isNewDealer) {
       aiLearnings.push(`🎭 DEALER SHIFT DETECTADO: arco mudou de ${olderMean20.toFixed(1)} para ${recentMean5.toFixed(1)} — recalibrando. Ignorar padrões antigos por 5 giros.`);
       strategyWeightAdjust['sniper'] = (strategyWeightAdjust['sniper'] || 0) - 15;
@@ -1296,7 +1298,6 @@ serve(async (req) => {
     // SELF-CORRECTION + REINFORCEMENT LEARNING ENGINE
     // ========================================================
     const recentResolved = resolvedHistory.slice(0, 5);
-    const strategyWeightAdjust: Record<string, number> = {};
 
     // Taxa de acerto recente (últimas 10)
     const recent10 = resolvedHistory.slice(0, 10);
@@ -3585,8 +3586,8 @@ serve(async (req) => {
     const maxHeat = Math.max(...heatMap);
 
     // AI learned patterns
-    // Reset learnedBonus/learnedReasons (already declared above)
-    for (let n = 0; n <= 36; n++) { learnedBonus[n] = 0; learnedReasons[n] = []; }
+    // Reset learnedSignalBoost/learnedSignalReasons (already declared above)
+    for (let n = 0; n <= 36; n++) { learnedSignalBoost[n] = 0; learnedSignalReasons[n] = []; }
 
     for (const l of learned) {
       const acc = (l.accuracy || 50) / 100;
@@ -3599,46 +3600,46 @@ serve(async (req) => {
       // Use hotNumbers from metadata (strongest signal)
       if (hotNums.length > 0 && acc > 0.5) {
         for (const hn of hotNums) {
-          if (hn >= 0 && hn <= 36) { learnedBonus[hn] += acc * 2.0 * recencyBoost; learnedReasons[hn].push(`IA: ${l.learning_type}`); }
+          if (hn >= 0 && hn <= 36) { learnedSignalBoost[hn] += acc * 2.0 * recencyBoost; learnedSignalReasons[hn].push(`IA: ${l.learning_type}`); }
         }
       }
       if (keyNums.length > 0 && acc > 0.6) {
         for (const kn of keyNums) {
-          if (kn >= 0 && kn <= 36) { learnedBonus[kn] += acc * 1.5 * recencyBoost; learnedReasons[kn].push(`IA: ${l.title.slice(0, 30)}`); }
+          if (kn >= 0 && kn <= 36) { learnedSignalBoost[kn] += acc * 1.5 * recencyBoost; learnedSignalReasons[kn].push(`IA: ${l.title.slice(0, 30)}`); }
         }
       }
       if (l.learning_type === 'terminal_pattern' && acc > 0.6) {
         const match = l.title.match(/(\d)/);
-        if (match) { const term = parseInt(match[1]); for (let n = 0; n <= 36; n++) { if (n % 10 === term) { learnedBonus[n] += acc * 1.2; learnedReasons[n].push(`IA Terminal ${term}`); } } }
+        if (match) { const term = parseInt(match[1]); for (let n = 0; n <= 36; n++) { if (n % 10 === term) { learnedSignalBoost[n] += acc * 1.2; learnedSignalReasons[n].push(`IA Terminal ${term}`); } } }
       }
       if (l.learning_type === 'terminal_dominance' && acc > 0.6) {
         const bestTerminals: number[] = (l.metadata as any)?.bestTerminals || [];
         for (const t of bestTerminals) {
           const tNums = TERMINALS_MAP[t] || [];
-          for (const tn of tNums) { learnedBonus[tn] += acc * 1.5; learnedReasons[tn].push(`IA T${t} dominante`); }
+          for (const tn of tNums) { learnedSignalBoost[tn] += acc * 1.5; learnedSignalReasons[tn].push(`IA T${t} dominante`); }
         }
       }
       if (l.learning_type === 'sector_concentration' && acc > 0.6) {
         const octMatch = l.title.match(/O(\d)/);
-        if (octMatch) { const nums = OCTAVES[`O${octMatch[1]}`] || []; for (const n of nums) { learnedBonus[n] += acc * 1.0; learnedReasons[n].push(`IA Oitavo`); } }
+        if (octMatch) { const nums = OCTAVES[`O${octMatch[1]}`] || []; for (const n of nums) { learnedSignalBoost[n] += acc * 1.0; learnedSignalReasons[n].push(`IA Oitavo`); } }
       }
       if (l.learning_type === 'heat_cluster' && acc > 0.6) {
-        for (const kn of keyNums) { if (kn >= 0 && kn <= 36) { learnedBonus[kn] += acc * 1.8; learnedReasons[kn].push('IA Cluster'); } }
+        for (const kn of keyNums) { if (kn >= 0 && kn <= 36) { learnedSignalBoost[kn] += acc * 1.8; learnedSignalReasons[kn].push('IA Cluster'); } }
       }
       if (l.learning_type === 'dealer_signature' && acc > 0.5 && (maoViciada || arcStdDev < 3)) {
         const avgArc = Math.round(arcMean);
         const idx0 = wheelIdx(numbers[0]);
         const pCW = WHEEL[(idx0 + avgArc) % WL];
         const pCCW = WHEEL[(idx0 - avgArc + WL) % WL];
-        learnedBonus[pCW] += acc * 2.0; learnedBonus[pCCW] += acc * 2.0;
-        learnedReasons[pCW].push('IA Dealer Sig'); learnedReasons[pCCW].push('IA Dealer Sig');
+        learnedSignalBoost[pCW] += acc * 2.0; learnedSignalBoost[pCCW] += acc * 2.0;
+        learnedSignalReasons[pCW].push('IA Dealer Sig'); learnedSignalReasons[pCCW].push('IA Dealer Sig');
       }
       if (isPullConfirmed) {
         const source = (l.metadata as any)?.source;
         const target = (l.metadata as any)?.target;
         if (typeof source === 'number' && source === numbers[0] && typeof target === 'number') {
-          learnedBonus[target] += 3.0;
-          learnedReasons[target].push('IA Pull Confirmado!');
+          learnedSignalBoost[target] += 3.0;
+          learnedSignalReasons[target].push('IA Pull Confirmado!');
         }
       }
       // MATRIX TRANSITION: usar pares aprendidos como boost direto
@@ -3646,8 +3647,8 @@ serve(async (req) => {
         const meta = l.metadata as any;
         if (meta?.source === numbers[0] && meta?.target >= 0 && meta?.target <= 36) {
           const boost = ((l.accuracy || 50) / 100) * 6;
-          learnedBonus[meta.target] = (learnedBonus[meta.target] || 0) + boost;
-          learnedReasons[meta.target].push(`🔢 Matriz(${(l.accuracy || 50).toFixed(0)}%)`);
+          learnedSignalBoost[meta.target] = (learnedSignalBoost[meta.target] || 0) + boost;
+          learnedSignalReasons[meta.target].push(`🔢 Matriz(${(l.accuracy || 50).toFixed(0)}%)`);
         }
       }
       // HIT PATTERN: acertos recentes têm muito peso
@@ -3656,8 +3657,8 @@ serve(async (req) => {
         const keyNums: number[] = (l.metadata as any)?.key_numbers || [];
         for (const kn of keyNums) {
           if (kn >= 0 && kn <= 36) {
-            learnedBonus[kn] += ((l.accuracy || 50) / 100) * recencyBoostHit;
-            learnedReasons[kn].push(`✅ hit_pattern`);
+            learnedSignalBoost[kn] += ((l.accuracy || 50) / 100) * recencyBoostHit;
+            learnedSignalReasons[kn].push(`✅ hit_pattern`);
           }
         }
       }
@@ -3675,9 +3676,9 @@ serve(async (req) => {
         : 1.0;
       for (const n of insNums) {
         if (n >= 0 && n <= 36) {
-          learnedBonus[n] = (learnedBonus[n] || 0) + ((ins.confidence as number) / 100) * boostMult;
-          learnedReasons[n] = learnedReasons[n] || [];
-          learnedReasons[n].push(`Padrão:${ins.pattern_type}(${ins.confidence}%)`);
+          learnedSignalBoost[n] = (learnedSignalBoost[n] || 0) + ((ins.confidence as number) / 100) * boostMult;
+          learnedSignalReasons[n] = learnedSignalReasons[n] || [];
+          learnedSignalReasons[n].push(`Padrão:${ins.pattern_type}(${ins.confidence}%)`);
         }
       }
     }
@@ -3864,13 +3865,13 @@ serve(async (req) => {
       if (freq37map[n] >= 2) { s += 0.5; }
       if (highLowRatio > 1.4 && isLow(n)) s += 0.5;
       if (highLowRatio < 0.7 && isHigh(n)) s += 0.5;
-      if (learnedBonus[n] > 0) { s += learnedBonus[n]; r.push(...learnedReasons[n].slice(0, 2)); }
+      if (learnedSignalBoost[n] > 0) { s += learnedSignalBoost[n]; r.push(...learnedSignalReasons[n].slice(0, 2)); }
       // INSIGHT PATTERNS bonus
       if (insightNumbers[n] > 0) { s += insightNumbers[n]; r.push(...insightReasons[n].slice(0, 2)); }
       // SURPRISE NUMBERS bonus — numbers that frequently appear when we miss
       if (surpriseNumbers.includes(n)) { s += 2; r.push('🎲 Surpresa freq.'); }
       // ERRO PADRÃO: números que costumam sair quando erramos merecem boost
-      if (learnedReasons[n]?.some((lr: string) => lr.includes('error_pattern'))) {
+      if (learnedSignalReasons[n]?.some((lr: string) => lr.includes('error_pattern'))) {
         s += 3; r.push('⚠️ Anti-padrão');
       }
       // HISTORICAL HIT bonus — numbers that hit when predicted before
@@ -5818,7 +5819,7 @@ serve(async (req) => {
       }
     }
     for (let n = 0; n <= 36; n++) {
-      if (learnedBonus[n] > 0) { ensembleScore[n] += learnedBonus[n] * 3; ensembleSources[n].push('IA'); }
+      if (learnedSignalBoost[n] > 0) { ensembleScore[n] += learnedSignalBoost[n] * 3; ensembleSources[n].push('IA'); }
     }
     for (let n = 0; n <= 36; n++) {
       if (deepPullChain[n] >= 5) { ensembleScore[n] += deepPullChain[n] * 0.8; ensembleSources[n].push(`Chain(${deepPullChain[n].toFixed(0)})`); }
