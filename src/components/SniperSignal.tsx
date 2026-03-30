@@ -151,8 +151,8 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
     );
   }
 
-  const isHot = displayProb >= 65;
-  const isMed = displayProb >= 45;
+  const isHot = displayProb >= 90;
+  const isMed = displayProb >= 60;
   const confs = sniperData?.signal?.confirmations || 0;
 
   return (
