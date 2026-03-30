@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Crosshair, AlertTriangle, Clock, ShieldCheck, Zap } from 'lucide-react';
+import { Crosshair, AlertTriangle, Clock, ShieldCheck, Zap, Brain } from 'lucide-react';
 
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 
@@ -27,6 +27,13 @@ const getBetLabel = (type: string) => {
   return map[type] || `📌 ${type.replace(/_/g, ' ').toUpperCase()}`;
 };
 
+const getActionLevel = (prob: number) => {
+  if (prob >= 85) return { label: '🔥 ENTRAR FORTE', color: 'text-neon-green', bg: 'bg-neon-green/10 border-neon-green/30' };
+  if (prob >= 65) return { label: '✅ ENTRAR', color: 'text-primary', bg: 'bg-primary/10 border-primary/30' };
+  if (prob >= 45) return { label: '⚠️ SINAL MODERADO', color: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-400/30' };
+  return { label: '⏸ AGUARDAR', color: 'text-muted-foreground', bg: 'bg-secondary/30 border-border/30' };
+};
+
 interface Props {
   sniperData: any;
   sniperCountdown: number;
@@ -51,48 +58,24 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
 
   const reedStopped = reedCount >= 4;
 
-  // Compute final numbers
-  const { ensTop1, finalNumbers, highConviction, displayProb, dynamicProtection } = useMemo(() => {
+  const { ensTop1, finalNumbers, displayProb } = useMemo(() => {
     if (!sniperData?.signal || !sniperData?.strategy) {
-      return { ensTop1: 0, finalNumbers: [], highConviction: [], displayProb: 0, dynamicProtection: [] };
+      return { ensTop1: 0, finalNumbers: [], displayProb: 0 };
     }
 
     const top1 = sniperData.ensemble?.top1 ?? sniperData.topCandidates?.[0]?.num ?? sniperData.strategy.numbers[0];
-    const supportPool: number[] = [
-      ...(sniperData.ensemble?.top5 || []),
-      ...(sniperData.strategy.numbers || []),
-      ...(sniperData.topCandidates?.slice(0, 5).map((c: any) => c.num) || []),
-    ].filter((n: number) => n !== top1 && n >= 0 && n <= 36);
-
-    const scoreCount: Record<number, number> = {};
-    supportPool.forEach((n: number) => { scoreCount[n] = (scoreCount[n] || 0) + 1; });
-    const sortedSupport = [...new Set(supportPool)].sort((a, b) => (scoreCount[b] || 0) - (scoreCount[a] || 0));
-
-    const prot: number[] = sniperData?.signal?.protection || sniperData?.strategy?.protection || [];
-    const protFiltered = prot.filter((n: number) => n !== top1);
-    const support = sortedSupport.slice(0, 8);
-    const final: number[] = [...new Set([top1, ...support, ...protFiltered])].slice(0, 12);
-
-    const hc = final.filter(n => {
-      const inE = (sniperData.ensemble?.top5 || []).includes(n);
-      const inW = (sniperData.strategy.numbers || []).includes(n);
-      const inC = (sniperData.topCandidates || []).slice(0, 3).some((c: any) => c.num === n);
-      return (inE ? 1 : 0) + (inW ? 1 : 0) + (inC ? 1 : 0) >= 2;
-    });
-
+    const nums: number[] = sniperData.strategy.numbers || [];
     const rawProb = sniperData.signal.probability || 0;
-    // Não limitar a probabilidade — confiar na calibração do backend
-    const prob = rawProb;
 
-    return { ensTop1: top1, finalNumbers: final, highConviction: hc, displayProb: prob, dynamicProtection: protFiltered };
+    return { ensTop1: top1, finalNumbers: nums, displayProb: rawProb };
   }, [sniperData]);
 
   // Gap info
   const gapInfo = useMemo(() => {
     if (!ensTop1 || allNumbers.length < 10) return null;
     const lastIdx = allNumbers.indexOf(ensTop1);
-    if (lastIdx < 0) return { delay: allNumbers.length, label: `>${allNumbers.length}`, hot: false };
-    if (lastIdx === 0) return { delay: 0, label: 'agora', hot: true };
+    if (lastIdx < 0) return { delay: allNumbers.length, label: `>${allNumbers.length}` };
+    if (lastIdx === 0) return { delay: 0, label: 'agora' };
     const positions = allNumbers.reduce((acc: number[], n, i) => { if (n === ensTop1) acc.push(i); return acc; }, []);
     const gaps = positions.slice(0, -1).map((p, i) => positions[i + 1] - p);
     const avgGap = gaps.length > 0 ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length) : 37;
@@ -115,28 +98,30 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
   // Waiting for result
   if (sniperStale && lastPredResult) {
     return (
-      <div className="bg-card rounded-2xl border border-border p-8">
-        <div className="flex flex-col items-center gap-3">
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center border-2 ${
+      <div className="bg-card rounded-2xl border border-border p-6">
+        <div className="flex items-center gap-4">
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 ${
             lastPredResult.hit
               ? 'bg-green-500/15 border-green-500/40'
               : 'bg-destructive/15 border-destructive/40'
           }`}>
             {lastPredResult.hit
-              ? <ShieldCheck className="w-8 h-8 text-green-400" />
-              : <AlertTriangle className="w-8 h-8 text-destructive" />}
+              ? <ShieldCheck className="w-7 h-7 text-green-400" />
+              : <AlertTriangle className="w-7 h-7 text-destructive" />}
           </div>
-          <span className={`text-sm font-bold ${lastPredResult.hit ? 'text-green-400' : 'text-destructive'}`}>
-            {lastPredResult.hit
-              ? (lastPredResult.hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO!')
-              : '❌ ERRO'}
-          </span>
-          <div className="flex gap-4 text-xs text-muted-foreground">
-            <span>Previsto: <strong className="text-foreground">{lastPredResult.predicted}</strong></span>
-            <span>Saiu: <strong className="text-foreground">{lastPredResult.actual}</strong></span>
+          <div>
+            <span className={`text-lg font-black ${lastPredResult.hit ? 'text-green-400' : 'text-destructive'}`}>
+              {lastPredResult.hit
+                ? (lastPredResult.hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO!')
+                : '❌ ERRO'}
+            </span>
+            <div className="flex gap-3 text-xs text-muted-foreground mt-1">
+              <span>Previsto: <strong className="text-foreground">{lastPredResult.predicted}</strong></span>
+              <span>Saiu: <strong className="text-foreground">{lastPredResult.actual}</strong></span>
+            </div>
           </div>
-          <span className="text-[9px] text-muted-foreground/50">Aguardando nova jogada...</span>
         </div>
+        <p className="text-[10px] text-muted-foreground/50 mt-3 text-center">⏳ Aguardando próximo giro...</p>
       </div>
     );
   }
@@ -151,229 +136,144 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
     );
   }
 
-  const isHot = displayProb >= 90;
-  const isMed = displayProb >= 60;
-  const confs = sniperData?.signal?.confirmations || 0;
+  const action = getActionLevel(displayProb);
+  const betType = getBetLabel(sniperData.strategy.type);
+  const aiReasoning = sniperData?.aiReasoning?.reasoning;
+  const aiConfidence = sniperData?.aiReasoning?.confidence;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border-2 overflow-hidden shadow-xl bg-card"
-      style={{
-        borderColor: reedStopped ? 'hsl(var(--destructive) / 0.5)'
-          : isHot ? 'hsl(var(--neon-green) / 0.5)'
-          : isMed ? 'hsl(var(--primary) / 0.4)'
-          : 'hsl(var(--border))',
-      }}
+      className={`rounded-2xl border-2 overflow-hidden shadow-xl bg-card ${action.bg}`}
     >
       {/* REED STOP */}
       {reedStopped && (
         <div className="bg-destructive/10 border-b border-destructive/30 p-3 text-center">
-          <span className="text-xs font-black text-destructive">⛔ REED STOP — 4 erros seguidos, pause</span>
+          <span className="text-xs font-black text-destructive">⛔ PAUSE — 4 erros seguidos</span>
         </div>
       )}
 
-      {/* Header */}
-      <div className={`flex items-center justify-between px-5 py-3 border-b ${
-        isHot ? 'bg-neon-green/5 border-neon-green/20' : 'bg-primary/5 border-border/40'
-      }`}>
-        <div className="flex items-center gap-2">
-          <Crosshair className={`w-4 h-4 ${isHot ? 'text-neon-green' : 'text-primary'}`} />
-          <span className="font-display text-[11px] tracking-[0.2em] font-black uppercase text-foreground">
-            {getBetLabel(sniperData.strategy.type)}
+      <div className={`${reedStopped ? 'opacity-30 pointer-events-none' : ''}`}>
+        {/* Top bar: bet type + WR */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border/20">
+          <span className="font-display text-xs tracking-widest font-black uppercase text-foreground">
+            {betType}
           </span>
+          <div className="flex items-center gap-2">
+            {sniperData?.recentWinRate !== undefined && (
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                sniperData.recentWinRate >= 0.5 ? 'bg-neon-green/10 text-neon-green' 
+                : sniperData.recentWinRate < 0.25 ? 'bg-destructive/10 text-destructive' 
+                : 'bg-secondary text-muted-foreground'
+              }`}>
+                WR {(sniperData.recentWinRate * 100).toFixed(0)}%
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {sniperData?.recentWinRate !== undefined && (
-            <span className={`text-[9px] font-mono font-bold ${
-              sniperData.recentWinRate >= 0.5 ? 'text-neon-green' : sniperData.recentWinRate < 0.25 ? 'text-destructive' : 'text-muted-foreground'
-            }`}>
-              WR {(sniperData.recentWinRate * 100).toFixed(0)}%
-            </span>
-          )}
-          {confs > 0 && (
-            <span className="text-[8px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-bold">
-              {confs} confirmações
-            </span>
-          )}
-        </div>
-      </div>
 
-      <div className={`p-5 ${reedStopped ? 'opacity-30 pointer-events-none' : ''}`}>
-        {/* Main signal */}
-        <div className="flex items-center gap-6 mb-5">
-          {/* Big number */}
-          <div className="relative shrink-0">
-            <div className={`w-24 h-24 rounded-full flex items-center justify-center text-3xl font-black shadow-2xl ring-4 ${
-              ensTop1 === 0
-                ? 'bg-emerald-600 text-white ring-emerald-400/50'
-                : RED_NUMBERS.has(ensTop1)
-                ? 'bg-red-600 text-white ring-red-400/60'
-                : 'bg-zinc-800 text-white ring-zinc-500/50'
-            } ${isHot ? 'animate-pulse shadow-neon-green' : ''}`}>
-              {ensTop1}
+        {/* Main content */}
+        <div className="p-5">
+          {/* Hero: Number + Probability */}
+          <div className="flex items-center gap-5 mb-4">
+            {/* Big number */}
+            <div className="relative shrink-0">
+              <motion.div 
+                animate={displayProb >= 85 ? { scale: [1, 1.05, 1] } : {}}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black shadow-2xl ring-4 ${numColor(ensTop1)} ${
+                  displayProb >= 85 ? 'ring-neon-green/60 shadow-neon-green/30' : 'ring-primary/30'
+                }`}
+              >
+                {ensTop1}
+              </motion.div>
             </div>
-            <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-[9px] font-black border-2 border-card">
-              #1
+
+            {/* Probability + Action */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className={`text-4xl font-black font-mono leading-none ${action.color}`}>
+                  {displayProb}%
+                </span>
+              </div>
+
+              {/* Action label */}
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className={`w-4 h-4 ${action.color}`} />
+                <span className={`text-sm font-black ${action.color}`}>{action.label}</span>
+              </div>
+
+              {/* Gap */}
+              {gapInfo && gapInfo.avgGap && (
+                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                  <span>#{ensTop1} ausente há {gapInfo.delay} giros</span>
+                  <div className="w-14 h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${gapInfo.isNear ? 'bg-neon-green' : 'bg-primary/50'}`}
+                      style={{ width: `${gapInfo.progress}%` }} />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Probability + level */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className={`text-5xl font-black font-mono leading-none ${
-                isHot ? 'text-neon-green' : isMed ? 'text-primary' : 'text-muted-foreground'
-              }`}>
-                {displayProb}%
+          {/* AI Reasoning - compact */}
+          {aiReasoning && (
+            <div className="mb-4 p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/15">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Brain className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-[9px] font-black text-cyan-400 uppercase tracking-wider">IA analisou</span>
+                {aiConfidence !== null && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 font-bold ml-auto">
+                    {aiConfidence}%
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-cyan-300/80 leading-relaxed">{aiReasoning}</p>
+            </div>
+          )}
+
+          {/* Numbers to bet */}
+          <div className="border-t border-border/20 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">
+                Apostar → {finalNumbers.length} números
+              </span>
+              <span className="text-[9px] text-muted-foreground font-mono">
+                paga {Math.max(1, 36 - finalNumbers.length)}x
               </span>
             </div>
 
-            {/* Progress bar */}
-            <div className="w-full h-2.5 bg-secondary/60 rounded-full overflow-hidden mb-3">
-              <motion.div
-                className={`h-full rounded-full ${
-                  isHot ? 'bg-gradient-to-r from-green-500 to-emerald-400'
-                  : isMed ? 'bg-gradient-to-r from-primary to-primary/70'
-                  : 'bg-muted-foreground/40'
-                }`}
-                animate={{ width: `${displayProb}%` }}
-                transition={{ duration: 0.6 }}
-              />
+            <div className="flex flex-wrap gap-2">
+              {finalNumbers.map((n: number, i: number) => {
+                const isMain = i === 0 || n === ensTop1;
+                return (
+                  <motion.div
+                    key={n}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: i * 0.03 }}
+                    className={`flex items-center justify-center rounded-full font-black shadow-md
+                      ${isMain ? 'w-11 h-11 text-sm ring-2' : 'w-9 h-9 text-xs ring-1'}
+                      ${numColor(n)}
+                      ${isMain ? (displayProb >= 85 ? 'ring-neon-green' : 'ring-primary') : 'ring-white/10 opacity-80'}
+                    `}
+                  >
+                    {n}
+                  </motion.div>
+                );
+              })}
             </div>
-
-            {/* Action level */}
-            {displayProb >= 90 ? (
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-neon-green" />
-                <span className="text-sm font-black text-neon-green">🔥 ENTRAR FORTE — {finalNumbers.length} fichas ({displayProb}%)</span>
-              </div>
-            ) : displayProb >= 70 ? (
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-primary" />
-                <span className="text-sm font-black text-primary">✅ ENTRAR — jogada validada ({displayProb}%)</span>
-              </div>
-            ) : displayProb >= 50 ? (
-              <span className="text-sm font-black text-yellow-400">⚠️ SINAL MODERADO — {displayProb}%</span>
-            ) : (
-              <span className="text-sm font-black text-muted-foreground">⏸ AGUARDAR — IA buscando melhor jogada...</span>
-            )}
-
-            {/* Gap indicator */}
-            {gapInfo && gapInfo.avgGap && (
-              <div className="flex items-center gap-2 mt-2 text-[9px]">
-                <span className="text-muted-foreground">
-                  #{ensTop1} ausente {gapInfo.delay}/{gapInfo.avgGap} giros
-                </span>
-                <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${gapInfo.isNear ? 'bg-neon-green' : 'bg-primary/50'}`}
-                    style={{ width: `${gapInfo.progress}%` }} />
-                </div>
-                {gapInfo.isNear && <span className="text-neon-green font-bold">🎯 NA HORA</span>}
-              </div>
-            )}
-
-            {/* AI Reasoning */}
-            {sniperData?.aiReasoning?.reasoning && (
-              <div className="mt-2 p-2 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-[8px] font-black text-cyan-400 uppercase tracking-wider">🧠 IA Raciocinou</span>
-                  {sniperData.aiReasoning.confidence !== null && (
-                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 font-bold">
-                      {sniperData.aiReasoning.confidence}% confiança
-                    </span>
-                  )}
-                  {sniperData.aiReasoning.consensus > 0 && (
-                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 font-bold">
-                      {sniperData.aiReasoning.consensus} consenso
-                    </span>
-                  )}
-                </div>
-                <p className="text-[9px] text-cyan-300/80 leading-relaxed">{sniperData.aiReasoning.reasoning}</p>
-              </div>
-            )}
-
-            {/* Confirmations */}
-            {sniperData?.signal?.confirmationDetail && confs > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {sniperData.signal.confirmationDetail.pull && (
-                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-bold">🧲 Puxada</span>
-                )}
-                {sniperData.signal.confirmationDetail.autoRep && (
-                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/30 font-bold">🔁 Repetiu</span>
-                )}
-                {sniperData.signal.confirmationDetail.matriz && (
-                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30 font-bold">🔢 Matriz</span>
-                )}
-                {sniperData.signal.confirmationDetail.ensemble && (
-                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 font-bold">🌟 Ensemble</span>
-                )}
-                {sniperData.signal.confirmationDetail.winner && (
-                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-bold">⚡ Estratégia</span>
-                )}
-                {sniperData?.aiReasoning?.reasoning && (
-                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-bold">🧠 IA</span>
-                )}
-              </div>
-            )}
           </div>
+
+          {/* Learning applied indicator */}
+          {sniperData?.learnedBetInfluence?.length > 0 && (
+            <div className="mt-3 text-[9px] text-muted-foreground/60 flex items-center gap-1.5">
+              <span>📚</span>
+              <span>{sniperData.learnedBetInfluence.length} padrões aprendidos aplicados</span>
+            </div>
+          )}
         </div>
-
-        {/* Bet numbers */}
-        <div className="border-t border-border/40 pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">
-              👆 Apostar nestes {finalNumbers.length} números
-            </span>
-            <span className="text-[9px] text-muted-foreground font-mono">
-              {(finalNumbers.length / 37 * 100).toFixed(0)}% da mesa · paga {36 - finalNumbers.length}x
-            </span>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {finalNumbers.map((n: number) => {
-              const isMain = n === ensTop1;
-              const isHC = highConviction.includes(n) && !isMain;
-              const isProt = dynamicProtection.includes(n) && !isMain && !isHC;
-              return (
-                <motion.div
-                  key={n}
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className={`relative flex items-center justify-center rounded-full font-black shadow-md
-                    ${isMain ? 'w-12 h-12 text-base ring-3' : 'w-9 h-9 text-xs ring-1'}
-                    ${numColor(n)}
-                    ${isMain ? (isHot ? 'ring-neon-green shadow-neon-green' : 'ring-primary shadow-primary/20')
-                      : isHC ? 'ring-yellow-400/60'
-                      : isProt ? 'ring-yellow-600/40 opacity-70'
-                      : 'ring-white/10 opacity-85'}
-                  `}
-                >
-                  {n}
-                  {isMain && (
-                    <span className="absolute -top-1 -right-1 text-[7px] bg-primary text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center font-black">1</span>
-                  )}
-                  {isHC && !isMain && <span className="absolute -top-0.5 -right-0.5 text-[6px]">⭐</span>}
-                  {isProt && <span className="absolute -top-0.5 -right-0.5 text-[6px]">🛡️</span>}
-                </motion.div>
-              );
-            })}
-          </div>
-
-          {/* Legend */}
-          <div className="flex gap-4 mt-3 text-[8px] text-muted-foreground/60">
-            <span>🔴 = #1 alvo</span>
-            <span>⭐ = alta convicção</span>
-            <span>🛡️ = proteção</span>
-          </div>
-        </div>
-
-        {/* Justification */}
-        {sniperData?.strategy?.justification && (
-          <div className="mt-4 p-3 rounded-lg bg-secondary/30 border border-border/40">
-            <span className="text-[9px] text-muted-foreground leading-relaxed">{sniperData.strategy.justification}</span>
-          </div>
-        )}
       </div>
     </motion.div>
   );
