@@ -752,8 +752,9 @@ serve(async (req) => {
     const hasDynCalibration = Object.keys(dynMatrix).length > 0;
     if (hasDynCalibration) aiLearnings.push(`📊 Calibração dinâmica: ${Object.keys(dynMatrix).length} pares, ${Object.keys(dynPullRel).length} pulls`);
 
-    // Use learned patterns to boost scoring — REFORÇADO
+    // Use learned patterns to boost scoring — REFORÇADO V3 (PESOS AMPLIFICADOS)
     const learnedBoosts: Record<number, number> = {};
+    const learnedInfluence: { num: number; source: string; boost: number }[] = []; // track what influenced the bet
     for (let n = 0; n <= 36; n++) learnedBoosts[n] = 0;
     
     // Separate recent session patterns (last hour) from older ones
@@ -764,7 +765,7 @@ serve(async (req) => {
     for (const lp of learned) {
       const meta = lp.metadata as any;
       const isRecent = recentLearned.includes(lp);
-      const recencyMultiplier = isRecent ? 2.5 : 1.0; // Recent patterns get 2.5x weight
+      const recencyMultiplier = isRecent ? 4.0 : 1.5; // V3: Recent patterns get 4x weight (was 2.5x)
       // Normalizar accuracy: se 1% (bug antigo do DeepSeek), usar 50% como default
       const rawAcc = lp.accuracy || 50;
       const accuracyScale = (rawAcc < 5 ? 50 : rawAcc) / 50;
@@ -772,41 +773,65 @@ serve(async (req) => {
       if (meta?.hotNumbers && Array.isArray(meta.hotNumbers)) {
         for (const hn of meta.hotNumbers) {
           if (typeof hn === 'number' && hn >= 0 && hn <= 36) {
-            learnedBoosts[hn] += accuracyScale * recencyMultiplier;
+            const boost = accuracyScale * recencyMultiplier * 1.5; // V3: 1.5x amplifier
+            learnedBoosts[hn] += boost;
+            if (boost >= 2) learnedInfluence.push({ num: hn, source: `${lp.learning_type}:${lp.title.slice(0,30)}`, boost: +boost.toFixed(1) });
           }
         }
       }
       if (meta?.bestTerminals && Array.isArray(meta.bestTerminals)) {
         for (const t of meta.bestTerminals) {
           const tNums = TERMINALS_MAP[t] || [];
-          tNums.forEach(tn => { learnedBoosts[tn] += (accuracyScale * 0.6) * recencyMultiplier; });
+          tNums.forEach(tn => { learnedBoosts[tn] += (accuracyScale * 1.2) * recencyMultiplier; }); // V3: was 0.6, now 1.2
         }
       }
-      // Pull confirmed patterns get extra weight
+      // Pull confirmed patterns get MASSIVE weight — validated by real results
       if (lp.learning_type === 'pull_confirmed' && meta?.hotNumbers) {
         for (const hn of meta.hotNumbers) {
           if (typeof hn === 'number' && hn >= 0 && hn <= 36) {
-            learnedBoosts[hn] += accuracyScale * 1.5; // Validated pulls are very reliable
+            const boost = accuracyScale * 4.0; // V3: was 1.5, now 4.0
+            learnedBoosts[hn] += boost;
+            learnedInfluence.push({ num: hn, source: `Pull confirmado: ${meta.source}→${meta.target}`, boost: +boost.toFixed(1) });
           }
         }
       }
-      // ERROR PATTERN: números que saem quando erramos merecem atenção
+      // ERROR PATTERN: números que saem quando erramos — PESO DOBRADO
       if (lp.learning_type === 'error_pattern') {
         const keyNums = (meta as any)?.key_numbers || [];
         for (const kn of keyNums) {
           if (typeof kn === 'number' && kn >= 0 && kn <= 36) {
-            learnedBoosts[kn] += 1.5;
-            // learnedReasons tracked separately below
+            learnedBoosts[kn] += 4.0; // V3: was 1.5, now 4.0
+            learnedInfluence.push({ num: kn, source: 'Anti-padrão (sai quando erramos)', boost: 4.0 });
           }
         }
       }
-      // HIT PATTERN: acertos recentes têm muito peso (positive reinforcement)
+      // HIT PATTERN: acertos recentes — REFORÇO MÁXIMO
       if (lp.learning_type === 'hit_pattern') {
-        const recencyBoostHit = 2.5;
+        const recencyBoostHit = 5.0; // V3: was 2.5, now 5.0
         const keyNums: number[] = (meta as any)?.key_numbers || [];
         for (const kn of keyNums) {
           if (typeof kn === 'number' && kn >= 0 && kn <= 36) {
-            learnedBoosts[kn] += (lp.accuracy || 50) / 100 * recencyBoostHit;
+            const boost = (lp.accuracy || 50) / 100 * recencyBoostHit;
+            learnedBoosts[kn] += boost;
+            if (boost >= 1.5) learnedInfluence.push({ num: kn, source: 'Padrão de ACERTO recente', boost: +boost.toFixed(1) });
+          }
+        }
+      }
+      // SESSION SPIN: reforçar números quentes da sessão atual
+      if (lp.learning_type === 'session_spin' && isRecent && meta?.hotNumbers) {
+        for (const hn of (meta.hotNumbers as number[]).slice(0, 5)) {
+          if (typeof hn === 'number' && hn >= 0 && hn <= 36) {
+            learnedBoosts[hn] += 3.0; // V3: session hot numbers get extra weight
+          }
+        }
+      }
+      // TERMINAL DOMINANCE: terminais confirmados como dominantes
+      if (lp.learning_type === 'terminal_dominance' && meta?.hotNumbers) {
+        for (const hn of meta.hotNumbers) {
+          if (typeof hn === 'number' && hn >= 0 && hn <= 36) {
+            const boost = (lp.accuracy || 60) / 100 * 3.5; // V3: strong terminal boost
+            learnedBoosts[hn] += boost;
+            if (boost >= 2) learnedInfluence.push({ num: hn, source: `Terminal dominante T${hn % 10}`, boost: +boost.toFixed(1) });
           }
         }
       }
@@ -818,13 +843,14 @@ serve(async (req) => {
       const meta = cp.metadata as any;
       if (meta?.hotNumbers) confirmedPullNumbers.push(...meta.hotNumbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36));
     }
-    // If the last number has confirmed pull targets, boost them heavily
+    // If the last number has confirmed pull targets, boost them HEAVILY
     if (numbers.length > 0) {
       const lastNum = numbers[0];
       const pullTargets = FULL_PULL_MAP[lastNum] || [];
       for (const pt of pullTargets) {
         if (confirmedPullNumbers.includes(pt)) {
-          learnedBoosts[pt] += 3.0; // Confirmed pull = very strong signal
+          learnedBoosts[pt] += 6.0; // V3: was 3.0, now 6.0 — confirmed pull = strongest signal
+          learnedInfluence.push({ num: pt, source: `Pull CONFIRMADO ${lastNum}→${pt}`, boost: 6.0 });
         }
       }
     }
@@ -4289,8 +4315,8 @@ serve(async (req) => {
       if (transitionMatrix.dozenPressureTrigger?.active && getDozen(n) === transitionMatrix.dozenPressureTrigger.dozen) {
         s += 3; r.push(`🔥 Pressão D${transitionMatrix.dozenPressureTrigger.dozen}`);
       }
-      // AI LEARNED PATTERNS BOOST — knowledge accumulated from history
-      if (learnedBoosts[n] > 0) { s += learnedBoosts[n]; r.push(`🧠 IA Aprendeu(+${learnedBoosts[n].toFixed(1)})`); }
+      // AI LEARNED PATTERNS BOOST — V3 AMPLIFIED knowledge from history
+      if (learnedBoosts[n] > 0) { s += learnedBoosts[n] * 1.5; r.push(`🧠 IA Aprendeu(+${(learnedBoosts[n]*1.5).toFixed(1)})`); }
       // ====== ADVANCED: Recency-Weighted Frequency ======
       const rFreq = recencyFreq[n] || 0;
       if (rFreq > 2.5) { s += Math.min(4, rFreq * 0.8); r.push(`⏳ Recência(${rFreq.toFixed(1)})`); }
@@ -6473,6 +6499,22 @@ serve(async (req) => {
       aiLearnings.push(`🔑 Assinatura terminal: T${mesaDNA.terminalSignature.join(',T')} consistentes`);
     }
 
+    // APRENDIZADO APLICADO: mostrar quais padrões aprendidos influenciaram a jogada
+    const topInfluence = learnedInfluence
+      .filter(li => finalBetNumbers.includes(li.num))
+      .sort((a, b) => b.boost - a.boost)
+      .slice(0, 5);
+    if (topInfluence.length > 0) {
+      aiLearnings.unshift(`🧠 APRENDIZADO APLICADO: ${topInfluence.length} padrões aprendidos influenciaram a jogada`);
+      topInfluence.forEach(ti => {
+        aiLearnings.push(`🎓 nº${ti.num} (+${ti.boost}pts): ${ti.source}`);
+      });
+    }
+    const totalLearnedBoost = Object.values(learnedBoosts).reduce((a, b) => a + b, 0);
+    if (totalLearnedBoost > 10) {
+      aiLearnings.push(`📚 ${learned.length} padrões aprendidos aplicados (+${totalLearnedBoost.toFixed(0)}pts distribuídos)`);
+    }
+
     // MODE thresholds calibrados para probabilidades realistas (max ~40% com 8 números)
     const mode = (winner.type === 'convergencia_absoluta' && finalProbability >= 35) ? 'sniper'
       : confirmations >= 3 && finalProbability >= 25 ? 'sniper'
@@ -6956,7 +6998,8 @@ serve(async (req) => {
       mesaMode,
       mode, message,
       memoryWindows,
-      aiLearnings: aiLearnings.slice(0, 12),
+      aiLearnings: aiLearnings.slice(0, 15),
+      learnedBetInfluence: learnedInfluence.sort((a, b) => b.boost - a.boost).slice(0, 8),
       noiseFiltered: noiseCount,
       dealerChaos: chaoticDealer,
       selfCorrection: strategyWeightAdjust,

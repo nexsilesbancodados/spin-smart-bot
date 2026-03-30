@@ -729,6 +729,42 @@ const Index = () => {
 
 
 
+          {/* ─── APRENDIZADO APLICADO À JOGADA (SEMPRE VISÍVEL) ─── */}
+          {sniperData?.learnedBetInfluence?.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-r from-emerald-500/10 via-card to-primary/10 rounded-xl border border-emerald-500/40 p-4 shadow-lg shadow-emerald-500/5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 rounded-md bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                  <GraduationCap className="w-3.5 h-3.5 text-emerald-400" />
+                </div>
+                <span className="font-display text-[10px] tracking-[0.2em] font-bold text-emerald-400">🧠 APRENDIZADO → JOGADA</span>
+                <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold font-mono ml-auto">
+                  {sniperData.learnedBetInfluence.length} padrões aplicados
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {sniperData.learnedBetInfluence.map((inf: any, i: number) => (
+                  <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                      inf.num === 0 ? 'bg-green-600 text-white' : [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(inf.num) ? 'bg-red-600 text-white' : 'bg-zinc-800 text-white'
+                    }`}>
+                      {inf.num}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[9px] text-emerald-300 font-bold block truncate">{inf.source}</span>
+                      <span className="text-[7px] text-muted-foreground">+{inf.boost} pontos de confiança</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+              <div className="mt-2 text-[8px] text-emerald-400/70 text-center italic">
+                Estes padrões aprendidos pela IA estão influenciando diretamente a jogada recomendada acima
+              </div>
+            </motion.div>
+          )}
+
 
           {/* ─── SEÇÃO 4: ANÁLISE AVANÇADA (COLAPSÁVEL) ─── */}
           {sniperData && (
