@@ -6142,32 +6142,43 @@ serve(async (req) => {
       }
     }
 
-    // 5. SELEÇÃO ADAPTATIVA V2 — WR real tem peso dominante
-    // Estratégias comprovadas ganham boost agressivo; fracas são eliminadas
+    // 5. SELEÇÃO ADAPTATIVA V4 — WR real DOMINA. Busca acima de 90%.
+    // Estratégias comprovadas ganham boost EXTREMO; fracas são ELIMINADAS
     for (const st of strategies) {
       const perf = strategyPerformance[st.type] as any;
       if (perf && perf.total >= 3) {
         const wr = perf.recentTrend ?? perf.winRate ?? 0;
-        if (wr > 0.55) {
-          (st as any).score *= 1.60; // em alta: +60% (era +25%)
+        if (wr > 0.60) {
+          (st as any).score *= 2.50; // WR 60%+ = PRIORIDADE ABSOLUTA
+          (st as any).justification = `🔥 WR ${(wr*100).toFixed(0)}% TOP | ` + (st as any).justification;
+        } else if (wr > 0.50) {
+          (st as any).score *= 2.00; // WR 50%+ = DOMINA
           (st as any).justification = `✅ WR ${(wr*100).toFixed(0)}% COMPROVADO | ` + (st as any).justification;
         } else if (wr > 0.40) {
-          (st as any).score *= 1.30; // boa: +30%
-        } else if (wr < 0.15 && perf.total >= 5) {
-          (st as any).score *= 0.30; // em colapso: -70% (era -45%)
+          (st as any).score *= 1.50; // boa
+        } else if (wr > 0.30) {
+          (st as any).score *= 1.10; // aceitável
+        } else if (wr < 0.12 && perf.total >= 5) {
+          (st as any).score *= 0.15; // em colapso TOTAL: -85%
+        } else if (wr < 0.20 && perf.total >= 5) {
+          (st as any).score *= 0.30; // fraca: -70%
         } else if (wr < 0.25 && perf.total >= 5) {
-          (st as any).score *= 0.50; // fraca: -50%
+          (st as any).score *= 0.45;
         }
       }
       
-      // BACKTEST GATE: estratégia com backtest < 15% no histórico atual é penalizada
+      // BACKTEST GATE V2: backtest define se a estratégia VIVE ou MORRE
       const btRate = backtestSet((st as any).numbers || []);
-      if (btRate < 0.10 && (st as any).numbers?.length <= 12) {
-        (st as any).score *= 0.40; // backtest ruim = quase elimina
-      } else if (btRate > 0.30) {
-        (st as any).score *= 1.35; // backtest excelente = boost
-      } else if (btRate > 0.22) {
-        (st as any).score *= 1.15;
+      if (btRate < 0.08 && (st as any).numbers?.length <= 12) {
+        (st as any).score *= 0.20; // backtest péssimo = praticamente elimina
+      } else if (btRate < 0.12) {
+        (st as any).score *= 0.50;
+      } else if (btRate > 0.35) {
+        (st as any).score *= 1.60; // backtest excepcional = boost forte
+      } else if (btRate > 0.25) {
+        (st as any).score *= 1.30;
+      } else if (btRate > 0.18) {
+        (st as any).score *= 1.10;
       }
     }
 

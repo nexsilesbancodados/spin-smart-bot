@@ -243,20 +243,20 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
             </div>
 
             {/* Action level */}
-            {confs >= 3 || displayProb >= 65 ? (
+            {displayProb >= 90 ? (
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-neon-green" />
-                <span className="text-sm font-black text-neon-green">ENTRAR FORTE — {finalNumbers.length} fichas</span>
+                <span className="text-sm font-black text-neon-green">🔥 ENTRAR FORTE — {finalNumbers.length} fichas ({displayProb}%)</span>
               </div>
-            ) : confs >= 2 || displayProb >= 50 ? (
+            ) : displayProb >= 70 ? (
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-primary" />
-                <span className="text-sm font-black text-primary">ENTRAR — top 5 números</span>
+                <span className="text-sm font-black text-primary">✅ ENTRAR — jogada validada ({displayProb}%)</span>
               </div>
-            ) : confs >= 1 || displayProb >= 35 ? (
-              <span className="text-sm font-black text-yellow-400">⚠️ SINAL FRACO — 1-2 fichas no #{ensTop1}</span>
+            ) : displayProb >= 50 ? (
+              <span className="text-sm font-black text-yellow-400">⚠️ SINAL MODERADO — {displayProb}%</span>
             ) : (
-              <span className="text-sm font-black text-muted-foreground">⏸ AGUARDAR</span>
+              <span className="text-sm font-black text-muted-foreground">⏸ AGUARDAR — IA buscando melhor jogada...</span>
             )}
 
             {/* Gap indicator */}
