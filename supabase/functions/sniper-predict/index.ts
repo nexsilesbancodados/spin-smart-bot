@@ -4248,6 +4248,35 @@ serve(async (req) => {
       else if (volatility.level === 'extrema') { s *= 0.85; } // extreme volatility = less trustworthy
       if (numbers.slice(0, 3).includes(n)) s -= 3;
       else if (numbers.slice(3, 7).includes(n)) s -= 1;
+      // ── TRIPLO PULL CONFIRMADO + AUTO-REP ──
+      if (signalFlags['TRIPLE_REP'] && signalFlags['C1']) {
+        s += 15; r.push('💥 SUPREMO: AutoRep+Pull');
+      }
+
+      // ── VALIDATED MATRIX BOOST (já processada, reforço combinado) ──
+      const validMBoost = validatedPairs.find(vp => vp.target === n);
+      if (validMBoost && signalFlags['C1']) {
+        s += validMBoost.prob * 8;
+        r.push(`✅ValidMesa+Pull`);
+      }
+
+      // ── PULL CONFIRMADO NO BANCO ──
+      if (learnedSignalReasons[n]?.some((lr: string) => lr.includes('Pull Confirmado') || lr.includes('pull_confirmed'))) {
+        s += 4; r.push('🏦 PullBanco');
+      }
+
+      // ── ZERO PRESSÃO REFORÇADA ──
+      if (n === 0 && daniGreen.mod4.delay >= 40) {
+        s += 8; r.push(`🚨 ZeroAusente${daniGreen.mod4.delay}r`);
+      } else if (n === 0 && daniGreen.mod4.delay >= 25 && !signalFlags['P3']) {
+        s += 5; r.push(`⚠️ ZeroPressão`);
+      }
+      if (daniGreen.mod4.delay >= 40 && VOISINS.includes(n) && n !== 0) {
+        s += 3; r.push('🟢 VizZeroCrítico');
+      } else if (daniGreen.mod4.delay >= 25 && JEU_ZERO.includes(n) && n !== 0) {
+        s += 2; r.push('🟡 JeuZero');
+      }
+
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
     }
     numScores.sort((a, b) => b.score - a.score);
