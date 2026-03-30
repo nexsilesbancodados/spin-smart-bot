@@ -21,6 +21,7 @@ interface Props {
   lastPredResult: { hit: boolean | null; hitType: string | null; predicted: number | null; actual: number | null; label: string } | null;
   confidenceFilter: boolean;
   rtInsights?: { type: string; numbers: number[]; score: number; reason: string; confidence: number }[];
+  allNumbers?: number[];
 }
 
 const getBetTypeLabel = (type: string) => {
@@ -134,7 +135,7 @@ const getBetTypeCategory = (type: string): string => {
   return 'outro';
 };
 
-const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult, confidenceFilter: confidenceFilterProp, rtInsights = [] }: Props) => {
+const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult, confidenceFilter: confidenceFilterProp, rtInsights = [], allNumbers = [] }: Props) => {
   const [reedCount, setReedCount] = useState(0);
   const [confidenceFilter, setConfidenceFilter] = useState(confidenceFilterProp);
   const prevSignalRef = useRef<number | null>(null);
@@ -160,6 +161,22 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
   }, [sniperData?.signal?.number, lastPredResult?.hit]);
 
   const reedStopped = reedCount >= 4;
+
+  // Cálculo do gap do número #1 (quando saiu pela última vez)
+  const gapInfo = (() => {
+    const num = sniperData?.signal?.number;
+    if (!num || allNumbers.length < 10) return null;
+    const lastIdx = allNumbers.indexOf(num);
+    if (lastIdx < 0) return { delay: allNumbers.length, label: `>${allNumbers.length} giros`, hot: false };
+    if (lastIdx === 0) return { delay: 0, label: 'saiu agora', hot: true };
+    // Gap médio histórico desse número
+    const positions = allNumbers.reduce((acc: number[], n, i) => { if (n === num) acc.push(i); return acc; }, []);
+    const gaps = positions.slice(0, -1).map((p, i) => positions[i + 1] - p);
+    const avgGap = gaps.length > 0 ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length) : 37;
+    const progress = Math.min(100, Math.round((lastIdx / avgGap) * 100));
+    const isNear = lastIdx >= avgGap * 0.7;
+    return { delay: lastIdx, avgGap, progress, isNear, label: `${lastIdx}/${avgGap} giros (${progress}%)` };
+  })();
 
   if (!sniperData) {
     return (
@@ -345,6 +362,24 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                     : 'border-border bg-card'
                 }`}>
 
+                  {/* Indicador de ciclo do número */}
+                  {gapInfo && gapInfo.avgGap && (
+                    <div className={`mx-4 mt-2 px-3 py-1.5 rounded-lg border text-[7px] font-bold flex items-center gap-2 ${
+                      gapInfo.isNear
+                        ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                        : 'bg-secondary/50 border-border text-muted-foreground'
+                    }`}>
+                      <span className="flex-1">
+                        ⏱️ #{sniperData.signal.number} ausente {gapInfo.delay} giros | média {gapInfo.avgGap}
+                      </span>
+                      <div className="w-24 h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${gapInfo.isNear ? 'bg-green-400' : 'bg-primary/50'}`}
+                          style={{ width: `${gapInfo.progress}%` }} />
+                      </div>
+                      <span>{gapInfo.isNear ? '🎯 NA HORA' : `${gapInfo.progress}%`}</span>
+                    </div>
+                  )}
+
                   <div className={`flex items-center gap-3 px-4 py-3 border-b ${
                     isHot ? 'border-green-500/20 bg-green-500/8' : 'border-primary/15 bg-primary/5'
                   }`}>
@@ -406,14 +441,52 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                         />
                       </div>
 
-                      <div className={`text-[11px] font-black ${
-                        isHot ? 'text-green-400' : isMed ? 'text-primary' : 'text-muted-foreground'
-                      }`}>
-                        {displayProb >= 65 ? '⚡ ENTRAR FORTE — 8-12 fichas'
-                         : displayProb >= 50 ? '✅ ENTRAR — 5-7 fichas'
-                         : displayProb >= 35 ? '⚠️ ENTRAR LEVE — 3 fichas'
-                         : '⏸ AGUARDAR'}
-                      </div>
+                      {/* Sistema de 3 níveis de confiança */}
+                      {(() => {
+                        const confs = sniperData?.signal?.confirmations || 0;
+                        const nums = finalNumbers.length;
+                        if (confs >= 3 || displayProb >= 65) {
+                          return (
+                            <div className="space-y-1">
+                              <div className="text-[11px] font-black text-green-400">
+                                ⚡ NÍVEL 1 — ENTRAR FORTE
+                              </div>
+                              <div className="text-[9px] text-green-400/70">
+                                {Math.min(12, nums)} fichas · apostar todos os {finalNumbers.length} números
+                              </div>
+                            </div>
+                          );
+                        }
+                        if (confs >= 2 || displayProb >= 50) {
+                          return (
+                            <div className="space-y-1">
+                              <div className="text-[11px] font-black text-primary">
+                                ✅ NÍVEL 2 — ENTRAR
+                              </div>
+                              <div className="text-[9px] text-primary/70">
+                                5-7 fichas · top 5 números em destaque
+                              </div>
+                            </div>
+                          );
+                        }
+                        if (confs >= 1 || displayProb >= 35) {
+                          return (
+                            <div className="space-y-1">
+                              <div className="text-[11px] font-black text-yellow-400">
+                                ⚠️ NÍVEL 3 — AGUARDAR ou 1-2 fichas
+                              </div>
+                              <div className="text-[9px] text-yellow-400/70">
+                                Só o #{sniperData.signal.number} com 1 ficha se quiser
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="text-[11px] font-black text-muted-foreground">
+                            ⏸ AGUARDAR — sinal fraco
+                          </div>
+                        );
+                      })()}
                       {/* Contexto da sessão */}
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
                         {sniperData?.recentWinRate !== undefined && (

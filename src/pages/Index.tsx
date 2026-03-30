@@ -468,7 +468,11 @@ const Index = () => {
         } else if (phase === 3 || phase === 7) {
           // Fase dedicada ao realtime — análise profunda do momento
           setAutoLearnStatus('analyzing');
-          await supabase.functions.invoke('realtime-patterns');
+          await Promise.allSettled([
+            supabase.functions.invoke('realtime-patterns'),
+            // A cada 4 ciclos da fase 7, recalibrar constantes
+            phase === 7 ? supabase.functions.invoke('calibrate-constants') : Promise.resolve(),
+          ]);
         } else if (phase === 2 || phase === 6) {
           setAutoLearnStatus('backtesting');
           await supabase.functions.invoke('sniper-predict', {
@@ -662,6 +666,7 @@ const Index = () => {
                 lastPredResult={lastPredResult}
                 confidenceFilter={confidenceFilter}
                 rtInsights={rtInsights}
+                allNumbers={allNumbers}
               />
             ) : (
               <div className="bg-card rounded-2xl border border-destructive/30 p-8 h-full flex items-center justify-center">

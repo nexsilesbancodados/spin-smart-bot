@@ -734,6 +734,24 @@ serve(async (req) => {
       learnedMap[lp.learning_type + ':' + lp.title] = { knowledge: lp.knowledge, accuracy: lp.accuracy || 0, metadata: lp.metadata || {} };
     }
 
+    // ── CONSTANTES DINÂMICAS DO BANCO (calibrate-constants) ──
+    // Substituem os valores hardcoded quando disponíveis
+    const calibration = learnedMap['calibration:mesa_calibration_live'];
+    const dynMatrix: Record<number, {target: number; prob: number}[]> = calibration?.metadata?.validatedMatrix
+      ? Object.fromEntries(Object.entries(calibration.metadata.validatedMatrix).map(([k, v]) => [Number(k), v as any]))
+      : {};
+    const dynPullRel: Record<number, number> = calibration?.metadata?.pullReliability
+      ? Object.fromEntries(Object.entries(calibration.metadata.pullReliability).map(([k, v]) => [Number(k), v as number]))
+      : {};
+    const dynStatDebt: Record<number, number> = calibration?.metadata?.statDebt
+      ? Object.fromEntries(Object.entries(calibration.metadata.statDebt).map(([k, v]) => [Number(k), v as number]))
+      : {};
+    const dynTermBias: Record<number, number> = calibration?.metadata?.terminalBias
+      ? Object.fromEntries(Object.entries(calibration.metadata.terminalBias).map(([k, v]) => [Number(k), v as number]))
+      : {};
+    const hasDynCalibration = Object.keys(dynMatrix).length > 0;
+    if (hasDynCalibration) aiLearnings.push(`📊 Calibração dinâmica: ${Object.keys(dynMatrix).length} pares, ${Object.keys(dynPullRel).length} pulls`);
+
     // Use learned patterns to boost scoring — REFORÇADO
     const learnedBoosts: Record<number, number> = {};
     for (let n = 0; n <= 36; n++) learnedBoosts[n] = 0;
@@ -3970,10 +3988,14 @@ serve(async (req) => {
       }
 
       // C1 PUXADOS — com peso por confiabilidade histórica desta mesa
-      const PULL_RELIABILITY: Record<number, number> = {
+      // Pull reliability: dinâmico do banco > hardcoded
+      const PULL_RELIABILITY_STATIC: Record<number, number> = {
         18: 1.8, 6: 1.7, 27: 1.7, 33: 1.6, 9: 1.6,
         19: 1.4, 35: 1.4, 3: 1.3, 5: 1.3, 28: 1.2,
       };
+      const PULL_RELIABILITY: Record<number, number> = hasDynCalibration && Object.keys(dynPullRel).length >= 3
+        ? { ...PULL_RELIABILITY_STATIC, ...dynPullRel }
+        : PULL_RELIABILITY_STATIC;
       const pullTargets = FULL_PULL_MAP[lastNum] || PULL_MAP[lastNum];
       if (pullTargets && pullTargets.includes(n)) {
         const reliability = PULL_RELIABILITY[lastNum] || 1.0;
@@ -4061,8 +4083,8 @@ serve(async (req) => {
         s += 3; r.push(`🟢 VizZero(${daniGreen.mod4.delay}r)`); signalFlags['P3'] = true;
       }
       
-      // VALIDATED MATRIX: dados reais 500 giros — auto-atualizada
-      const VALIDATED_MATRIX: Record<number, {target: number; prob: number}[]> = {
+      // VALIDATED MATRIX: dinâmica do banco quando disponível
+      const VALIDATED_MATRIX_STATIC: Record<number, {target: number; prob: number}[]> = {
         14: [{target:14, prob:0.63}],
         12: [{target:12, prob:0.59}],
         16: [{target:16, prob:0.58}],
@@ -4084,6 +4106,10 @@ serve(async (req) => {
         25: [{target:33, prob:0.29}],
         1:  [{target:28, prob:0.25}],
       };
+      // Merge: dinâmica do banco prevalece sobre estática
+      const VALIDATED_MATRIX: Record<number, {target: number; prob: number}[]> = hasDynCalibration && Object.keys(dynMatrix).length >= 5
+        ? { ...VALIDATED_MATRIX_STATIC, ...dynMatrix }
+        : VALIDATED_MATRIX_STATIC;
       const validatedPairs = VALIDATED_MATRIX[numbers[0]] || [];
       for (const vp of validatedPairs) {
         if (vp.target === n) {
@@ -4094,12 +4120,14 @@ serve(async (req) => {
         }
       }
 
-      // DÍVIDA ESTATÍSTICA REAL — calibrada com 500 giros desta mesa (auto-atualizada)
-      const STATISTICAL_DEBT: Record<number, number> = {
+      const STATISTICAL_DEBT_STATIC: Record<number, number> = {
         18: 10.0, 19: 10.0, 20: 10.0,  // ausentes nos últimos 200
         5: 8.1, 21: 8.1, 27: 8.1, 30: 8.1,  // 1x em 200
         1: 6.3, 8: 4.5, 15: 4.5, 26: 4.5, 32: 4.5,  // 2-3x em 200
       };
+      const STATISTICAL_DEBT = hasDynCalibration && Object.keys(dynStatDebt).length >= 3
+        ? { ...STATISTICAL_DEBT_STATIC, ...dynStatDebt }
+        : STATISTICAL_DEBT_STATIC;
       const debt = STATISTICAL_DEBT[n];
       if (debt) {
         const debtBoost = Math.min(6, debt * 0.5);
@@ -4109,9 +4137,10 @@ serve(async (req) => {
       }
 
       // VIÉS DE TERMINAL DESTA MESA — calibrado com 500 giros reais
-      const TERMINAL_BIAS: Record<number, number> = {
-        3: 3.0, 0: 2.0, 1: 1.0, 4: 0.5, 7: -2.0, 2: -2.5,
-      };
+      const TERMINAL_BIAS_STATIC: Record<number, number> = { 3: 3.0, 0: 2.0, 1: 1.0, 4: 0.5, 7: -2.0, 2: -2.5 };
+      const TERMINAL_BIAS = hasDynCalibration && Object.keys(dynTermBias).length >= 3
+        ? { ...TERMINAL_BIAS_STATIC, ...dynTermBias }
+        : TERMINAL_BIAS_STATIC;
       const termBias = TERMINAL_BIAS[n % 10];
       if (termBias) {
         s += termBias;
