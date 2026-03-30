@@ -288,19 +288,27 @@ const Index = () => {
     } catch { /* silent */ }
   }, [aiEnabled]);
 
-  const fetchSniper = useCallback(async () => {
+  const fetchSniper = useCallback(async (retryCount = 0) => {
     const now = Date.now();
-    if (now - lastSniperTriggerRef.current < 1200) return;
-    if (sniperFetchingRef.current) return;
-    if (!aiEnabled) return; // AI toggle check
+    if (now - lastSniperTriggerRef.current < 1200 && retryCount === 0) return;
+    if (sniperFetchingRef.current && retryCount === 0) return;
+    if (!aiEnabled) return;
     sniperFetchingRef.current = true;
     lastSniperTriggerRef.current = now;
     try {
-      // Send client-side numbers for instant reaction (before DB sync)
       const clientNums = apiNumbers.length > 0 ? apiNumbers.slice(0, sampleSize) : undefined;
       const res = await supabase.functions.invoke('sniper-predict', { 
         body: { sampleSize, numbers: clientNums, strategyFilter: strategyFilter !== 'all' ? strategyFilter : undefined } 
       });
+      if (res.error) {
+        console.error('Sniper invoke error:', res.error);
+        // Auto-retry up to 2 times with delay
+        if (retryCount < 2) {
+          sniperFetchingRef.current = false;
+          setTimeout(() => fetchSniper(retryCount + 1), 2000 * (retryCount + 1));
+          return;
+        }
+      }
       if (res.data) {
         const key = `${res.data.strategy?.type}-${res.data.signal?.number}-${res.data.mode}`;
         if (key !== sniperPrevKey.current) {
@@ -313,7 +321,14 @@ const Index = () => {
         }
         setSniperData(res.data);
       }
-    } catch (err) { console.error('Sniper error:', err); }
+    } catch (err) { 
+      console.error('Sniper error:', err);
+      if (retryCount < 2) {
+        sniperFetchingRef.current = false;
+        setTimeout(() => fetchSniper(retryCount + 1), 2000 * (retryCount + 1));
+        return;
+      }
+    }
     finally { sniperFetchingRef.current = false; }
   }, [sampleSize, aiEnabled, apiNumbers, strategyFilter]);
 
