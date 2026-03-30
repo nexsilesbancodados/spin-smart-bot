@@ -6176,7 +6176,7 @@ serve(async (req) => {
 
     // ESTRATÉGIA ENSEMBLE SUPREMO
     if (ensembleTop5.length >= 3 && ensembleTop1) {
-      const ensNums = [...new Set([...ensembleTop5, ...PROTECTION_NUMBERS])];
+      const ensNums = [...new Set([...ensembleTop5, ...PROTECTION_NUMBERS_LEGACY])];
       const ensScore = sumScores(ensNums) + ensembleTop1.score * 0.5;
       const ensBt = backtestSet(ensNums);
       strategies.push({
