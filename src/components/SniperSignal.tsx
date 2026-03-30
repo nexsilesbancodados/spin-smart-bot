@@ -608,7 +608,7 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                       {finalNumbers.map((n: number) => {
                         const isMain = n === ensTop1;
                         const isHC = highConviction.includes(n) && !isMain;
-                        const isProt = PROTECTION_NUMBERS.includes(n) && !isMain && !isHC;
+                        const isProt = dynamicProtection.includes(n) && !isMain && !isHC;
                         return (
                           <motion.div
                             key={n}
