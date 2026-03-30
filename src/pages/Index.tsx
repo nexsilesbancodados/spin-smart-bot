@@ -282,7 +282,7 @@ const Index = () => {
   useEffect(() => {
     fetchNumbers(); fetchStored(); fetchSniper();
     if (!isPolling) return;
-    const interval = setInterval(() => { fetchNumbers(); fetchStored(); fetchSniper(); }, 3000);
+    const interval = setInterval(() => { fetchNumbers(); fetchStored(); }, 3000);
     return () => clearInterval(interval);
   }, [fetchNumbers, fetchStored, fetchSniper, isPolling]);
 
