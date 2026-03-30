@@ -4159,37 +4159,28 @@ serve(async (req) => {
         }
       }
 
-      // ====== COMBO DETECTION (OURO/PRATA/BRONZE from documentation) ======
+      // ====== COMBO DETECTION (OURO/PRATA/BRONZE) — SEM DUPLICATAS ======
       const signalCount = Object.keys(signalFlags).length;
-      // COMBO OURO: F5 + C1 + S3 = terminal dom + puxados + sequência (máxima confiança)
-      if (signalFlags['F5'] && signalFlags['C1'] && signalFlags['S3']) { s += 12; r.push('👑 COMBO OURO'); }
-      // COMBO PRATA: F1 + C2 + G4 = quente + terminal + vizinho roda
-      else if (signalFlags['F1'] && signalFlags['C2'] && signalFlags['G4']) { s += 8; r.push('🥈 COMBO PRATA'); }
-      // COMBO BRONZE: S3 + F5 = sequência + terminal dominante
-      else if (signalFlags['S3'] && signalFlags['F5']) { s += 6; r.push('🥉 COMBO BRONZE'); }
-      // COMBO ZERO: P3 + G4 = zero ausente + vizinhos quentes
-      else if (signalFlags['P3'] && signalFlags['G4']) { s += 5; r.push('🟢 COMBO ZERO'); }
-      // COMBO SUPREMO: AutoRep + Pull = repetição confirmada + puxada
-      if (signalFlags['DOUBLE_REP'] && signalFlags['C1']) { s += 15; r.push('💥 COMBO SUPREMO'); }
-      if (signalFlags['TRIPLE_REP']) { s += 10; r.push('🔱 TRIPLA'); }
-      // COMBO VALIDATED: matriz real + pull
-      if (signalFlags['VALIDATED'] && signalFlags['C1']) { s += 10; r.push('🏆 VALIDATED+PULL'); }
-      if (signalFlags['VALIDATED'] && signalFlags['DOUBLE_REP']) { s += 12; r.push('🏆 VALIDATED+REP'); }
-      // COMBO SUPREMO: auto-repetição + puxado = certeza máxima
-      if (signalFlags['DOUBLE_REP'] && signalFlags['C1']) {
-        s += 15; r.push('💥 COMBO SUPREMO: RepDupla+Puxa');
-      }
-      if (signalFlags['TRIPLE_REP']) {
-        s += 10; r.push('🔱 TRIPLA — continuar até parar');
-      }
-      if (signalFlags['VALIDATED'] && signalFlags['C1']) {
-        s += 10; r.push('🏆 VALIDADO+PUXA: máxima certeza');
-      }
-      if (signalFlags['VALIDATED'] && signalFlags['DOUBLE_REP']) {
-        s += 12; r.push('🏆 VALIDADO+REPEAT: jogar forte');
-      }
-      // DIVERSITY BONUS from documentation (2=+10, 3=+15, 4+=+25)
-      if (signalCount >= 4) { s += 5; r.push(`🔥 ${signalCount} sinais`); }
+      let comboApplied = false;
+      // COMBO SUPREMO: AutoRep + Pull = certeza máxima (mais forte, testa primeiro)
+      if (!comboApplied && signalFlags['DOUBLE_REP'] && signalFlags['C1']) { s += 18; r.push('💥 COMBO SUPREMO: RepDupla+Puxa'); comboApplied = true; }
+      if (!comboApplied && signalFlags['TRIPLE_REP'] && signalFlags['C1']) { s += 20; r.push('🔱 TRIPLA+PUXA'); comboApplied = true; }
+      // COMBO VALIDATED + REP
+      if (!comboApplied && signalFlags['VALIDATED'] && signalFlags['DOUBLE_REP']) { s += 15; r.push('🏆 VALIDADO+REP'); comboApplied = true; }
+      if (!comboApplied && signalFlags['VALIDATED'] && signalFlags['C1']) { s += 12; r.push('🏆 VALIDADO+PUXA'); comboApplied = true; }
+      // COMBO OURO: F5 + C1 + S3
+      if (!comboApplied && signalFlags['F5'] && signalFlags['C1'] && signalFlags['S3']) { s += 12; r.push('👑 COMBO OURO'); comboApplied = true; }
+      // COMBO PRATA: F1 + C2 + G4
+      if (!comboApplied && signalFlags['F1'] && signalFlags['C2'] && signalFlags['G4']) { s += 8; r.push('🥈 COMBO PRATA'); comboApplied = true; }
+      // COMBO BRONZE: S3 + F5
+      if (!comboApplied && signalFlags['S3'] && signalFlags['F5']) { s += 6; r.push('🥉 COMBO BRONZE'); comboApplied = true; }
+      // COMBO ZERO: P3 + G4
+      if (!comboApplied && signalFlags['P3'] && signalFlags['G4']) { s += 5; r.push('🟢 COMBO ZERO'); comboApplied = true; }
+      // Standalone TRIPLE_REP (sem pull)
+      if (!comboApplied && signalFlags['TRIPLE_REP']) { s += 12; r.push('🔱 TRIPLA'); comboApplied = true; }
+      // DIVERSITY BONUS (2=+1.5, 3=+3, 4+=+5, 5+=+8)
+      if (signalCount >= 5) { s += 8; r.push(`🔥 ${signalCount} sinais`); }
+      else if (signalCount >= 4) { s += 5; r.push(`🔥 ${signalCount} sinais`); }
       else if (signalCount >= 3) { s += 3; }
       else if (signalCount >= 2) { s += 1.5; }
       
@@ -4345,8 +4336,11 @@ serve(async (req) => {
       // ====== ADVANCED: Volatility Adjustment ======
       if (volatility.level === 'baixa') { s *= 1.1; } // low volatility = patterns more reliable
       else if (volatility.level === 'extrema') { s *= 0.85; } // extreme volatility = less trustworthy
-      if (numbers.slice(0, 3).includes(n)) s -= 3;
-      else if (numbers.slice(3, 7).includes(n)) s -= 1;
+      // Penalidade por recência: NÃO penalizar se auto-repetição detectada
+      if (!signalFlags['DOUBLE_REP'] && !signalFlags['TRIPLE_REP']) {
+        if (numbers.slice(0, 3).includes(n) && !signalFlags['C1']) s -= 2;
+        else if (numbers.slice(3, 7).includes(n)) s -= 0.5;
+      }
       if (s > 0) numScores.push({ num: n, score: s, reasons: r });
     }
     numScores.sort((a, b) => b.score - a.score);
@@ -6137,29 +6131,50 @@ serve(async (req) => {
     const autoRepConfirms = recentCount >= 2;
     const confirmations  = [ensConfirms, winnerConfirms, matrizConfirms, pullConfirms, autoRepConfirms].filter(Boolean).length;
 
-    // Suporte: números confirmados por múltiplas fontes, até 7
+    // ── SCORE GAP ANALYSIS: só incluir suporte que tenha score significativo ──
+    const top1Score = numScores[0]?.score ?? 0;
+    const scoreThreshold = top1Score * 0.25; // suporte deve ter pelo menos 25% do score do #1
+
+    // Suporte: números confirmados por múltiplas fontes E com score significativo
     const supportCandidates = numScores
       .slice(1, 25)
       .filter(ns => {
+        if (ns.score < scoreThreshold) return false; // filtrar números fracos
         const inPull     = (FULL_PULL_MAP[numTop1] || []).includes(ns.num);
         const inWinner   = winner.numbers.includes(ns.num);
         const inEnsemble = ensembleTop5.includes(ns.num);
         const highMatriz = (matrizProb[ns.num] || 0) > 0.08;
         const inPullFromLast = (FULL_PULL_MAP[numbers[0]] || []).includes(ns.num);
-        return inPull || inWinner || inEnsemble || highMatriz || inPullFromLast;
+        // Exigir pelo menos 1 confirmação + score mínimo
+        const confirmCount = [inPull, inWinner, inEnsemble, highMatriz, inPullFromLast].filter(Boolean).length;
+        return confirmCount >= 1;
       })
       .map(ns => ns.num)
-      .slice(0, 7);
+      .slice(0, 6);
 
-    // Números que saem quando erramos — proteção real
-    const realProtection = surpriseNumbers.slice(0, 3).filter(n => n !== numTop1 && !supportCandidates.includes(n));
+    // Proteção DINÂMICA: usar surpriseNumbers + números com alta dívida estatística
+    const dynamicProtection: number[] = [];
+    // 1. Números que saem quando erramos (anti-padrão)
+    surpriseNumbers.slice(0, 4).forEach(n => {
+      if (n !== numTop1 && !supportCandidates.includes(n) && !dynamicProtection.includes(n)) {
+        dynamicProtection.push(n);
+      }
+    });
+    // 2. Números com alta dívida estatística (ausentes há muito tempo)
+    const debtNums = Object.entries(dynStatDebt).sort(([,a],[,b]) => (b as number) - (a as number)).slice(0, 3);
+    debtNums.forEach(([n]) => {
+      const num = Number(n);
+      if (num !== numTop1 && !supportCandidates.includes(num) && !dynamicProtection.includes(num)) {
+        dynamicProtection.push(num);
+      }
+    });
+    const realProtection = dynamicProtection.slice(0, 3);
 
-    // Jogada final: top1 + suporte + proteção real, máximo 10
+    // Jogada final: top1 + suporte forte + proteção dinâmica, máximo 10
     const finalBetNumbers: number[] = [...new Set([
       numTop1,
       ...supportCandidates,
       ...realProtection,
-      ...PROTECTION_NUMBERS.filter(n => n !== numTop1),
     ])].slice(0, 10);
 
     // Justificativa clara
@@ -6262,10 +6277,12 @@ serve(async (req) => {
       else if (topReasonCategories.size >= 5) finalProbability += 3;
     }
     
-    // COVERAGE-BASED PROBABILITY CEILING — probabilidade não pode exceder expectativa real ajustada
-    // Random baseline = coverage%. Com análise boa, +15-25% acima do baseline é realista.
-    const coveragePercent = winner.coverage; // e.g. 38% for 14 numbers
-    const maxRealisticProb = Math.min(99, coveragePercent + 25); // 14 nums = 38% + 25 = 63% max
+    // COVERAGE-BASED PROBABILITY CEILING — calibrado por tamanho da jogada
+    // Jogadas com menos números têm teto mais apertado
+    const coveragePercent = +(finalBetNumbers.length / 37 * 100).toFixed(1);
+    // Bônus máximo escala com confirmações: 3+ confirmações = até +20%, senão +12%
+    const maxBonus = confirmations >= 4 ? 22 : confirmations >= 3 ? 18 : confirmations >= 2 ? 14 : 10;
+    const maxRealisticProb = Math.min(95, coveragePercent + maxBonus);
     if (finalProbability > maxRealisticProb) {
       finalProbability = maxRealisticProb;
     }
@@ -6621,8 +6638,9 @@ serve(async (req) => {
         }
       }
 
-      // ALWAYS add protection numbers to every play
-      bets.push({ type: 'protecao', label: 'Proteção 24-29-35-11', detail: 'Sempre marque: 24, 29, 35 e 11 como proteção fixa em toda jogada (4 fichas extras)', emoji: '🛡️' });
+      // ALWAYS add protection — dinâmica baseada em erros reais
+      const protLabel = realProtection.length > 0 ? realProtection.join('-') : '(nenhuma)';
+      bets.push({ type: 'protecao', label: `Proteção ${protLabel}`, detail: `Proteção dinâmica baseada em números que saem quando erramos: ${realProtection.join(', ')}${realProtection.length === 0 ? ' (não aplicável)' : ` (${realProtection.length} fichas extras)`}`, emoji: '🛡️' });
 
       const summary = bets.map(b => `${b.emoji} ${b.label}`).join(' • ');
       return { bets, summary };
