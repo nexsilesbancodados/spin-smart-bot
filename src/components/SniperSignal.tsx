@@ -81,8 +81,8 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
     });
 
     const rawProb = sniperData.signal.probability || 0;
-    const coverage = (final.length / 37) * 100;
-    const prob = Math.min(rawProb, Math.round(coverage + 20));
+    // Não limitar a probabilidade — confiar na calibração do backend
+    const prob = rawProb;
 
     return { ensTop1: top1, finalNumbers: final, highConviction: hc, displayProb: prob, dynamicProtection: protFiltered };
   }, [sniperData]);
