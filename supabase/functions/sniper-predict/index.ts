@@ -6131,29 +6131,50 @@ serve(async (req) => {
     const autoRepConfirms = recentCount >= 2;
     const confirmations  = [ensConfirms, winnerConfirms, matrizConfirms, pullConfirms, autoRepConfirms].filter(Boolean).length;
 
-    // Suporte: números confirmados por múltiplas fontes, até 7
+    // ── SCORE GAP ANALYSIS: só incluir suporte que tenha score significativo ──
+    const top1Score = numScores[0]?.score ?? 0;
+    const scoreThreshold = top1Score * 0.25; // suporte deve ter pelo menos 25% do score do #1
+
+    // Suporte: números confirmados por múltiplas fontes E com score significativo
     const supportCandidates = numScores
       .slice(1, 25)
       .filter(ns => {
+        if (ns.score < scoreThreshold) return false; // filtrar números fracos
         const inPull     = (FULL_PULL_MAP[numTop1] || []).includes(ns.num);
         const inWinner   = winner.numbers.includes(ns.num);
         const inEnsemble = ensembleTop5.includes(ns.num);
         const highMatriz = (matrizProb[ns.num] || 0) > 0.08;
         const inPullFromLast = (FULL_PULL_MAP[numbers[0]] || []).includes(ns.num);
-        return inPull || inWinner || inEnsemble || highMatriz || inPullFromLast;
+        // Exigir pelo menos 1 confirmação + score mínimo
+        const confirmCount = [inPull, inWinner, inEnsemble, highMatriz, inPullFromLast].filter(Boolean).length;
+        return confirmCount >= 1;
       })
       .map(ns => ns.num)
-      .slice(0, 7);
+      .slice(0, 6);
 
-    // Números que saem quando erramos — proteção real
-    const realProtection = surpriseNumbers.slice(0, 3).filter(n => n !== numTop1 && !supportCandidates.includes(n));
+    // Proteção DINÂMICA: usar surpriseNumbers + números com alta dívida estatística
+    const dynamicProtection: number[] = [];
+    // 1. Números que saem quando erramos (anti-padrão)
+    surpriseNumbers.slice(0, 4).forEach(n => {
+      if (n !== numTop1 && !supportCandidates.includes(n) && !dynamicProtection.includes(n)) {
+        dynamicProtection.push(n);
+      }
+    });
+    // 2. Números com alta dívida estatística (ausentes há muito tempo)
+    const debtNums = Object.entries(dynStatDebt).sort(([,a],[,b]) => (b as number) - (a as number)).slice(0, 3);
+    debtNums.forEach(([n]) => {
+      const num = Number(n);
+      if (num !== numTop1 && !supportCandidates.includes(num) && !dynamicProtection.includes(num)) {
+        dynamicProtection.push(num);
+      }
+    });
+    const realProtection = dynamicProtection.slice(0, 3);
 
-    // Jogada final: top1 + suporte + proteção real, máximo 10
+    // Jogada final: top1 + suporte forte + proteção dinâmica, máximo 10
     const finalBetNumbers: number[] = [...new Set([
       numTop1,
       ...supportCandidates,
       ...realProtection,
-      ...PROTECTION_NUMBERS.filter(n => n !== numTop1),
     ])].slice(0, 10);
 
     // Justificativa clara
