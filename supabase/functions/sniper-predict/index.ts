@@ -4396,7 +4396,7 @@ serve(async (req) => {
         tests++;
         const nextNum = numbers[w - 1]; // número que veio DEPOIS de numbers[w]
         if (nums.includes(nextNum)) hits += 1;
-        else if (w >= 2 && nums.includes(numbers[w - 2])) hits += 0.4; // +1 spin
+        // REMOVIDO: vizinho parcial (+0.4) inflava scores sem acerto real
       }
       return tests > 0 ? hits / tests : 0;
     };
@@ -6116,20 +6116,32 @@ serve(async (req) => {
       }
     }
 
-    // 5. SELEÇÃO AUTOMÁTICA ADAPTATIVA — atualiza pesos baseado no que funciona
-    // Estratégias com WR > 50% recentes ganham boost; com WR < 20% perdem
+    // 5. SELEÇÃO ADAPTATIVA V2 — WR real tem peso dominante
+    // Estratégias comprovadas ganham boost agressivo; fracas são eliminadas
     for (const st of strategies) {
       const perf = strategyPerformance[st.type] as any;
       if (perf && perf.total >= 3) {
         const wr = perf.recentTrend ?? perf.winRate ?? 0;
         if (wr > 0.55) {
-          (st as any).score *= 1.25; // em alta: +25%
-          (st as any).justification = `✅ WR ${(wr*100).toFixed(0)}% recente | ` + (st as any).justification;
-        } else if (wr < 0.20 && perf.total >= 5) {
-          (st as any).score *= 0.55; // em baixa: -45%
-        } else if (wr < 0.30 && perf.total >= 5) {
-          (st as any).score *= 0.75;
+          (st as any).score *= 1.60; // em alta: +60% (era +25%)
+          (st as any).justification = `✅ WR ${(wr*100).toFixed(0)}% COMPROVADO | ` + (st as any).justification;
+        } else if (wr > 0.40) {
+          (st as any).score *= 1.30; // boa: +30%
+        } else if (wr < 0.15 && perf.total >= 5) {
+          (st as any).score *= 0.30; // em colapso: -70% (era -45%)
+        } else if (wr < 0.25 && perf.total >= 5) {
+          (st as any).score *= 0.50; // fraca: -50%
         }
+      }
+      
+      // BACKTEST GATE: estratégia com backtest < 15% no histórico atual é penalizada
+      const btRate = backtestSet((st as any).numbers || []);
+      if (btRate < 0.10 && (st as any).numbers?.length <= 12) {
+        (st as any).score *= 0.40; // backtest ruim = quase elimina
+      } else if (btRate > 0.30) {
+        (st as any).score *= 1.35; // backtest excelente = boost
+      } else if (btRate > 0.22) {
+        (st as any).score *= 1.15;
       }
     }
 
@@ -6233,51 +6245,51 @@ serve(async (req) => {
     const autoRepConfirms = recentCount >= 2;
     const confirmations  = [ensConfirms, winnerConfirms, matrizConfirms, pullConfirms, autoRepConfirms].filter(Boolean).length;
 
-    // ── SCORE GAP ANALYSIS: só incluir suporte que tenha score significativo ──
+    // ── SCORE GAP ANALYSIS V2: exigir convergência real, não apenas score ──
     const top1Score = numScores[0]?.score ?? 0;
-    const scoreThreshold = top1Score * 0.25; // suporte deve ter pelo menos 25% do score do #1
+    const scoreThreshold = top1Score * 0.35; // suporte deve ter pelo menos 35% do score do #1 (era 25%)
 
-    // Suporte: números confirmados por múltiplas fontes E com score significativo
+    // Suporte: números confirmados por MÚLTIPLAS fontes E com score significativo
     const supportCandidates = numScores
       .slice(1, 25)
       .filter(ns => {
-        if (ns.score < scoreThreshold) return false; // filtrar números fracos
+        if (ns.score < scoreThreshold) return false;
         const inPull     = (FULL_PULL_MAP[numTop1] || []).includes(ns.num);
         const inWinner   = winner.numbers.includes(ns.num);
         const inEnsemble = ensembleTop5.includes(ns.num);
         const highMatriz = (matrizProb[ns.num] || 0) > 0.08;
         const inPullFromLast = (FULL_PULL_MAP[numbers[0]] || []).includes(ns.num);
-        // Exigir pelo menos 1 confirmação + score mínimo
+        // Exigir pelo menos 2 confirmações independentes (era 1)
         const confirmCount = [inPull, inWinner, inEnsemble, highMatriz, inPullFromLast].filter(Boolean).length;
-        return confirmCount >= 1;
+        return confirmCount >= 2;
       })
       .map(ns => ns.num)
-      .slice(0, 6);
+      .slice(0, 5); // max 5 suporte (era 6)
 
     // Proteção DINÂMICA: usar surpriseNumbers + números com alta dívida estatística
     const dynamicProtection: number[] = [];
-    // 1. Números que saem quando erramos (anti-padrão)
-    surpriseNumbers.slice(0, 4).forEach(n => {
+    // 1. Números que saem quando erramos (anti-padrão) — apenas os top 2
+    surpriseNumbers.slice(0, 2).forEach(n => {
       if (n !== numTop1 && !supportCandidates.includes(n) && !dynamicProtection.includes(n)) {
         dynamicProtection.push(n);
       }
     });
-    // 2. Números com alta dívida estatística (ausentes há muito tempo)
-    const debtNums = Object.entries(dynStatDebt).sort(([,a],[,b]) => (b as number) - (a as number)).slice(0, 3);
+    // 2. Números com alta dívida estatística (ausentes há muito tempo) — top 2
+    const debtNums = Object.entries(dynStatDebt).sort(([,a],[,b]) => (b as number) - (a as number)).slice(0, 2);
     debtNums.forEach(([n]) => {
       const num = Number(n);
       if (num !== numTop1 && !supportCandidates.includes(num) && !dynamicProtection.includes(num)) {
         dynamicProtection.push(num);
       }
     });
-    const realProtection = dynamicProtection.slice(0, 3);
+    const realProtection = dynamicProtection.slice(0, 2); // max 2 proteções (era 3)
 
-    // Jogada final: top1 + suporte forte + proteção dinâmica, máximo 10
+    // Jogada final: top1 + suporte convergente + proteção mínima, máximo 8 (era 10)
     const finalBetNumbers: number[] = [...new Set([
       numTop1,
       ...supportCandidates,
       ...realProtection,
-    ])].slice(0, 10);
+    ])].slice(0, 8);
 
     // Justificativa clara
     const decisionJustification = [
@@ -6379,18 +6391,24 @@ serve(async (req) => {
       else if (topReasonCategories.size >= 5) finalProbability += 3;
     }
     
-    // COVERAGE-BASED PROBABILITY CEILING — calibrado por tamanho da jogada
-    // Jogadas com menos números têm teto mais apertado
+    // COVERAGE-BASED PROBABILITY CEILING V2 — mais realista
+    // Probabilidade real = cobertura base + bônus limitado por confirmações
     const coveragePercent = +(finalBetNumbers.length / 37 * 100).toFixed(1);
-    // Bônus máximo escala com confirmações: 3+ confirmações = até +20%, senão +12%
-    const maxBonus = confirmations >= 4 ? 22 : confirmations >= 3 ? 18 : confirmations >= 2 ? 14 : 10;
-    const maxRealisticProb = Math.min(95, coveragePercent + maxBonus);
+    // Com 8 números = 21.6% cobertura base. Bônus máximo reduzido.
+    const maxBonus = confirmations >= 4 ? 16 : confirmations >= 3 ? 12 : confirmations >= 2 ? 8 : 5;
+    const maxRealisticProb = Math.min(85, coveragePercent + maxBonus); // teto 85% (era 95%)
     if (finalProbability > maxRealisticProb) {
       finalProbability = maxRealisticProb;
     }
     
-    // Cap
-    finalProbability = Math.min(99, Math.max(20, Math.round(finalProbability)));
+    // BACKTEST VALIDATION do top1 — se o número #1 não acertaria no backtest recente, penalizar
+    const top1BtHits = numbers.slice(1, 31).filter(n => n === numTop1).length;
+    if (top1BtHits === 0 && numbers.length >= 30) {
+      finalProbability -= 8; // #1 nunca saiu nos últimos 30 = penalizar
+    }
+    
+    // Cap — mais honesto
+    finalProbability = Math.min(85, Math.max(15, Math.round(finalProbability)));
     
     // Add strategy performance learnings
     const winnerPerf = strategyPerformance[winner.type];
@@ -6422,10 +6440,12 @@ serve(async (req) => {
       aiLearnings.push(`🔑 Assinatura terminal: T${mesaDNA.terminalSignature.join(',T')} consistentes`);
     }
 
-    const mode = (winner.type === 'convergencia_absoluta' && finalProbability >= 80) ? 'sniper'
-      : totalLayers >= 900 && finalProbability >= 75 ? 'sniper'
-      : totalLayers >= 600 && finalProbability >= 60 ? 'alert'
-      : totalLayers >= 400 ? 'observing'
+    // MODE thresholds calibrados para probabilidades realistas (max ~40% com 8 números)
+    const mode = (winner.type === 'convergencia_absoluta' && finalProbability >= 35) ? 'sniper'
+      : confirmations >= 3 && finalProbability >= 25 ? 'sniper'
+      : totalLayers >= 700 && finalProbability >= 22 ? 'sniper'
+      : totalLayers >= 500 && finalProbability >= 18 ? 'alert'
+      : totalLayers >= 300 ? 'observing'
       : 'monitoring';
 
     const message = mode === 'sniper' && winner.type === 'convergencia_absoluta'
