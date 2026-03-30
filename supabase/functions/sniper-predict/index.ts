@@ -6116,20 +6116,32 @@ serve(async (req) => {
       }
     }
 
-    // 5. SELEÇÃO AUTOMÁTICA ADAPTATIVA — atualiza pesos baseado no que funciona
-    // Estratégias com WR > 50% recentes ganham boost; com WR < 20% perdem
+    // 5. SELEÇÃO ADAPTATIVA V2 — WR real tem peso dominante
+    // Estratégias comprovadas ganham boost agressivo; fracas são eliminadas
     for (const st of strategies) {
       const perf = strategyPerformance[st.type] as any;
       if (perf && perf.total >= 3) {
         const wr = perf.recentTrend ?? perf.winRate ?? 0;
         if (wr > 0.55) {
-          (st as any).score *= 1.25; // em alta: +25%
-          (st as any).justification = `✅ WR ${(wr*100).toFixed(0)}% recente | ` + (st as any).justification;
-        } else if (wr < 0.20 && perf.total >= 5) {
-          (st as any).score *= 0.55; // em baixa: -45%
-        } else if (wr < 0.30 && perf.total >= 5) {
-          (st as any).score *= 0.75;
+          (st as any).score *= 1.60; // em alta: +60% (era +25%)
+          (st as any).justification = `✅ WR ${(wr*100).toFixed(0)}% COMPROVADO | ` + (st as any).justification;
+        } else if (wr > 0.40) {
+          (st as any).score *= 1.30; // boa: +30%
+        } else if (wr < 0.15 && perf.total >= 5) {
+          (st as any).score *= 0.30; // em colapso: -70% (era -45%)
+        } else if (wr < 0.25 && perf.total >= 5) {
+          (st as any).score *= 0.50; // fraca: -50%
         }
+      }
+      
+      // BACKTEST GATE: estratégia com backtest < 15% no histórico atual é penalizada
+      const btRate = backtestSet((st as any).numbers || []);
+      if (btRate < 0.10 && (st as any).numbers?.length <= 12) {
+        (st as any).score *= 0.40; // backtest ruim = quase elimina
+      } else if (btRate > 0.30) {
+        (st as any).score *= 1.35; // backtest excelente = boost
+      } else if (btRate > 0.22) {
+        (st as any).score *= 1.15;
       }
     }
 
