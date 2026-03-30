@@ -1035,6 +1035,56 @@ serve(async (req) => {
               }).eq('strategy_type', predStratType);
             }
           } catch { /* ignore */ }
+
+          // 🧠 DEEP LEARNING: Save hit/miss pattern for future predictions
+          try {
+            if (isHit) {
+              // Save what WORKED: strategy + numbers + context
+              await supabase.from('ai_learned_patterns').insert({
+                learning_type: 'hit_pattern',
+                title: `ACERTO ${hitType}: ${predStratType} → ${latestNum}`,
+                knowledge: `Estratégia ${predStratType} acertou ${hitType === 'exact' ? 'EXATO' : 'vizinho'} no ${latestNum}. Previstos: [${nums.slice(0,5).join(',')}]. Principal: ${pred.predicted_main}.`,
+                accuracy: hitType === 'exact' ? 95 : 80,
+                data_points: nums.length,
+                metadata: {
+                  hotNumbers: nums.slice(0, 8),
+                  key_numbers: [latestNum, ...(nums.filter((n: number) => n !== latestNum).slice(0, 4))],
+                  strategy: predStratType,
+                  hitType,
+                  actualNumber: latestNum,
+                },
+              });
+            } else {
+              // Save what FAILED: track the number that actually came out
+              const existingError = await supabase.from('ai_learned_patterns')
+                .select('id, metadata')
+                .eq('learning_type', 'error_pattern')
+                .eq('title', 'Anti-padrão: erros recentes')
+                .maybeSingle();
+              
+              const oldMeta = (existingError.data?.metadata as any) || {};
+              const oldMissFreq = oldMeta.missFreq || {};
+              oldMissFreq[latestNum] = (oldMissFreq[latestNum] || 0) + 1;
+              const topMisses = Object.entries(oldMissFreq)
+                .sort(([,a],[,b]) => (b as number) - (a as number))
+                .slice(0, 8)
+                .map(([n]) => Number(n));
+
+              const rowErr = {
+                knowledge: `Números que saem quando erramos: [${topMisses.join(',')}]. Incluir na próxima.`,
+                data_points: Object.values(oldMissFreq).reduce((a: number, b: any) => a + (b as number), 0),
+                accuracy: 80,
+                metadata: { hotNumbers: topMisses, key_numbers: topMisses, missFreq: oldMissFreq, lastSeen: new Date().toISOString() },
+                updated_at: new Date().toISOString(),
+              };
+
+              if (existingError.data?.id) {
+                await supabase.from('ai_learned_patterns').update(rowErr).eq('id', existingError.data.id);
+              } else {
+                await supabase.from('ai_learned_patterns').insert({ learning_type: 'error_pattern', title: 'Anti-padrão: erros recentes', ...rowErr });
+              }
+            }
+          } catch { /* ignore learning save errors */ }
         }
       }
     } else if (unresolved.length === 0) {
