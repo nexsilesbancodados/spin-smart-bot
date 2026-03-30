@@ -162,6 +162,31 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
 
   const reedStopped = reedCount >= 4;
 
+  // Backtest ao vivo: simular jogada dos últimos 30 giros
+  const backtestVivo = (() => {
+    const nums = sniperData?.strategy?.numbers;
+    if (!nums || !allNumbers || allNumbers.length < 20) return null;
+    let hits = 0, total = 0;
+    for (let i = 1; i < Math.min(31, allNumbers.length); i++) {
+      total++;
+      if (nums.includes(allNumbers[i])) hits++;
+    }
+    const wr = total > 0 ? Math.round(hits / total * 100) : 0;
+    const profit = hits * (36 - nums.length) - (total - hits) * nums.length;
+    return { hits, total, wr, profit };
+  })();
+
+  // Anti-streak: detectar mesa caótica (entrar na contramão seria perda)
+  const mesaCaotica = (() => {
+    if (!allNumbers || allNumbers.length < 10) return false;
+    // Entropia alta: muitos terminais distintos em 10 giros
+    const terminais = new Set(allNumbers.slice(0, 10).map(n => n % 10));
+    const entropiaAlta = terminais.size >= 9;
+    // WR recente ruim + entropia alta = mesa caótica
+    const wrRuim = sniperData?.recentWinRate !== undefined && sniperData.recentWinRate < 0.20;
+    return entropiaAlta && wrRuim;
+  })();
+
   // Cálculo do gap do número #1 (quando saiu pela última vez)
   const gapInfo = (() => {
     const num = sniperData?.signal?.number;
@@ -238,6 +263,19 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
           </button>
         </div>
       </div>
+
+      {/* ── MESA CAÓTICA — não entrar ───────────────────── */}
+      {mesaCaotica && !reedStopped && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mx-4 mt-3 p-2.5 rounded-lg bg-red-900/20 border border-red-500/40 text-center"
+        >
+          <span className="text-[9px] font-black text-red-400">
+            🌀 MESA CAÓTICA — Aguarde 3+ giros antes de entrar
+          </span>
+        </motion.div>
+      )}
 
       {/* ── REED STOP ───────────────────────────────────── */}
       {reedStopped && (
@@ -487,6 +525,12 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                           </div>
                         );
                       })()}
+                      {mesaCaotica && (
+                        <div className="mt-1 text-[9px] font-bold text-red-400 flex items-center gap-1">
+                          <span>🌀</span>
+                          <span>Mesa caótica — aguarde 3+ giros</span>
+                        </div>
+                      )}
                       {/* Contexto da sessão */}
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
                         {sniperData?.recentWinRate !== undefined && (
@@ -614,6 +658,23 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
                     </p>
                   </div>
 
+                </div>
+              )}
+
+              {/* Backtest ao vivo */}
+              {backtestVivo && backtestVivo.total >= 10 && (
+                <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border text-[7px] ${
+                  backtestVivo.wr >= 50 ? 'bg-green-500/8 border-green-500/20'
+                  : backtestVivo.wr >= 30 ? 'bg-yellow-500/8 border-yellow-500/20'
+                  : 'bg-red-500/8 border-red-500/20'
+                }`}>
+                  <span className="font-black text-muted-foreground">📊 Backtest 30:</span>
+                  <span className={`font-bold ${backtestVivo.wr >= 50 ? 'text-green-400' : backtestVivo.wr >= 30 ? 'text-yellow-400' : 'text-red-400'}`}>
+                    {backtestVivo.hits}/{backtestVivo.total} = {backtestVivo.wr}%
+                  </span>
+                  <span className={`ml-auto font-bold ${backtestVivo.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {backtestVivo.profit >= 0 ? '+' : ''}{backtestVivo.profit}u
+                  </span>
                 </div>
               )}
 

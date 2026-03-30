@@ -237,20 +237,34 @@
   <!-- Header -->
   <div class="header">
     <div class="header-row">
-      <h1>ROULETTE PRO</h1>
+      <h1>SPIN SMART BOT</h1>
       <span class="version">v2.0</span>
     </div>
-    <p>Tracker + Auto-Bet com IA Sniper</p>
+    <p>IA Sniper + AutoBet Playtech</p>
   </div>
 
   <!-- Tabs -->
   <div class="tabs">
-    <button class="tab active" data-tab="tracker">📡 TRACKER</button>
+    <button class="tab active" data-tab="sniper">🎯 SNIPER</button>
+    <button class="tab" data-tab="tracker">📡 TRACKER</button>
     <button class="tab" data-tab="autobet">🤖 AUTO-BET</button>
   </div>
 
+  <!-- TAB: SNIPER -->
+  <div class="tab-content active" id="tab-sniper">
+    <div class="section" style="border:none;">
+      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>Sinal ao Vivo</span>
+        <button onclick="fetchSniperSignal()" style="font-size:9px;padding:3px 8px;background:#00e5ff20;color:#00e5ff;border:1px solid #00e5ff30;border-radius:6px;cursor:pointer;font-weight:700;">↺ Atualizar</button>
+      </div>
+      <div id="sniper-panel">
+        <div class="empty-state">Carregando sinal...</div>
+      </div>
+    </div>
+  </div>
+
   <!-- TAB: TRACKER -->
-  <div class="tab-content active" id="tab-tracker">
+  <div class="tab-content" id="tab-tracker">
     <div class="status-bar">
       <div class="pulse-dot" id="statusDot"></div>
       <span class="status-text" id="statusText">Verificando...</span>
@@ -383,6 +397,8 @@
         if (tab.dataset.tab === 'autobet') loadAutobetUI();
       });
     });
+    // Auto-carregar sniper na abertura
+    fetchSniperSignal();
 
     // Gale toggle visibility
     document.getElementById('ab-gale').addEventListener('change', function() {

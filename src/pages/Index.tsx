@@ -439,7 +439,7 @@ const Index = () => {
   const autoLearnErrorCount = useRef(0);
   const autoLearnDisabled = useRef(false);
   const consecutiveSuccessRef = useRef(0);
-  const currentIntervalRef = useRef(120_000);
+  const currentIntervalRef = useRef(60_000); // 60s inicial, mínimo 30s
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -488,9 +488,9 @@ const Index = () => {
         autoLearnErrorCount.current = 0;
         consecutiveSuccessRef.current++;
         
-        // Speed up when productive (min 60s)
+        // Speed up when productive (min 30s — mesa rápida)
         if (consecutiveSuccessRef.current >= 3) {
-          currentIntervalRef.current = Math.max(60_000, currentIntervalRef.current * 0.8);
+          currentIntervalRef.current = Math.max(30_000, currentIntervalRef.current * 0.8);
         }
       } catch (err: any) {
         autoLearnErrorCount.current++;

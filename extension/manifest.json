@@ -1,9 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "Spin Smart Bot",
-  "version": "3.0.0",
-  "description": "AutoBet inteligente com IA Sniper para Roleta Brasileira Playtech",
-  "permissions": ["activeTab", "storage", "alarms", "scripting"],
+  "name": "Spin Smart Bot — IA Sniper",
+  "version": "5.0.0",
+  "description": "IA Sniper + AutoBet Playtech — Detecta padrões e aposta automaticamente na roleta brasileira",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "alarms",
+    "scripting"
+  ],
   "host_permissions": [
     "*://onabet.com/*",
     "*://*.onabet.com/*",
@@ -14,7 +19,10 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_icon": { "48": "icon.png", "128": "icon.png" }
+    "default_icon": {
+      "48": "icon.png",
+      "128": "icon.png"
+    }
   },
   "background": {
     "service_worker": "background.js"
@@ -28,20 +36,36 @@
         "*://*.betano.com/*",
         "*://*.bet365.com/*"
       ],
-      "js": ["content.js", "autobet.js"],
+      "js": [
+        "content.js",
+        "autobet.js"
+      ],
       "run_at": "document_idle",
       "all_frames": true
     },
     {
-      "matches": ["*://spin-smart-bot.lovable.app/*"],
-      "js": ["content.js"],
+      "matches": [
+        "*://spin-smart-bot.lovable.app/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }
   ],
-  "web_accessible_resources": [{
-    "resources": ["icon.png"],
-    "matches": ["<all_urls>"]
-  }],
-  "icons": { "48": "icon.png", "128": "icon.png" }
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icon.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "icons": {
+    "48": "icon.png",
+    "128": "icon.png"
+  }
 }
