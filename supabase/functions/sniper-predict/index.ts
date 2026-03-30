@@ -5895,6 +5895,64 @@ serve(async (req) => {
       sources: ensembleTop1?.sources?.slice(0, 5) ?? [],
     };
 
+    // ══════════════════════════════════════════════════════
+    // DECISÃO SUPREMA — Número #1 sempre pelo numScore composto
+    // ══════════════════════════════════════════════════════
+    const numTop1 = numScores[0]?.num ?? winner.numbers[0];
+    const numTop1Score = numScores[0]?.score ?? 0;
+
+    const ensTop1Dec = ensembleTop1?.num ?? null;
+    const ensConfirms = ensTop1Dec === numTop1;
+    const winnerConfirms = winner.numbers.includes(numTop1);
+    const matrizConfirms = (matrizProb[numTop1] || 0) > 0.10;
+    const pullConfirms = (FULL_PULL_MAP[numbers[0]] || []).includes(numTop1);
+    const recentCountTop1 = numbers.slice(0, 5).filter((n: number) => n === numTop1).length;
+    const autoRepConfirms = recentCountTop1 >= 2;
+
+    const confirmations = [ensConfirms, winnerConfirms, matrizConfirms, pullConfirms, autoRepConfirms]
+      .filter(Boolean).length;
+
+    const supportNums = numScores
+      .slice(1, 20)
+      .filter(ns => {
+        const isPulled = (FULL_PULL_MAP[numTop1] || []).includes(ns.num);
+        const inWinner = winner.numbers.includes(ns.num);
+        const inEnsemble = ensembleTop5.includes(ns.num);
+        const highMatriz = (matrizProb[ns.num] || 0) > 0.08;
+        return isPulled || inWinner || inEnsemble || highMatriz;
+      })
+      .map(ns => ns.num);
+
+    const protNums = surpriseNumbers.slice(0, 3).filter((n: number) => n !== numTop1);
+
+    const finalBetNumbers = [...new Set([
+      numTop1,
+      ...supportNums.slice(0, 6),
+      ...protNums.slice(0, 2),
+      ...PROTECTION_NUMBERS.filter((n: number) => n !== numTop1),
+    ])].slice(0, 10);
+
+    const confirmationBonus = confirmations * 8;
+    const coveragePct = (finalBetNumbers.length / 37) * 100;
+    const maxRealisticProbFinal = Math.round(coveragePct + 20);
+
+    // Override winner with number-first decision
+    const overriddenWinner = {
+      ...winner,
+      numbers: finalBetNumbers,
+      coverage: +(finalBetNumbers.length / 37 * 100).toFixed(1),
+      payout: 36 - finalBetNumbers.length,
+      justification: [
+        `Número #1: ${numTop1} (score ${numTop1Score.toFixed(0)}pts)`,
+        confirmations >= 3 ? `${confirmations} fontes independentes confirmam` : '',
+        autoRepConfirms ? `Auto-repetição: ${numTop1} saiu ${recentCountTop1}x recente` : '',
+        pullConfirms ? `Puxado pelo ${numbers[0]}` : '',
+        matrizConfirms ? `Matriz: ${((matrizProb[numTop1] || 0)*100).toFixed(0)}% histórico` : '',
+        ensConfirms ? `Ensemble confirma` : '',
+        winner.justification,
+      ].filter(Boolean).join(' | '),
+    };
+
     const allStrategies = strategies.map(s => ({
       type: s.type, label: s.label, emoji: s.emoji,
       numbers: s.numbers, coverage: +s.coverage.toFixed(1), payout: s.payout,
