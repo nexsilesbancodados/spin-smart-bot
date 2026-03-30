@@ -1034,12 +1034,13 @@ Responda APENAS via tool call store_learnings. Seja preciso, específico e acion
       const row = {
         knowledge: l.knowledge,
         data_points: l.data_points || numbers.length,
-        // Fix: DeepSeek returns accuracy 0-1, normalize to 0-100
-        accuracy: Math.min(100, Math.max(10,
-          (l.accuracy || 0.5) <= 1.0
-            ? Math.round((l.accuracy || 0.5) * 100)
-            : Math.round(l.accuracy || 50)
-        )),
+        // Fix: DeepSeek retorna accuracy em escala 0-1 (ex: 0.85 = 85%)
+        // Se <= 1.0: multiplicar por 100. Mínimo 50 para learnings válidos.
+        accuracy: (() => {
+          const raw = l.accuracy || 0.75;
+          const normalized = raw <= 1.0 ? Math.round(raw * 100) : Math.round(raw);
+          return Math.min(95, Math.max(50, normalized)); // 50-95%
+        })(),
         metadata: {
           key_numbers: l.key_numbers || [],
           hotNumbers: (l.key_numbers || []).slice(0, 8),

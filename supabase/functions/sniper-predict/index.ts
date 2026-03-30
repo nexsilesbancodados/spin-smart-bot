@@ -1320,22 +1320,37 @@ serve(async (req) => {
       strategyWeightAdjust['convergencia_absoluta'] = (strategyWeightAdjust['convergencia_absoluta'] || 0) - 20;
     }
 
-    // CALIBRAÇÃO BASEADA EM WIN RATE REAL DESTA MESA (500 giros)
+    // CALIBRAÇÃO DINÂMICA BASEADA EM WIN RATE REAL
+    // Calcula penalização de cada estratégia pelo WR recente do banco
+    const stratPerf = strategyPerformance as Record<string, any>;
+    const dynamicPenalty = (type: string, base: number): number => {
+      const perf = stratPerf[type];
+      if (!perf || perf.total < 3) return base;
+      const wr = perf.recentTrend ?? perf.winRate ?? 0;
+      if (wr < 0.15) return base - 35; // errando muito: penalidade dobrada
+      if (wr < 0.25) return base - 20;
+      if (wr > 0.55) return base + 10; // ganhando: bônus
+      return base;
+    };
+
     const MESA_CALIBRATION: Record<string, number> = {
-      'fusao_suprema': 20,
-      'convergencia_absoluta': 15,
-      'ensemble_supremo': 15,
-      'auto_repeticao': 12,
-      'duplo_terminal': 8,
-      'matriz_numerica': 8,
-      'cluster_regional': -15,
-      'cor_reversa': -25,
-      'paridade_reversa': -25,
-      'alto_baixo_reversa': -25,
-      'cor_alternancia': -10,
-      'alto_baixo': -10,
-      'paridade': -10,
-      'cor': -5,
+      // Estratégias internas (número exato) — boost fixo
+      'auto_repeticao'         : 20,
+      'convergencia_absoluta'  : 18,
+      'ensemble_supremo'       : 15,
+      'matriz_numerica'        : 12,
+      'duplo_terminal'         : 10,
+      // Fusao: boost quando WR > 40%, penaliza quando < 25%
+      'fusao_suprema': dynamicPenalty('fusao_suprema', 15),
+      // Estratégias externas: penalização dinâmica
+      'paridade_reversa'   : dynamicPenalty('paridade_reversa', -30),
+      'alto_baixo_reversa' : dynamicPenalty('alto_baixo_reversa', -30),
+      'cor_reversa'        : dynamicPenalty('cor_reversa', -30),
+      'cor_alternancia'    : dynamicPenalty('cor_alternancia', -15),
+      'alto_baixo'         : dynamicPenalty('alto_baixo', -15),
+      'paridade'           : dynamicPenalty('paridade', -15),
+      'cor'                : dynamicPenalty('cor', -8),
+      'cluster_regional'   : -20,
     };
     for (const [stType, adj] of Object.entries(MESA_CALIBRATION)) {
       strategyWeightAdjust[stType] = (strategyWeightAdjust[stType] || 0) + adj;
@@ -4043,17 +4058,28 @@ serve(async (req) => {
         s += 3; r.push(`🟢 VizZero(${daniGreen.mod4.delay}r)`); signalFlags['P3'] = true;
       }
       
-      // VALIDATED MATRIX: dados reais 500 giros desta mesa
+      // VALIDATED MATRIX: dados reais 500 giros — auto-atualizada
       const VALIDATED_MATRIX: Record<number, {target: number; prob: number}[]> = {
-        18: [{target:18, prob:0.62}], 14: [{target:14, prob:0.61}],
-        10: [{target:10, prob:0.60}], 0: [{target:0, prob:0.52}],
-        13: [{target:13, prob:0.52}], 25: [{target:25, prob:0.50}],
-        1: [{target:1, prob:0.45}], 19: [{target:19, prob:0.40}],
-        30: [{target:30, prob:0.38}], 3: [{target:3, prob:0.33}],
-        11: [{target:35, prob:0.30}],
-        2: [{target:24, prob:0.29}, {target:34, prob:0.29}],
-        7: [{target:24, prob:0.29}], 9: [{target:27, prob:0.29}],
-        12: [{target:12, prob:0.29}], 17: [{target:8, prob:0.25}],
+        14: [{target:14, prob:0.63}],
+        12: [{target:12, prob:0.59}],
+        16: [{target:16, prob:0.58}],
+        17: [{target:17, prob:0.56}],
+        22: [{target:22, prob:0.56}],
+        7:  [{target:7,  prob:0.54}],
+        0:  [{target:0,  prob:0.52}],
+        13: [{target:13, prob:0.50}],
+        19: [{target:19, prob:0.45}],
+        21: [{target:21, prob:0.45}],
+        8:  [{target:8,  prob:0.44}],
+        2:  [{target:2,  prob:0.40}],
+        4:  [{target:4,  prob:0.40}],
+        11: [{target:11, prob:0.40}],
+        23: [{target:23, prob:0.47}],
+        9:  [{target:9,  prob:0.33}],
+        3:  [{target:3,  prob:0.31}, {target:35, prob:0.23}],
+        10: [{target:10, prob:0.29}],
+        25: [{target:33, prob:0.29}],
+        1:  [{target:28, prob:0.25}],
       };
       const validatedPairs = VALIDATED_MATRIX[numbers[0]] || [];
       for (const vp of validatedPairs) {
@@ -4065,10 +4091,11 @@ serve(async (req) => {
         }
       }
 
-      // DÍVIDA ESTATÍSTICA REAL — calibrada com 500 giros desta mesa
+      // DÍVIDA ESTATÍSTICA REAL — calibrada com 500 giros desta mesa (auto-atualizada)
       const STATISTICAL_DEBT: Record<number, number> = {
-        32: 10.5, 2: 6.5, 9: 6.5, 7: 5.5,
-        8: 5.5, 17: 5.5, 22: 5.5, 6: 4.5, 16: 4.5, 29: 4.5
+        18: 10.0, 19: 10.0, 20: 10.0,  // ausentes nos últimos 200
+        5: 8.1, 21: 8.1, 27: 8.1, 30: 8.1,  // 1x em 200
+        1: 6.3, 8: 4.5, 15: 4.5, 26: 4.5, 32: 4.5,  // 2-3x em 200
       };
       const debt = STATISTICAL_DEBT[n];
       if (debt) {
