@@ -7364,14 +7364,14 @@ REGRAS:
       },
       // AI Reasoning Layer
       aiReasoning: {
-        reasoning: aiReasoning,
+        suggestedBet: aiReasoning,
+        patternIdentified: aiPatternAnalysis,
+        learned: aiLearned,
         confidence: aiConfidence,
         adjustedNumbers: aiAdjustedNumbers,
         consensus: aiAdjustedNumbers ? finalBetNumbers.filter(n => (aiAdjustedNumbers || []).includes(n)).length : 0,
-        patternAnalysis: aiPatternAnalysis,
         sectorFocus: aiSectorFocus,
         feedbackAction: aiFeedbackAction,
-        learned: aiLearned,
       },
       ...baseResponse, recoveryMode,
       topCandidates: numScores.slice(0, 8).map(s => ({ num: s.num, score: +s.score.toFixed(1), reasons: s.reasons })),
