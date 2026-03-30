@@ -6543,17 +6543,22 @@ ${recentLearningsContext || 'Nenhum'}
 Confirmações: ${confirmations}/6
 
 ## PROTOCOLO DE RESPOSTA OBRIGATÓRIO
+Analise SIMULTANEAMENTE: Dúzias, Colunas, Vizinhos do Zero, Tiers, Orphelins, Cores e Paridade.
+Identifique qual mercado está em TENDÊNCIA ou ATRASO.
+Verifique o feedback anterior: se acertou, reforce; se errou, descarte e busque novo padrão.
+Escolha UMA ÚNICA jogada — a de maior probabilidade.
+
 Responda APENAS JSON:
 {
-  "numbers": [max 7 números mais prováveis],
-  "betType": "terminal|vizinhos|setor|duzia|coluna|pleno|cavalos",
-  "patternAnalysis": "O que MUDOU na estatística da mesa com o número ${numbers[0]} — qual padrão se formou ou se quebrou",
-  "reasoning": "Explicação da jogada em 1-2 frases: POR QUE estes números e este tipo de aposta",
+  "numbers": [max 7 números],
+  "betType": "terminal|vizinhos|setor|duzia|coluna|pleno|cavalos|cor|paridade|alto_baixo",
+  "suggestedBet": "Descrição clara da jogada (ex: Dúzia 2 / Vizinhos do 17 / Preto)",
+  "patternIdentified": "Padrão detectado (ex: Quebra na 3ª dúzia + Acúmulo Tiers)",
+  "learned": "O que aprendi da mesa",
   "confidence": 0-100,
-  "adjustTop1": número_principal_ou_null,
-  "learned": "O que você APRENDEU dos acertos/erros anteriores e como aplicou agora",
+  "adjustTop1": numero_ou_null,
   "sectorFocus": "Voisins|Tiers|Orphelins|Zero|misto",
-  "feedbackAction": "reforçar|ajustar|manter — o que fazer em relação à previsão anterior"
+  "feedbackAction": "reforçar|ajustar|descartar"
 }`;
 
         const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
