@@ -1108,8 +1108,8 @@ Return: {"hot_numbers":[top5],"predicted_next":[top3 mais prováveis],"hot_termi
                 metadata: { hotNumbers: hotNums, key_numbers: hotNums, groqTerminal: g.hot_terminal, predicted: g.predicted_next||[], lastSeen: new Date().toISOString() },
                 updated_at: new Date().toISOString(),
               };
-              if (exG?.id) await supabase.from('ai_learned_patterns').update(rowG).eq('id', exG.id).catch(()=>{});
-              else await supabase.from('ai_learned_patterns').insert({ learning_type:'heat_cluster', title:titulo, ...rowG }).catch(()=>{});
+              if (exG?.id) { try { await supabase.from('ai_learned_patterns').update(rowG).eq('id', exG.id); } catch {} }
+              else { try { await supabase.from('ai_learned_patterns').insert({ learning_type:'heat_cluster', title:titulo, ...rowG }); } catch {} }
             }
           } catch { /* GROQ retornou formato inválido */ }
         }
