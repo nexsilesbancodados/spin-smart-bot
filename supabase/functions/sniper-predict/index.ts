@@ -5994,6 +5994,18 @@ serve(async (req) => {
     // Cap
     finalProbability = Math.min(maxRealisticProbFinal, Math.max(20, Math.round(finalProbability)));
     
+    // Bayesian calibration from strategy performance
+    const winnerPerfCal = strategyPerformance[winner.type];
+    if (winnerPerfCal && winnerPerfCal.total >= 5) {
+      if (winnerPerfCal.recentTrend < 0.20) {
+        finalProbability -= 10;
+        aiLearnings.push(`🚫 ${winner.label}: ${(winnerPerfCal.recentTrend*100).toFixed(0)}% recente → -10%`);
+      } else if (winnerPerfCal.recentTrend > 0.50) {
+        finalProbability += 5;
+      }
+    }
+    finalProbability = Math.min(maxRealisticProbFinal, Math.max(20, Math.round(finalProbability)));
+
     // Add strategy performance learnings
     const winnerPerf = strategyPerformance[winner.type];
     if (winnerPerf && winnerPerf.total >= 5) {
@@ -6061,13 +6073,12 @@ serve(async (req) => {
         : 999;
 
       if (!latestPrediction || (latestPrediction.hit !== null && secondsSinceLatestPrediction > 18)) {
-        // Always merge protection numbers into predicted numbers
-        const predictedWithProtection = [...new Set([...winner.numbers, ...PROTECTION_NUMBERS])];
+        const predictedWithProtection = finalBetNumbers;
         await supabase.from('prediction_history').insert({
           strategy_type: winner.type,
           strategy_label: winner.label,
           predicted_numbers: predictedWithProtection,
-          predicted_main: winner.numbers[0],
+          predicted_main: numTop1,
           probability: finalProbability,
           convergence_score: totalLayers,
           mesa_mode: mesaMode,
@@ -6427,7 +6438,7 @@ serve(async (req) => {
     };
 
     // Merge protection numbers into winner
-    const winnerNumbersWithProtection = [...new Set([...winner.numbers, ...PROTECTION_NUMBERS])];
+    const winnerNumbersWithProtection = finalBetNumbers; // já inclui proteção
 
     // ── ANTI-PADRÃO: salvar números que saem QUANDO erramos ──
     if (isNewNumber && Object.keys(numberMissFreq).length >= 3) {
