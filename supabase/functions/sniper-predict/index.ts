@@ -6413,6 +6413,10 @@ serve(async (req) => {
     let aiReasoning: string | null = null;
     let aiAdjustedNumbers: number[] | null = null;
     let aiConfidence: number | null = null;
+    let aiPatternAnalysis: string | null = null;
+    let aiSectorFocus: string | null = null;
+    let aiFeedbackAction: string | null = null;
+    let aiLearned: string | null = null;
     
     try {
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -6460,15 +6464,57 @@ serve(async (req) => {
           return `${s.num}(gap=${idx < 0 ? '>50' : idx})`;
         }).join(', ');
 
-        const aiPrompt = `ROLETA EUROPEIA — ANÁLISE PROFUNDA PARA PRÓXIMO GIRO
+        // Sector saturation analysis
+        const sectorCount30: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0, Zero: 0 };
+        last30.forEach(n => { const s = getSector(n); sectorCount30[s]++; });
+        const sectorSatStr = Object.entries(sectorCount30).map(([s, c]) => `${s}:${c}/${last30.length} (${(c/last30.length*100).toFixed(0)}%)`).join(' | ');
+        const expectedSectorPct: Record<string, number> = { Voisins: 17/37*100, Tiers: 12/37*100, Orphelins: 8/37*100, Zero: 7/37*100 };
+        const sectorDeviation = Object.entries(sectorCount30).map(([s, c]) => {
+          const expected = (expectedSectorPct[s] || 25) / 100 * last30.length;
+          const dev = ((c - expected) / expected * 100).toFixed(0);
+          return `${s}: ${Number(dev) > 0 ? '+' : ''}${dev}% desvio`;
+        }).join(' | ');
 
-## HISTÓRICO (últimos 30)
+        // Feedback loop: last prediction analysis
+        const lastPred = resolvedHistory[0];
+        const feedbackLoop = lastPred ? 
+          `ÚLTIMA PREVISÃO: ${lastPred.strategy_type} previu [${(lastPred.predicted_numbers||[]).slice(0,5).join(',')}], saiu ${lastPred.actual_number}. ${lastPred.hit ? 'ACERTOU' + (lastPred.hit_type === 'exact' ? ' EXATO!' : ' (vizinho)') : 'ERROU'}. ${lastPred.hit ? 'Reforçar este padrão.' : 'Ajustar: evite repetir a mesma lógica que falhou.'}` 
+          : 'Sem previsão anterior para comparar.';
+
+        // Mesa signature: dominant patterns in last 30
+        const colorCount30 = { red: last30.filter(n => getColor(n) === 'red').length, black: last30.filter(n => getColor(n) === 'black').length, green: last30.filter(n => n === 0).length };
+        const dzCount30 = [0, 0, 0]; last30.filter(n => n > 0).forEach(n => { const d = getDozen(n); if (d > 0) dzCount30[d-1]++; });
+        const hiLoCount = { high: last30.filter(n => n >= 19).length, low: last30.filter(n => n >= 1 && n <= 18).length };
+        const mesaSignature = `Cores: V${colorCount30.red} P${colorCount30.black} Z${colorCount30.green} | Dúzias: D1:${dzCount30[0]} D2:${dzCount30[1]} D3:${dzCount30[2]} | Alto:${hiLoCount.high} Baixo:${hiLoCount.low}`;
+
+        // Numbers absent (Lei do Terço)
+        const present30 = new Set(last30);
+        const absent30 = Array.from({length: 37}, (_, i) => i).filter(n => !present30.has(n));
+
+        const aiPrompt = `ROLETA EUROPEIA — PROTOCOLO DE ANÁLISE ESTRUTURADA
+
+## ENTRADA: Último número sorteado = ${numbers[0]}
+
+## FEEDBACK LOOP (comparação com previsão anterior)
+${feedbackLoop}
+
+## HISTÓRICO (últimos 30 giros)
 [${last30.join(',')}]
+
+## ASSINATURA DA MESA (últimas 30 rodadas)
+${mesaSignature}
+
+## SATURAÇÃO DE SETORES
+${sectorSatStr}
+Desvio da média: ${sectorDeviation}
 
 ## TERMINAIS (frequência em 30 giros)
 ${termFreqStr}
 Terminal quente: ${hotTermInfo} | Terminal frio: ${coldTermInfo}
 Entropia: ${(sessionEntropy*100).toFixed(0)}% (${sessionRegime}) | Volatilidade: ${calculateVolatility(numbers).level}
+
+## LEI DO TERÇO — Números ausentes nas últimas 30 rodadas
+[${absent30.join(',')}] (${absent30.length} ausentes de 37)
 
 ## DEALER
 Arco médio: ${dealerSignature.arcMean.toFixed(1)} | Consistência: ${dealerSignature.consistency} | Modo: ${dealerSignature.dealerMode}
@@ -6486,7 +6532,7 @@ ${gapInfo}
 ## ESTRATÉGIAS RANKEADAS (com WR real)
 ${topStratsInfo}
 
-## ÚLTIMOS RESULTADOS DAS PREVISÕES
+## ÚLTIMOS 10 RESULTADOS DAS PREVISÕES (feedback)
 ${recentResults || 'Sem dados'}
 
 ## APRENDIZADOS ACUMULADOS
@@ -6496,21 +6542,18 @@ ${recentLearningsContext || 'Nenhum'}
 [${finalBetNumbers.join(',')}] (top1=${numTop1})
 Confirmações: ${confirmations}/6
 
-## SUA TAREFA
-1. Analise TODOS os padrões: sequências, terminais, puxadas, gaps, setores, lei do terço, vizinhança
-2. Identifique o PADRÃO MAIS FORTE ativo agora
-3. Aprenda com os acertos e erros recentes — o que funcionou? o que falhou?
-4. Dê UMA jogada clara: qual TIPO de aposta (terminal, vizinhos, setor, dúzia, coluna, cor, pleno)?
-5. Máximo 7 números
-
+## PROTOCOLO DE RESPOSTA OBRIGATÓRIO
 Responda APENAS JSON:
 {
-  "numbers": [max 7 números],
+  "numbers": [max 7 números mais prováveis],
   "betType": "terminal|vizinhos|setor|duzia|coluna|pleno|cavalos",
-  "reasoning": "explicação em 1-2 frases do padrão detectado",
+  "patternAnalysis": "O que MUDOU na estatística da mesa com o número ${numbers[0]} — qual padrão se formou ou se quebrou",
+  "reasoning": "Explicação da jogada em 1-2 frases: POR QUE estes números e este tipo de aposta",
   "confidence": 0-100,
   "adjustTop1": número_principal_ou_null,
-  "learned": "o que você aprendeu dos acertos/erros para aplicar agora"
+  "learned": "O que você APRENDEU dos acertos/erros anteriores e como aplicou agora",
+  "sectorFocus": "Voisins|Tiers|Orphelins|Zero|misto",
+  "feedbackAction": "reforçar|ajustar|manter — o que fazer em relação à previsão anterior"
 }`;
 
         const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -6522,20 +6565,19 @@ Responda APENAS JSON:
           body: JSON.stringify({
             model: "google/gemini-2.5-flash",
             messages: [
-              { role: "system", content: `Você é o motor de inteligência de um bot de roleta europeia profissional. 
-Seu objetivo: MAXIMIZAR ACERTOS analisando padrões reais do histórico.
-REGRAS:
-- Analise padrões CONVERGENTES: quando terminal + puxada + setor + gap apontam pro mesmo número
-- Aprenda com erros: se um padrão falhou 3x seguidas, EVITE-o
-- Aprenda com acertos: se puxada funcionou, REFORCE-a
-- Priorize números com GAP alto (estatisticamente devidos)
-- Lei do Terço: ~24 números únicos em 37 giros. Foque nos que FALTAM aparecer
-- Dê UMA recomendação clara, sem ambiguidade
-- Responda APENAS JSON válido, sem markdown` },
+              { role: "system", content: `Você é o motor de inteligência de um bot de roleta europeia profissional.
+REGRAS DE EXECUÇÃO:
+1. CONSOLIDAÇÃO: Use TODO o histórico para detectar padrões de repetição, desvios de frequência e saturação de setores.
+2. FEEDBACK LOOP: Compare o resultado real com a previsão anterior. Identifique POR QUE falhou ou acertou. Ajuste os pesos.
+3. ASSINATURA DA MESA: Baseie a sugestão nos padrões detectados nas últimas 30 rodadas — não dê palpites aleatórios.
+4. COBERTURA DE SETORES: Priorize setores (Voisins, Tiers, Orphelins, Zero) ao invés de números isolados, para maior taxa de acerto.
+5. CONVERGÊNCIA: Quando terminal + puxada + setor + gap apontam pro mesmo alvo = sinal fortíssimo.
+6. LEI DO TERÇO: ~24 números únicos em 37 giros. Foque nos AUSENTES com mais tempo de atraso.
+7. Responda APENAS JSON válido, sem markdown, sem explicações fora do JSON.` },
               { role: "user", content: aiPrompt },
             ],
-            temperature: 0.15,
-            max_tokens: 400,
+            temperature: 0.12,
+            max_tokens: 500,
           }),
         });
 
@@ -6550,6 +6592,10 @@ REGRAS:
               aiAdjustedNumbers = parsed.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 7);
               aiReasoning = parsed.reasoning || null;
               aiConfidence = typeof parsed.confidence === 'number' ? Math.min(100, Math.max(0, parsed.confidence)) : null;
+              aiPatternAnalysis = parsed.patternAnalysis || null;
+              aiSectorFocus = parsed.sectorFocus || null;
+              aiFeedbackAction = parsed.feedbackAction || null;
+              aiLearned = parsed.learned || null;
               
               // MERGE: AI + Statistical consensus
               const aiSet = new Set(aiAdjustedNumbers);
@@ -7317,6 +7363,10 @@ REGRAS:
         confidence: aiConfidence,
         adjustedNumbers: aiAdjustedNumbers,
         consensus: aiAdjustedNumbers ? finalBetNumbers.filter(n => (aiAdjustedNumbers || []).includes(n)).length : 0,
+        patternAnalysis: aiPatternAnalysis,
+        sectorFocus: aiSectorFocus,
+        feedbackAction: aiFeedbackAction,
+        learned: aiLearned,
       },
       ...baseResponse, recoveryMode,
       topCandidates: numScores.slice(0, 8).map(s => ({ num: s.num, score: +s.score.toFixed(1), reasons: s.reasons })),
