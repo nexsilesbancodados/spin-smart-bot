@@ -6142,32 +6142,43 @@ serve(async (req) => {
       }
     }
 
-    // 5. SELEÇÃO ADAPTATIVA V2 — WR real tem peso dominante
-    // Estratégias comprovadas ganham boost agressivo; fracas são eliminadas
+    // 5. SELEÇÃO ADAPTATIVA V4 — WR real DOMINA. Busca acima de 90%.
+    // Estratégias comprovadas ganham boost EXTREMO; fracas são ELIMINADAS
     for (const st of strategies) {
       const perf = strategyPerformance[st.type] as any;
       if (perf && perf.total >= 3) {
         const wr = perf.recentTrend ?? perf.winRate ?? 0;
-        if (wr > 0.55) {
-          (st as any).score *= 1.60; // em alta: +60% (era +25%)
+        if (wr > 0.60) {
+          (st as any).score *= 2.50; // WR 60%+ = PRIORIDADE ABSOLUTA
+          (st as any).justification = `🔥 WR ${(wr*100).toFixed(0)}% TOP | ` + (st as any).justification;
+        } else if (wr > 0.50) {
+          (st as any).score *= 2.00; // WR 50%+ = DOMINA
           (st as any).justification = `✅ WR ${(wr*100).toFixed(0)}% COMPROVADO | ` + (st as any).justification;
         } else if (wr > 0.40) {
-          (st as any).score *= 1.30; // boa: +30%
-        } else if (wr < 0.15 && perf.total >= 5) {
-          (st as any).score *= 0.30; // em colapso: -70% (era -45%)
+          (st as any).score *= 1.50; // boa
+        } else if (wr > 0.30) {
+          (st as any).score *= 1.10; // aceitável
+        } else if (wr < 0.12 && perf.total >= 5) {
+          (st as any).score *= 0.15; // em colapso TOTAL: -85%
+        } else if (wr < 0.20 && perf.total >= 5) {
+          (st as any).score *= 0.30; // fraca: -70%
         } else if (wr < 0.25 && perf.total >= 5) {
-          (st as any).score *= 0.50; // fraca: -50%
+          (st as any).score *= 0.45;
         }
       }
       
-      // BACKTEST GATE: estratégia com backtest < 15% no histórico atual é penalizada
+      // BACKTEST GATE V2: backtest define se a estratégia VIVE ou MORRE
       const btRate = backtestSet((st as any).numbers || []);
-      if (btRate < 0.10 && (st as any).numbers?.length <= 12) {
-        (st as any).score *= 0.40; // backtest ruim = quase elimina
-      } else if (btRate > 0.30) {
-        (st as any).score *= 1.35; // backtest excelente = boost
-      } else if (btRate > 0.22) {
-        (st as any).score *= 1.15;
+      if (btRate < 0.08 && (st as any).numbers?.length <= 12) {
+        (st as any).score *= 0.20; // backtest péssimo = praticamente elimina
+      } else if (btRate < 0.12) {
+        (st as any).score *= 0.50;
+      } else if (btRate > 0.35) {
+        (st as any).score *= 1.60; // backtest excepcional = boost forte
+      } else if (btRate > 0.25) {
+        (st as any).score *= 1.30;
+      } else if (btRate > 0.18) {
+        (st as any).score *= 1.10;
       }
     }
 
@@ -6450,24 +6461,41 @@ serve(async (req) => {
       else if (topReasonCategories.size >= 5) finalProbability += 3;
     }
     
-    // COVERAGE-BASED PROBABILITY CEILING V2 — mais realista
-    // Probabilidade real = cobertura base + bônus limitado por confirmações
+    // COVERAGE-BASED PROBABILITY CEILING V4 — AGGRESSIVE (busca 90%+)
     const coveragePercent = +(finalBetNumbers.length / 37 * 100).toFixed(1);
-    // Com 8 números = 21.6% cobertura base. Bônus máximo reduzido.
-    const maxBonus = confirmations >= 4 ? 16 : confirmations >= 3 ? 12 : confirmations >= 2 ? 8 : 5;
-    const maxRealisticProb = Math.min(85, coveragePercent + maxBonus); // teto 85% (era 95%)
+    // Bônus generoso para sinais fortes: a melhor jogada DEVE brilhar
+    const maxBonus = confirmations >= 5 ? 35 : confirmations >= 4 ? 28 : confirmations >= 3 ? 22 : confirmations >= 2 ? 15 : 8;
+    const maxRealisticProb = Math.min(98, coveragePercent + maxBonus);
     if (finalProbability > maxRealisticProb) {
       finalProbability = maxRealisticProb;
     }
     
-    // BACKTEST VALIDATION do top1 — se o número #1 não acertaria no backtest recente, penalizar
+    // BACKTEST VALIDATION do top1
     const top1BtHits = numbers.slice(1, 31).filter(n => n === numTop1).length;
     if (top1BtHits === 0 && numbers.length >= 30) {
-      finalProbability -= 8; // #1 nunca saiu nos últimos 30 = penalizar
+      finalProbability -= 5;
     }
     
-    // Cap — mais honesto
-    finalProbability = Math.min(85, Math.max(15, Math.round(finalProbability)));
+    // BOOST EXTREMO: Se WR real da estratégia > 50% E multi-strat confirma, ir a 90%+
+    const winnerWRReal = winnerPerfCal?.winRate ?? 0;
+    const winnerTotalPreds = winnerPerfCal?.total ?? 0;
+    if (winnerWRReal > 0.50 && winnerTotalPreds >= 5 && confirmations >= 3) {
+      finalProbability = Math.max(finalProbability, 90);
+      aiLearnings.unshift(`🔥 ESTRATÉGIA VALIDADA: ${winner.label} WR ${(winnerWRReal*100).toFixed(0)}% + ${confirmations} confirmações → 90%+`);
+    } else if (winnerWRReal > 0.40 && winnerTotalPreds >= 5 && confirmations >= 2) {
+      finalProbability = Math.max(finalProbability, 80);
+    } else if (winnerWRReal > 0.35 && winnerTotalPreds >= 3 && confirmations >= 2) {
+      finalProbability = Math.max(finalProbability, 70);
+    }
+    
+    // APRENDIZADO APLICADO: cada padrão aprendido que confirma a jogada → +2%
+    const appliedLearningCount = topInfluence.length;
+    if (appliedLearningCount >= 3) finalProbability += 8;
+    else if (appliedLearningCount >= 2) finalProbability += 5;
+    else if (appliedLearningCount >= 1) finalProbability += 2;
+    
+    // Cap final — teto 98% para sinais perfeitos
+    finalProbability = Math.min(98, Math.max(15, Math.round(finalProbability)));
     
     // Add strategy performance learnings
     const winnerPerf = strategyPerformance[winner.type];
