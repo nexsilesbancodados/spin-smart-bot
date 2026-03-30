@@ -362,7 +362,8 @@ const SniperSignal = ({ sniperData, sniperCountdown, sniperStale, lastPredResult
           supportPool.forEach((n: number) => { scoreCount[n] = (scoreCount[n] || 0) + 1; });
           const sortedSupport = [...new Set(supportPool)].sort((a, b) => (scoreCount[b] || 0) - (scoreCount[a] || 0));
 
-          const PROT = PROTECTION_NUMBERS.filter(n => n !== ensTop1);
+          const dynamicProtection: number[] = sniperData?.signal?.protection || sniperData?.strategy?.protection || [];
+          const PROT = dynamicProtection.filter((n: number) => n !== ensTop1);
           const support = sortedSupport.slice(0, 8);
           const finalNumbers: number[] = [...new Set([ensTop1, ...support, ...PROT])].slice(0, 12);
 
