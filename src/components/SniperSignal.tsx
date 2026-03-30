@@ -273,6 +273,26 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
               </div>
             )}
 
+            {/* AI Reasoning */}
+            {sniperData?.aiReasoning?.reasoning && (
+              <div className="mt-2 p-2 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="text-[8px] font-black text-cyan-400 uppercase tracking-wider">🧠 IA Raciocinou</span>
+                  {sniperData.aiReasoning.confidence !== null && (
+                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 font-bold">
+                      {sniperData.aiReasoning.confidence}% confiança
+                    </span>
+                  )}
+                  {sniperData.aiReasoning.consensus > 0 && (
+                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 font-bold">
+                      {sniperData.aiReasoning.consensus} consenso
+                    </span>
+                  )}
+                </div>
+                <p className="text-[9px] text-cyan-300/80 leading-relaxed">{sniperData.aiReasoning.reasoning}</p>
+              </div>
+            )}
+
             {/* Confirmations */}
             {sniperData?.signal?.confirmationDetail && confs > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
@@ -290,6 +310,9 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
                 )}
                 {sniperData.signal.confirmationDetail.winner && (
                   <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-bold">⚡ Estratégia</span>
+                )}
+                {sniperData?.aiReasoning?.reasoning && (
+                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-bold">🧠 IA</span>
                 )}
               </div>
             )}
