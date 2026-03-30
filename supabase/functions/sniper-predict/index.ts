@@ -6337,14 +6337,15 @@ serve(async (req) => {
       }
     }
     
-    // CONVERGÊNCIA ABSOLUTA gets special treatment — multi-dimensional confirmation
+    // CONVERGÊNCIA ABSOLUTA — boost moderado, NÃO forçar probabilidade alta
+    // Forçar 76-95% causava probabilidades irreais que nunca acertavam
     if (winner.type === 'convergencia_absoluta') {
       const dimCount = (winner.justification.match(/(\d+) dimensões/) || [])[1];
       const dims = parseInt(dimCount || '5');
-      if (dims >= 8) finalProbability = Math.max(finalProbability, 95);
-      else if (dims >= 7) finalProbability = Math.max(finalProbability, 90);
-      else if (dims >= 6) finalProbability = Math.max(finalProbability, 83);
-      else if (dims >= 5) finalProbability = Math.max(finalProbability, 76);
+      if (dims >= 8) finalProbability += 12;
+      else if (dims >= 7) finalProbability += 8;
+      else if (dims >= 6) finalProbability += 5;
+      // NÃO usar Math.max — respeitar a calibração bayesiana
     }
     
     // COMBO DETECTION BOOST — if winner numbers have combo flags (OURO = max boost)
