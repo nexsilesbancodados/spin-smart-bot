@@ -218,7 +218,7 @@ const Index = () => {
 
   const fetchSniper = useCallback(async (retryCount = 0) => {
     const now = Date.now();
-    if (now - lastSniperTriggerRef.current < 1200 && retryCount === 0) return;
+    if (now - lastSniperTriggerRef.current < 15000 && retryCount === 0) return;
     if (sniperFetchingRef.current && retryCount === 0) return;
     if (!aiEnabled) return;
     sniperFetchingRef.current = true;
