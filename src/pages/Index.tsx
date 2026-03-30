@@ -544,9 +544,9 @@ const Index = () => {
             >
               <div className="space-y-3">
                 <StrategyLeaderboard />
-                <PullRadar allNumbers={allNumbers} sniperData={sniperData} />
-                <Scanner500 allNumbers={allNumbers} sniperData={sniperData} />
-                <PatternPanel24h />
+                <PullRadar pullPatterns={sniperData?.pullPatterns || []} latestNumber={allNumbers[0] ?? 0} />
+                <Scanner500 layerResults={sniperData?.layerResults || null} isScanning={false} />
+                <PatternPanel24h sniperData={sniperData} />
               </div>
             </CollapsibleSection>
 
