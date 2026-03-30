@@ -6592,6 +6592,10 @@ REGRAS DE EXECUÇÃO:
               aiAdjustedNumbers = parsed.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 7);
               aiReasoning = parsed.reasoning || null;
               aiConfidence = typeof parsed.confidence === 'number' ? Math.min(100, Math.max(0, parsed.confidence)) : null;
+              aiPatternAnalysis = parsed.patternAnalysis || null;
+              aiSectorFocus = parsed.sectorFocus || null;
+              aiFeedbackAction = parsed.feedbackAction || null;
+              aiLearned = parsed.learned || null;
               
               // MERGE: AI + Statistical consensus
               const aiSet = new Set(aiAdjustedNumbers);
