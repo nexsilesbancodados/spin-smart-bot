@@ -361,26 +361,28 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`glass rounded-2xl border-2 transition-all overflow-hidden ${
+      className={`glass rounded-2xl border transition-all overflow-hidden ${
         betFlash
-          ? 'border-primary shadow-neon-cyan'
+          ? 'border-primary/50 shadow-neon-cyan'
           : config.enabled
-          ? 'border-neon-green/40'
-          : 'border-border/40'
+          ? 'border-neon-green/30 shadow-[0_0_12px_hsl(var(--neon-green)/0.1)]'
+          : 'border-border/20'
       }`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/20">
-        <div className="flex items-center gap-2">
-          <Zap className={`w-5 h-5 ${config.enabled ? 'text-neon-green animate-pulse' : 'text-primary'}`} />
-          <span className="font-display font-bold text-xs tracking-[0.15em] text-primary">CENTRAL DE APOSTAS</span>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/15">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary/15 to-neon-pink/10 border border-primary/20 flex items-center justify-center shadow-neon-cyan">
+            <Zap className={`w-3.5 h-3.5 ${config.enabled ? 'text-neon-green animate-pulse' : 'text-primary'}`} />
+          </div>
+          <span className="font-display font-bold text-[10px] tracking-[0.15em] text-primary">CENTRAL DE APOSTAS</span>
           {config.enabled && (
-            <span className="text-[8px] px-2 py-0.5 bg-green-500/15 rounded-md text-green-400 font-bold border border-green-500/30 animate-pulse">
+            <span className="text-[7px] px-2 py-0.5 bg-neon-green/10 rounded-md text-neon-green font-bold border border-neon-green/20 animate-pulse">
               AUTO
             </span>
           )}
           {stats.waitingResult && (
-            <span className="text-[8px] px-2 py-0.5 bg-yellow-500/15 rounded-md text-yellow-400 font-bold border border-yellow-500/30">
+            <span className="text-[7px] px-2 py-0.5 bg-gold/10 rounded-md text-gold font-bold border border-gold/20">
               ⏳
             </span>
           )}
@@ -388,21 +390,21 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setSimMode(prev => !prev)}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-bold border transition-all ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-bold border transition-all backdrop-blur-sm ${
               simMode
-                ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
-                : 'bg-secondary text-muted-foreground border-border hover:text-foreground'
+                ? 'bg-neon-cyan/10 text-neon-cyan border-neon-cyan/20'
+                : 'bg-background/15 text-muted-foreground/50 border-border/15 hover:text-foreground'
             }`}
             title="Modo Simulação — apostas virtuais sem dinheiro real"
           >
             🧪 {simMode ? 'SIM' : 'REAL'}
           </button>
           <button onClick={() => setShowSettings(!showSettings)}
-            className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
+            className="p-1.5 rounded-lg hover:bg-primary/8 transition-colors text-muted-foreground/40 hover:text-primary">
             <Settings className="w-4 h-4" />
           </button>
           <button onClick={resetStats}
-            className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
+            className="p-1.5 rounded-lg hover:bg-primary/8 transition-colors text-muted-foreground/40 hover:text-primary">
             <RotateCcw className="w-4 h-4" />
           </button>
         </div>
@@ -411,11 +413,11 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
       <div className="p-4 space-y-3">
         {/* Stop alert */}
         {stats.stopped && (
-          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 flex items-center gap-2.5">
+          <div className="bg-destructive/8 border border-destructive/20 rounded-xl p-3 flex items-center gap-2.5 backdrop-blur-sm">
             <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
             <div>
               <p className="text-[10px] font-bold text-destructive">{stats.stopReason}</p>
-              <p className="text-[8px] text-muted-foreground">Reset ou ligue Auto-Bet para continuar.</p>
+              <p className="text-[8px] text-muted-foreground/50">Reset ou ligue Auto-Bet para continuar.</p>
             </div>
           </div>
         )}
@@ -429,16 +431,16 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="bg-secondary/40 rounded-xl border border-border/50 p-3.5 space-y-3">
+              <div className="glass rounded-xl border border-border/15 p-3.5 space-y-3 backdrop-blur-sm">
                 <div>
-                  <label className="text-[9px] text-muted-foreground mb-1.5 block font-bold tracking-wide">VALOR DA APOSTA (R$)</label>
+                  <label className="text-[9px] text-muted-foreground/60 mb-1.5 block font-bold tracking-wider">VALOR DA APOSTA (R$)</label>
                   <div className="flex gap-1.5">
                     {[0.5, 1, 2, 5, 10, 25].map(v => (
                       <button key={v} onClick={() => setConfig(prev => ({ ...prev, betValue: v }))}
-                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all ${
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all border backdrop-blur-sm ${
                           config.betValue === v
-                            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
-                            : 'bg-secondary text-muted-foreground hover:bg-muted'
+                            ? 'bg-primary/15 text-primary border-primary/25 shadow-neon-cyan'
+                            : 'bg-background/15 text-muted-foreground/50 border-border/10 hover:text-foreground'
                         }`}>
                         {v}
                       </button>
@@ -447,14 +449,14 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                 </div>
 
                 <div>
-                  <label className="text-[9px] text-muted-foreground mb-1.5 block font-bold tracking-wide">PROBABILIDADE MÍNIMA (%)</label>
+                  <label className="text-[9px] text-muted-foreground/60 mb-1.5 block font-bold tracking-wider">PROBABILIDADE MÍNIMA (%)</label>
                   <div className="flex gap-1.5">
                     {[70, 75, 80, 85, 90].map(v => (
                       <button key={v} onClick={() => setConfig(prev => ({ ...prev, minProbability: v }))}
-                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all ${
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all border backdrop-blur-sm ${
                           config.minProbability === v
-                            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
-                            : 'bg-secondary text-muted-foreground hover:bg-muted'
+                            ? 'bg-primary/15 text-primary border-primary/25 shadow-neon-cyan'
+                            : 'bg-background/15 text-muted-foreground/50 border-border/10 hover:text-foreground'
                         }`}>
                         {v}%
                       </button>
@@ -468,11 +470,11 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                     <p className="text-[8px] text-muted-foreground">Dobra aposta após perda</p>
                   </div>
                   <button onClick={() => setConfig(prev => ({ ...prev, useGale: !prev.useGale }))}
-                    className={`w-11 h-6 rounded-full transition-all relative ${
-                      config.useGale ? 'bg-primary' : 'bg-secondary border border-border'
+                    className={`w-11 h-6 rounded-full transition-all relative border ${
+                      config.useGale ? 'bg-primary/30 border-primary/40' : 'bg-background/20 border-border/20'
                     }`}>
-                    <div className="w-4.5 h-4.5 rounded-full bg-white shadow-sm absolute top-[3px] transition-all"
-                      style={{ left: config.useGale ? '22px' : '3px', width: '18px', height: '18px' }} />
+                    <div className={`w-[18px] h-[18px] rounded-full shadow-sm absolute top-[3px] transition-all ${config.useGale ? 'bg-primary' : 'bg-muted-foreground/40'}`}
+                      style={{ left: config.useGale ? '22px' : '3px' }} />
                   </button>
                 </div>
 
@@ -482,8 +484,8 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map(v => (
                         <button key={v} onClick={() => setConfig(prev => ({ ...prev, maxGaleSteps: v }))}
-                          className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold ${
-                            config.maxGaleSteps === v ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+                          className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-all ${
+                            config.maxGaleSteps === v ? 'bg-primary/15 text-primary border-primary/25' : 'bg-background/15 text-muted-foreground/50 border-border/10'
                           }`}>{v}</button>
                       ))}
                     </div>
@@ -496,8 +498,8 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                     <div className="flex gap-1">
                       {[-20, -50, -100, -200].map(v => (
                         <button key={v} onClick={() => setConfig(prev => ({ ...prev, stopLoss: v }))}
-                          className={`flex-1 py-1.5 rounded-lg text-[8px] font-bold ${
-                            config.stopLoss === v ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-muted-foreground'
+                          className={`flex-1 py-1.5 rounded-lg text-[8px] font-bold border transition-all ${
+                            config.stopLoss === v ? 'bg-destructive/15 text-destructive border-destructive/25' : 'bg-background/15 text-muted-foreground/50 border-border/10'
                           }`}>{v}</button>
                       ))}
                     </div>
@@ -507,8 +509,8 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                     <div className="flex gap-1">
                       {[50, 100, 200, 500].map(v => (
                         <button key={v} onClick={() => setConfig(prev => ({ ...prev, stopWin: v }))}
-                          className={`flex-1 py-1.5 rounded-lg text-[8px] font-bold ${
-                            config.stopWin === v ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+                          className={`flex-1 py-1.5 rounded-lg text-[8px] font-bold border transition-all ${
+                            config.stopWin === v ? 'bg-neon-green/10 text-neon-green border-neon-green/20' : 'bg-background/15 text-muted-foreground/50 border-border/10'
                           }`}>+{v}</button>
                       ))}
                     </div>
@@ -523,7 +525,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
         <div>
           <button
             onClick={() => setShowBetTypes(!showBetTypes)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-secondary/50 border border-border/50 text-[9px] font-bold text-foreground hover:bg-secondary transition-all"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl glass border border-border/15 text-[9px] font-bold text-foreground/80 hover:border-primary/20 transition-all backdrop-blur-sm"
           >
             <span>
               {manualBetType === 'auto' ? '🤖 Auto (Sinal da IA)' : 
@@ -540,26 +542,26 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                     <button
                       key={bt.id}
                       onClick={() => { setManualBetType(bt.id); setShowBetTypes(false); }}
-                      className={`py-2 px-1.5 rounded-lg text-[8px] font-bold transition-all text-center ${
+                      className={`py-2 px-1.5 rounded-lg text-[8px] font-bold transition-all text-center border backdrop-blur-sm ${
                         manualBetType === bt.id
-                          ? 'bg-primary/20 text-primary border border-primary/30'
-                          : 'bg-secondary/60 text-muted-foreground border border-border/20 hover:text-foreground'
+                          ? 'bg-primary/10 text-primary border-primary/25'
+                          : 'bg-background/10 text-muted-foreground/60 border-border/10 hover:text-foreground'
                       }`}
                     >
                       {bt.label}
-                      <div className="text-[6px] opacity-60">{bt.desc}</div>
+                      <div className="text-[6px] opacity-50">{bt.desc}</div>
                     </button>
                   ))}
                   <button
                     onClick={() => { setManualBetType('custom'); setShowBetTypes(false); }}
-                    className={`py-2 px-1.5 rounded-lg text-[8px] font-bold transition-all text-center ${
+                    className={`py-2 px-1.5 rounded-lg text-[8px] font-bold transition-all text-center border backdrop-blur-sm ${
                       manualBetType === 'custom'
-                        ? 'bg-primary/20 text-primary border border-primary/30'
-                        : 'bg-secondary/60 text-muted-foreground border border-border/20 hover:text-foreground'
+                        ? 'bg-primary/10 text-primary border-primary/25'
+                        : 'bg-background/10 text-muted-foreground/60 border-border/10 hover:text-foreground'
                     }`}
                   >
                     ✏️ Personalizar
-                    <div className="text-[6px] opacity-60">Seus números</div>
+                    <div className="text-[6px] opacity-50">Seus números</div>
                   </button>
                 </div>
               </motion.div>
@@ -572,7 +574,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                 value={customNumbers}
                 onChange={e => setCustomNumbers(e.target.value)}
                 placeholder="Ex: 0, 3, 7, 12, 26, 32"
-                className="w-full px-3 py-2 rounded-lg bg-secondary/60 border border-border text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full px-3 py-2 rounded-lg glass border border-border/15 text-[10px] text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/40 font-mono"
               />
               <p className="text-[7px] text-muted-foreground mt-1">Separe os números por vírgula (0 a 36)</p>
             </div>
@@ -581,27 +583,27 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
         {/* Stats grid */}
         <div className="grid grid-cols-4 gap-2">
-          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
-            <DollarSign className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
-            <p className={`font-bold text-base font-mono ${stats.profit >= 0 ? 'text-green-400' : 'text-destructive'}`}>
+          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
+            <DollarSign className="w-3.5 h-3.5 text-muted-foreground/40 mx-auto mb-1" />
+            <p className={`font-bold text-base font-mono ${stats.profit >= 0 ? 'text-neon-green' : 'text-destructive'}`}>
               R${stats.profit.toFixed(2)}
             </p>
-            <span className="text-[8px] text-muted-foreground">Lucro</span>
+            <span className="text-[7px] text-muted-foreground/40">Lucro</span>
           </div>
-          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
-            <Target className="w-3.5 h-3.5 text-primary mx-auto mb-1" />
-            <p className="font-bold text-base font-mono text-foreground">{winRate}%</p>
-            <span className="text-[8px] text-muted-foreground">Acerto</span>
+          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
+            <Target className="w-3.5 h-3.5 text-primary/50 mx-auto mb-1" />
+            <p className="font-bold text-base font-mono text-foreground/80">{winRate}%</p>
+            <span className="text-[7px] text-muted-foreground/40">Acerto</span>
           </div>
-          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
-            <TrendingUp className="w-3.5 h-3.5 text-neon-green mx-auto mb-1" />
+          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
+            <TrendingUp className="w-3.5 h-3.5 text-neon-green/50 mx-auto mb-1" />
             <p className="font-bold text-base font-mono text-neon-green">{stats.wins}</p>
-            <span className="text-[8px] text-muted-foreground">Wins</span>
+            <span className="text-[7px] text-muted-foreground/40">Wins</span>
           </div>
-          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
-            <TrendingDown className="w-3.5 h-3.5 text-destructive mx-auto mb-1" />
+          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
+            <TrendingDown className="w-3.5 h-3.5 text-destructive/50 mx-auto mb-1" />
             <p className="font-bold text-base font-mono text-destructive">{stats.losses}</p>
-            <span className="text-[8px] text-muted-foreground">Losses</span>
+            <span className="text-[7px] text-muted-foreground/40">Losses</span>
           </div>
         </div>
 
@@ -610,23 +612,23 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           <span className="text-muted-foreground">Aposta atual:</span>
           <span className="font-bold text-primary font-mono">R${getCurrentBetAmount().toFixed(2)}</span>
           {config.useGale && stats.currentGaleStep > 0 && (
-            <span className="text-[8px] px-2 py-0.5 bg-yellow-500/15 text-yellow-400 rounded-md font-bold border border-yellow-500/30">
+            <span className="text-[8px] px-2 py-0.5 bg-gold/10 text-gold rounded-md font-bold border border-gold/20">
               GALE {stats.currentGaleStep}/{config.maxGaleSteps}
             </span>
           )}
-          <span className="text-muted-foreground ml-auto">Total: {stats.totalBets} apostas</span>
+          <span className="text-muted-foreground/40 ml-auto">Total: {stats.totalBets}</span>
         </div>
 
         {/* Waiting result */}
         {stats.waitingResult && stats.lastBetNumbers.length > 0 && (
-          <div className="bg-yellow-500/8 border border-yellow-500/25 rounded-xl p-3">
-            <span className="text-[9px] text-yellow-400 font-bold block mb-1.5">⏳ APOSTA ATIVA — Aguardando resultado...</span>
+          <div className="bg-gold/5 border border-gold/15 rounded-xl p-3 backdrop-blur-sm">
+            <span className="text-[9px] text-gold font-bold block mb-1.5">⏳ APOSTA ATIVA — Aguardando resultado...</span>
             <div className="flex flex-wrap gap-1.5">
               {stats.lastBetNumbers.map((n, i) => (
                 <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold ring-1 ${
-                  getColor(n) === 'red' ? 'bg-red-600 text-white ring-red-400/30' :
-                  getColor(n) === 'black' ? 'bg-zinc-800 text-white ring-zinc-500/30' :
-                  'bg-green-600 text-white ring-green-400/30'
+                  getColor(n) === 'red' ? 'bg-red-600 text-white ring-red-400/25' :
+                  getColor(n) === 'black' ? 'bg-zinc-800 text-white ring-zinc-500/25' :
+                  'bg-emerald-600 text-white ring-emerald-400/25'
                 }`}>{n}</div>
               ))}
             </div>
@@ -635,10 +637,10 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
         {/* Scoreboard */}
         {stats.history.length > 0 && (
-          <div className="bg-secondary/30 border border-border/40 rounded-xl p-3">
+          <div className="glass rounded-xl border border-border/15 p-3 backdrop-blur-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[9px] font-bold text-primary tracking-wider">📊 PLACAR</span>
-              <span className="text-[8px] text-muted-foreground">{stats.history.length} resultado{stats.history.length > 1 ? 's' : ''}</span>
+              <span className="text-[7px] text-muted-foreground/40 font-mono">{stats.history.length} resultado{stats.history.length > 1 ? 's' : ''}</span>
             </div>
             <div className="flex flex-wrap gap-1.5 mb-2.5">
               {stats.history.slice(0, 15).map((r) => (
@@ -683,14 +685,14 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
         {/* Sim mode summary */}
         {simMode && simTotal > 0 && (
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2 mt-2">
-            <p className="text-[8px] font-bold text-blue-400 mb-1">🧪 MODO SIMULAÇÃO</p>
+          <div className="bg-neon-cyan/5 border border-neon-cyan/15 rounded-lg p-2.5 mt-2 backdrop-blur-sm">
+            <p className="text-[8px] font-bold text-neon-cyan mb-1">🧪 MODO SIMULAÇÃO</p>
             <div className="flex gap-3 text-[8px]">
-              <span className="text-muted-foreground">Total: <strong className="text-foreground">{simTotal}</strong></span>
-              <span className="text-muted-foreground">P&L: <strong className={simProfit >= 0 ? 'text-green-400' : 'text-red-400'}>R${simProfit.toFixed(2)}</strong></span>
-              <span className="text-muted-foreground">Win: <strong className="text-foreground">{simTotal > 0 ? ((simWins/simTotal)*100).toFixed(0) : 0}%</strong></span>
+              <span className="text-muted-foreground/50">Total: <strong className="text-foreground/70">{simTotal}</strong></span>
+              <span className="text-muted-foreground/50">P&L: <strong className={simProfit >= 0 ? 'text-neon-green' : 'text-destructive'}>R${simProfit.toFixed(2)}</strong></span>
+              <span className="text-muted-foreground/50">Win: <strong className="text-foreground/70">{simTotal > 0 ? ((simWins/simTotal)*100).toFixed(0) : 0}%</strong></span>
             </div>
-            <p className="text-[7px] text-muted-foreground mt-1">Apostas virtuais — sem dinheiro real</p>
+            <p className="text-[7px] text-muted-foreground/30 mt-1">Apostas virtuais — sem dinheiro real</p>
           </div>
         )}
 
