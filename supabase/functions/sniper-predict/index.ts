@@ -4201,40 +4201,17 @@ Deno.serve(async (req) => {
         s += 3; r.push(`🟢 VizZero(${daniGreen.mod4.delay}r)`); signalFlags['P3'] = true;
       }
       
-      // VALIDATED MATRIX: dados reais ATUALIZADOS 500 giros — esta mesa específica
-      // Calculados em 2026-03-31 — auto-repetição DOMINANTE nesta mesa
-      const VALIDATED_MATRIX_STATIC: Record<number, {target: number; prob: number}[]> = {
-        1:  [{target:1,  prob:0.86}], // 12/14 — EXTREMO
-        25: [{target:25, prob:0.83}], // 54/65 — EXTREMO
-        24: [{target:24, prob:0.81}], // 13/16 — EXTREMO
-        29: [{target:29, prob:0.80}], // 32/40 — EXTREMO
-        28: [{target:28, prob:0.78}], // 7/9
-        4:  [{target:4,  prob:0.77}], // 23/30
-        26: [{target:26, prob:0.77}], // 23/30
-        27: [{target:27, prob:0.73}], // 16/22
-        35: [{target:35, prob:0.73}], // 16/22
-        18: [{target:18, prob:0.71}], // 10/14
-        8:  [{target:8,  prob:0.71}], // 12/17
-        21: [{target:21, prob:0.70}], // 14/20
-        17: [{target:17, prob:0.68}], // 15/22
-        33: [{target:33, prob:0.64}], // 7/11
-        34: [{target:34, prob:0.64}], // 7/11
-        5:  [{target:5,  prob:0.60}], // estimado por padrão
-        7:  [{target:7,  prob:0.58}], // T7 dominante
-        0:  [{target:0,  prob:0.52}], // Zero pressão
-        14: [{target:14, prob:0.50}], // histórico
-        2:  [{target:2,  prob:0.45}], // histórico
-      };
-      // Merge: dinâmica do banco prevalece sobre estática
+      // VALIDATED MATRIX: usar APENAS dados dinâmicos do banco (calibrate-constants)
+      // Auto-repetição real em roleta justa = 1/37 ≈ 2.7%. Não usar valores hardcoded inflados.
       const VALIDATED_MATRIX: Record<number, {target: number; prob: number}[]> = hasDynCalibration && Object.keys(dynMatrix).length >= 5
-        ? { ...VALIDATED_MATRIX_STATIC, ...dynMatrix }
-        : VALIDATED_MATRIX_STATIC;
+        ? dynMatrix
+        : {};
       const validatedPairs = VALIDATED_MATRIX[numbers[0]] || [];
       for (const vp of validatedPairs) {
-        if (vp.target === n) {
-          const validatedBoost = vp.prob * 12;
+        if (vp.target === n && vp.prob > 0.04) { // só usar se significativamente acima do aleatório (2.7%)
+          const validatedBoost = Math.min(4, vp.prob * 8); // cap boost para não inflar
           s += validatedBoost;
-          r.push(`✅ Matriz Real(${(vp.prob*100).toFixed(0)}%)`);
+          r.push(`✅ Matriz(${(vp.prob*100).toFixed(0)}%)`);
           signalFlags['VALIDATED'] = true;
         }
       }
@@ -7744,11 +7721,13 @@ Responda APENAS JSON:
       else if (topReasonCategories.size >= 5) finalProbability += 3;
     }
     
-    // COVERAGE-BASED PROBABILITY CEILING V4 — AGGRESSIVE (busca 90%+)
+    // COVERAGE-BASED PROBABILITY CEILING V5 — REALISTA
+    // Base matemática: N números cobrem N/37 da roda. Edge máximo ~60% sobre base.
     const coveragePercent = +(finalBetNumbers.length / 37 * 100).toFixed(1);
-    // Bônus generoso para sinais fortes: a melhor jogada DEVE brilhar
-    const maxBonus = confirmations >= 5 ? 35 : confirmations >= 4 ? 28 : confirmations >= 3 ? 22 : confirmations >= 2 ? 15 : 8;
-    const maxRealisticProb = Math.min(98, coveragePercent + maxBonus);
+    const baseProb = coveragePercent; // ex: 7 nums = 18.9%
+    // Bônus por convergência de sinais — moderado e realista
+    const maxBonus = confirmations >= 5 ? 18 : confirmations >= 4 ? 14 : confirmations >= 3 ? 10 : confirmations >= 2 ? 7 : 4;
+    const maxRealisticProb = Math.min(55, baseProb + maxBonus); // teto absoluto 55%
     if (finalProbability > maxRealisticProb) {
       finalProbability = maxRealisticProb;
     }
@@ -7756,35 +7735,20 @@ Responda APENAS JSON:
     // BACKTEST VALIDATION do top1
     const top1BtHits = numbers.slice(1, 31).filter(n => n === numTop1).length;
     if (top1BtHits === 0 && numbers.length >= 30) {
-      finalProbability -= 5;
+      finalProbability -= 3;
     }
     
-    // BOOST EXTREMO: Se WR real da estratégia > 50% E multi-strat confirma, ir a 90%+
+    // BOOST por WR real comprovado — moderado
     const winnerWRReal = winnerPerfCal?.winRate ?? 0;
     const winnerTotalPreds = winnerPerfCal?.total ?? 0;
-    if (winnerWRReal > 0.50 && winnerTotalPreds >= 5 && confirmations >= 3) {
-      finalProbability = Math.max(finalProbability, 90);
-      aiLearnings.unshift(`🔥 ESTRATÉGIA VALIDADA: ${winner.label} WR ${(winnerWRReal*100).toFixed(0)}% + ${confirmations} confirmações → 90%+`);
+    if (winnerWRReal > 0.50 && winnerTotalPreds >= 8 && confirmations >= 3) {
+      finalProbability = Math.max(finalProbability, Math.min(50, baseProb + 25));
     } else if (winnerWRReal > 0.40 && winnerTotalPreds >= 5 && confirmations >= 2) {
-      finalProbability = Math.max(finalProbability, 80);
-    } else if (winnerWRReal > 0.35 && winnerTotalPreds >= 3 && confirmations >= 2) {
-      finalProbability = Math.max(finalProbability, 70);
+      finalProbability = Math.max(finalProbability, Math.min(45, baseProb + 20));
     }
     
-    // APRENDIZADO APLICADO: mostrar quais padrões aprendidos influenciaram a jogada
-    const topInfluence = learnedInfluence
-      .filter(li => finalBetNumbers.includes(li.num))
-      .sort((a, b) => b.boost - a.boost)
-      .slice(0, 5);
-
-    // APRENDIZADO APLICADO: cada padrão aprendido que confirma a jogada → +2%
-    const appliedLearningCount = topInfluence.length;
-    if (appliedLearningCount >= 3) finalProbability += 8;
-    else if (appliedLearningCount >= 2) finalProbability += 5;
-    else if (appliedLearningCount >= 1) finalProbability += 2;
-    
-    // Cap final — teto 98% para sinais perfeitos
-    finalProbability = Math.min(98, Math.max(15, Math.round(finalProbability)));
+    // Cap final — teto 55% (7 nums = ~19% base + edge máximo realista)
+    finalProbability = Math.min(55, Math.max(12, Math.round(finalProbability)));
     
     // Add strategy performance learnings
     const winnerPerf = strategyPerformance[winner.type];
