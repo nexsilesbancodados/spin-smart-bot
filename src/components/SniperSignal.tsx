@@ -49,6 +49,7 @@ interface Props {
   autoLearnStatus?: 'idle' | 'learning' | 'analyzing' | 'backtesting';
   strategyFilter?: string;
   setStrategyFilter?: (s: string) => void;
+  spinTimestamp?: number; // timestamp of when the spin was detected
 }
 
 const ANALYSIS_TYPES = [
