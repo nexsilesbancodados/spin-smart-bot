@@ -966,10 +966,15 @@ const Index = () => {
           <div className="space-y-4">
 
             {/* Terminal Bias */}
-            <div className="bg-card rounded-xl border border-border p-4">
-              <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-wider mb-3">
-                Terminal Bias (últimos 200)
-              </h3>
+            <div className="glass rounded-xl border border-border/20 p-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gold/15 to-amber-500/10 border border-gold/20 flex items-center justify-center shadow-[0_0_8px_hsl(var(--gold)/0.15)]">
+                  <span className="text-sm">🔢</span>
+                </div>
+                <h3 className="text-[10px] font-black text-gold uppercase tracking-[0.15em]">
+                  Terminal Bias <span className="text-muted-foreground/40 font-normal">(200)</span>
+                </h3>
+              </div>
               <div className="flex items-end gap-1.5" style={{ height: 80 }}>
                 {Array.from({ length: 10 }, (_, t) => {
                   const cnt = allNumbers.slice(0,200).filter(n => n%10===t).length;
@@ -980,20 +985,20 @@ const Index = () => {
                   return (
                     <div key={t} className="flex-1 flex flex-col items-center gap-0.5">
                       {Math.abs(bias) > 20 && (
-                        <div className={`text-[6px] font-mono font-bold ${bias>0?'text-amber-400':'text-blue-400'}`}>
+                        <div className={`text-[6px] font-mono font-bold ${bias>0?'text-gold':'text-neon-cyan'}`}>
                           {bias>0?'+':''}{bias.toFixed(0)}%
                         </div>
                       )}
                       <div className="w-full flex items-end" style={{ flex: 1 }}>
                         <div
                           className={`w-full rounded-t transition-all ${
-                            bias > 50 ? 'bg-amber-500' : bias > 20 ? 'bg-primary/70' : bias < -30 ? 'bg-blue-500/40' : 'bg-muted-foreground/30'
+                            bias > 50 ? 'bg-gradient-to-t from-gold to-amber-400 shadow-[0_0_6px_hsl(var(--gold)/0.3)]' : bias > 20 ? 'bg-primary/70' : bias < -30 ? 'bg-neon-cyan/40' : 'bg-muted-foreground/20'
                           }`}
                           style={{ height: `${Math.max(4, pct)}%`, minHeight: 4 }}
                         />
                       </div>
-                      <div className="text-[7px] font-mono font-bold text-foreground">T{t}</div>
-                      <div className="text-[6px] text-muted-foreground">{cnt}</div>
+                      <div className="text-[7px] font-mono font-bold text-foreground/80">T{t}</div>
+                      <div className="text-[6px] text-muted-foreground/40">{cnt}</div>
                     </div>
                   );
                 })}
@@ -1001,12 +1006,15 @@ const Index = () => {
             </div>
 
             {/* Frequência numérica — grid 37 números */}
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Frequência (500 giros)</h3>
-                <div className="flex items-center gap-2 ml-auto text-[7px] text-muted-foreground">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block"/>quente</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block"/>frio</span>
+            <div className="glass rounded-xl border border-border/20 p-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-neon-cyan/15 to-neon-pink/10 border border-neon-cyan/20 flex items-center justify-center shadow-neon-cyan">
+                  <span className="text-sm">📊</span>
+                </div>
+                <h3 className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.15em]">Frequência <span className="text-muted-foreground/40 font-normal">(500)</span></h3>
+                <div className="flex items-center gap-2 ml-auto text-[7px] text-muted-foreground/50">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gold inline-block shadow-[0_0_4px_hsl(var(--gold)/0.4)]"/>quente</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-neon-cyan inline-block shadow-neon-cyan"/>frio</span>
                 </div>
               </div>
               <div className="grid grid-cols-9 gap-1">
@@ -1022,31 +1030,34 @@ const Index = () => {
                       onClick={() => { setDnaNumber(n); setDnaOpen(true); }}
                       title={`${n}: ${cnt}×`}
                       className={`h-8 rounded-md text-[9px] font-black text-white transition-all hover:scale-110 relative ${numBg(n)} ${
-                        hot ? 'ring-1 ring-amber-400' : cold ? 'ring-1 ring-blue-400/60' : ''
+                        hot ? 'ring-1 ring-gold shadow-[0_0_6px_hsl(var(--gold)/0.3)]' : cold ? 'ring-1 ring-neon-cyan/60 shadow-neon-cyan' : ''
                       }`}
                       style={{ opacity: op }}
                     >
                       {n}
                       {(hot || cnt === 0) && (
-                        <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${hot ? 'bg-amber-400' : 'bg-blue-400'}`} />
+                        <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${hot ? 'bg-gold shadow-[0_0_4px_hsl(var(--gold)/0.5)]' : 'bg-neon-cyan shadow-neon-cyan'}`} />
                       )}
                     </button>
                   );
                 })}
               </div>
-              <div className="mt-2 text-[7px] text-muted-foreground text-center">Toque em qualquer número para análise completa (DNA)</div>
+              <div className="mt-2.5 text-[7px] text-muted-foreground/30 text-center font-mono">Toque em qualquer número para DNA completo</div>
             </div>
 
             {/* Histórico sequencial */}
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Histórico</h3>
+            <div className="glass rounded-xl border border-border/20 p-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-neon-pink/15 to-purple-500/10 border border-neon-pink/20 flex items-center justify-center shadow-neon-pink">
+                  <span className="text-sm">📜</span>
+                </div>
+                <h3 className="text-[10px] font-black text-neon-pink uppercase tracking-[0.15em]">Histórico</h3>
                 <div className="flex gap-1 ml-auto">
                   {[50, 100, 200, 500].map(lim => (
                     <button key={lim}
                       onClick={() => startTransition(() => { setHistoryLimit(lim); setSelectedNum(null); })}
-                      className={`px-2 py-0.5 rounded text-[7px] font-bold transition-all ${
-                        historyLimit === lim ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'
+                      className={`px-2 py-0.5 rounded text-[7px] font-bold transition-all border ${
+                        historyLimit === lim ? 'bg-neon-pink/15 text-neon-pink border-neon-pink/25' : 'bg-background/20 text-muted-foreground/50 border-border/10 hover:text-foreground'
                       }`}>
                       {lim}
                     </button>
@@ -1055,17 +1066,17 @@ const Index = () => {
               </div>
 
               {selectedNum !== null && (
-                <div className="mb-2 flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/40 border border-border/30">
+                <div className="mb-2.5 flex items-center gap-2 px-2.5 py-1.5 rounded-lg glass border border-primary/15">
                   <div className={`w-6 h-6 rounded text-[9px] font-black text-white flex items-center justify-center ${numBg(selectedNum)}`}>{selectedNum}</div>
-                  <span className="text-[8px] text-muted-foreground">
+                  <span className="text-[8px] text-muted-foreground/60">
                     apareceu <b className="text-foreground">{allNumbers.slice(0, historyLimit).filter(n => n === selectedNum).length}×</b> em {historyLimit} giros
                   </span>
-                  <button onClick={() => setSelectedNum(null)} className="ml-auto text-[8px] text-muted-foreground hover:text-foreground">✕</button>
+                  <button onClick={() => setSelectedNum(null)} className="ml-auto text-[8px] text-muted-foreground/40 hover:text-foreground">✕</button>
                 </div>
               )}
 
               {historySlice.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground text-xs">Aguardando dados...</div>
+                <div className="text-center py-6 text-muted-foreground/40 text-xs">Aguardando dados...</div>
               ) : (
                 <div className="flex flex-wrap gap-1">
                   {historySlice.map((n, i) => (
@@ -1073,9 +1084,9 @@ const Index = () => {
                       key={i}
                       onClick={() => setSelectedNum(selectedNum === n ? null : n)}
                       className={`w-7 h-7 rounded text-[9px] font-bold text-white flex items-center justify-center transition-all ${numBg(n)} ${
-                        i === 0 ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''
-                      } ${selectedNum === n ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-background scale-110 z-10' : ''}
-                      ${selectedNum !== null && selectedNum !== n ? 'opacity-25' : ''}`}
+                        i === 0 ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background shadow-neon-cyan' : ''
+                      } ${selectedNum === n ? 'ring-2 ring-gold ring-offset-1 ring-offset-background scale-110 z-10 shadow-[0_0_8px_hsl(var(--gold)/0.3)]' : ''}
+                      ${selectedNum !== null && selectedNum !== n ? 'opacity-20' : ''}`}
                     >{n}</button>
                   ))}
                 </div>
