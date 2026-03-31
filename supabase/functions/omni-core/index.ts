@@ -1092,7 +1092,7 @@ Deno.serve(async (req) => {
       weights[w.model_id] = w;
     }
     // Ensure all models have defaults
-    for (const id of ['markov', 'neural_pattern', 'gradient', 'bayesian', 'statistical']) {
+    for (const id of ['markov', 'neural_pattern', 'gradient', 'bayesian', 'statistical', 'pattern_discovery', 'rl_optimizer']) {
       if (!weights[id]) {
         weights[id] = { model_id: id, weight: 1.0, win_rate: 0, total_predictions: 0, total_hits: 0, current_streak: 0 };
       }
@@ -1115,16 +1115,18 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // ── 3. Run all 5 Models in parallel ────────────────────
-    const [markovSignals, neuralSignals, gradientSignals, bayesianSignals, statsSignals] = [
+    // ── 3. Run all 7 Models in parallel ────────────────────
+    const [markovSignals, neuralSignals, gradientSignals, bayesianSignals, statsSignals, patternSignals, rlSignals] = [
       modelMarkov(spins),
       modelNeuralPattern(spins),
       modelGradient(spins),
       modelBayesian(spins),
       modelStatistical(spins),
+      modelPatternDiscovery(spins),
+      modelRLOptimizer(spins, weights),
     ];
 
-    const allSignals = [...markovSignals, ...neuralSignals, ...gradientSignals, ...bayesianSignals, ...statsSignals];
+    const allSignals = [...markovSignals, ...neuralSignals, ...gradientSignals, ...bayesianSignals, ...statsSignals, ...patternSignals, ...rlSignals];
 
     if (allSignals.length === 0) {
       return new Response(JSON.stringify({
