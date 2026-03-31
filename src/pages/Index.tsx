@@ -629,13 +629,35 @@ const Index = () => {
             {aiEnabled ? (
               <>
               {allNumbers.length > 0 && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary/30 border border-border/40">
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wide">Saiu agora:</span>
-                  <div className={`w-9 h-9 rounded-lg text-sm font-black text-white flex items-center justify-center ${numBg(allNumbers[0])} ring-2 ring-primary/40`}>
-                    {allNumbers[0]}
+                <motion.div
+                  key={allNumbers[0]}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary/10 to-transparent border border-primary/25"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-black text-primary uppercase tracking-wider">Saiu:</span>
+                    <motion.div
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                      className={`w-10 h-10 rounded-xl text-base font-black text-white flex items-center justify-center shadow-lg ${numBg(allNumbers[0])} ring-2 ring-primary/50`}
+                    >
+                      {allNumbers[0]}
+                    </motion.div>
                   </div>
-                  <span className="text-[9px] text-muted-foreground">{'→ jogada para o '}<b className="text-primary">próximo giro</b></span>
-                </div>
+                  <div className="flex-1">
+                    <span className="text-[10px] text-foreground font-bold">→ Jogada para o <span className="text-primary">próximo giro</span></span>
+                    {lastSpinAt && (
+                      <div className="text-[8px] text-muted-foreground mt-0.5">
+                        Detectado há {Math.max(0, Math.round((Date.now() - lastSpinAt) / 1000))}s
+                      </div>
+                    )}
+                  </div>
+                  <div className="shrink-0">
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" title="Sinal ativo" />
+                  </div>
+                </motion.div>
               )}
               <SniperSignal
                 sniperData={sniperData}
