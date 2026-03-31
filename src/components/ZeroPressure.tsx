@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { AlertTriangle, Shield, Zap } from 'lucide-react';
+import { AlertTriangle, Shield, Zap, Activity } from 'lucide-react';
 
 interface Props { allNumbers: number[] }
 
@@ -25,8 +25,13 @@ const ZeroPressure = ({ allNumbers }: Props) => {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`glass rounded-2xl border overflow-hidden ${config.bg} ${config.border}`}
+      className={`glass rounded-2xl border overflow-hidden relative ${config.bg} ${config.border}`}
     >
+      {/* Top accent line */}
+      <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${
+        level === 'critical' ? 'via-destructive/40' : level === 'high' ? 'via-orange-500/30' : level === 'medium' ? 'via-gold/30' : 'via-neon-green/20'
+      } to-transparent`} />
+
       {/* Scanline for critical */}
       {level === 'critical' && (
         <motion.div 
@@ -39,13 +44,13 @@ const ZeroPressure = ({ allNumbers }: Props) => {
 
       <div className="relative z-10 p-4 flex items-center gap-4">
         {/* Icon section */}
-        <div className={`relative shrink-0`}>
+        <div className="relative shrink-0">
           <motion.div
             animate={level === 'critical' ? { scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] } : {}}
             transition={{ repeat: Infinity, duration: 2 }}
             className={`w-14 h-14 rounded-xl flex items-center justify-center border ${
-              level === 'critical' ? 'bg-destructive/10 border-destructive/30' :
-              level === 'high' ? 'bg-orange-500/10 border-orange-500/25' :
+              level === 'critical' ? 'bg-destructive/10 border-destructive/30 shadow-[0_0_15px_rgba(239,68,68,0.2)]' :
+              level === 'high' ? 'bg-orange-500/10 border-orange-500/25 shadow-[0_0_12px_rgba(249,115,22,0.15)]' :
               level === 'medium' ? 'bg-gold/10 border-gold/25' :
               'bg-neon-green/10 border-neon-green/25'
             }`}
@@ -53,27 +58,31 @@ const ZeroPressure = ({ allNumbers }: Props) => {
             <span className="text-3xl">🟢</span>
           </motion.div>
           {/* Badge with absence count */}
-          <div className={`absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-md text-[8px] font-black font-mono border ${
-            level === 'critical' ? 'bg-destructive text-white border-destructive' :
-            level === 'high' ? 'bg-orange-500 text-white border-orange-600' :
-            level === 'medium' ? 'bg-[hsl(var(--gold))] text-background border-[hsl(var(--gold))]' :
-            'bg-[hsl(var(--neon-green))] text-background border-[hsl(var(--neon-green))]'
-          }`}>
+          <motion.div
+            animate={level === 'critical' ? { scale: [1, 1.15, 1] } : {}}
+            transition={{ repeat: Infinity, duration: 1 }}
+            className={`absolute -top-2 -right-2 px-2 py-0.5 rounded-lg text-[9px] font-black font-mono border shadow-md ${
+              level === 'critical' ? 'bg-destructive text-white border-destructive shadow-destructive/30' :
+              level === 'high' ? 'bg-orange-500 text-white border-orange-600' :
+              level === 'medium' ? 'bg-[hsl(var(--gold))] text-background border-[hsl(var(--gold))]' :
+              'bg-[hsl(var(--neon-green))] text-background border-[hsl(var(--neon-green))]'
+            }`}
+          >
             {absence}
-          </div>
+          </motion.div>
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <Icon className={`w-3.5 h-3.5 ${config.color}`} />
-            <span className={`text-[10px] font-display font-bold tracking-[0.15em] uppercase ${config.color}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <Icon className={`w-4 h-4 ${config.color}`} />
+            <span className={`text-xs font-display font-bold tracking-[0.15em] uppercase ${config.color}`}>
               Pressão do Zero
             </span>
           </div>
 
           {/* Progress bar */}
-          <div className="w-full h-3 bg-background/20 rounded-full overflow-hidden mb-2 border border-border/10 relative">
+          <div className="w-full h-3.5 bg-background/20 rounded-full overflow-hidden mb-2 border border-border/10 relative">
             <motion.div 
               className={`h-full rounded-full bg-gradient-to-r ${config.bar} ${config.barShadow}`} 
               initial={{ width: 0 }}
@@ -84,15 +93,18 @@ const ZeroPressure = ({ allNumbers }: Props) => {
             <div className="absolute top-0 bottom-0 left-[20%] w-px bg-muted-foreground/10" />
             <div className="absolute top-0 bottom-0 left-[35%] w-px bg-muted-foreground/10" />
             <div className="absolute top-0 bottom-0 left-[55%] w-px bg-gold/20" />
+            {level === 'critical' && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer bg-[length:200%_100%]" />
+            )}
           </div>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className={`text-[9px] font-bold ${config.color}`}>{config.label}</span>
+              <span className={`text-[10px] font-bold ${config.color}`}>{config.label}</span>
               <span className="text-[8px] text-muted-foreground/40 font-mono">{absence}/37 média</span>
             </div>
             {config.tip && (
-              <span className="text-[8px] text-muted-foreground/50 font-mono flex items-center gap-1">
+              <span className="text-[8px] text-muted-foreground/50 font-mono flex items-center gap-1 px-2 py-0.5 rounded-lg bg-background/20 border border-border/10">
                 → {config.tip}
               </span>
             )}
@@ -105,10 +117,13 @@ const ZeroPressure = ({ allNumbers }: Props) => {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="border-t border-destructive/15 px-4 py-2 bg-destructive/5 flex items-center justify-between"
+          className="border-t border-destructive/15 px-4 py-2.5 bg-destructive/5 flex items-center justify-between"
         >
-          <span className="text-[8px] font-bold text-destructive/80">⚡ Ação recomendada: apostar Vizinhos do Zero</span>
-          <span className="text-[7px] font-mono text-destructive/50">{absence} giros sem zero</span>
+          <div className="flex items-center gap-2">
+            <Activity className="w-3.5 h-3.5 text-destructive" />
+            <span className="text-[9px] font-bold text-destructive/80">Ação recomendada: apostar Vizinhos do Zero</span>
+          </div>
+          <span className="text-[8px] font-mono text-destructive/50 px-2 py-0.5 rounded-lg bg-destructive/5 border border-destructive/10">{absence} giros</span>
         </motion.div>
       )}
     </motion.div>
