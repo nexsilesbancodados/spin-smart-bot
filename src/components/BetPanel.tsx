@@ -484,8 +484,8 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map(v => (
                         <button key={v} onClick={() => setConfig(prev => ({ ...prev, maxGaleSteps: v }))}
-                          className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold ${
-                            config.maxGaleSteps === v ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+                          className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-all ${
+                            config.maxGaleSteps === v ? 'bg-primary/15 text-primary border-primary/25' : 'bg-background/15 text-muted-foreground/50 border-border/10'
                           }`}>{v}</button>
                       ))}
                     </div>
