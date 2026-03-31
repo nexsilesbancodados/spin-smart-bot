@@ -27,6 +27,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import LiveStatsBar from '@/components/LiveStatsBar';
 import UnifiedAnalysis from '@/components/UnifiedAnalysis';
 import SettingsPanel from '@/components/SettingsPanel';
+import PerformanceMonitor from '@/components/PerformanceMonitor';
+import StrategySelector from '@/components/StrategySelector';
+import { type StrategyId } from '@/lib/strategy-system';
 
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 
@@ -173,6 +176,8 @@ const Index = () => {
     riskLevel: 'moderado' as 'conservador' | 'moderado' | 'agressivo',
     betTypes: ['cor', 'duzia', 'coluna', 'setor', 'vizinhos', 'terminal', 'paridade', 'pleno'],
   });
+  const [activeStrategyId, setActiveStrategyId] = useState<StrategyId | 'auto'>('auto');
+  const [betHistoryForMonitor, setBetHistoryForMonitor] = useState<{ won: boolean; amount: number; profit: number; timestamp: number }[]>([]);
   const rtRetryRef = useRef(0);
 
   const handleManualNumbers = (nums: number[]) => {
@@ -834,6 +839,25 @@ const Index = () => {
               {/* ── ENGINE ANALYSIS (Streaks, Cold Zones) ────── */}
               <EngineSignalCard allNumbers={allNumbers} />
               </>
+              
+              {/* ── STRATEGY SELECTOR ────── */}
+              <StrategySelector
+                allNumbers={allNumbers}
+                betHistory={betHistoryForMonitor}
+                balance={1000}
+                baseBet={1}
+                activeStrategy={activeStrategyId}
+                onSelectStrategy={setActiveStrategyId}
+              />
+              
+              {/* ── PERFORMANCE MONITOR ────── */}
+              {betHistoryForMonitor.length >= 2 && (
+                <PerformanceMonitor
+                  betHistory={betHistoryForMonitor}
+                  balance={1000}
+                  allNumbers={allNumbers}
+                />
+              )}
             ) : (
               <div className="bg-card rounded-2xl border border-border p-12 text-center">
                 <div className="text-5xl mb-4 opacity-30">○</div>
