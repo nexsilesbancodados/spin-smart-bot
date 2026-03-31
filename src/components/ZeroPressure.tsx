@@ -4,7 +4,7 @@ import { AlertTriangle, Shield, Zap, Activity } from 'lucide-react';
 
 interface Props { allNumbers: number[] }
 
-const ZeroPressure = ({ allNumbers }: Props) => {
+const ZeroPressure = memo(({ allNumbers }: Props) => {
   const delay = allNumbers.findIndex(n => n === 0);
   const absence = delay === -1 ? allNumbers.length : delay;
 
