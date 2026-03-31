@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, XCircle, Target, TrendingUp, BarChart3, Flame, Trophy, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle2, XCircle, Target, TrendingUp, BarChart3, Flame, Trophy, ArrowRight, ChevronDown, ChevronUp, Sparkles, Award, Zap } from 'lucide-react';
 
 interface PredictionRecord {
   id: string;
@@ -107,60 +107,66 @@ const PredictionHistory = () => {
     : activeTab === 'estrategias' ? [] as PredictionRecord[]
     : resolved.slice(0, 15);
 
-  const tabs: { key: TabType; label: string; count?: number }[] = [
-    { key: 'resumo', label: 'Resumo' },
-    { key: 'todos', label: 'Todos', count: resolved.length },
-    { key: 'acertos', label: 'Acertos', count: hits.length },
-    { key: 'erros', label: 'Erros', count: misses.length },
-    { key: 'estrategias', label: 'Estratégias', count: Object.keys(strategyStats).length },
+  const tabs: { key: TabType; label: string; icon: React.ReactNode; count?: number }[] = [
+    { key: 'resumo', label: 'Resumo', icon: <BarChart3 className="w-3 h-3" /> },
+    { key: 'todos', label: 'Todos', icon: <Target className="w-3 h-3" />, count: resolved.length },
+    { key: 'acertos', label: 'Acertos', icon: <CheckCircle2 className="w-3 h-3" />, count: hits.length },
+    { key: 'erros', label: 'Erros', icon: <XCircle className="w-3 h-3" />, count: misses.length },
+    { key: 'estrategias', label: 'Estratégias', icon: <Award className="w-3 h-3" />, count: Object.keys(strategyStats).length },
   ];
 
   const winRateNum = parseFloat(winRate);
 
   return (
-    <div className="glass rounded-xl overflow-hidden">
+    <div className="glass rounded-2xl overflow-hidden border border-border/20">
       {/* Header */}
-      <div className="relative p-4 border-b border-border/20">
+      <div className="relative p-4 border-b border-border/10">
         <div className="absolute inset-0 bg-gradient-to-r from-neon-cyan/5 via-transparent to-neon-pink/5" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neon-cyan/30 to-transparent" />
         <div className="relative flex items-center gap-2.5 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-cyan/20 to-neon-pink/10 border border-neon-cyan/25 flex items-center justify-center shadow-neon-cyan">
-            <BarChart3 className="w-4 h-4 text-neon-cyan" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-cyan/20 to-neon-pink/10 border border-neon-cyan/25 flex items-center justify-center shadow-[0_0_15px_hsl(var(--neon-cyan)/0.2)]">
+            <BarChart3 className="w-5 h-5 text-neon-cyan" />
           </div>
-          <div>
-            <h3 className="font-display text-[11px] font-bold tracking-[0.15em] text-neon-cyan">HISTÓRICO</h3>
-            <p className="text-[7px] text-muted-foreground/60">Resultado de todas as previsões da IA</p>
+          <div className="flex-1">
+            <h3 className="font-display text-xs font-bold tracking-[0.15em] text-neon-cyan">HISTÓRICO DE PREVISÕES</h3>
+            <p className="text-[8px] text-muted-foreground/50 font-mono mt-0.5">Resultado de todas as previsões da IA</p>
           </div>
           {currentStreak >= 3 && streakType === 'hit' && (
-            <div className="ml-auto flex items-center gap-1 bg-neon-green/10 border border-neon-green/25 rounded-full px-2.5 py-1 shadow-neon-green">
-              <Flame className="w-3 h-3 text-neon-green" />
-              <span className="text-[8px] font-bold text-neon-green">{currentStreak}× SEGUIDOS</span>
-            </div>
+            <motion.div
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="flex items-center gap-1.5 bg-neon-green/10 border border-neon-green/25 rounded-xl px-3 py-1.5 shadow-[0_0_12px_hsl(var(--neon-green)/0.15)]"
+            >
+              <Flame className="w-3.5 h-3.5 text-neon-green" />
+              <span className="text-[9px] font-bold text-neon-green font-display tracking-wider">{currentStreak}× SEGUIDOS</span>
+            </motion.div>
           )}
         </div>
 
         {/* Hero Stats */}
         <div className="relative grid grid-cols-4 gap-2">
-          <StatCard value={resolved.length.toString()} label="Previsões" variant="default" />
-          <StatCard value={`${winRate}%`} label="Win Rate" variant={winRateNum >= 50 ? 'success' : winRateNum >= 35 ? 'warning' : 'danger'} icon={<TrendingUp className="w-3 h-3" />} />
-          <StatCard value={hits.length.toString()} label="Acertos" variant="success" icon={<CheckCircle2 className="w-3 h-3" />} />
-          <StatCard value={exactHits.length.toString()} label="Exatos" variant="primary" icon={<Trophy className="w-3 h-3" />} />
+          <StatCard value={resolved.length.toString()} label="Previsões" variant="default" icon={<Target className="w-3.5 h-3.5" />} />
+          <StatCard value={`${winRate}%`} label="Win Rate" variant={winRateNum >= 50 ? 'success' : winRateNum >= 35 ? 'warning' : 'danger'} icon={<TrendingUp className="w-3.5 h-3.5" />} />
+          <StatCard value={hits.length.toString()} label="Acertos" variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5" />} />
+          <StatCard value={exactHits.length.toString()} label="Exatos" variant="primary" icon={<Trophy className="w-3.5 h-3.5" />} />
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-border/20 bg-background/20">
+      <div className="flex border-b border-border/10 bg-background/10">
         {tabs.map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 py-2.5 text-[9px] font-bold tracking-wider transition-all relative ${
-              activeTab === tab.key ? 'text-neon-cyan' : 'text-muted-foreground/60 hover:text-foreground'
+            className={`flex-1 py-3 text-[9px] font-bold tracking-wider transition-all relative flex items-center justify-center gap-1.5 ${
+              activeTab === tab.key ? 'text-neon-cyan' : 'text-muted-foreground/50 hover:text-foreground/70'
             }`}
           >
-            {tab.label}
+            <span className={activeTab === tab.key ? 'text-neon-cyan' : 'text-muted-foreground/30'}>{tab.icon}</span>
+            <span className="hidden sm:inline">{tab.label}</span>
             {tab.count !== undefined && (
-              <span className={`ml-1 text-[7px] px-1 py-px rounded-full ${
-                activeTab === tab.key ? 'bg-neon-cyan/15 text-neon-cyan' : 'bg-secondary/40 text-muted-foreground/50'
+              <span className={`text-[7px] px-1.5 py-0.5 rounded-full font-mono ${
+                activeTab === tab.key ? 'bg-neon-cyan/15 text-neon-cyan' : 'bg-secondary/30 text-muted-foreground/40'
               }`}>
                 {tab.count}
               </span>
@@ -168,7 +174,7 @@ const PredictionHistory = () => {
             {activeTab === tab.key && (
               <motion.div
                 layoutId="hist-tab-indicator"
-                className="absolute bottom-0 left-2 right-2 h-[2px] bg-gradient-to-r from-neon-cyan to-neon-pink rounded-full shadow-neon-cyan"
+                className="absolute bottom-0 left-3 right-3 h-[2px] bg-gradient-to-r from-neon-cyan to-neon-pink rounded-full shadow-[0_0_8px_hsl(var(--neon-cyan)/0.4)]"
               />
             )}
           </button>
@@ -178,42 +184,58 @@ const PredictionHistory = () => {
       <div className="p-3">
         {/* Best Strategy Badge */}
         {activeTab === 'resumo' && bestStrategy && (
-          <div className="flex items-center gap-2 glass rounded-lg p-2.5 mb-3 border border-gold/20">
-            <Trophy className="w-4 h-4 text-gold shrink-0" />
-            <div className="flex-1 min-w-0">
-              <span className="text-[7px] text-muted-foreground/60 block">MELHOR ESTRATÉGIA</span>
-              <span className="text-[10px] font-bold text-foreground">
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-3 glass rounded-xl p-3 mb-3 border border-gold/20 relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-gold/5 via-transparent to-gold/3" />
+            <div className="relative w-10 h-10 rounded-xl bg-gold/10 border border-gold/25 flex items-center justify-center">
+              <Trophy className="w-5 h-5 text-gold" />
+            </div>
+            <div className="relative flex-1 min-w-0">
+              <span className="text-[7px] text-gold/60 font-display tracking-[0.2em] block uppercase">MELHOR ESTRATÉGIA</span>
+              <span className="text-[11px] font-bold text-foreground">
                 {STRATEGY_EMOJI[bestStrategy[0]] || '📌'} {STRATEGY_FRIENDLY[bestStrategy[0]] || bestStrategy[0]}
               </span>
             </div>
-            <div className="text-right">
-              <span className="text-sm font-bold font-mono text-gold">
+            <div className="relative text-right">
+              <span className="text-lg font-black font-mono text-gold">
                 {((bestStrategy[1].hits / bestStrategy[1].total) * 100).toFixed(0)}%
               </span>
-              <span className="text-[7px] text-muted-foreground/50 block">
+              <span className="text-[8px] text-muted-foreground/50 block font-mono">
                 {bestStrategy[1].hits}/{bestStrategy[1].total}
               </span>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Strategy Performance */}
         {activeTab === 'resumo' && Object.keys(strategyStats).length > 0 && (
           <div className="mb-3 space-y-1.5">
-            <span className="text-[8px] text-muted-foreground/60 font-bold tracking-wider block mb-2">PERFORMANCE POR ESTRATÉGIA</span>
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-3 h-3 text-neon-purple/60" />
+              <span className="text-[8px] text-muted-foreground/60 font-display tracking-[0.15em] uppercase">Performance por Estratégia</span>
+            </div>
             {Object.entries(strategyStats)
               .sort(([, a], [, b]) => (b.hits / b.total) - (a.hits / a.total))
-              .map(([type, { hits: h, total: t }]) => {
+              .map(([type, { hits: h, total: t }], idx) => {
                 const rate = (h / t) * 100;
                 return (
-                  <div key={type} className="flex items-center gap-2 group">
-                    <span className="text-[9px] w-4 text-center">{STRATEGY_EMOJI[type] || '📌'}</span>
+                  <motion.div
+                    key={type}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.03 }}
+                    className="flex items-center gap-2 group py-1 px-2 rounded-lg hover:bg-background/20 transition-all"
+                  >
+                    <span className="text-[10px] w-5 text-center">{STRATEGY_EMOJI[type] || '📌'}</span>
                     <span className="text-[9px] text-foreground/80 font-medium w-28 truncate">{STRATEGY_FRIENDLY[type] || type}</span>
-                    <div className="flex-1 h-2 bg-background/40 rounded-full overflow-hidden border border-border/10">
+                    <div className="flex-1 h-2.5 bg-background/30 rounded-full overflow-hidden border border-border/10">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${rate}%` }}
-                        transition={{ duration: 0.6, delay: 0.1 }}
+                        transition={{ duration: 0.6, delay: idx * 0.05 }}
                         className={`h-full rounded-full ${
                           rate >= 60 ? 'bg-gradient-to-r from-neon-green to-emerald-400'
                             : rate >= 40 ? 'bg-gradient-to-r from-gold to-amber-400'
@@ -221,13 +243,13 @@ const PredictionHistory = () => {
                         }`}
                       />
                     </div>
-                    <span className={`text-[9px] font-bold font-mono w-12 text-right ${
+                    <span className={`text-[10px] font-bold font-mono w-12 text-right ${
                       rate >= 60 ? 'text-neon-green' : rate >= 40 ? 'text-gold' : 'text-destructive'
                     }`}>
                       {rate.toFixed(0)}%
                     </span>
-                    <span className="text-[7px] text-muted-foreground/40 font-mono w-8 text-right">{h}/{t}</span>
-                  </div>
+                    <span className="text-[8px] text-muted-foreground/40 font-mono w-10 text-right">{h}/{t}</span>
+                  </motion.div>
                 );
               })}
           </div>
@@ -235,16 +257,20 @@ const PredictionHistory = () => {
 
         {/* Streak indicator */}
         {currentStreak >= 2 && streakType && (
-          <div className={`flex items-center justify-center gap-1.5 py-2 rounded-lg mb-2 backdrop-blur-sm ${
-            streakType === 'hit'
-              ? 'bg-neon-green/8 border border-neon-green/20'
-              : 'bg-destructive/8 border border-destructive/20'
-          }`}>
-            {streakType === 'hit' ? <Flame className="w-3 h-3 text-neon-green" /> : <XCircle className="w-3 h-3 text-destructive" />}
-            <span className={`text-[9px] font-bold ${streakType === 'hit' ? 'text-neon-green' : 'text-destructive'}`}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl mb-2.5 backdrop-blur-sm ${
+              streakType === 'hit'
+                ? 'bg-neon-green/6 border border-neon-green/20'
+                : 'bg-destructive/6 border border-destructive/20'
+            }`}
+          >
+            {streakType === 'hit' ? <Flame className="w-3.5 h-3.5 text-neon-green" /> : <XCircle className="w-3.5 h-3.5 text-destructive" />}
+            <span className={`text-[10px] font-bold ${streakType === 'hit' ? 'text-neon-green' : 'text-destructive'}`}>
               {streakType === 'hit' ? `${currentStreak}× acertos seguidos — IA em boa fase!` : `${currentStreak}× erros seguidos — IA recalibrando...`}
             </span>
-          </div>
+          </motion.div>
         )}
 
         {/* Estratégias Tab */}
@@ -257,14 +283,20 @@ const PredictionHistory = () => {
                 const isHot = wr >= 45;
                 const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
                 return (
-                  <div key={type} className={`flex items-center gap-2 p-2.5 rounded-lg border text-[8px] backdrop-blur-sm ${
-                    isHot ? 'bg-neon-green/5 border-neon-green/15' : 'bg-background/20 border-border/20'
-                  }`}>
-                    <span>{medal}</span>
+                  <motion.div
+                    key={type}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className={`flex items-center gap-2.5 p-3 rounded-xl border text-[9px] backdrop-blur-sm transition-all hover:scale-[1.01] ${
+                      isHot ? 'bg-neon-green/5 border-neon-green/15' : 'bg-background/15 border-border/15'
+                    }`}
+                  >
+                    <span className="text-sm">{medal}</span>
                     <span className="flex-1 truncate font-medium text-foreground/80">{STRATEGY_FRIENDLY[type] || type.replace(/_/g,' ')}</span>
-                    <span className={`font-mono font-bold ${isHot ? 'text-neon-green' : 'text-muted-foreground'}`}>{wr.toFixed(0)}%</span>
-                    <span className="text-muted-foreground/50">{s.hits}/{s.total}</span>
-                  </div>
+                    <span className={`font-mono font-bold text-[10px] ${isHot ? 'text-neon-green' : 'text-muted-foreground'}`}>{wr.toFixed(0)}%</span>
+                    <span className="text-muted-foreground/50 font-mono">{s.hits}/{s.total}</span>
+                  </motion.div>
                 );
               })}
           </div>
@@ -272,8 +304,10 @@ const PredictionHistory = () => {
 
         {/* Prediction List */}
         {activeTab !== 'estrategias' && filteredPredictions.length === 0 ? (
-          <div className="text-center py-8">
-            <Target className="w-10 h-10 text-muted-foreground/15 mx-auto mb-3" />
+          <div className="text-center py-10">
+            <div className="w-14 h-14 rounded-2xl glass border border-border/15 flex items-center justify-center mx-auto mb-3">
+              <Target className="w-7 h-7 text-muted-foreground/15" />
+            </div>
             <p className="text-xs text-muted-foreground/50">Nenhuma previsão registrada.</p>
             <p className="text-[9px] text-muted-foreground/30 mt-1">Aguarde a IA gerar sinais...</p>
           </div>
@@ -289,17 +323,17 @@ const PredictionHistory = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
                     transition={{ delay: idx * 0.015 }}
-                    className={`rounded-lg border transition-all cursor-pointer backdrop-blur-sm ${
+                    className={`rounded-xl border transition-all cursor-pointer backdrop-blur-sm ${
                       p.hit === true
                         ? 'bg-neon-green/3 border-neon-green/15 hover:border-neon-green/30'
                         : 'bg-destructive/3 border-destructive/10 hover:border-destructive/20'
                     }`}
                     onClick={() => setExpandedId(isExpanded ? null : p.id)}
                   >
-                    <div className="flex items-center gap-2 p-2">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    <div className="flex items-center gap-2.5 p-2.5">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                         p.hit_type === 'exact'
-                          ? 'bg-neon-cyan/15 border border-neon-cyan/30 shadow-neon-cyan'
+                          ? 'bg-neon-cyan/15 border border-neon-cyan/30 shadow-[0_0_10px_hsl(var(--neon-cyan)/0.2)]'
                           : p.hit
                           ? 'bg-neon-green/10 border border-neon-green/25'
                           : 'bg-destructive/8 border border-destructive/15'
@@ -318,7 +352,7 @@ const PredictionHistory = () => {
                           <span className="text-[10px] font-bold text-foreground/90">
                             {STRATEGY_EMOJI[p.strategy_type] || ''} {STRATEGY_FRIENDLY[p.strategy_type] || p.strategy_label}
                           </span>
-                          <span className={`text-[7px] px-1.5 py-0.5 rounded-full font-bold ${
+                          <span className={`text-[7px] px-2 py-0.5 rounded-full font-bold ${
                             p.hit_type === 'exact' ? 'bg-neon-cyan/15 text-neon-cyan'
                               : p.hit ? 'bg-neon-green/15 text-neon-green'
                               : 'bg-destructive/10 text-destructive/70'
@@ -330,7 +364,7 @@ const PredictionHistory = () => {
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className="text-[7px] text-muted-foreground/40">Previu:</span>
                           {p.predicted_main !== null && (
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold shadow-sm ${colorClass(p.predicted_main)} border border-white/10`}>
+                            <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[8px] font-bold shadow-sm ${colorClass(p.predicted_main)} border border-white/15`}>
                               {p.predicted_main}
                             </div>
                           )}
@@ -338,7 +372,7 @@ const PredictionHistory = () => {
                             <>
                               <ArrowRight className="w-2.5 h-2.5 text-muted-foreground/30" />
                               <span className="text-[7px] text-muted-foreground/40">Saiu:</span>
-                              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold shadow-sm ${colorClass(p.actual_number)} border border-white/10`}>
+                              <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[8px] font-bold shadow-sm ${colorClass(p.actual_number)} border border-white/15`}>
                                 {p.actual_number}
                               </div>
                             </>
@@ -346,11 +380,11 @@ const PredictionHistory = () => {
                         </div>
                       </div>
 
-                      <div className="flex flex-col items-end gap-0.5 shrink-0">
+                      <div className="flex flex-col items-end gap-1 shrink-0">
                         <span className="text-[7px] text-muted-foreground/40 font-mono">
                           {new Date(p.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </span>
-                        <span className={`text-[8px] font-mono font-bold ${
+                        <span className={`text-[9px] font-mono font-bold ${
                           p.probability >= 70 ? 'text-neon-green' : p.probability >= 50 ? 'text-gold' : 'text-muted-foreground/50'
                         }`}>
                           {p.probability}%
@@ -368,31 +402,31 @@ const PredictionHistory = () => {
                           transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div className="px-3 pb-2.5 pt-0.5 border-t border-border/15 space-y-1.5">
+                          <div className="px-3 pb-3 pt-1 border-t border-border/10 space-y-2">
                             <div className="flex items-center gap-2">
-                              <span className="text-[7px] text-muted-foreground/50 w-16">Confiança:</span>
-                              <div className="flex-1 h-1.5 bg-background/30 rounded-full overflow-hidden border border-border/10">
+                              <span className="text-[8px] text-muted-foreground/50 w-16">Confiança:</span>
+                              <div className="flex-1 h-2 bg-background/30 rounded-full overflow-hidden border border-border/10">
                                 <div className={`h-full rounded-full ${
-                                  p.probability >= 70 ? 'bg-neon-green' : p.probability >= 50 ? 'bg-gold' : 'bg-destructive'
+                                  p.probability >= 70 ? 'bg-gradient-to-r from-neon-green to-emerald-400' : p.probability >= 50 ? 'bg-gradient-to-r from-gold to-amber-400' : 'bg-gradient-to-r from-destructive to-red-400'
                                 }`} style={{ width: `${p.probability}%` }} />
                               </div>
                               <span className="text-[8px] font-mono text-muted-foreground/50">{p.probability}%</span>
                             </div>
 
                             <div className="flex items-center gap-2">
-                              <span className="text-[7px] text-muted-foreground/50 w-16">Convergência:</span>
-                              <div className="flex-1 h-1.5 bg-background/30 rounded-full overflow-hidden border border-border/10">
-                                <div className="h-full rounded-full bg-neon-cyan" style={{ width: `${Math.min(100, (p.convergence_score / 1700) * 100)}%` }} />
+                              <span className="text-[8px] text-muted-foreground/50 w-16">Convergência:</span>
+                              <div className="flex-1 h-2 bg-background/30 rounded-full overflow-hidden border border-border/10">
+                                <div className="h-full rounded-full bg-gradient-to-r from-neon-cyan to-primary" style={{ width: `${Math.min(100, (p.convergence_score / 1700) * 100)}%` }} />
                               </div>
                               <span className="text-[8px] font-mono text-muted-foreground/50">{p.convergence_score}/1700</span>
                             </div>
 
                             {p.predicted_numbers.length > 1 && (
                               <div>
-                                <span className="text-[7px] text-muted-foreground/50 block mb-1">Números cobertos:</span>
+                                <span className="text-[8px] text-muted-foreground/50 block mb-1">Números cobertos:</span>
                                 <div className="flex flex-wrap gap-1">
                                   {p.predicted_numbers.map((n, i) => (
-                                    <div key={i} className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ${
+                                    <div key={i} className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[7px] font-bold ${
                                       n === p.actual_number ? 'ring-2 ring-neon-cyan ring-offset-1 ring-offset-background ' + colorClass(n) : colorClass(n)
                                     } border border-white/10`}>
                                       {n}
@@ -403,14 +437,17 @@ const PredictionHistory = () => {
                             )}
 
                             {p.justification && (
-                              <div className="bg-background/20 rounded-md p-1.5 border border-border/10">
-                                <span className="text-[7px] text-muted-foreground/40 block mb-0.5">Justificativa da IA:</span>
-                                <span className="text-[8px] text-foreground/70 leading-relaxed">{p.justification}</span>
+                              <div className="bg-background/20 rounded-xl p-2.5 border border-border/10">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <Zap className="w-3 h-3 text-neon-cyan/60" />
+                                  <span className="text-[7px] text-neon-cyan/60 font-display tracking-wider">JUSTIFICATIVA IA</span>
+                                </div>
+                                <span className="text-[9px] text-foreground/70 leading-relaxed">{p.justification}</span>
                               </div>
                             )}
 
                             {p.mesa_mode && (
-                              <span className="text-[7px] text-muted-foreground/40">Modo mesa: {p.mesa_mode}</span>
+                              <span className="text-[8px] text-muted-foreground/40 font-mono">Modo mesa: {p.mesa_mode}</span>
                             )}
                           </div>
                         </motion.div>
@@ -434,21 +471,25 @@ const StatCard = ({ value, label, variant, icon }: {
   icon?: React.ReactNode;
 }) => {
   const styles = {
-    default: 'bg-background/20 border-border/15 text-foreground',
-    success: 'bg-neon-green/8 border-neon-green/20 text-neon-green',
-    danger: 'bg-destructive/8 border-destructive/20 text-destructive',
-    warning: 'bg-gold/8 border-gold/20 text-gold',
-    primary: 'bg-neon-cyan/8 border-neon-cyan/20 text-neon-cyan',
+    default: 'bg-background/15 border-border/15 text-foreground',
+    success: 'bg-neon-green/6 border-neon-green/20 text-neon-green',
+    danger: 'bg-destructive/6 border-destructive/20 text-destructive',
+    warning: 'bg-gold/6 border-gold/20 text-gold',
+    primary: 'bg-neon-cyan/6 border-neon-cyan/20 text-neon-cyan',
   };
 
   return (
-    <div className={`rounded-lg p-2 text-center border backdrop-blur-sm ${styles[variant]}`}>
-      <div className="flex items-center justify-center gap-1">
+    <motion.div
+      initial={{ opacity: 0, y: 5 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`rounded-xl p-2.5 text-center border backdrop-blur-sm transition-all hover:scale-[1.02] ${styles[variant]}`}
+    >
+      <div className="flex items-center justify-center gap-1.5">
         {icon}
-        <span className="text-base font-bold font-mono">{value}</span>
+        <span className="text-lg font-black font-mono">{value}</span>
       </div>
-      <span className="text-[7px] text-muted-foreground/50 block mt-0.5">{label}</span>
-    </div>
+      <span className="text-[7px] text-muted-foreground/50 block mt-0.5 font-display tracking-wider uppercase">{label}</span>
+    </motion.div>
   );
 };
 
