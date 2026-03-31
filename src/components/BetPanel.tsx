@@ -361,26 +361,19 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-2xl border-2 transition-all overflow-hidden ${
+      className={`glass rounded-2xl border-2 transition-all overflow-hidden ${
         betFlash
-          ? 'border-primary shadow-lg shadow-primary/30'
+          ? 'border-primary shadow-neon-cyan'
           : config.enabled
-          ? 'border-green-500/50'
-          : 'border-border'
+          ? 'border-neon-green/40'
+          : 'border-border/40'
       }`}
-      style={{
-        background: betFlash
-          ? 'linear-gradient(145deg, hsl(var(--primary) / 0.15), hsl(var(--card)))'
-          : config.enabled
-          ? 'linear-gradient(145deg, rgba(34,197,94,0.06), hsl(var(--card)))'
-          : 'hsl(var(--card))',
-      }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/20">
         <div className="flex items-center gap-2">
-          <Zap className={`w-5 h-5 ${config.enabled ? 'text-green-400 animate-pulse' : 'text-primary'}`} />
-          <span className="font-bold text-xs tracking-[0.15em] text-primary">CENTRAL DE APOSTAS</span>
+          <Zap className={`w-5 h-5 ${config.enabled ? 'text-neon-green animate-pulse' : 'text-primary'}`} />
+          <span className="font-display font-bold text-xs tracking-[0.15em] text-primary">CENTRAL DE APOSTAS</span>
           {config.enabled && (
             <span className="text-[8px] px-2 py-0.5 bg-green-500/15 rounded-md text-green-400 font-bold border border-green-500/30 animate-pulse">
               AUTO
@@ -586,26 +579,26 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           )}
         </div>
 
-        {/* Stats grid — with gradient borders */}
+        {/* Stats grid */}
         <div className="grid grid-cols-4 gap-2">
-          <div className="bg-secondary/40 rounded-xl p-2.5 text-center border border-border/30">
+          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
             <DollarSign className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
             <p className={`font-bold text-base font-mono ${stats.profit >= 0 ? 'text-green-400' : 'text-destructive'}`}>
               R${stats.profit.toFixed(2)}
             </p>
             <span className="text-[8px] text-muted-foreground">Lucro</span>
           </div>
-          <div className="bg-secondary/40 rounded-xl p-2.5 text-center border border-border/30">
-            <Target className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
+          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
+            <Target className="w-3.5 h-3.5 text-primary mx-auto mb-1" />
             <p className="font-bold text-base font-mono text-foreground">{winRate}%</p>
             <span className="text-[8px] text-muted-foreground">Acerto</span>
           </div>
-          <div className="bg-secondary/40 rounded-xl p-2.5 text-center border border-border/30">
-            <TrendingUp className="w-3.5 h-3.5 text-green-400 mx-auto mb-1" />
-            <p className="font-bold text-base font-mono text-green-400">{stats.wins}</p>
+          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
+            <TrendingUp className="w-3.5 h-3.5 text-neon-green mx-auto mb-1" />
+            <p className="font-bold text-base font-mono text-neon-green">{stats.wins}</p>
             <span className="text-[8px] text-muted-foreground">Wins</span>
           </div>
-          <div className="bg-secondary/40 rounded-xl p-2.5 text-center border border-border/30">
+          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
             <TrendingDown className="w-3.5 h-3.5 text-destructive mx-auto mb-1" />
             <p className="font-bold text-base font-mono text-destructive">{stats.losses}</p>
             <span className="text-[8px] text-muted-foreground">Losses</span>
@@ -790,10 +783,10 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
           <Button
             onClick={toggleAutoBet}
-            className={`px-5 h-12 font-bold tracking-wider text-sm rounded-xl transition-all ${
+            className={`px-5 h-12 font-bold tracking-wider text-sm rounded-xl transition-all font-display ${
               config.enabled
                 ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
-                : 'bg-gradient-to-r from-green-600 to-emerald-500 hover:opacity-90 text-white shadow-lg shadow-green-600/30'
+                : 'bg-gradient-to-r from-neon-green/80 to-emerald-500 hover:opacity-90 text-white shadow-lg shadow-neon-green/20'
             }`}
           >
             {config.enabled ? <Square className="w-4 h-4 mr-1.5" /> : <Play className="w-4 h-4 mr-1.5" />}
