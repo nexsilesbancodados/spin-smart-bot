@@ -6878,68 +6878,192 @@ serve(async (req) => {
           ? `\n⚠️ TIPO SELECIONADO PELO USUÁRIO: ${strategyFilterParam.toUpperCase()} — Foque TODA a análise neste tipo!\n`
           : '';
 
-        const aiPrompt = `ROLETA EUROPEIA — ANÁLISE ${strategyFilterParam && strategyFilterParam !== 'all' ? strategyFilterParam.toUpperCase() : 'COMPLETA MULTI-MERCADO'}
+        // Deep history analysis for AI — multi-window
+        const windowAnalysis = (win: number[], label: string) => {
+          if (win.length < 5) return '';
+          const freq: Record<number, number> = {};
+          for (let i = 0; i <= 36; i++) freq[i] = 0;
+          win.forEach(n => freq[n]++);
+          const sorted = Object.entries(freq).sort(([,a],[,b]) => b - a);
+          const hot5 = sorted.slice(0, 5).map(([n,c]) => `${n}(${c}x)`).join(',');
+          const cold5 = sorted.filter(([,c]) => c === 0).slice(0, 5).map(([n]) => n).join(',');
+          const termC: Record<number, number> = {};
+          for (let t = 0; t <= 9; t++) termC[t] = 0;
+          win.forEach(n => termC[n % 10]++);
+          const hotT = Object.entries(termC).sort(([,a],[,b]) => b - a).slice(0,3).map(([t,c]) => `T${t}:${c}`).join(',');
+          const sectors: Record<string, number> = { Voisins: 0, Tiers: 0, Orphelins: 0, Zero: 0 };
+          win.forEach(n => sectors[getSector(n)]++);
+          const secStr = Object.entries(sectors).map(([s,c]) => `${s}:${c}`).join(',');
+          return `[${label}] ${win.length} giros | Hot: ${hot5} | Frios(0x): ${cold5 || 'nenhum'} | Terms: ${hotT} | Setores: ${secStr}`;
+        };
+
+        // Prediction accuracy history — deep feedback
+        const predFeedback = resolvedHistory.slice(0, 25).map(p => {
+          const nums = (p.predicted_numbers || []).slice(0,5).join(',');
+          return `${p.strategy_type}:prev=[${nums}] saiu=${p.actual_number} ${p.hit ? '✅' + (p.hit_type === 'exact' ? '🎯EXATO' : '(vizinho)') : '❌'} prob=${p.probability}%`;
+        }).join('\n');
+
+        // Win rate per strategy type — comprehensive
+        const wrPerType = Object.entries(strategyPerformance)
+          .filter(([, v]: any) => v.total >= 2)
+          .sort(([, a]: any, [, b]: any) => b.winRate - a.winRate)
+          .map(([type, v]: any) => `${type}: WR=${(v.winRate*100).toFixed(0)}% (${v.hits}/${v.total}) trend=${(v.recentTrend*100).toFixed(0)}%`)
+          .join('\n') || 'Sem dados suficientes';
+
+        // Transition chains — what follows what
+        const transChain3 = [];
+        for (let i = 0; i < Math.min(5, numbers.length - 2); i++) {
+          transChain3.push(`${numbers[i+2]}→${numbers[i+1]}→${numbers[i]}`);
+        }
+
+        // Repeaters analysis
+        const repCount: Record<number, number> = {};
+        last100.forEach(n => { repCount[n] = (repCount[n] || 0) + 1; });
+        const repeaters = Object.entries(repCount).filter(([,c]) => c >= 3).sort(([,a],[,b]) => b - a).map(([n,c]) => `${n}(${c}x)`);
+
+        // Sector flow — last 10 sectors in sequence
+        const sectorFlow10 = numbers.slice(0, 10).map(n => getSector(n).charAt(0)).join('→');
+
+        // Octave analysis
+        const octCount: Record<string, number> = {};
+        Object.keys(OCTAVES).forEach(k => octCount[k] = 0);
+        last30.forEach(n => { const o = getOctave(n); if (o) octCount[o]++; });
+        const octInfo = Object.entries(octCount).sort(([,a],[,b]) => b - a).map(([o,c]) => `${o}:${c}`).join(' ');
+
+        // Neighbor hits — do neighbors of recent numbers appear?
+        const neighborHitInfo = (() => {
+          const hits: string[] = [];
+          for (let i = 0; i < Math.min(5, numbers.length - 1); i++) {
+            const neigh = getNeighbors(numbers[i], 2);
+            if (neigh.includes(numbers[i + 1])) {
+              hits.push(`${numbers[i]}→vizinho ${numbers[i+1]}`);
+            }
+          }
+          return hits.length > 0 ? hits.join(', ') : 'Nenhum vizinho recente';
+        })();
+
+        // Mirror numbers hit check
+        const mirrorHits = (() => {
+          const hits: string[] = [];
+          for (let i = 0; i < Math.min(10, numbers.length - 1); i++) {
+            const m = getMirror(numbers[i]);
+            if (m !== null && numbers.slice(i+1, i+4).includes(m)) {
+              hits.push(`${numbers[i]}→espelho ${m}`);
+            }
+          }
+          return hits.length > 0 ? hits.join(', ') : 'Nenhum espelho recente';
+        })();
+
+        // Complementary (37-N) hits
+        const compHits = (() => {
+          const hits: string[] = [];
+          for (let i = 0; i < Math.min(10, numbers.length - 1); i++) {
+            const c = getComplementar(numbers[i]);
+            if (c !== null && numbers.slice(i+1, i+4).includes(c)) {
+              hits.push(`${numbers[i]}→comp ${c}`);
+            }
+          }
+          return hits.length > 0 ? hits.join(', ') : 'Nenhum complementar recente';
+        })();
+
+        // Build DEEP learned patterns context — group by type
+        const learnedByType: Record<string, { count: number; avgAcc: number; hotNums: number[] }> = {};
+        learned.forEach(l => {
+          const meta = l.metadata as any;
+          if (!learnedByType[l.learning_type]) learnedByType[l.learning_type] = { count: 0, avgAcc: 0, hotNums: [] };
+          learnedByType[l.learning_type].count++;
+          learnedByType[l.learning_type].avgAcc += (l.accuracy || 0);
+          if (meta?.hotNumbers) learnedByType[l.learning_type].hotNums.push(...(meta.hotNumbers as number[]).slice(0, 3));
+        });
+        const learnedSummary = Object.entries(learnedByType).map(([type, data]) => {
+          const hotFreq: Record<number, number> = {};
+          data.hotNums.forEach(n => hotFreq[n] = (hotFreq[n] || 0) + 1);
+          const topHot = Object.entries(hotFreq).sort(([,a],[,b]) => b - a).slice(0, 5).map(([n,c]) => `${n}(${c}x)`);
+          return `${type}: ${data.count} registros, acurácia média ${(data.avgAcc / data.count).toFixed(0)}%, nums recorrentes: [${topHot.join(',')}]`;
+        }).join('\n');
+
+        const aiPrompt = `ROLETA EUROPEIA — ANÁLISE PROFUNDA ${strategyFilterParam && strategyFilterParam !== 'all' ? strategyFilterParam.toUpperCase() : 'MULTI-MERCADO'}
 ${selectedAnalysis}
-## ENTRADA: Último número sorteado = ${numbers[0]}
+## 🎰 ÚLTIMO NÚMERO: ${numbers[0]} (${getColor(numbers[0])}, T${numbers[0] % 10}, ${getSector(numbers[0])}, ${getOctave(numbers[0])})
 
-## FEEDBACK LOOP
-${feedbackLoop}
+## 📊 FEEDBACK DAS ÚLTIMAS 25 PREVISÕES
+${predFeedback || 'Sem previsões resolvidas'}
 
-## HISTÓRICO (últimos 30 giros)
-[${last30.join(',')}]
+## 🏆 WIN RATE REAL POR ESTRATÉGIA
+${wrPerType}
 
-## ASSINATURA DA MESA
+## 📈 ANÁLISE MULTI-JANELA (profundidade histórica)
+${windowAnalysis(last30, '30 giros')}
+${windowAnalysis(last100, '100 giros')}
+${windowAnalysis(last200, '200 giros')}
+
+## 🔄 HISTÓRICO COMPLETO (últimos 50 giros)
+[${numbers.slice(0, 50).join(',')}]
+
+## 🔗 CADEIAS DE TRANSIÇÃO (sequências reais)
+${transChain3.join(' | ')}
+
+## 🔁 REPETIDORES (3+ vezes em 100 giros)
+[${repeaters.join(', ') || 'nenhum'}]
+
+## 🌍 FLUXO DE SETORES (últimos 10)
+${sectorFlow10}
+
+## 🎯 OITAVOS DO CILINDRO
+${octInfo}
+
+## 🤝 CONFIRMAÇÕES DE PADRÃO
+Vizinhos: ${neighborHitInfo}
+Espelhos: ${mirrorHits}
+Complementares (37-N): ${compHits}
+
+## 📋 ASSINATURA DA MESA
 ${mesaSignature}
-Colunas: ${colInfo}
-Par/Ímpar: ${parImparInfo}
-Alto/Baixo: ${hlBiasInfo}
+Colunas: ${colInfo} | Par/Ímpar: ${parImparInfo} | Alto/Baixo: ${hlBiasInfo}
 
-## SETORES (saturação + momentum)
+## 🌐 SETORES (saturação + momentum)
 ${sectorSatStr}
 Desvio: ${sectorDeviation}
 Momentum: ${sectorMomInfo}
 
-## TERMINAIS
+## 🔢 TERMINAIS (frequência em 30)
 ${termFreqStr}
 Quente: ${hotTermInfo} | Frio: ${coldTermInfo}
 Entropia: ${(sessionEntropy*100).toFixed(0)}% (${sessionRegime}) | Volatilidade: ${vol.level} (${vol.score})
 
-## STREAKS & TENDÊNCIAS
+## 🌊 STREAKS & TENDÊNCIAS
 Cor: ${colorStreakInfo}
 Terminais par/ímpar: ${eoInfo}
 Pressão Zero: ${zpInfo}
 
-## DÚZIAS (momentum)
-${dzMomInfo}
+## 📊 DÚZIAS & COLUNAS & RUAS & CAVALOS
+Dúzias momentum: ${dzMomInfo}
+Ruas: ${ruaInfo}
+Cavalos: ${hotCavalosInfo}
 
-## RUAS (streets)
-${ruaInfo}
+## 📜 LEI DO TERÇO (ausentes em 30 giros)
+[${absent30.join(',')}] (${absent30.length} ausentes — estes são candidatos!)
 
-## CAVALOS (splits)
-${hotCavalosInfo}
+## 🎰 DEALER SIGNATURE
+Arco: ${dealerSignature.arcMean.toFixed(1)} ± ${dealerSignature.arcStdDev.toFixed(1)} | Consistência: ${dealerSignature.consistency} | Modo: ${dealerSignature.dealerMode}
+${dealerSignature.arcStdDev < 2 ? '⚠️ DEALER MECÂNICO DETECTADO — arco previsível!' : dealerSignature.arcStdDev > 5 ? '⚠️ DEALER CAÓTICO — padrões físicos menos confiáveis' : ''}
 
-## LEI DO TERÇO
-[${absent30.join(',')}] (${absent30.length} ausentes)
-
-## DEALER
-Arco: ${dealerSignature.arcMean.toFixed(1)} | Consistência: ${dealerSignature.consistency} | Modo: ${dealerSignature.dealerMode}
-
-## BREAKOUTS (mudanças bruscas)
+## 🚀 BREAKOUTS
 ${breakoutInfo}
 
-## PADRÕES CONFIRMADOS (auto-analyze)
+## ✅ PADRÕES CONFIRMADOS (auto-analyze)
 ${topInsights}
 
-## MATRIZ DE TRANSIÇÃO (após ${numbers[0]})
+## 🔢 MATRIZ DE TRANSIÇÃO (após ${numbers[0]})
 ${matrizTop8.join(', ')}
 
-## PUXADAS do ${numbers[0]}
+## 🧲 PUXADAS do ${numbers[0]}
 Números: [${pullInfo}]
 Terminais: [${(FULL_PULL_TERMINALS[numbers[0]] || []).join(',')}]
 
-## CADEIA DE PUXADAS (3 últimos)
+## 🔗 CADEIA DE PUXADAS (3 últimos)
 ${numbers.slice(0, 3).map((n: number) => `${n} → [${(FULL_PULL_MAP[n] || []).slice(0, 6).join(',')}]`).join('\n')}
-Interseção (números puxados por 2+ dos últimos): [${(() => {
+Interseção puxadas: [${(() => {
   const pulls = numbers.slice(0, 3).map((n: number) => new Set(FULL_PULL_MAP[n] || []));
   const all = new Set<number>();
   const multi = new Set<number>();
@@ -6947,28 +7071,28 @@ Interseção (números puxados por 2+ dos últimos): [${(() => {
   return [...multi].join(',');
 })()}]
 
-## VIÉS DE TERMINAL DA MESA (últimos 200)
+## 📊 VIÉS DE TERMINAL (200 giros)
 ${(() => {
   const termCounts = Array(10).fill(0);
-  for (const n of numbers.slice(0, 200)) termCounts[n % 10]++;
-  const avg = numbers.slice(0, Math.min(200, numbers.length)).length / 10;
-  return termCounts.map((c, t) => `T${t}: ${c}x (${c > avg ? '+' : ''}${((c/avg - 1)*100).toFixed(0)}%)`).join(' | ');
+  for (const n of last200) termCounts[n % 10]++;
+  const avg = last200.length / 10;
+  return termCounts.map((c: number, t: number) => `T${t}: ${c}x (${c > avg ? '+' : ''}${((c/avg - 1)*100).toFixed(0)}%)`).join(' | ');
 })()}
 
-## DÍVIDA ESTATÍSTICA (números mais atrasados em 200 giros)
+## 💰 DÍVIDA ESTATÍSTICA (200 giros)
 ${(() => {
   const freq: Record<number, number> = {};
   for (let i = 0; i <= 36; i++) freq[i] = 0;
-  for (const n of numbers.slice(0, 200)) freq[n]++;
+  for (const n of last200) freq[n]++;
   return Object.entries(freq)
-    .filter(([, c]) => c === 0 || c <= 1)
+    .filter(([, c]) => c <= 1)
     .sort(([,a],[,b]) => (a as number) - (b as number))
-    .slice(0, 10)
-    .map(([n, c]) => `${n}(${c}x)`)
+    .slice(0, 12)
+    .map(([n, c]) => `${n}(${c}x em ${last200.length})`)
     .join(', ');
 })()}
 
-## AUTO-REPETIÇÃO (repetidores recentes)
+## 🔁 AUTO-REPETIÇÃO
 ${(() => {
   const reps: string[] = [];
   for (let i = 0; i < Math.min(20, numbers.length - 1); i++) {
@@ -6977,71 +7101,48 @@ ${(() => {
   return reps.length > 0 ? reps.join(', ') : 'Nenhuma auto-rep nos últimos 20';
 })()}
 
-## GAPS dos candidatos
+## 🏗️ GAPS dos candidatos
 ${gapInfo}
 
-## ESTRATÉGIAS RANKEADAS (com WR real)
+## 🏆 ESTRATÉGIAS RANKEADAS
 ${topStratsInfo}
 
-## WIN RATE POR TIPO (histórico completo)
-${(() => {
-  const perfEntries = Object.entries(strategyPerformance)
-    .filter(([, v]: any) => v.total >= 3)
-    .sort(([, a]: any, [, b]: any) => b.winRate - a.winRate)
-    .slice(0, 10);
-  return perfEntries.map(([type, v]: any) => 
-    `${type}: WR=${(v.winRate*100).toFixed(0)}% (${v.total} predições, trend=${(v.recentTrend*100).toFixed(0)}%)`
-  ).join('\n') || 'Insuficiente';
-})()}
+## 🧠 APRENDIZADOS ACUMULADOS (${learned.length} registros)
+${learnedSummary || 'Nenhum'}
 
-## ÚLTIMOS 10 RESULTADOS (feedback)
-${recentResults || 'Sem dados'}
-
-## APRENDIZADOS ACUMULADOS DA IA (${learned.length} registros)
+## 📚 ÚLTIMOS 15 APRENDIZADOS DETALHADOS
 ${learned.slice(0, 15).map(l => {
   const meta = l.metadata as any;
-  return `[${l.learning_type}] ${l.title}: acurácia ${l.accuracy}% | hot:[${(meta?.hotNumbers || []).slice(0,4).join(',')}] | ${l.knowledge?.slice(0, 80)}`;
+  return `[${l.learning_type}] ${l.title}: acurácia ${l.accuracy}% | hot:[${(meta?.hotNumbers || []).slice(0,4).join(',')}] | ${l.knowledge?.slice(0, 100)}`;
 }).join('\n') || 'Nenhum'}
 
-## CANDIDATOS ESTATÍSTICOS ATUAIS
+## 🎯 CANDIDATOS ESTATÍSTICOS
 [${finalBetNumbers.join(',')}] (top1=${numTop1})
 Confirmações: ${confirmations}/6
 
-## PROTOCOLO DE RESPOSTA
-Analise TODOS os mercados simultaneamente:
-- Dúzias (1-12, 13-24, 25-36)
-- Colunas (C1, C2, C3)
-- Vizinhos do Zero / Tiers / Orphelins / Jeu Zéro
-- Cores (Vermelho/Preto)
-- Paridade (Par/Ímpar)
-- Alto/Baixo (1-18/19-36)
-- Ruas (streets de 3 números)
-- Cavalos (splits de 2 números)
-- Terminais (números com mesmo final)
-- Plenos (números específicos)
-- Cantos/Quadras (carrés de 4)
-- Linhas/Sixlines (6 números)
-
-Escolha a jogada com MAIOR probabilidade real de acerto, independente do tipo.
-Use TODAS as informações disponíveis: puxadas, aprendizados, feedback, padrões, breakouts, momentum.
+## ⚠️ PROTOCOLO
+Analise PROFUNDAMENTE o histórico. NÃO chute. Cruze puxadas + terminais + setores + dívida + feedback.
+Se a última previsão ACERTOU → REFORCE o padrão. Se ERROU → mude a abordagem.
+Priorize números que aparecem em MÚLTIPLAS dimensões (puxada + terminal quente + setor ativo + dívida).
 
 Responda APENAS JSON:
 {
-  "numbers": [números a apostar, max 12],
-  "betType": "terminal|vizinhos|setor|duzia|coluna|pleno|cavalos|cor|paridade|alto_baixo|rua|linha|carre|sixline|split|orphelins|tiers|voisins|jeu_zero|final|combinado",
-  "betDescription": "Descrição COMPLETA da aposta (ex: Dúzia 2 + Vizinhos do 17 + Cor Preta)",
-  "suggestedBet": "Jogada principal clara e direta",
-  "secondaryBet": "Jogada secundária de proteção (opcional)",
-  "patternIdentified": "Padrão principal detectado",
-  "learned": "O que a mesa está mostrando agora",
+  "numbers": [números a apostar, max 10],
+  "betType": "terminal|vizinhos|setor|duzia|coluna|pleno|cavalos|cor|paridade|alto_baixo|rua|combinado",
+  "betDescription": "Descrição COMPLETA e detalhada da aposta",
+  "suggestedBet": "Jogada principal — clara e objetiva",
+  "secondaryBet": "Proteção secundária",
+  "patternIdentified": "Padrão principal — qual evidência histórica sustenta",
+  "learned": "O que o histórico está ensinando nesta sessão",
   "confidence": 0-100,
-  "adjustTop1": numero_ou_null,
+  "adjustTop1": numero_principal_ou_null,
   "sectorFocus": "Voisins|Tiers|Orphelins|Zero|misto",
   "feedbackAction": "reforçar|ajustar|descartar",
+  "reasoning": "Passo a passo do raciocínio: (1) O que os dados dizem (2) Qual padrão é mais forte (3) Por que estes números",
   "marketAnalysis": {
-    "bestMarket": "nome do mercado com maior chance",
+    "bestMarket": "mercado externo com maior edge",
     "marketConfidence": 0-100,
-    "reasoning": "por que este mercado é o melhor agora"
+    "reasoning": "evidência"
   }
 }`;
 
