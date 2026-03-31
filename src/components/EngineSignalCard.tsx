@@ -54,19 +54,19 @@ const EngineSignalCard = memo(({ allNumbers }: Props) => {
   const signals = useMemo(() => analyzeSpins(allNumbers), [allNumbers]);
   const top = signals[0] ?? null;
 
-  if (!top) {
-    // Show quick frequency summary instead of eternal spinner
-    const quickFreq = useMemo(() => {
-      if (allNumbers.length < 3) return null;
-      const slice = allNumbers.slice(0, 30);
-      const freq: Record<number, number> = {};
-      slice.forEach(n => { freq[n] = (freq[n] || 0) + 1; });
-      const sorted = Object.entries(freq).sort(([,a],[,b]) => b - a).slice(0, 5);
-      const redCount = slice.filter(n => n > 0 && [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(n)).length;
-      const blackCount = slice.filter(n => n > 0 && ![1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(n) && n !== 0).length;
-      return { sorted, redCount, blackCount, total: slice.length };
-    }, [allNumbers]);
+  const quickFreq = useMemo(() => {
+    if (allNumbers.length < 3) return null;
+    const RED_SET = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+    const slice = allNumbers.slice(0, 30);
+    const freq: Record<number, number> = {};
+    slice.forEach(n => { freq[n] = (freq[n] || 0) + 1; });
+    const sorted = Object.entries(freq).sort(([,a],[,b]) => b - a).slice(0, 5);
+    const redCount = slice.filter(n => RED_SET.has(n)).length;
+    const blackCount = slice.filter(n => n > 0 && !RED_SET.has(n)).length;
+    return { sorted, redCount, blackCount, total: slice.length };
+  }, [allNumbers]);
 
+  if (!top) {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-4 border border-border/20 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-neon-pink/[0.02]" />
@@ -89,7 +89,7 @@ const EngineSignalCard = memo(({ allNumbers }: Props) => {
           {quickFreq && (
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 text-[8px]">
-                <span className="text-red-400 font-bold">🔴 {quickFreq.redCount}</span>
+                <span className="text-destructive font-bold">🔴 {quickFreq.redCount}</span>
                 <span className="text-muted-foreground/30">|</span>
                 <span className="text-foreground/70 font-bold">⚫ {quickFreq.blackCount}</span>
               </div>
