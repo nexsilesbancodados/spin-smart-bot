@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Crosshair, AlertTriangle, Clock, ShieldCheck, Zap, Brain, TrendingUp, BookOpen } from 'lucide-react';
+import { Crosshair, AlertTriangle, Clock, ShieldCheck, Zap, Brain, TrendingUp, BookOpen, Target, Layers } from 'lucide-react';
 
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 
@@ -12,6 +12,30 @@ const getActionLevel = (prob: number) => {
   if (prob >= 65) return { label: '✅ ENTRAR', color: 'text-primary', borderClass: 'border-primary/40' };
   if (prob >= 45) return { label: '⚠️ SINAL MODERADO', color: 'text-yellow-400', borderClass: 'border-yellow-400/30' };
   return { label: '⏸ AGUARDAR', color: 'text-muted-foreground', borderClass: 'border-border' };
+};
+
+const BET_TYPE_LABELS: Record<string, { emoji: string; label: string }> = {
+  terminal: { emoji: '🔢', label: 'Terminal' },
+  vizinhos: { emoji: '🎯', label: 'Vizinhos' },
+  setor: { emoji: '🌍', label: 'Setor' },
+  duzia: { emoji: '📊', label: 'Dúzia' },
+  coluna: { emoji: '📐', label: 'Coluna' },
+  pleno: { emoji: '💎', label: 'Pleno' },
+  cavalos: { emoji: '🐴', label: 'Cavalos' },
+  cor: { emoji: '🎨', label: 'Cor' },
+  paridade: { emoji: '⚖️', label: 'Par/Ímpar' },
+  alto_baixo: { emoji: '📏', label: 'Alto/Baixo' },
+  rua: { emoji: '🛤️', label: 'Rua' },
+  linha: { emoji: '📋', label: 'Linha' },
+  carre: { emoji: '🔲', label: 'Quadra' },
+  sixline: { emoji: '6️⃣', label: 'Sixline' },
+  split: { emoji: '✂️', label: 'Split' },
+  orphelins: { emoji: '🌀', label: 'Orphelins' },
+  tiers: { emoji: '🎪', label: 'Tiers' },
+  voisins: { emoji: '🎡', label: 'Voisins' },
+  jeu_zero: { emoji: '🟢', label: 'Jeu Zéro' },
+  final: { emoji: '🔚', label: 'Final' },
+  combinado: { emoji: '🧬', label: 'Combinado' },
 };
 
 interface Props {
@@ -102,6 +126,7 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
   const action = getActionLevel(displayProb);
   const ai = sniperData?.aiReasoning;
   const lastNumber = allNumbers?.[0];
+  const betTypeInfo = ai?.betType ? BET_TYPE_LABELS[ai.betType] || { emoji: '🎯', label: ai.betType } : null;
 
   return (
     <motion.div
@@ -118,23 +143,33 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
 
       <div className={reedStopped ? 'opacity-30 pointer-events-none' : ''}>
 
-        {/* ═══ PROTOCOLO: 4 CAMPOS ═══ */}
+        {/* ═══ PROTOCOLO EXPANDIDO ═══ */}
 
         {/* ① JOGADA SUGERIDA — Hero section */}
         <div className="p-5 pb-3">
           <div className="flex items-center gap-2 mb-3">
             <Crosshair className="w-4 h-4 text-primary" />
             <span className="text-[10px] font-black text-primary uppercase tracking-widest">Jogada Sugerida</span>
+            {betTypeInfo && (
+              <span className="text-[8px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                {betTypeInfo.emoji} {betTypeInfo.label}
+              </span>
+            )}
             {ai?.feedbackAction && (
               <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full ml-auto ${
                 ai.feedbackAction === 'reforçar' ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                 : ai.feedbackAction === 'descartar' ? 'bg-destructive/10 text-destructive border border-destructive/20'
                 : 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/20'
               }`}>
-                {ai.feedbackAction === 'reforçar' ? '✅ Padrão reforçado' : ai.feedbackAction === 'descartar' ? '🔄 Padrão descartado' : '⚙️ Ajustando'}
+                {ai.feedbackAction === 'reforçar' ? '✅ Reforçado' : ai.feedbackAction === 'descartar' ? '🔄 Descartado' : '⚙️ Ajustando'}
               </span>
             )}
           </div>
+
+          {/* Bet description (full) */}
+          {ai?.betDescription && (
+            <p className="text-xs font-bold text-primary/80 mb-1.5 leading-snug">{ai.betDescription}</p>
+          )}
 
           {/* Suggested bet text */}
           {ai?.suggestedBet && (
@@ -184,9 +219,37 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
               </div>
             </div>
           </div>
+
+          {/* Secondary bet suggestion */}
+          {ai?.secondaryBet && (
+            <div className="mt-2 px-3 py-2 rounded-lg bg-secondary/40 border border-border/40">
+              <div className="flex items-center gap-1.5">
+                <Target className="w-3 h-3 text-muted-foreground" />
+                <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">Proteção</span>
+              </div>
+              <p className="text-[10px] text-foreground/70 mt-1">{ai.secondaryBet}</p>
+            </div>
+          )}
         </div>
 
-        {/* ② PADRÃO IDENTIFICADO */}
+        {/* ② ANÁLISE DE MERCADO */}
+        {ai?.marketAnalysis?.bestMarket && (
+          <div className="px-5 py-3 border-t border-border/20 bg-primary/5">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Layers className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[9px] font-black text-primary uppercase tracking-wider">Melhor Mercado</span>
+              <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/25 font-bold ml-auto">
+                {ai.marketAnalysis.marketConfidence}%
+              </span>
+            </div>
+            <p className="text-[11px] font-bold text-foreground/90">{ai.marketAnalysis.bestMarket}</p>
+            {ai.marketAnalysis.reasoning && (
+              <p className="text-[10px] text-muted-foreground mt-1">{ai.marketAnalysis.reasoning}</p>
+            )}
+          </div>
+        )}
+
+        {/* ③ PADRÃO IDENTIFICADO */}
         {ai?.patternIdentified && (
           <div className="px-5 py-3 border-t border-border/20 bg-cyan-500/5">
             <div className="flex items-center gap-2 mb-1.5">
@@ -202,7 +265,7 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
           </div>
         )}
 
-        {/* ③ O QUE APRENDI */}
+        {/* ④ O QUE APRENDI */}
         {ai?.learned && (
           <div className="px-5 py-3 border-t border-border/20 bg-amber-500/5">
             <div className="flex items-center gap-2 mb-1.5">
@@ -213,7 +276,7 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
           </div>
         )}
 
-        {/* ④ ASSERTIVIDADE */}
+        {/* ⑤ ASSERTIVIDADE */}
         <div className="px-5 py-3 border-t border-border/20 bg-secondary/30">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
