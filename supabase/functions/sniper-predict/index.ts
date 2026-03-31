@@ -6722,6 +6722,10 @@ REGRAS ABSOLUTAS:
               aiSectorFocus = parsed.sectorFocus || null;
               aiFeedbackAction = parsed.feedbackAction || null;
               aiLearned = parsed.learned || null;
+              aiSecondaryBet = parsed.secondaryBet || null;
+              aiBetDescription = parsed.betDescription || null;
+              aiBetType = parsed.betType || null;
+              aiMarketAnalysis = parsed.marketAnalysis || null;
               
               // MERGE: AI + Statistical consensus
               const aiSet = new Set(aiAdjustedNumbers);
