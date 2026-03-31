@@ -1368,6 +1368,13 @@ Deno.serve(async (req) => {
       ensembleConfidence,
       totalModels: 7,
       arbiterLog,
+      // NEW: Bagging consensus numbers (numbers that appeared across bootstrap samples)
+      bagConsensus: Object.entries(bagNumberVotes)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 10)
+        .map(([n, votes]) => ({ number: parseInt(n), votes: Math.round(votes * 10) / 10 })),
+      // NEW: Per-bet-type analysis summary for unified view
+      betTypeAnalysis,
       modelPerformance: Object.fromEntries(Object.entries(weights).map(([id, w]) => [id, {
         winRate: w.win_rate,
         total: w.total_predictions,

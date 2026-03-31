@@ -49,6 +49,22 @@ interface BetStats {
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
 const getColor = (n: number) => n === 0 ? 'green' : RED_NUMBERS.includes(n) ? 'red' : 'black';
 
+const MANUAL_BET_TYPES = [
+  { id: 'auto', label: '🤖 Auto (IA)', desc: 'Sinal da IA' },
+  { id: 'vermelho', label: '🔴 Vermelho', desc: '18 números', numbers: RED_NUMBERS },
+  { id: 'preto', label: '⚫ Preto', desc: '18 números', numbers: [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35] },
+  { id: 'par', label: '⚖️ Par', desc: '18 números', numbers: Array.from({length:18},(_,i)=>(i+1)*2) },
+  { id: 'impar', label: '⚖️ Ímpar', desc: '18 números', numbers: Array.from({length:18},(_,i)=>i*2+1) },
+  { id: 'alto', label: '📏 Alto', desc: '19-36', numbers: Array.from({length:18},(_,i)=>i+19) },
+  { id: 'baixo', label: '📏 Baixo', desc: '1-18', numbers: Array.from({length:18},(_,i)=>i+1) },
+  { id: 'dz1', label: '1ª Dúzia', desc: '1-12', numbers: Array.from({length:12},(_,i)=>i+1) },
+  { id: 'dz2', label: '2ª Dúzia', desc: '13-24', numbers: Array.from({length:12},(_,i)=>i+13) },
+  { id: 'dz3', label: '3ª Dúzia', desc: '25-36', numbers: Array.from({length:12},(_,i)=>i+25) },
+  { id: 'col1', label: 'Col 1', desc: '1,4,7...34', numbers: [1,4,7,10,13,16,19,22,25,28,31,34] },
+  { id: 'col2', label: 'Col 2', desc: '2,5,8...35', numbers: [2,5,8,11,14,17,20,23,26,29,32,35] },
+  { id: 'col3', label: 'Col 3', desc: '3,6,9...36', numbers: [3,6,9,12,15,18,21,24,27,30,33,36] },
+];
+
 const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
   const [config, setConfig] = useState<AutoBetState>({
     enabled: false,
