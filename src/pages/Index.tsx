@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Activity, Brain, ChevronDown, GraduationCap, Sparkles, Power, MonitorPlay, Crosshair
+  Activity, Brain, ChevronDown, Power, MonitorPlay, Crosshair
 } from 'lucide-react';
 import PredictionHistory from '@/components/PredictionHistory';
 import BetPanel from '@/components/BetPanel';
