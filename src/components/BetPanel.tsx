@@ -874,6 +874,7 @@ const BetPanel = memo(({ sniperData, allNumbers }: BetPanelProps) => {
       </div>
     </motion.div>
   );
-};
+});
 
+BetPanel.displayName = 'BetPanel';
 export default BetPanel;

@@ -191,6 +191,7 @@ const NumberDNADialog = memo(({ number, allNumbers, open, onClose }: Props) => {
       </DialogContent>
     </Dialog>
   );
-};
+});
 
+NumberDNADialog.displayName = 'NumberDNADialog';
 export default NumberDNADialog;
