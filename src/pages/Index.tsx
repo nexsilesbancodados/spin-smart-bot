@@ -954,6 +954,12 @@ const Index = () => {
 
       </main>
 
+      {/* ── TICKER FIXO NO RODAPÉ ──────────────────────── */}
+      <NumberTicker numbers={allNumbers} />
+
+      {/* Padding para não esconder conteúdo atrás do ticker */}
+      <div className="h-14" />
+
       <NumberDNADialog number={dnaNumber} allNumbers={allNumbers} open={dnaOpen} onClose={() => setDnaOpen(false)} />
     </div>
   );
