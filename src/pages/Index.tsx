@@ -857,6 +857,7 @@ const Index = () => {
                   allNumbers={allNumbers}
                 />
               )}
+              </>
             ) : (
               <div className="bg-card rounded-2xl border border-border p-12 text-center">
                 <div className="text-5xl mb-4 opacity-30">○</div>
