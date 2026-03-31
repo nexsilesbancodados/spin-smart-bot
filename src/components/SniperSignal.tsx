@@ -238,18 +238,32 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
     );
   }
 
-  // No signal
+  // No signal — premium waiting state
   if (!sniperData?.signal || !sniperData?.strategy) {
     const waitingMessage = sniperCountdown === 0
       ? '🔎 Analisando... aguardando próxima rodada'
       : sniperData?.message || 'Aguardando dados...';
 
     return (
-      <div className="glass rounded-2xl border border-border/40 p-8 text-center">
-        <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 2.5 }}>
-          <Clock className="w-7 h-7 text-muted-foreground/40 mx-auto mb-2" />
-        </motion.div>
-        <p className="text-sm text-muted-foreground font-mono">{waitingMessage}</p>
+      <div className="glass rounded-2xl border border-border/20 p-8 text-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border/30 to-transparent" />
+        <div className="relative">
+          <motion.div animate={{ opacity: [0.3, 0.8, 0.3], y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 3 }}>
+            <Clock className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+          </motion.div>
+          <p className="text-[11px] text-muted-foreground/50 font-display tracking-wider font-bold">{waitingMessage}</p>
+          <div className="mt-3 flex justify-center gap-1">
+            {[0, 1, 2].map(i => (
+              <motion.div
+                key={i}
+                animate={{ opacity: [0.2, 0.8, 0.2] }}
+                transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.3 }}
+                className="w-1.5 h-1.5 rounded-full bg-primary/40"
+              />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

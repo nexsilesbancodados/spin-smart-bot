@@ -944,43 +944,60 @@ const Index = () => {
               )}
             </AnimatePresence>
 
-            {/* ── CARDS DE CONTEXTO ──────────────────────────── */}
+            {/* ── CARDS DE CONTEXTO — Premium ──────────────────────────── */}
             {allNumbers.length >= 5 && (
               <div className="grid grid-cols-4 gap-2">
-                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
-                  className="glass rounded-xl border border-primary/15 p-3 text-center space-y-1 hover:border-primary/30 transition-all group">
-                  <div className="text-[8px] text-muted-foreground/50 uppercase font-bold tracking-wider font-display">Puxados</div>
-                  <div className="text-[12px] font-black text-primary font-mono leading-tight group-hover:scale-105 transition-transform">
-                    {(PULL[allNumbers[0]] || []).slice(0,3).join(' ')}
-                  </div>
-                  <div className="text-[7px] text-muted-foreground/30 font-mono">do {allNumbers[0]}</div>
-                </motion.div>
-                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-                  className="glass rounded-xl border border-gold/15 p-3 text-center space-y-1 hover:border-gold/30 transition-all group">
-                  <div className="text-[8px] text-muted-foreground/50 uppercase font-bold tracking-wider font-display">Terminal</div>
-                  <div className="text-[12px] font-black text-[hsl(var(--gold))] font-mono group-hover:scale-105 transition-transform">T{hotTerm?.[0]}</div>
-                  <div className="text-[7px] text-muted-foreground/30 font-mono">{hotTerm?.[1]}× em 20</div>
-                </motion.div>
-                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                  className={`glass rounded-xl border p-3 text-center space-y-1 transition-all ${
-                    zeroPressure > 40 ? 'border-neon-green/25 bg-neon-green/3' : zeroPressure > 25 ? 'border-gold/15' : 'border-border/15'
-                  }`}>
-                  <div className="text-[8px] text-muted-foreground/50 uppercase font-bold tracking-wider font-display">Zero</div>
-                  <div className={`text-[12px] font-black font-mono ${zeroPressure > 40 ? 'text-neon-green' : zeroPressure > 25 ? 'text-[hsl(var(--gold))]' : 'text-muted-foreground'}`}>
-                    {zeroPressure}g
-                  </div>
-                  <div className="text-[7px] text-muted-foreground/30 font-mono">{zeroPressure > 40 ? '⚡ pressão' : zeroPressure > 25 ? 'atenção' : 'ok'}</div>
-                </motion.div>
-                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-                  className="glass rounded-xl border border-border/15 p-3 text-center space-y-1 hover:border-neon-cyan/20 transition-all group">
-                  <div className="text-[8px] text-muted-foreground/50 uppercase font-bold tracking-wider font-display">Hits</div>
-                  <div className="text-[12px] font-black text-foreground font-mono group-hover:scale-105 transition-transform">
-                    {predStats.hits}/{predStats.total || 1}
-                  </div>
-                  <div className="text-[7px] text-muted-foreground/30 font-mono">
-                    {predStats.total > 0 ? `${Math.round(predStats.hits/predStats.total*100)}%` : '—'}
-                  </div>
-                </motion.div>
+                {[
+                  {
+                    label: 'Puxados', delay: 0,
+                    value: (PULL[allNumbers[0]] || []).slice(0,3).join(' '),
+                    sub: `do ${allNumbers[0]}`,
+                    borderColor: 'border-primary/15 hover:border-primary/30',
+                    textColor: 'text-primary',
+                    glowColor: 'shadow-[0_0_10px_hsl(var(--primary)/0.08)]',
+                  },
+                  {
+                    label: 'Terminal', delay: 0.05,
+                    value: `T${hotTerm?.[0]}`,
+                    sub: `${hotTerm?.[1]}× em 20`,
+                    borderColor: 'border-gold/15 hover:border-gold/30',
+                    textColor: 'text-[hsl(var(--gold))]',
+                    glowColor: 'shadow-[0_0_10px_hsl(var(--gold)/0.08)]',
+                  },
+                  {
+                    label: 'Zero', delay: 0.1,
+                    value: `${zeroPressure}g`,
+                    sub: zeroPressure > 40 ? '⚡ pressão' : zeroPressure > 25 ? 'atenção' : 'ok',
+                    borderColor: zeroPressure > 40 ? 'border-neon-green/25 bg-neon-green/3' : zeroPressure > 25 ? 'border-gold/15' : 'border-border/15',
+                    textColor: zeroPressure > 40 ? 'text-neon-green' : zeroPressure > 25 ? 'text-[hsl(var(--gold))]' : 'text-muted-foreground',
+                    glowColor: zeroPressure > 40 ? 'shadow-[0_0_10px_hsl(var(--neon-green)/0.1)]' : '',
+                  },
+                  {
+                    label: 'Hits', delay: 0.15,
+                    value: `${predStats.hits}/${predStats.total || 1}`,
+                    sub: predStats.total > 0 ? `${Math.round(predStats.hits/predStats.total*100)}%` : '—',
+                    borderColor: 'border-border/15 hover:border-neon-cyan/20',
+                    textColor: 'text-foreground',
+                    glowColor: '',
+                  },
+                ].map((card, idx) => (
+                  <motion.div
+                    key={card.label}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: card.delay }}
+                    className={`glass rounded-xl border p-3 text-center space-y-1 transition-all group relative overflow-hidden ${card.borderColor} ${card.glowColor}`}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-transparent to-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="relative">
+                      <div className="text-[8px] text-muted-foreground/40 uppercase font-bold tracking-wider font-display">{card.label}</div>
+                      <div className={`text-[12px] font-black font-mono leading-tight group-hover:scale-105 transition-transform ${card.textColor}`}>
+                        {card.value}
+                      </div>
+                      <div className="text-[7px] text-muted-foreground/25 font-mono">{card.sub}</div>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             )}
 
