@@ -2,6 +2,7 @@ import { memo, useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
+import { Brain, Zap, BarChart3, FlaskConical, Trophy, RefreshCw } from 'lucide-react';
 
 interface ModelPerf { winRate: number; total: number; hits: number; streak: number; weight: number; }
 interface DiscoveredPattern { test_name: string; description: string; significant: boolean; confidence: number; recommendation: string | null; }
@@ -74,29 +75,32 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
   const significantPatterns = discoveredPatterns.filter(p => p.significant);
 
   const tempConfig = {
-    quente: { color: 'text-amber-400', bg: 'bg-amber-500/8 border-amber-500/15', icon: '🔥' },
-    fria: { color: 'text-blue-400', bg: 'bg-blue-500/8 border-blue-500/15', icon: '❄️' },
-    caotica: { color: 'text-red-400', bg: 'bg-red-500/8 border-red-500/15', icon: '🌪️' },
-    morna: { color: 'text-muted-foreground', bg: 'bg-secondary/40 border-border/30', icon: '🌡️' },
+    quente: { color: 'text-[hsl(var(--gold))]', bg: 'bg-[hsl(var(--gold))]/5 border-[hsl(var(--gold))]/15', icon: '🔥' },
+    fria: { color: 'text-[hsl(var(--neon-cyan))]', bg: 'bg-[hsl(var(--neon-cyan))]/5 border-[hsl(var(--neon-cyan))]/15', icon: '❄️' },
+    caotica: { color: 'text-destructive', bg: 'bg-destructive/5 border-destructive/15', icon: '🌪️' },
+    morna: { color: 'text-muted-foreground', bg: 'bg-secondary/30 border-border/20', icon: '🌡️' },
   };
   const tc = tempConfig[temperature as keyof typeof tempConfig] || tempConfig.morna;
 
   return (
     <div className="space-y-3">
       {/* Tab Selector */}
-      <div className="flex gap-1 glass rounded-2xl p-1.5 border border-border/20">
+      <div className="flex gap-1 glass rounded-2xl p-1.5 border border-border/15">
         {[
-          { id: 'models' as const, label: '🤖 Modelos', count: totalModels },
-          { id: 'patterns' as const, label: '🔬 Padrões', count: significantPatterns.length },
-          { id: 'stats' as const, label: '📊 Stats', count: null },
+          { id: 'models' as const, label: 'Modelos', icon: <Brain className="w-3 h-3" />, count: totalModels },
+          { id: 'patterns' as const, label: 'Padrões', icon: <FlaskConical className="w-3 h-3" />, count: significantPatterns.length },
+          { id: 'stats' as const, label: 'Stats', icon: <BarChart3 className="w-3 h-3" />, count: null },
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveView(tab.id)}
-            className={`flex-1 text-[8px] font-display font-bold uppercase tracking-wider py-2.5 rounded-xl transition-all ${
-              activeView === tab.id ? 'glass text-primary shadow-sm border border-primary/15' : 'text-muted-foreground hover:text-foreground'
+            className={`flex-1 text-[8px] font-display font-bold uppercase tracking-wider py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeView === tab.id 
+                ? 'glass text-primary shadow-sm border border-primary/15 bg-primary/5' 
+                : 'text-muted-foreground/50 hover:text-foreground/70'
             }`}
           >
+            {tab.icon}
             {tab.label}{tab.count !== null ? ` (${tab.count})` : ''}
           </button>
         ))}
@@ -108,10 +112,12 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
           <div className="absolute inset-0 bg-gradient-to-r from-primary/4 via-transparent to-neon-pink/3" />
           <div className="relative flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center text-lg shadow-neon-cyan">🤖</div>
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/15 to-neon-purple/10 border border-primary/20 flex items-center justify-center text-lg shadow-[0_0_12px_hsl(var(--primary)/0.15)]">
+                🤖
+              </div>
               <div>
-                <div className="text-[10px] font-display font-bold uppercase tracking-wider text-foreground">Ensemble Multi-Modelo v2</div>
-                <div className="text-[7px] text-muted-foreground/50 font-mono">{totalModels} modelos competindo • Feedback Loop ativo</div>
+                <div className="text-[10px] font-display font-bold uppercase tracking-[0.12em] text-foreground">Ensemble Multi-Modelo</div>
+                <div className="text-[7px] text-muted-foreground/50 font-mono">{totalModels} modelos • Feedback Loop ativo</div>
               </div>
             </div>
             <div className={`px-2.5 py-1 rounded-xl border text-[8px] font-display font-bold uppercase backdrop-blur-sm ${tc.bg} ${tc.color}`}>
@@ -123,13 +129,19 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
             {[
               { label: 'Confiança', value: `${ensembleConfidence}%`, color: 'text-primary' },
               { label: 'Consenso', value: `${ensembleConsensus}/${totalModels}`, color: 'text-foreground' },
-              { label: 'WR Geral', value: `${overallWR}%`, color: Number(overallWR) >= 40 ? 'text-neon-green' : 'text-gold' },
-              { label: 'Entrada', value: sniperData?.entryForce?.toUpperCase() || '—', color: sniperData?.entryForce === 'forte' ? 'text-neon-green' : sniperData?.entryForce === 'padrao' ? 'text-gold' : 'text-muted-foreground' },
+              { label: 'WR Geral', value: `${overallWR}%`, color: Number(overallWR) >= 40 ? 'text-neon-green' : 'text-[hsl(var(--gold))]' },
+              { label: 'Entrada', value: sniperData?.entryForce?.toUpperCase() || '—', color: sniperData?.entryForce === 'forte' ? 'text-neon-green' : sniperData?.entryForce === 'padrao' ? 'text-[hsl(var(--gold))]' : 'text-muted-foreground' },
             ].map((stat, i) => (
-              <div key={i} className="text-center p-2.5 rounded-xl glass border border-border/15">
-                <div className="text-[7px] text-muted-foreground/50 uppercase font-display tracking-wider">{stat.label}</div>
+              <motion.div 
+                key={i} 
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="text-center p-2.5 rounded-xl glass border border-border/10 hover:border-border/25 transition-all"
+              >
+                <div className="text-[7px] text-muted-foreground/40 uppercase font-display tracking-wider">{stat.label}</div>
                 <div className={`text-[14px] font-black font-mono ${stat.color}`}>{stat.value}</div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -138,10 +150,17 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
       <AnimatePresence mode="wait">
         {/* Models View */}
         {activeView === 'models' && (
-          <motion.div key="models" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
+          <motion.div key="models" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-2">
             <div className="flex items-center justify-between px-1">
-              <div className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Status dos {totalModels} Modelos</div>
-              <button onClick={triggerRecalibration} className="text-[7px] text-primary font-bold hover:underline px-2 py-1 rounded-md hover:bg-primary/8 transition-all">⚡ Recalibrar</button>
+              <div className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-wider font-display">Status dos {totalModels} Modelos</div>
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={triggerRecalibration} 
+                className="text-[7px] text-primary font-bold px-2.5 py-1 rounded-lg glass border border-primary/15 hover:bg-primary/5 transition-all flex items-center gap-1"
+              >
+                <RefreshCw className="w-2.5 h-2.5" /> Recalibrar
+              </motion.button>
             </div>
             {Object.entries(MODEL_META).map(([id, meta], idx) => {
               const perf = modelPerf[id];
@@ -159,44 +178,52 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.04 }}
                   className={`glass rounded-xl border p-3 transition-all ${
-                    isLeader ? 'border-primary/25 ring-1 ring-primary/15' : 'border-border/30'
+                    isLeader ? 'border-primary/25 ring-1 ring-primary/10 bg-primary/2' : 'border-border/15 hover:border-border/30'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="w-7 h-7 rounded-lg bg-secondary/60 flex items-center justify-center text-sm">{meta.icon}</div>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border ${
+                      isLeader ? 'bg-primary/10 border-primary/20' : 'bg-secondary/40 border-border/10'
+                    }`}>{meta.icon}</div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className={`text-[9px] font-black ${isLeader ? 'text-primary' : 'text-foreground'}`}>{meta.name}</span>
-                        {isLeader && <span className="text-[6px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-bold">LÍDER</span>}
+                        {isLeader && (
+                          <span className="text-[6px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-bold border border-primary/20 flex items-center gap-0.5">
+                            <Trophy className="w-2 h-2" /> LÍDER
+                          </span>
+                        )}
                       </div>
-                      <span className="text-[7px] text-muted-foreground/70">{meta.desc}</span>
+                      <span className="text-[7px] text-muted-foreground/50">{meta.desc}</span>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className={`text-[10px] font-black font-mono ${
-                        wr >= 50 ? 'text-green-400' : wr >= 35 ? 'text-amber-400' : wr > 0 ? 'text-red-400' : 'text-muted-foreground'
+                      <div className={`text-[11px] font-black font-mono ${
+                        wr >= 50 ? 'text-neon-green' : wr >= 35 ? 'text-[hsl(var(--gold))]' : wr > 0 ? 'text-destructive' : 'text-muted-foreground/40'
                       }`}>{total > 0 ? `${wr}%` : 'N/A'}</div>
-                      <div className="text-[6px] text-muted-foreground">{total} pred.</div>
+                      <div className="text-[6px] text-muted-foreground/40 font-mono">{total} pred.</div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-[7px] text-muted-foreground w-8 shrink-0">Peso</span>
+                    <span className="text-[7px] text-muted-foreground/40 w-8 shrink-0 font-mono">Peso</span>
                     <div className="flex-1"><Progress value={Math.min(100, weight * 35)} className="h-1.5" /></div>
-                    <span className="text-[7px] font-mono text-muted-foreground w-6 text-right">{weight.toFixed(1)}</span>
+                    <span className="text-[7px] font-mono text-muted-foreground/50 w-6 text-right">{weight.toFixed(1)}</span>
                     {streak !== 0 && (
-                      <span className={`text-[7px] font-bold ${streak > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      <span className={`text-[7px] font-bold px-1.5 py-0.5 rounded-md ${
+                        streak > 0 ? 'text-neon-green bg-neon-green/10' : 'text-destructive bg-destructive/10'
+                      }`}>
                         {streak > 0 ? `+${streak}` : streak}
                       </span>
                     )}
                   </div>
 
                   {signal && (
-                    <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-secondary/30 border border-border/20">
+                    <div className="mt-2 px-2.5 py-1.5 rounded-lg glass border border-border/10">
                       <div className="flex items-center justify-between">
                         <span className="text-[7px] text-foreground/80 truncate flex-1">{signal.label}</span>
                         <span className="text-[7px] font-mono text-primary ml-2 shrink-0">{signal.confidence}%</span>
                       </div>
-                      <p className="text-[6px] text-muted-foreground mt-0.5 line-clamp-2">{signal.reasoning}</p>
+                      <p className="text-[6px] text-muted-foreground/40 mt-0.5 line-clamp-2">{signal.reasoning}</p>
                     </div>
                   )}
                 </motion.div>
@@ -207,22 +234,29 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
 
         {/* Patterns View */}
         {activeView === 'patterns' && (
-          <motion.div key="patterns" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
+          <motion.div key="patterns" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-2">
             <div className="flex items-center justify-between px-1">
-              <div className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Descoberta de Padrões</div>
-              <button onClick={runPatternDiscovery} disabled={isDiscovering} className="text-[7px] text-primary font-bold hover:underline disabled:opacity-50 px-2 py-1 rounded-md hover:bg-primary/8 transition-all">
-                {isDiscovering ? '⏳ Analisando...' : '🔬 Descobrir'}
-              </button>
+              <div className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-wider font-display">Descoberta de Padrões</div>
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={runPatternDiscovery} 
+                disabled={isDiscovering} 
+                className="text-[7px] text-primary font-bold disabled:opacity-50 px-2.5 py-1 rounded-lg glass border border-primary/15 hover:bg-primary/5 transition-all flex items-center gap-1"
+              >
+                <FlaskConical className="w-2.5 h-2.5" />
+                {isDiscovering ? 'Analisando...' : 'Descobrir'}
+              </motion.button>
             </div>
 
-            <div className="text-[7px] text-muted-foreground glass rounded-lg p-2.5">
+            <div className="text-[7px] text-muted-foreground/40 glass rounded-xl p-2.5 border border-border/10 font-mono">
               Testes: χ² Uniformidade, χ² Cores, Runs Test, Autocorrelação (Ljung-Box), Viés Setorial, Clustering K-Means, Ciclo Dúzias, Viés Horário
             </div>
 
             {discoveredPatterns.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-2xl opacity-30 mb-2">🔬</div>
-                <p className="text-[9px] text-muted-foreground">Clique em "Descobrir" para executar testes estatísticos avançados</p>
+                <p className="text-[9px] text-muted-foreground/50">Clique em "Descobrir" para executar testes estatísticos avançados</p>
               </div>
             ) : (
               discoveredPatterns.map((p, i) => (
@@ -232,16 +266,18 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
                   className={`glass rounded-xl border p-3 ${
-                    p.significant ? 'border-primary/20' : 'border-border/20'
+                    p.significant ? 'border-primary/20 bg-primary/2' : 'border-border/15'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[8px] font-black ${p.significant ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <span className={`text-[8px] font-black ${p.significant ? 'text-primary' : 'text-muted-foreground/60'}`}>
                       {p.significant ? '✅' : '❌'} {p.test_name.replace(/_/g, ' ').toUpperCase()}
                     </span>
-                    <span className={`text-[7px] font-mono ${p.significant ? 'text-green-400' : 'text-muted-foreground'}`}>{p.confidence}%</span>
+                    <span className={`text-[7px] font-mono font-bold px-1.5 py-0.5 rounded-md ${
+                      p.significant ? 'text-neon-green bg-neon-green/10' : 'text-muted-foreground/50 bg-secondary/30'
+                    }`}>{p.confidence}%</span>
                   </div>
-                  <p className="text-[7px] text-foreground/80 leading-relaxed">{p.description}</p>
+                  <p className="text-[7px] text-foreground/70 leading-relaxed">{p.description}</p>
                   {p.recommendation && <p className="text-[7px] text-primary mt-1 font-bold">💡 {p.recommendation}</p>}
                 </motion.div>
               ))
@@ -251,40 +287,49 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
 
         {/* Stats View */}
         {activeView === 'stats' && (
-          <motion.div key="stats" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
-            <div className="text-[9px] font-black text-muted-foreground uppercase tracking-wider px-1">Performance do Ensemble</div>
+          <motion.div key="stats" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-2">
+            <div className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-wider px-1 font-display">Performance do Ensemble</div>
 
             <div className="grid grid-cols-2 gap-2">
               {[
                 { label: 'Total Predições', value: totalPreds, color: 'text-foreground' },
-                { label: 'Total Acertos', value: totalHits, color: 'text-green-400' },
-                { label: 'Win Rate Global', value: `${overallWR}%`, color: Number(overallWR) >= 40 ? 'text-green-400' : 'text-amber-400' },
+                { label: 'Total Acertos', value: totalHits, color: 'text-neon-green' },
+                { label: 'Win Rate Global', value: `${overallWR}%`, color: Number(overallWR) >= 40 ? 'text-neon-green' : 'text-[hsl(var(--gold))]' },
                 { label: 'Melhor Modelo', value: bestModel ? MODEL_META[bestModel[0]]?.name || bestModel[0] : 'N/A', color: 'text-primary', sub: bestModel ? `${(bestModel[1].winRate * 100).toFixed(0)}% WR` : '' },
               ].map((stat, i) => (
-                <div key={i} className="glass rounded-xl border border-border/20 p-3">
-                  <div className="text-[7px] text-muted-foreground uppercase font-bold">{stat.label}</div>
+                <motion.div 
+                  key={i} 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="glass rounded-xl border border-border/15 p-3 hover:border-border/30 transition-all"
+                >
+                  <div className="text-[7px] text-muted-foreground/40 uppercase font-bold font-display tracking-wider">{stat.label}</div>
                   <div className={`text-[15px] font-black font-mono ${stat.color}`}>{stat.value}</div>
-                  {(stat as any).sub && <div className="text-[7px] text-muted-foreground">{(stat as any).sub}</div>}
-                </div>
+                  {(stat as any).sub && <div className="text-[7px] text-muted-foreground/50 font-mono">{(stat as any).sub}</div>}
+                </motion.div>
               ))}
             </div>
 
-            <div className="glass rounded-xl border border-border/20 p-3">
-              <div className="text-[8px] font-black text-muted-foreground uppercase mb-2">Ranking por Win Rate</div>
+            <div className="glass rounded-xl border border-border/15 p-3">
+              <div className="text-[8px] font-black text-muted-foreground/50 uppercase mb-2 font-display tracking-wider">Ranking por Win Rate</div>
               {Object.entries(modelPerf)
                 .filter(([, p]) => p.total > 0)
                 .sort(([, a], [, b]) => b.winRate - a.winRate)
-                .map(([id, perf], i) => (
-                  <div key={id} className="flex items-center gap-2 py-1.5 border-b border-border/10 last:border-0">
-                    <span className="text-[8px] font-black text-muted-foreground w-5">#{i + 1}</span>
-                    <span className="text-[9px]">{MODEL_META[id]?.icon || '❓'}</span>
-                    <span className="text-[8px] font-bold text-foreground flex-1">{MODEL_META[id]?.name || id}</span>
-                    <span className={`text-[8px] font-mono font-bold ${
-                      perf.winRate * 100 >= 50 ? 'text-green-400' : perf.winRate * 100 >= 35 ? 'text-amber-400' : 'text-red-400'
-                    }`}>{(perf.winRate * 100).toFixed(0)}%</span>
-                    <span className="text-[7px] text-muted-foreground/60">({perf.total})</span>
-                  </div>
-                ))}
+                .map(([id, perf], i) => {
+                  const medals = ['🥇', '🥈', '🥉'];
+                  return (
+                    <div key={id} className="flex items-center gap-2 py-1.5 border-b border-border/10 last:border-0">
+                      <span className="text-[10px] w-5 text-center">{medals[i] || `${i + 1}.`}</span>
+                      <span className="text-[9px]">{MODEL_META[id]?.icon || '❓'}</span>
+                      <span className="text-[8px] font-bold text-foreground/80 flex-1">{MODEL_META[id]?.name || id}</span>
+                      <span className={`text-[9px] font-mono font-bold ${
+                        perf.winRate * 100 >= 50 ? 'text-neon-green' : perf.winRate * 100 >= 35 ? 'text-[hsl(var(--gold))]' : 'text-destructive'
+                      }`}>{(perf.winRate * 100).toFixed(0)}%</span>
+                      <span className="text-[7px] text-muted-foreground/40 font-mono">({perf.total})</span>
+                    </div>
+                  );
+                })}
             </div>
           </motion.div>
         )}
@@ -292,19 +337,22 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
 
       {/* Arbiter Log */}
       {arbiterLog.length > 0 && (
-        <div className="glass rounded-xl border border-border/20 p-3">
-          <div className="text-[9px] font-black text-muted-foreground uppercase tracking-wider mb-2">Log do Árbitro</div>
+        <div className="glass rounded-xl border border-border/15 p-3">
+          <div className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-wider mb-2 font-display flex items-center gap-1.5">
+            <Zap className="w-3 h-3 text-primary/50" />
+            Log do Árbitro
+          </div>
           <div className="space-y-1 max-h-40 overflow-y-auto scrollbar-thin">
             {arbiterLog.map((line: string, i: number) => (
-              <div key={i} className="text-[7px] text-foreground/70 font-mono leading-relaxed px-2.5 py-1 rounded-md bg-secondary/20">{line}</div>
+              <div key={i} className="text-[7px] text-foreground/60 font-mono leading-relaxed px-2.5 py-1 rounded-md glass border border-border/5">{line}</div>
             ))}
           </div>
         </div>
       )}
 
       {/* Notice */}
-      <div className="px-3 py-2 rounded-xl bg-amber-500/5 border border-amber-500/10">
-        <p className="text-[7px] text-amber-400/70 leading-relaxed text-center">
+      <div className="px-3 py-2 rounded-xl glass border border-[hsl(var(--gold))]/10">
+        <p className="text-[7px] text-[hsl(var(--gold))]/50 leading-relaxed text-center font-mono">
           ⚠️ Roleta é um jogo de sorte; nenhum sistema garante lucro. Use apenas para entretenimento e estudo.
         </p>
       </div>
