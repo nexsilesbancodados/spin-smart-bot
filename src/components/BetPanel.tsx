@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Zap, Play, Square, TrendingUp, TrendingDown, DollarSign, 
-  Target, Shield, Settings, RotateCcw, AlertTriangle
+  Target, Shield, Settings, RotateCcw, AlertTriangle, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
