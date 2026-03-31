@@ -7313,7 +7313,7 @@ METODOLOGIA DE ANÁLISE:
         // Um modelo top analisa o consenso e emite o veredito final
         // =====================================================
         let judgeResult: AiResult | null = null;
-        if (aiResults.length >= 2 && LAI_KEY) {
+        if (aiResults.length >= 2 && DEEPSEEK_API_KEY) {
           const round1Summary = aiResults.map(r => {
             const p = r.parsed;
             return `[${r.source}] números: [${(p.numbers || []).join(',')}] | tipo: ${p.betType || '?'} | confiança: ${p.confidence || '?'}% | razão: ${(p.suggestedBet || p.reasoning || '').slice(0, 100)} | padrão: ${(p.patternIdentified || '').slice(0, 60)}`;
