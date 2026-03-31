@@ -34,7 +34,7 @@ const wheelNeighbors = (n: number, radius = 4): number[] => {
 // TIPOS
 // ═══════════════════════════════════════════════════════════════════
 interface ModelSignal {
-  modelId: 'markov' | 'neural_pattern' | 'gradient' | 'bayesian' | 'statistical';
+  modelId: 'markov' | 'neural_pattern' | 'gradient' | 'bayesian' | 'statistical' | 'pattern_discovery' | 'rl_optimizer';
   modelName: string;
   betType: string;
   label: string;
