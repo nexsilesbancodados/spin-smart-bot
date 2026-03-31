@@ -84,26 +84,41 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
 
   return (
     <div className="space-y-3">
-      {/* Tab Selector */}
-      <div className="flex gap-1 glass rounded-2xl p-1.5 border border-border/15">
-        {[
-          { id: 'models' as const, label: 'Modelos', icon: <Brain className="w-3 h-3" />, count: totalModels },
-          { id: 'patterns' as const, label: 'Padrões', icon: <FlaskConical className="w-3 h-3" />, count: significantPatterns.length },
-          { id: 'stats' as const, label: 'Stats', icon: <BarChart3 className="w-3 h-3" />, count: null },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveView(tab.id)}
-            className={`flex-1 text-[8px] font-display font-bold uppercase tracking-wider py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-              activeView === tab.id 
-                ? 'glass text-primary shadow-sm border border-primary/15 bg-primary/5' 
-                : 'text-muted-foreground/50 hover:text-foreground/70'
-            }`}
-          >
-            {tab.icon}
-            {tab.label}{tab.count !== null ? ` (${tab.count})` : ''}
-          </button>
-        ))}
+      {/* Tab Selector — premium */}
+      <div className="glass rounded-2xl p-1 border border-border/15 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/[0.02] via-transparent to-neon-pink/[0.02]" />
+        <div className="relative flex gap-1">
+          {[
+            { id: 'models' as const, label: 'Modelos', icon: <Brain className="w-3.5 h-3.5" />, count: totalModels },
+            { id: 'patterns' as const, label: 'Padrões', icon: <FlaskConical className="w-3.5 h-3.5" />, count: significantPatterns.length },
+            { id: 'stats' as const, label: 'Stats', icon: <BarChart3 className="w-3.5 h-3.5" />, count: null },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveView(tab.id)}
+              className={`flex-1 text-[8px] font-display font-bold uppercase tracking-wider py-3 rounded-xl transition-all flex items-center justify-center gap-1.5 relative ${
+                activeView === tab.id 
+                  ? 'glass text-primary shadow-[0_0_12px_hsl(var(--primary)/0.1)] border border-primary/20 bg-primary/5' 
+                  : 'text-muted-foreground/40 hover:text-foreground/60'
+              }`}
+            >
+              <span className={activeView === tab.id ? 'text-primary' : 'text-muted-foreground/30'}>{tab.icon}</span>
+              <span>{tab.label}</span>
+              {tab.count !== null && (
+                <span className={`text-[6px] font-mono px-1.5 py-0.5 rounded-lg ${
+                  activeView === tab.id ? 'bg-primary/15 text-primary border border-primary/20' : 'bg-secondary/20 text-muted-foreground/30'
+                }`}>{tab.count}</span>
+              )}
+              {activeView === tab.id && (
+                <motion.div
+                  layoutId="ensemble-tab"
+                  className="absolute bottom-0.5 left-3 right-3 h-[2px] rounded-full"
+                  style={{ background: 'linear-gradient(90deg, hsl(var(--neon-cyan)), hsl(var(--neon-pink)))' }}
+                />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Ensemble Summary */}
@@ -335,24 +350,36 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
         )}
       </AnimatePresence>
 
-      {/* Arbiter Log */}
+      {/* Arbiter Log — premium */}
       {arbiterLog.length > 0 && (
-        <div className="glass rounded-xl border border-border/15 p-3">
-          <div className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-wider mb-2 font-display flex items-center gap-1.5">
-            <Zap className="w-3 h-3 text-primary/50" />
-            Log do Árbitro
+        <div className="glass rounded-2xl border border-border/15 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-border/10 bg-gradient-to-r from-primary/[0.03] to-transparent">
+            <div className="w-6 h-6 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Zap className="w-3 h-3 text-primary" />
+            </div>
+            <span className="text-[9px] font-display font-black text-primary/80 uppercase tracking-[0.15em]">Log do Árbitro</span>
+            <span className="text-[6px] text-muted-foreground/30 font-mono ml-auto">{arbiterLog.length} entradas</span>
           </div>
-          <div className="space-y-1 max-h-40 overflow-y-auto scrollbar-thin">
+          <div className="p-3 space-y-1 max-h-40 overflow-y-auto scrollbar-thin">
             {arbiterLog.map((line: string, i: number) => (
-              <div key={i} className="text-[7px] text-foreground/60 font-mono leading-relaxed px-2.5 py-1 rounded-md glass border border-border/5">{line}</div>
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -5 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.02 }}
+                className="text-[7px] text-foreground/60 font-mono leading-relaxed px-3 py-1.5 rounded-lg glass border border-border/5 hover:border-border/15 transition-all"
+              >
+                <span className="text-primary/40 mr-1.5">▸</span>{line}
+              </motion.div>
             ))}
           </div>
         </div>
       )}
 
       {/* Notice */}
-      <div className="px-3 py-2 rounded-xl glass border border-[hsl(var(--gold))]/10">
-        <p className="text-[7px] text-[hsl(var(--gold))]/50 leading-relaxed text-center font-mono">
+      <div className="px-4 py-2.5 rounded-2xl glass border border-gold/10 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-gold/[0.02] to-transparent" />
+        <p className="relative text-[7px] text-gold/50 leading-relaxed text-center font-mono">
           ⚠️ Roleta é um jogo de sorte; nenhum sistema garante lucro. Use apenas para entretenimento e estudo.
         </p>
       </div>

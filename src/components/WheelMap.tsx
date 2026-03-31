@@ -218,37 +218,46 @@ const WheelMap = ({ allNumbers, sniperData }: Props) => {
             );
           })}
 
-          {/* Center */}
-          <circle cx={cx} cy={cy} r={32} fill="url(#center-grad)" stroke="hsl(var(--border))" strokeWidth="0.5" opacity={0.9} />
-          <circle cx={cx} cy={cy} r={30} fill="none" stroke="hsl(var(--primary))" strokeWidth="0.3" opacity={0.15} strokeDasharray="3 5" />
-          <text x={cx} y={cy - 8} textAnchor="middle" fill="hsl(var(--primary))" fontSize="9" fontWeight="900" fontFamily="'Orbitron', sans-serif" letterSpacing="2" opacity="0.8">RODA</text>
-          <text x={cx} y={cy + 4} textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="6" opacity="0.5" fontFamily="'JetBrains Mono', monospace">EUROPEIA</text>
-          <text x={cx} y={cy + 14} textAnchor="middle" fill="hsl(var(--primary))" fontSize="5" opacity="0.3" fontFamily="'JetBrains Mono', monospace">37 SLOTS</text>
+          {/* Center — premium */}
+          <circle cx={cx} cy={cy} r={34} fill="url(#center-grad)" stroke="hsl(var(--border))" strokeWidth="0.5" opacity={0.95} />
+          <circle cx={cx} cy={cy} r={32} fill="none" stroke="hsl(var(--primary))" strokeWidth="0.4" opacity={0.12} strokeDasharray="4 6" />
+          <circle cx={cx} cy={cy} r={28} fill="none" stroke="hsl(var(--neon-pink))" strokeWidth="0.3" opacity={0.06} />
+          
+          {/* Center text */}
+          <text x={cx} y={cy - 10} textAnchor="middle" fill="hsl(var(--primary))" fontSize="10" fontWeight="900" fontFamily="'Orbitron', sans-serif" letterSpacing="3" opacity="0.9">SPIN</text>
+          <text x={cx} y={cy + 2} textAnchor="middle" fill="hsl(var(--neon-pink))" fontSize="7" fontWeight="800" fontFamily="'Orbitron', sans-serif" letterSpacing="2" opacity="0.6">SMART</text>
+          <text x={cx} y={cy + 14} textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="5" opacity="0.35" fontFamily="'JetBrains Mono', monospace">37 SLOTS · EU</text>
         </svg>
       </div>
 
-      {/* Legend */}
-      <div className="px-4 pb-3">
-        <div className="flex items-center justify-center gap-4">
-          {sectorLegend.map(s => (
-            <div key={s.name} className="flex items-center gap-1.5">
-              <div className={`w-2 h-2 rounded-full ${s.color} opacity-60`} />
-              <span className="text-[7px] text-muted-foreground/50 font-mono">{s.name} ({s.count})</span>
+      {/* Legend — premium */}
+      <div className="px-4 pb-4">
+        <div className="glass rounded-xl border border-border/10 p-3">
+          <div className="flex items-center justify-center gap-4 mb-2">
+            {sectorLegend.map(s => (
+              <div key={s.name} className="flex items-center gap-1.5 group">
+                <div className={`w-2.5 h-2.5 rounded-full ${s.color} opacity-70 group-hover:opacity-100 transition-opacity shadow-sm`} />
+                <span className="text-[7px] text-muted-foreground/50 font-mono group-hover:text-foreground/60 transition-colors">{s.name} <span className="text-muted-foreground/25">({s.count})</span></span>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-center gap-5">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3.5 h-3.5 rounded-md border-2 border-primary shadow-[0_0_6px_hsl(var(--primary)/0.3)]" />
+              <span className="text-[7px] text-muted-foreground/40">Último</span>
             </div>
-          ))}
-        </div>
-        <div className="flex items-center justify-center gap-4 mt-1.5">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full border-2 border-primary" />
-            <span className="text-[7px] text-muted-foreground/40">Último</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full border-2 border-[hsl(var(--gold))]" />
-            <span className="text-[7px] text-muted-foreground/40">Recomendado</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2.5 h-2.5 rounded-full bg-orange-500/60" />
-            <span className="text-[7px] text-muted-foreground/40">Quente</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3.5 h-3.5 rounded-md border-2 border-gold shadow-[0_0_6px_hsl(var(--gold)/0.3)]" />
+              <span className="text-[7px] text-muted-foreground/40">Recomendado</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-orange-500/60" />
+              <span className="text-[7px] text-muted-foreground/40">Quente</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-blue-400/40" />
+              <span className="text-[7px] text-muted-foreground/40">Frio</span>
+            </div>
           </div>
         </div>
       </div>
