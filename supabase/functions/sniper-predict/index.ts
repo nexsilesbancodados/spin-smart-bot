@@ -7056,11 +7056,7 @@ REGRAS ABSOLUTAS:
         // Build parallel AI calls — ALL available chat models
         const aiCalls: Promise<AiResult>[] = [];
 
-        // === LOVABLE AI (Gemini) ===
-        if (LOVABLE_API_KEY_AI) {
-          aiCalls.push(callAi('Gemini-Flash', 'https://ai.gateway.lovable.dev/v1/chat/completions',
-            { "Authorization": `Bearer ${LOVABLE_API_KEY_AI}` }, 'google/gemini-2.5-flash'));
-        }
+        // === LOVABLE AI REMOVIDO — não usar ===
 
         // === DEEPSEEK ===
         if (DEEPSEEK_API_KEY) {
