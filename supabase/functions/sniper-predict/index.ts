@@ -6020,6 +6020,309 @@ serve(async (req) => {
       }
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // NEW: ADAPTIVE HISTORY LEARNING — 7 NOVAS ESTRATÉGIAS
+    // Aprende padrões diretamente do histórico sem necessidade de salvamento
+    // ══════════════════════════════════════════════════════════════
+
+    // H1: SEQUENCE REPLAY — detecta subsequências exatas que se repetem
+    (() => {
+      if (numbers.length < 40) return;
+      const windowSize = 3;
+      const pattern = numbers.slice(0, windowSize); // últimos 3 números
+      const patternKey = pattern.join(',');
+      // Procura no histórico onde essa mesma sequência apareceu
+      const nextAfterPattern: Record<number, number> = {};
+      for (let i = windowSize; i < numbers.length - 1; i++) {
+        let match = true;
+        for (let j = 0; j < windowSize; j++) {
+          if (numbers[i - windowSize + j + 1] !== pattern[windowSize - 1 - j]) { match = false; break; }
+        }
+        if (match) {
+          const next = numbers[i - windowSize]; // o que veio DEPOIS da sequência
+          nextAfterPattern[next] = (nextAfterPattern[next] || 0) + 1;
+        }
+      }
+      const topNext = Object.entries(nextAfterPattern)
+        .sort(([,a],[,b]) => b - a)
+        .filter(([,c]) => c >= 2)
+        .slice(0, 5)
+        .map(([n]) => Number(n));
+      if (topNext.length >= 2) {
+        const seqNums = [...new Set([...topNext, ...topNext.slice(0,2).flatMap(n => getNeighbors(n, 1))])].slice(0, 12);
+        const seqScore = sumScores(seqNums) + topNext.length * 5 + Object.values(nextAfterPattern).reduce((a,b) => a+b, 0) * 2;
+        const seqBt = backtestSet(seqNums);
+        strategies.push({
+          type: 'sequence_replay', label: `🔄 Replay (${patternKey})`, emoji: '🔄',
+          numbers: seqNums, coverage: (seqNums.length / 37) * 100, payout: 36 - seqNums.length,
+          score: seqScore + seqBt * 30 + 15,
+          probability: Math.min(85, Math.round(45 + seqScore * 1.5 + seqBt * 30)),
+          justification: `REPLAY: Sequência ${patternKey} já apareceu ${Object.values(nextAfterPattern).reduce((a,b)=>a+b,0)}x no histórico. Próximos prováveis: ${topNext.join(',')}.`,
+        });
+        aiLearnings.push(`🔄 REPLAY: sequência [${patternKey}] encontrada ${Object.values(nextAfterPattern).reduce((a,b)=>a+b,0)}x → alvos: ${topNext.join(',')}`);
+      }
+    })();
+
+    // H2: WEIGHTED RECENCY BACKTEST — backtest que dá MAIS peso ao histórico recente
+    (() => {
+      if (numScores.length < 5) return;
+      const topNums = numScores.slice(0, 8).map(ns => ns.num);
+      let wHits = 0, wTotal = 0;
+      const maxW = Math.min(100, numbers.length - 2);
+      for (let w = 1; w < maxW; w++) {
+        const weight = 1 / (1 + w * 0.05); // decai com distância
+        wTotal += weight;
+        if (topNums.includes(numbers[w - 1])) wHits += weight;
+      }
+      const wRate = wTotal > 0 ? wHits / wTotal : 0;
+      if (wRate > 0.20) {
+        const wrNums = topNums.slice(0, 8);
+        const wrNeighbors = wrNums.slice(0,2).flatMap(n => getNeighbors(n, 1));
+        const wrFinal = [...new Set([...wrNums, ...wrNeighbors])].slice(0, 12);
+        const wrScore = sumScores(wrFinal) + wRate * 60;
+        const wrBt = backtestSet(wrFinal);
+        strategies.push({
+          type: 'weighted_recency', label: `⏱️ Recência Ponderada (${(wRate*100).toFixed(0)}%)`, emoji: '⏱️',
+          numbers: wrFinal, coverage: (wrFinal.length / 37) * 100, payout: 36 - wrFinal.length,
+          score: wrScore + wrBt * 25 + wRate * 40,
+          probability: Math.min(85, Math.round(40 + wRate * 80 + wrBt * 25)),
+          justification: `RECÊNCIA PONDERADA: Top ${wrNums.length} números com ${(wRate*100).toFixed(0)}% hit rate ponderado por recência. Foco no que funciona AGORA.`,
+        });
+      }
+    })();
+
+    // H3: NEIGHBOR CHAIN — quando 2+ vizinhos no cilindro saem em sequência, o padrão tende a continuar
+    (() => {
+      if (numbers.length < 5) return;
+      const chainDir: number[] = []; // track wheel movement direction
+      for (let i = 0; i < Math.min(5, numbers.length - 1); i++) {
+        const idx0 = wheelIdx(numbers[i]);
+        const idx1 = wheelIdx(numbers[i + 1]);
+        if (idx0 !== -1 && idx1 !== -1) {
+          let diff = idx0 - idx1;
+          if (diff > WL / 2) diff -= WL;
+          if (diff < -WL / 2) diff += WL;
+          chainDir.push(diff);
+        }
+      }
+      if (chainDir.length >= 3) {
+        const avgDir = chainDir.reduce((a, b) => a + b, 0) / chainDir.length;
+        const dirStd = Math.sqrt(chainDir.reduce((a, d) => a + Math.pow(d - avgDir, 2), 0) / chainDir.length);
+        if (dirStd < 4 && Math.abs(avgDir) > 1) {
+          // Consistent direction! Predict continuation
+          const lastIdx = wheelIdx(numbers[0]);
+          if (lastIdx !== -1) {
+            const predictedIdx = Math.round((lastIdx + avgDir + WL) % WL);
+            const predictedNum = WHEEL[predictedIdx];
+            const ncNums = [predictedNum, ...getNeighbors(predictedNum, 3)];
+            const ncScore = sumScores(ncNums) + (8 - dirStd) * 5;
+            const ncBt = backtestSet(ncNums);
+            strategies.push({
+              type: 'neighbor_chain', label: `🌀 Cadeia Direcional → ${predictedNum}`, emoji: '🌀',
+              numbers: ncNums, coverage: (ncNums.length / 37) * 100, payout: 36 - ncNums.length,
+              score: ncScore + ncBt * 25 + (dirStd < 2 ? 20 : 10),
+              probability: Math.min(80, Math.round(40 + ncScore * 1.5 + ncBt * 25 + (8 - dirStd) * 3)),
+              justification: `CADEIA DIRECIONAL: bola movendo-se ${avgDir > 0 ? '→' : '←'} no cilindro (σ=${dirStd.toFixed(1)}). Próximo alvo: ${predictedNum}.`,
+            });
+            aiLearnings.push(`🌀 Cadeia direcional detectada: avg=${avgDir.toFixed(1)}, σ=${dirStd.toFixed(1)} → alvo ${predictedNum}`);
+          }
+        }
+      }
+    })();
+
+    // H4: MIRROR PATTERN — quando números espelhados (14→41→14 ou 27→72→27) se repetem
+    (() => {
+      if (numbers.length < 8) return;
+      const mirrorHits: Record<number, number> = {};
+      for (let i = 0; i < Math.min(30, numbers.length); i++) {
+        const n = numbers[i];
+        const mirror = getMirror(n);
+        if (mirror !== null && mirror !== n) {
+          // Check if mirror appeared within 5 spins
+          for (let j = i + 1; j < Math.min(i + 6, numbers.length); j++) {
+            if (numbers[j] === mirror) {
+              mirrorHits[n] = (mirrorHits[n] || 0) + 1;
+              mirrorHits[mirror] = (mirrorHits[mirror] || 0) + 1;
+              break;
+            }
+          }
+        }
+      }
+      const hotMirrors = Object.entries(mirrorHits)
+        .filter(([,c]) => c >= 2)
+        .sort(([,a],[,b]) => b - a)
+        .slice(0, 4)
+        .map(([n]) => Number(n));
+      // Current: does the last number have a mirror?
+      const lastMirror = getMirror(numbers[0]);
+      if (lastMirror !== null) hotMirrors.unshift(lastMirror);
+      const mirrorNums = [...new Set(hotMirrors)].filter(n => n >= 0 && n <= 36);
+      if (mirrorNums.length >= 2) {
+        const mrNums = [...new Set([...mirrorNums, ...mirrorNums.slice(0,2).flatMap(n => getNeighbors(n, 1))])].slice(0, 10);
+        const mrScore = sumScores(mrNums) + Object.values(mirrorHits).reduce((a,b)=>a+b, 0) * 2;
+        const mrBt = backtestSet(mrNums);
+        strategies.push({
+          type: 'mirror_pattern', label: `🪞 Espelho (${numbers[0]}↔${lastMirror})`, emoji: '🪞',
+          numbers: mrNums, coverage: (mrNums.length / 37) * 100, payout: 36 - mrNums.length,
+          score: mrScore + mrBt * 20 + 8,
+          probability: Math.min(75, Math.round(35 + mrScore * 1.5 + mrBt * 25)),
+          justification: `ESPELHO: ${numbers[0]}↔${lastMirror}. Padrão de espelhamento detectado ${Object.values(mirrorHits).reduce((a,b)=>a+b,0)}x no histórico.`,
+        });
+      }
+    })();
+
+    // H5: GAP RHYTHM — detecta ritmo de gaps entre aparições do mesmo terminal
+    (() => {
+      if (numbers.length < 30) return;
+      const lastTerm = numbers[0] % 10;
+      const gaps: number[] = [];
+      let lastSeen = -1;
+      for (let i = 0; i < Math.min(100, numbers.length); i++) {
+        if (numbers[i] % 10 === lastTerm) {
+          if (lastSeen >= 0) gaps.push(i - lastSeen);
+          lastSeen = i;
+        }
+      }
+      if (gaps.length >= 3) {
+        const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+        const gapStd = Math.sqrt(gaps.reduce((a, g) => a + Math.pow(g - avgGap, 2), 0) / gaps.length);
+        // If gaps are consistent (low std), predict next appearance
+        if (gapStd < avgGap * 0.5 && avgGap <= 8) {
+          const termNums = Array.from({ length: 37 }, (_, i) => i).filter(n => n % 10 === lastTerm);
+          const grScore = sumScores(termNums) + (8 - gapStd) * 4 + 10;
+          const grBt = backtestSet(termNums);
+          strategies.push({
+            type: 'gap_rhythm', label: `🎵 Ritmo T${lastTerm} (gap ≈${avgGap.toFixed(0)})`, emoji: '🎵',
+            numbers: termNums, coverage: (termNums.length / 37) * 100, payout: 36 - termNums.length,
+            score: grScore + grBt * 25 + (gapStd < 2 ? 15 : 8),
+            probability: Math.min(80, Math.round(42 + grScore * 1.8 + grBt * 28)),
+            justification: `RITMO: Terminal ${lastTerm} aparece a cada ≈${avgGap.toFixed(1)} giros (σ=${gapStd.toFixed(1)}). Padrão rítmico confirmado em ${gaps.length} ciclos.`,
+          });
+        }
+      }
+    })();
+
+    // H6: STREAK REVERSAL PREDICTOR — prevê exatamente onde streaks terminam
+    (() => {
+      if (numbers.length < 20) return;
+      // Detect current streak type
+      const streaks: { type: string; length: number; values: string[] }[] = [];
+      // Color streak
+      let colorStreak = 1;
+      const firstColor = getColor(numbers[0]);
+      for (let i = 1; i < numbers.length; i++) {
+        if (getColor(numbers[i]) === firstColor && firstColor !== 'green') colorStreak++;
+        else break;
+      }
+      if (colorStreak >= 3) streaks.push({ type: 'color', length: colorStreak, values: [firstColor] });
+      // Dozen streak
+      const firstDz = getDozen(numbers[0]);
+      let dzStreak = 1;
+      for (let i = 1; i < numbers.length; i++) {
+        if (getDozen(numbers[i]) === firstDz && firstDz > 0) dzStreak++;
+        else break;
+      }
+      if (dzStreak >= 3) streaks.push({ type: 'dozen', length: dzStreak, values: [String(firstDz)] });
+
+      for (const streak of streaks) {
+        // Analyze historical streak lengths to predict when it breaks
+        const historicalBreaks: number[] = [];
+        let currentStreakLen = 0;
+        const getValue = (n: number) => streak.type === 'color' ? getColor(n) : String(getDozen(n));
+        for (let i = 0; i < Math.min(200, numbers.length) - 1; i++) {
+          if (getValue(numbers[i]) === streak.values[0]) currentStreakLen++;
+          else {
+            if (currentStreakLen >= 3) historicalBreaks.push(currentStreakLen);
+            currentStreakLen = 0;
+          }
+        }
+        if (historicalBreaks.length >= 2) {
+          const avgBreak = historicalBreaks.reduce((a,b) => a+b, 0) / historicalBreaks.length;
+          // If current streak is near average break point, bet on reversal
+          if (streak.length >= avgBreak * 0.8) {
+            let reversalNums: number[];
+            if (streak.type === 'color') {
+              reversalNums = firstColor === 'red'
+                ? Array.from({length:36}, (_,i) => i+1).filter(n => !RED.includes(n))
+                : RED.filter(n => n > 0);
+            } else {
+              reversalNums = Array.from({length:36}, (_,i) => i+1).filter(n => getDozen(n) !== firstDz);
+            }
+            const srScore = sumScores(reversalNums.slice(0, 18)) + streak.length * 3 + historicalBreaks.length * 2;
+            const srBt = backtestSet(reversalNums.slice(0, 18));
+            strategies.push({
+              type: 'streak_reversal', label: `🔃 Reversão ${streak.type === 'color' ? (firstColor === 'red' ? '→Preto' : '→Verm') : `→!D${firstDz}`} (${streak.length}x)`, emoji: '🔃',
+              numbers: reversalNums.slice(0, 18), coverage: (Math.min(18, reversalNums.length) / 37) * 100, payout: streak.type === 'color' ? 1 : 2,
+              score: srScore + srBt * 20 + streak.length * 4,
+              probability: Math.min(80, Math.round(40 + srScore * 1 + srBt * 20 + streak.length * 4)),
+              justification: `REVERSÃO: ${streak.type === 'color' ? firstColor : `D${firstDz}`} streak ${streak.length}x (avg break: ${avgBreak.toFixed(1)}). ${historicalBreaks.length} quebras históricas analisadas.`,
+            });
+          }
+        }
+      }
+    })();
+
+    // H7: OCTAVE MOMENTUM — detecta quando um oitavo do cilindro está "em chama"
+    (() => {
+      if (numbers.length < 15) return;
+      const octaveHits: Record<string, { count: number; recency: number }> = {};
+      for (const [name] of Object.entries(OCTAVES)) octaveHits[name] = { count: 0, recency: 999 };
+      for (let i = 0; i < Math.min(20, numbers.length); i++) {
+        const oct = getOctave(numbers[i]);
+        if (oct) {
+          octaveHits[oct].count++;
+          if (octaveHits[oct].recency === 999) octaveHits[oct].recency = i;
+        }
+      }
+      const hotOctave = Object.entries(octaveHits)
+        .sort(([,a],[,b]) => (b.count * 3 + (20 - b.recency)) - (a.count * 3 + (20 - a.recency)))[0];
+      if (hotOctave && hotOctave[1].count >= 5 && hotOctave[1].recency <= 3) {
+        const octNums = OCTAVES[hotOctave[0]] || [];
+        const omScore = sumScores(octNums) + hotOctave[1].count * 4 + (5 - hotOctave[1].recency) * 3;
+        const omBt = backtestSet(octNums);
+        strategies.push({
+          type: 'octave_momentum', label: `🎹 Oitavo ${hotOctave[0]} em Chama (${hotOctave[1].count}x/20)`, emoji: '🎹',
+          numbers: octNums, coverage: (octNums.length / 37) * 100, payout: 36 - octNums.length,
+          score: omScore + omBt * 22 + hotOctave[1].count * 3,
+          probability: Math.min(80, Math.round(40 + omScore * 1.5 + omBt * 25 + hotOctave[1].count * 3)),
+          justification: `OITAVO ${hotOctave[0]}: ${hotOctave[1].count}x em 20 giros, último há ${hotOctave[1].recency} giros. Concentração fortíssima no cilindro.`,
+        });
+      }
+    })();
+
+    // ══════════════════════════════════════════════════════════════
+    // CROSS-CONSENSUS AMPLIFIER — quando 4+ estratégias independentes
+    // convergem no mesmo número, criar super-estratégia
+    // ══════════════════════════════════════════════════════════════
+    (() => {
+      const numAppear: Record<number, { count: number; strats: string[]; totalScore: number }> = {};
+      for (const st of strategies) {
+        for (const n of st.numbers.slice(0, 5)) {
+          if (!numAppear[n]) numAppear[n] = { count: 0, strats: [], totalScore: 0 };
+          numAppear[n].count++;
+          numAppear[n].strats.push(st.emoji);
+          numAppear[n].totalScore += st.score;
+        }
+      }
+      const superConsensus = Object.entries(numAppear)
+        .filter(([,v]) => v.count >= 5)
+        .sort(([,a],[,b]) => b.count - a.count || b.totalScore - a.totalScore);
+      if (superConsensus.length >= 2) {
+        const scNums = superConsensus.slice(0, 3).map(([n]) => Number(n));
+        const scWithNeighbors = [...new Set([...scNums, ...scNums.flatMap(n => getNeighbors(n, 2))])].slice(0, 10);
+        const scScore = sumScores(scWithNeighbors) + superConsensus[0][1].count * 10 + superConsensus[0][1].totalScore * 0.05;
+        const scBt = backtestSet(scWithNeighbors);
+        strategies.push({
+          type: 'super_consensus', label: `🏆 Super Consenso (${superConsensus[0][1].count} strats)`, emoji: '🏆',
+          numbers: scWithNeighbors, coverage: (scWithNeighbors.length / 37) * 100, payout: 36 - scWithNeighbors.length,
+          score: scScore + scBt * 35 + superConsensus[0][1].count * 12 + 30,
+          probability: Math.min(90, Math.round(55 + superConsensus[0][1].count * 5 + scBt * 25)),
+          justification: `SUPER CONSENSO: nº${scNums[0]} confirmado por ${superConsensus[0][1].count} estratégias independentes (${superConsensus[0][1].strats.slice(0,5).join('')}). Convergência MÁXIMA.`,
+        });
+        aiLearnings.push(`🏆 SUPER CONSENSO: nº${scNums[0]} com ${superConsensus[0][1].count} estratégias convergindo`);
+      }
+    })();
+
     // If two strategies tie, prefer higher payout
     // STRATEGY FILTER — if user selected a category, only keep matching strategies
     if (strategyFilterParam) {
