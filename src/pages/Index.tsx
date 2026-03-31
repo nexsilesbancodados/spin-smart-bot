@@ -236,6 +236,8 @@ const Index = () => {
       });
       if (res.error) {
         if (retryCount < 2) { sniperFetchingRef.current = false; setTimeout(() => fetchSniper(retryCount + 1, force), 2000 * (retryCount + 1)); return; }
+        // After all retries failed, set fallback so UI doesn't stay stuck on "Carregando IA..."
+        setSniperData((prev: any) => prev ?? { signal: null, mode: 'error', message: '⚠️ Erro ao conectar — tentando novamente...', strategy: null });
       }
       if (res.data) {
         const key = `${res.data.strategy?.type}-${res.data.signal?.number}-${res.data.mode}`;
@@ -245,6 +247,8 @@ const Index = () => {
       }
     } catch (err) {
       if (retryCount < 2) { sniperFetchingRef.current = false; setTimeout(() => fetchSniper(retryCount + 1, force), 2000 * (retryCount + 1)); return; }
+      // After all retries failed via exception, set fallback
+      setSniperData((prev: any) => prev ?? { signal: null, mode: 'error', message: '⚠️ Falha na conexão — tentando novamente...', strategy: null });
     } finally { sniperFetchingRef.current = false; }
   }, [sampleSize, aiEnabled, apiNumbers, strategyFilter]);
   fetchSniperRef.current = fetchSniper;
@@ -289,7 +293,17 @@ const Index = () => {
     fetchNumbers(); fetchStored(); fetchSniper();
     if (!isPolling) return;
     const interval = setInterval(() => { fetchNumbers(); fetchStored(); }, 3000);
-    return () => clearInterval(interval);
+    // Safety: if sniperData is still null after 12s, force a retry
+    const safetyTimeout = setTimeout(() => {
+      setSniperData((prev: any) => {
+        if (prev === null) {
+          fetchSniperRef.current?.(0, true);
+          return { signal: null, mode: 'loading', message: '🔄 Reconectando IA...', strategy: null };
+        }
+        return prev;
+      });
+    }, 12000);
+    return () => { clearInterval(interval); clearTimeout(safetyTimeout); };
   }, [fetchNumbers, fetchStored, fetchSniper, isPolling]);
 
   // Realtime trigger
