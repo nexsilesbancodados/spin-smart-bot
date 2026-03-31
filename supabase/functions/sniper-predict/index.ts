@@ -7721,11 +7721,13 @@ Responda APENAS JSON:
       else if (topReasonCategories.size >= 5) finalProbability += 3;
     }
     
-    // COVERAGE-BASED PROBABILITY CEILING V4 — AGGRESSIVE (busca 90%+)
+    // COVERAGE-BASED PROBABILITY CEILING V5 — REALISTA
+    // Base matemática: N números cobrem N/37 da roda. Edge máximo ~60% sobre base.
     const coveragePercent = +(finalBetNumbers.length / 37 * 100).toFixed(1);
-    // Bônus generoso para sinais fortes: a melhor jogada DEVE brilhar
-    const maxBonus = confirmations >= 5 ? 35 : confirmations >= 4 ? 28 : confirmations >= 3 ? 22 : confirmations >= 2 ? 15 : 8;
-    const maxRealisticProb = Math.min(98, coveragePercent + maxBonus);
+    const baseProb = coveragePercent; // ex: 7 nums = 18.9%
+    // Bônus por convergência de sinais — moderado e realista
+    const maxBonus = confirmations >= 5 ? 18 : confirmations >= 4 ? 14 : confirmations >= 3 ? 10 : confirmations >= 2 ? 7 : 4;
+    const maxRealisticProb = Math.min(55, baseProb + maxBonus); // teto absoluto 55%
     if (finalProbability > maxRealisticProb) {
       finalProbability = maxRealisticProb;
     }
@@ -7733,35 +7735,20 @@ Responda APENAS JSON:
     // BACKTEST VALIDATION do top1
     const top1BtHits = numbers.slice(1, 31).filter(n => n === numTop1).length;
     if (top1BtHits === 0 && numbers.length >= 30) {
-      finalProbability -= 5;
+      finalProbability -= 3;
     }
     
-    // BOOST EXTREMO: Se WR real da estratégia > 50% E multi-strat confirma, ir a 90%+
+    // BOOST por WR real comprovado — moderado
     const winnerWRReal = winnerPerfCal?.winRate ?? 0;
     const winnerTotalPreds = winnerPerfCal?.total ?? 0;
-    if (winnerWRReal > 0.50 && winnerTotalPreds >= 5 && confirmations >= 3) {
-      finalProbability = Math.max(finalProbability, 90);
-      aiLearnings.unshift(`🔥 ESTRATÉGIA VALIDADA: ${winner.label} WR ${(winnerWRReal*100).toFixed(0)}% + ${confirmations} confirmações → 90%+`);
+    if (winnerWRReal > 0.50 && winnerTotalPreds >= 8 && confirmations >= 3) {
+      finalProbability = Math.max(finalProbability, Math.min(50, baseProb + 25));
     } else if (winnerWRReal > 0.40 && winnerTotalPreds >= 5 && confirmations >= 2) {
-      finalProbability = Math.max(finalProbability, 80);
-    } else if (winnerWRReal > 0.35 && winnerTotalPreds >= 3 && confirmations >= 2) {
-      finalProbability = Math.max(finalProbability, 70);
+      finalProbability = Math.max(finalProbability, Math.min(45, baseProb + 20));
     }
     
-    // APRENDIZADO APLICADO: mostrar quais padrões aprendidos influenciaram a jogada
-    const topInfluence = learnedInfluence
-      .filter(li => finalBetNumbers.includes(li.num))
-      .sort((a, b) => b.boost - a.boost)
-      .slice(0, 5);
-
-    // APRENDIZADO APLICADO: cada padrão aprendido que confirma a jogada → +2%
-    const appliedLearningCount = topInfluence.length;
-    if (appliedLearningCount >= 3) finalProbability += 8;
-    else if (appliedLearningCount >= 2) finalProbability += 5;
-    else if (appliedLearningCount >= 1) finalProbability += 2;
-    
-    // Cap final — teto 98% para sinais perfeitos
-    finalProbability = Math.min(98, Math.max(15, Math.round(finalProbability)));
+    // Cap final — teto 55% (7 nums = ~19% base + edge máximo realista)
+    finalProbability = Math.min(55, Math.max(12, Math.round(finalProbability)));
     
     // Add strategy performance learnings
     const winnerPerf = strategyPerformance[winner.type];
