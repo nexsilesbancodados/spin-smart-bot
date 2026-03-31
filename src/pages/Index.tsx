@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import EnsembleDashboard from '@/components/EnsembleDashboard';
+const EnsembleDashboard = lazy(() => import('@/components/EnsembleDashboard'));
 import {
   Activity, Brain, ChevronDown, Power, MonitorPlay, Crosshair
 } from 'lucide-react';
