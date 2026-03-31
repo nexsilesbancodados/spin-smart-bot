@@ -913,31 +913,31 @@ const Index = () => {
             {/* ── CARDS DE CONTEXTO ──────────────────────────── */}
             {allNumbers.length >= 5 && (
               <div className="grid grid-cols-4 gap-2">
-                <div className="bg-card rounded-xl border border-border/50 p-3 text-center space-y-1">
-                  <div className="text-[8px] text-muted-foreground uppercase font-bold tracking-wider">Puxados</div>
+                <div className="glass rounded-xl border border-border/20 p-3 text-center space-y-1">
+                  <div className="text-[8px] text-muted-foreground/60 uppercase font-bold tracking-wider">Puxados</div>
                   <div className="text-[12px] font-black text-primary font-mono leading-tight">
                     {(PULL[allNumbers[0]] || []).slice(0,3).join(' ')}
                   </div>
-                  <div className="text-[8px] text-muted-foreground">do {allNumbers[0]}</div>
+                  <div className="text-[8px] text-muted-foreground/40">do {allNumbers[0]}</div>
                 </div>
-                <div className="bg-card rounded-xl border border-border/50 p-3 text-center space-y-1">
-                  <div className="text-[8px] text-muted-foreground uppercase font-bold tracking-wider">Terminal</div>
+                <div className="glass rounded-xl border border-border/20 p-3 text-center space-y-1">
+                  <div className="text-[8px] text-muted-foreground/60 uppercase font-bold tracking-wider">Terminal</div>
                   <div className="text-[12px] font-black text-amber-400 font-mono">T{hotTerm?.[0]}</div>
-                  <div className="text-[8px] text-muted-foreground">{hotTerm?.[1]}× em 20</div>
+                  <div className="text-[8px] text-muted-foreground/40">{hotTerm?.[1]}× em 20</div>
                 </div>
-                <div className="bg-card rounded-xl border border-border/50 p-3 text-center space-y-1">
-                  <div className="text-[8px] text-muted-foreground uppercase font-bold tracking-wider">Zero</div>
+                <div className="glass rounded-xl border border-border/20 p-3 text-center space-y-1">
+                  <div className="text-[8px] text-muted-foreground/60 uppercase font-bold tracking-wider">Zero</div>
                   <div className={`text-[12px] font-black font-mono ${zeroPressure > 40 ? 'text-green-400' : zeroPressure > 25 ? 'text-amber-400' : 'text-muted-foreground'}`}>
                     {zeroPressure}g
                   </div>
-                  <div className="text-[8px] text-muted-foreground">{zeroPressure > 40 ? '⚡ pressão' : zeroPressure > 25 ? 'atenção' : 'ok'}</div>
+                  <div className="text-[8px] text-muted-foreground/40">{zeroPressure > 40 ? '⚡ pressão' : zeroPressure > 25 ? 'atenção' : 'ok'}</div>
                 </div>
-                <div className="bg-card rounded-xl border border-border/50 p-3 text-center space-y-1">
-                  <div className="text-[8px] text-muted-foreground uppercase font-bold tracking-wider">Hits</div>
+                <div className="glass rounded-xl border border-border/20 p-3 text-center space-y-1">
+                  <div className="text-[8px] text-muted-foreground/60 uppercase font-bold tracking-wider">Hits</div>
                   <div className="text-[12px] font-black text-foreground font-mono">
                     {predStats.hits}/{predStats.total || 1}
                   </div>
-                  <div className="text-[8px] text-muted-foreground">
+                  <div className="text-[8px] text-muted-foreground/40">
                     {predStats.total > 0 ? `${Math.round(predStats.hits/predStats.total*100)}%` : '—'}
                   </div>
                 </div>
@@ -948,7 +948,7 @@ const Index = () => {
             <button
               onClick={triggerLearn}
               disabled={isAnalyzing}
-              className="w-full py-2 rounded-xl border border-border bg-secondary/40 text-[9px] font-bold text-muted-foreground hover:text-foreground hover:bg-secondary/70 transition-all disabled:opacity-40"
+              className="w-full py-2.5 rounded-xl border border-primary/15 glass text-[9px] font-bold text-muted-foreground hover:text-primary hover:border-primary/30 transition-all disabled:opacity-30"
             >
               {isAnalyzing ? '🔄 Analisando...' : '⚡ Forçar análise da IA agora'}
             </button>
