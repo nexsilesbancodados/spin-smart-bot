@@ -19,7 +19,7 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   rotacao: { label: 'ROTAÇÃO', color: 'text-neon-green' },
 };
 
-const PatternPanel24h = ({ sniperData }: PatternPanel24hProps) => {
+const PatternPanel24h = memo(({ sniperData }: PatternPanel24hProps) => {
   const tm = sniperData?.transitionMatrix;
   const [showAllFidelity, setShowAllFidelity] = useState(false);
   if (!tm) return null;
