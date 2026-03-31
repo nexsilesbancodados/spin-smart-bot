@@ -721,11 +721,9 @@ Deno.serve(async (req) => {
         }
       }
       if (overlapIdx >= 0 && overlapIdx > 0) {
-        numbers = [...clientNumbers.slice(0, overlapIdx), ...dbNums].slice(0, sampleSize);
+        numbers = [...clientNumbers.slice(0, overlapIdx), ...dbNums];
       } else {
-        const clientSlice = clientNumbers.slice(0, sampleSize);
-        const remaining = sampleSize - clientSlice.length;
-        numbers = remaining > 0 ? [...clientSlice, ...dbNums.slice(0, remaining)] : clientSlice;
+        numbers = [...clientNumbers, ...dbNums.filter(n => !clientNumbers!.includes(n))];
       }
     } else {
       numbers = entries.map(e => e.number);
