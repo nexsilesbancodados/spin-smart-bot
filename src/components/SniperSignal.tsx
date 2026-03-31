@@ -368,27 +368,14 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
           )}
         </div>
 
-        {/* ═══ BARRA DE ASSERTIVIDADE ═══ */}
-        <div className="px-4 py-2.5 border-t border-border/20 bg-secondary/20 flex items-center justify-between">
+        {/* ═══ RESUMO RÁPIDO ═══ */}
+        <div className="px-4 py-2 border-t border-border/20 bg-secondary/20 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Brain className="w-3.5 h-3.5 text-primary/60" />
-            <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">
-              {finalNumbers.length} nums • paga {Math.max(1, 36 - finalNumbers.length)}x
-              {lastNumber !== undefined && ` • último: ${lastNumber}`}
+            <span className="text-[9px] font-bold text-muted-foreground">
+              💰 Se acertar: paga <strong className="text-foreground">{Math.max(1, Math.round(35 / finalNumbers.length))}x</strong> o valor apostado
+              {lastNumber !== undefined && <> • Último saiu: <strong className="text-foreground">{lastNumber}</strong></>}
             </span>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-20 h-1.5 bg-secondary rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${displayProb}%` }}
-                transition={{ duration: 0.8, ease: 'easeOut' }}
-                className={`h-full rounded-full ${
-                  displayProb >= 85 ? 'bg-neon-green' : displayProb >= 65 ? 'bg-primary' : 'bg-yellow-400'
-                }`}
-              />
-            </div>
-            <span className={`text-xl font-black font-mono ${action.color}`}>{displayProb}%</span>
           </div>
         </div>
 
