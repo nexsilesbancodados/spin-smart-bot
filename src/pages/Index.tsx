@@ -204,14 +204,18 @@ const Index = () => {
     lastSpinSignatureRef.current = signature;
     sniperSameCount.current = 0;
     setSniperStale(false);
-    setSniperCountdown(14); // ← 14 segundos exatos para apostar
+    setSniperCountdown(14);
     playSound('signal', soundEnabled);
     if (aiEnabled) {
-      // Dispara sniper IMEDIATAMENTE via ref (evita forward-reference)
-      fetchSniperRef.current?.();
-      supabase.functions.invoke('realtime-patterns')
-        .then(res => { if (res.data?.all_insights?.length > 0) setRtInsights(res.data.all_insights.slice(0, 6)); })
-        .catch(() => {});
+      // Limpa predição atual imediatamente para mostrar que está recalculando
+      setSniperData(null);
+      // Aguarda 2s para o usuário ver o resultado antes de gerar nova predição
+      setTimeout(() => {
+        fetchSniperRef.current?.();
+        supabase.functions.invoke('realtime-patterns')
+          .then(res => { if (res.data?.all_insights?.length > 0) setRtInsights(res.data.all_insights.slice(0, 6)); })
+          .catch(() => {});
+      }, 2000);
     }
   }, [soundEnabled, aiEnabled]);
 
