@@ -10,8 +10,8 @@ const numColor = (n: number) =>
 const getActionLevel = (prob: number) => {
   if (prob >= 85) return { label: '🔥 ENTRAR FORTE', color: 'text-neon-green', borderClass: 'border-neon-green/50', bg: 'bg-neon-green/5' };
   if (prob >= 65) return { label: '✅ ENTRAR', color: 'text-primary', borderClass: 'border-primary/40', bg: 'bg-primary/5' };
-  if (prob >= 45) return { label: '⚠️ SINAL MODERADO', color: 'text-yellow-400', borderClass: 'border-yellow-400/30', bg: 'bg-yellow-400/5' };
-  return { label: '⏸ AGUARDAR', color: 'text-muted-foreground', borderClass: 'border-border', bg: 'bg-secondary/5' };
+  if (prob >= 45) return { label: '⚡ ENTRAR', color: 'text-yellow-400', borderClass: 'border-yellow-400/30', bg: 'bg-yellow-400/5' };
+  return { label: '🎯 ENTRAR', color: 'text-primary', borderClass: 'border-primary/30', bg: 'bg-primary/5' };
 };
 
 const BET_TYPE_LABELS: Record<string, { emoji: string; label: string }> = {
