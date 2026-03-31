@@ -338,14 +338,38 @@ const Index = () => {
     return () => { clearInterval(interval); clearTimeout(safetyTimeout); };
   }, [fetchNumbers, fetchStored, fetchSniper, isPolling]);
 
-  // Realtime trigger
+  // Realtime trigger — roulette_numbers
   useEffect(() => {
     const ch = supabase.channel('sniper_trigger_rt')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'roulette_numbers' }, (payload: any) => {
         const row = payload?.new;
         if (typeof row?.number === 'number') {
           const spinAt = row.fetched_at ? new Date(row.fetched_at).getTime() : Date.now();
+          const age = Date.now() - spinAt;
+          if (age > FRESHNESS_MAX_MS) return; // Sinal atrasado — ignorar
           registerLiveSpin(row.number, spinAt, `rt-${row.id ?? row.fetched_at ?? ''}`);
+        }
+      }).subscribe((status) => {
+        if (status === 'SUBSCRIBED') setRealtimeStatus('connected');
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setRealtimeStatus('disconnected');
+        else setRealtimeStatus('connecting');
+      });
+    return () => { supabase.removeChannel(ch); };
+  }, [registerLiveSpin]);
+
+  // Realtime trigger — resultados_roleta (zero delay)
+  useEffect(() => {
+    const ch = supabase.channel('resultados_rt')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'resultados_roleta' }, (payload: any) => {
+        const row = payload?.new;
+        if (row?.numero !== undefined) {
+          const num = Number(row.numero);
+          if (!isNaN(num) && num >= 0 && num <= 36) {
+            const insertedAt = row.created_at ? new Date(row.created_at).getTime() : Date.now();
+            const age = Date.now() - insertedAt;
+            if (age > FRESHNESS_MAX_MS) return; // Sinal atrasado — ignorar
+            registerLiveSpin(num, insertedAt, `rt-res-${row.id ?? ''}`);
+          }
         }
       }).subscribe();
     return () => { supabase.removeChannel(ch); };
