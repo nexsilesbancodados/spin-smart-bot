@@ -42,9 +42,16 @@ const PerformanceMonitor = memo(({ betHistory, balance, allNumbers }: Props) => 
 
   if (!metrics) {
     return (
-      <div className="glass rounded-xl p-4 text-center">
-        <BarChart3 className="w-4 h-4 text-muted-foreground/20 mx-auto mb-1" />
-        <p className="text-[9px] text-muted-foreground/30">Precisa de pelo menos 2 apostas para monitoramento</p>
+      <div className="glass rounded-2xl p-6 text-center border border-border/20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-neon-green/[0.02] via-transparent to-neon-cyan/[0.01]" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neon-green/20 to-transparent" />
+        <div className="relative">
+          <div className="w-12 h-12 rounded-2xl glass border border-border/15 flex items-center justify-center mx-auto mb-2.5">
+            <BarChart3 className="w-5 h-5 text-muted-foreground/15" />
+          </div>
+          <p className="text-[9px] text-muted-foreground/40 font-display tracking-wider">AGUARDANDO DADOS</p>
+          <p className="text-[7px] text-muted-foreground/25 mt-1 font-mono">Precisa de ≥2 apostas para monitoramento</p>
+        </div>
       </div>
     );
   }
