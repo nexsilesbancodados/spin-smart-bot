@@ -1050,6 +1050,7 @@ const Index = () => {
         {/* ── ABA: IA ─────────────────────────────────────────────────────── */}
         {activeTab === 'ia' && (
           <div className="space-y-3">
+            <EnsembleDashboard sniperData={sniperData} />
             <AIIntelligenceLog />
             <IATab sniperData={sniperData} />
           </div>
