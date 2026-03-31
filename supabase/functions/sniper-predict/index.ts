@@ -6873,8 +6873,12 @@ serve(async (req) => {
           .map(c => `C${c.g}:${c.cnt}(exp ${c.expected})`)
           .join(' ');
 
-        const aiPrompt = `ROLETA EUROPEIA — ANÁLISE COMPLETA MULTI-MERCADO
+        const selectedAnalysis = strategyFilterParam && strategyFilterParam !== 'all'
+          ? `\n⚠️ TIPO SELECIONADO PELO USUÁRIO: ${strategyFilterParam.toUpperCase()} — Foque TODA a análise neste tipo!\n`
+          : '';
 
+        const aiPrompt = `ROLETA EUROPEIA — ANÁLISE ${strategyFilterParam && strategyFilterParam !== 'all' ? strategyFilterParam.toUpperCase() : 'COMPLETA MULTI-MERCADO'}
+${selectedAnalysis}
 ## ENTRADA: Último número sorteado = ${numbers[0]}
 
 ## FEEDBACK LOOP
