@@ -579,9 +579,9 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           )}
         </div>
 
-        {/* Stats grid — with gradient borders */}
+        {/* Stats grid */}
         <div className="grid grid-cols-4 gap-2">
-          <div className="bg-secondary/40 rounded-xl p-2.5 text-center border border-border/30">
+          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
             <DollarSign className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
             <p className={`font-bold text-base font-mono ${stats.profit >= 0 ? 'text-green-400' : 'text-destructive'}`}>
               R${stats.profit.toFixed(2)}
