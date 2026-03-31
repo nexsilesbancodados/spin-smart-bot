@@ -231,19 +231,21 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
     );
   }
 
-  // Stale — show last result
+  // Stale — show last result with premium card
   if (sniperStale && lastPredResult && !sniperData?.signal) {
     const isHit = lastPredResult.hit;
     return (
       <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
-        className={`glass rounded-2xl border-2 overflow-hidden ${isHit ? 'border-neon-green/30' : 'border-destructive/30'}`}>
-        <div className="p-5 flex items-center gap-4">
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}
-            className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isHit ? 'bg-neon-green/15 ring-2 ring-neon-green/30' : 'bg-destructive/15 ring-2 ring-destructive/30'}`}>
+        className={`glass rounded-2xl border-2 overflow-hidden relative ${isHit ? 'border-neon-green/25' : 'border-destructive/25'}`}>
+        <div className={`absolute inset-0 bg-gradient-to-br ${isHit ? 'from-neon-green/[0.03]' : 'from-destructive/[0.03]'} to-transparent`} />
+        <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${isHit ? 'via-neon-green/40' : 'via-destructive/40'} to-transparent`} />
+        <div className="relative p-5 flex items-center gap-4">
+          <motion.div initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 200 }}
+            className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isHit ? 'bg-neon-green/10 ring-2 ring-neon-green/25 shadow-[0_0_15px_hsl(var(--neon-green)/0.15)]' : 'bg-destructive/10 ring-2 ring-destructive/25 shadow-[0_0_15px_hsl(var(--destructive)/0.15)]'}`}>
             {isHit ? <ShieldCheck className="w-7 h-7 text-neon-green" /> : <AlertTriangle className="w-7 h-7 text-destructive" />}
           </motion.div>
           <div className="flex-1">
-            <span className={`text-lg font-black font-display tracking-wider ${isHit ? 'text-neon-green' : 'text-destructive'}`}>
+            <span className={`text-lg font-black font-display tracking-[0.12em] ${isHit ? 'text-neon-green' : 'text-destructive'}`}>
               {isHit ? (lastPredResult.hitType === 'exact' ? '🎯 EXATO!' : '✅ ACERTO!') : '❌ ERRO'}
             </span>
             <div className="flex gap-4 text-xs text-muted-foreground mt-1 font-mono">
@@ -252,8 +254,12 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
             </div>
           </div>
         </div>
-        <div className="border-t border-border/20 px-5 py-2 bg-secondary/10">
-          <p className="text-[10px] text-muted-foreground/60 text-center font-mono">⏳ Analisando próximo giro...</p>
+        <div className="relative border-t border-border/15 px-5 py-2.5 bg-secondary/5">
+          <div className="flex items-center justify-center gap-2">
+            <motion.div animate={{ opacity: [0.3, 0.8, 0.3] }} transition={{ repeat: Infinity, duration: 2 }}
+              className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+            <p className="text-[10px] text-muted-foreground/50 font-mono">Analisando próximo giro...</p>
+          </div>
         </div>
       </motion.div>
     );
