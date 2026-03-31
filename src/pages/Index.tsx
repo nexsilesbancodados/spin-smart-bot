@@ -169,7 +169,7 @@ const Index = () => {
   const [dnaNumber, setDnaNumber] = useState<number | null>(null);
   const [dnaOpen, setDnaOpen] = useState(false);
   const [confidenceFilter, setConfidenceFilter] = useState(true);
-  const [sampleSize] = useState(100);
+  const [sampleSize] = useState(500);
   const [showPredHistory, setShowPredHistory] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
   const [strategyFilter, setStrategyFilter] = useState<string>('all');
