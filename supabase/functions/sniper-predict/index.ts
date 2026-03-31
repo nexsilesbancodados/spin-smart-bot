@@ -4730,7 +4730,24 @@ Deno.serve(async (req) => {
       justification: `Balanço de cilindro favorece ${opLabel}. ${seesawBias === 'opposite' ? 'Gangorra detectada contra Zero.' : `${opLabel} com concentração recente.`}`,
     });
 
-    // 6. QUEBRA DE SEQUÊNCIA (contra cor/paridade dominante)
+    // 5b. SECTOR ALTERNATION — dedicated strategy when A↔B pattern is confirmed
+    if (mesaFlowState.sectorAlternation.active && mesaFlowState.sectorAlternation.predictedNextSector) {
+      const predSector = mesaFlowState.sectorAlternation.predictedNextSector;
+      const sectorNums = predSector === 'Voisins' ? VOISINS : predSector === 'Tiers' ? TIERS : predSector === 'Orphelins' ? ORPHELINS : JEU_ZERO;
+      const altConf = mesaFlowState.sectorAlternation.confidence;
+      const altDepth = mesaFlowState.sectorAlternation.depth;
+      const altHist = mesaFlowState.sectorAlternation.historicalHitRate;
+      const altScore = sumScores(sectorNums) + altDepth * 8 + Math.round(altConf * 0.3) + (altHist > 0.4 ? 12 : 0);
+      const altBt = backtestSet(sectorNums);
+      const pairLabel = mesaFlowState.sectorAlternation.patternPair;
+      strategies.push({
+        type: 'setor_alternancia', label: `Alternância ${pairLabel?.[0]}↔${pairLabel?.[1]} → ${predSector}`, emoji: '🔄',
+        numbers: [...sectorNums], coverage: (sectorNums.length / 37) * 100, payout: 36 - sectorNums.length,
+        score: altScore + altBt * 18,
+        probability: Math.min(85, Math.round(40 + altDepth * 8 + altConf * 0.3 + altBt * 25)),
+        justification: `Padrão de alternância ${pairLabel?.[0]}↔${pairLabel?.[1]} detectado ${altDepth}x consecutivo. Taxa histórica: ${(altHist * 100).toFixed(0)}%. Próximo setor previsto: ${predSector}.`,
+      });
+    }
     let breakNums: number[] = [];
     let breakLabel = '';
     let breakExtra = 0;
