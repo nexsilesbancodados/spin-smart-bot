@@ -23,6 +23,8 @@ import EngineSignalCard from '@/components/EngineSignalCard';
 import NumberTicker from '@/components/NumberTicker';
 import AIIntelligenceLog from '@/components/AIIntelligenceLog';
 import { motion, AnimatePresence } from 'framer-motion';
+import LiveStatsBar from '@/components/LiveStatsBar';
+import SettingsPanel from '@/components/SettingsPanel';
 
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 
@@ -164,6 +166,12 @@ const Index = () => {
   const [lastSpinAt, setLastSpinAt] = useState<number | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
   const FRESHNESS_MAX_MS = 8000;
+  const [settingsConfig, setSettingsConfig] = useState({
+    sensitivity: 'medio' as 'curto' | 'medio' | 'longo',
+    riskLevel: 'moderado' as 'conservador' | 'moderado' | 'agressivo',
+    betTypes: ['cor', 'duzia', 'coluna', 'setor', 'vizinhos', 'terminal', 'paridade', 'pleno'],
+  });
+  const rtRetryRef = useRef(0);
 
   const handleManualNumbers = (nums: number[]) => {
     apiSnapshotRef.current = [...nums, ...apiSnapshotRef.current].slice(0, 1000);
@@ -365,7 +373,14 @@ const Index = () => {
 
   // Realtime trigger — roulette_numbers
   useEffect(() => {
-    const ch = supabase.channel('sniper_trigger_rt')
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    let currentChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    const connect = () => {
+      if (currentChannel) {
+        supabase.removeChannel(currentChannel);
+      }
+      currentChannel = supabase.channel('sniper_trigger_rt')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'roulette_numbers' }, (payload: any) => {
         const row = payload?.new;
         if (typeof row?.number === 'number') {
@@ -375,16 +390,49 @@ const Index = () => {
           registerLiveSpin(row.number, spinAt, `rt-${row.id ?? row.fetched_at ?? ''}`);
         }
       }).subscribe((status) => {
-        if (status === 'SUBSCRIBED') setRealtimeStatus('connected');
-        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setRealtimeStatus('disconnected');
-        else setRealtimeStatus('connecting');
+        if (status === 'SUBSCRIBED') {
+          setRealtimeStatus('connected');
+          rtRetryRef.current = 0;
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          setRealtimeStatus('disconnected');
+          // Exponential backoff: 2s, 4s, 8s, 16s, max 30s
+          const delay = Math.min(30000, 2000 * Math.pow(2, rtRetryRef.current));
+          rtRetryRef.current++;
+          retryTimeout = setTimeout(connect, delay);
+        } else {
+          setRealtimeStatus('connecting');
+        }
       });
-    return () => { supabase.removeChannel(ch); };
+    };
+
+    connect();
+
+    // Heartbeat: if no data in 60s and connected, force reconnect
+    const heartbeat = setInterval(() => {
+      if (realtimeStatus === 'connected' && lastUpdate) {
+        const silence = Date.now() - lastUpdate.getTime();
+        if (silence > 60000) {
+          setRealtimeStatus('connecting');
+          connect();
+        }
+      }
+    }, 30000);
+
+    return () => {
+      if (retryTimeout) clearTimeout(retryTimeout);
+      clearInterval(heartbeat);
+      if (currentChannel) supabase.removeChannel(currentChannel);
+    };
   }, [registerLiveSpin]);
 
   // Realtime trigger — resultados_roleta (zero delay)
   useEffect(() => {
-    const ch = supabase.channel('resultados_rt')
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    let currentChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    const connect = () => {
+      if (currentChannel) supabase.removeChannel(currentChannel);
+      currentChannel = supabase.channel('resultados_rt')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'resultados_roleta' }, (payload: any) => {
         const row = payload?.new;
         if (row?.numero !== undefined) {
@@ -396,8 +444,19 @@ const Index = () => {
             registerLiveSpin(num, insertedAt, `rt-res-${row.id ?? ''}`);
           }
         }
-      }).subscribe();
-    return () => { supabase.removeChannel(ch); };
+      }).subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          const delay = Math.min(30000, 2000 * Math.pow(2, Math.min(rtRetryRef.current, 5)));
+          retryTimeout = setTimeout(connect, delay);
+        }
+      });
+    };
+
+    connect();
+    return () => {
+      if (retryTimeout) clearTimeout(retryTimeout);
+      if (currentChannel) supabase.removeChannel(currentChannel);
+    };
   }, [registerLiveSpin]);
 
   // Extension message listener
@@ -588,6 +647,7 @@ const Index = () => {
               {sniperCountdown > 0 && autoLearnStatus === 'idle' && (
                 <span className="text-[8px] font-mono text-muted-foreground">{sniperCountdown}s</span>
               )}
+              <SettingsPanel config={settingsConfig} onChange={setSettingsConfig} />
               <button
                 onClick={() => setAiEnabled(v => !v)}
                 className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wide border transition-all ${
@@ -682,10 +742,15 @@ const Index = () => {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="px-4 py-2.5 rounded-xl bg-destructive/10 border border-destructive/30 flex items-center gap-2"
+                className="px-4 py-2.5 rounded-xl bg-destructive/10 border border-destructive/30 flex items-center gap-2 justify-between"
               >
-                <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-                <span className="text-[10px] font-bold text-destructive">🔌 Reconectando ao servidor...</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+                  <span className="text-[10px] font-bold text-destructive">
+                    🔌 Reconectando... (tentativa {Math.min(rtRetryRef.current, 9)})
+                  </span>
+                </div>
+                <span className="text-[8px] text-muted-foreground">Polling ativo como backup</span>
               </motion.div>
             )}
             {realtimeStatus === 'connecting' && (
@@ -767,6 +832,11 @@ const Index = () => {
                 <p className="text-sm font-bold text-muted-foreground">IA DESLIGADA</p>
                 <p className="text-xs text-muted-foreground/60 mt-1">Clique "⚡ ON" para ativar</p>
               </div>
+            )}
+
+            {/* ── LIVE STATS BAR ──────────────────────────── */}
+            {allNumbers.length >= 10 && (
+              <LiveStatsBar allNumbers={allNumbers} />
             )}
 
             {/* ── ÚLTIMO GIRO ──────────────────────────────── */}
