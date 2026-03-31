@@ -244,8 +244,8 @@ const Index = () => {
       if (retryCount < 2) { sniperFetchingRef.current = false; setTimeout(() => fetchSniper(retryCount + 1), 2000 * (retryCount + 1)); return; }
     } finally { sniperFetchingRef.current = false; }
   }, [sampleSize, aiEnabled, apiNumbers, strategyFilter]);
+  fetchSniperRef.current = fetchSniper;
 
-  const fetchNumbers = useCallback(async () => {
     try {
       const res = await supabase.functions.invoke('proxy-roleta');
       if (res.error) throw new Error(res.error.message);
