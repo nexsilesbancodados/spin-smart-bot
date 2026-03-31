@@ -103,32 +103,35 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
       </div>
 
       {/* Ensemble Summary */}
-      <div className={`glass rounded-xl border p-4 ${tc.bg}`}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/15 flex items-center justify-center text-lg">🤖</div>
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-wider text-foreground">Ensemble Multi-Modelo v2</div>
-              <div className="text-[7px] text-muted-foreground">{totalModels} modelos competindo • Feedback Loop ativo</div>
+      <div className={`glass rounded-2xl border overflow-hidden ${tc.bg}`}>
+        <div className="relative p-4">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/4 via-transparent to-neon-pink/3" />
+          <div className="relative flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center text-lg shadow-neon-cyan">🤖</div>
+              <div>
+                <div className="text-[10px] font-display font-bold uppercase tracking-wider text-foreground">Ensemble Multi-Modelo v2</div>
+                <div className="text-[7px] text-muted-foreground/50 font-mono">{totalModels} modelos competindo • Feedback Loop ativo</div>
+              </div>
+            </div>
+            <div className={`px-2.5 py-1 rounded-xl border text-[8px] font-display font-bold uppercase backdrop-blur-sm ${tc.bg} ${tc.color}`}>
+              {tc.icon} {temperature}
             </div>
           </div>
-          <div className={`px-2.5 py-1 rounded-full border text-[8px] font-black uppercase ${tc.bg} ${tc.color}`}>
-            {tc.icon} {temperature}
-          </div>
-        </div>
 
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { label: 'Confiança', value: `${ensembleConfidence}%`, color: 'text-primary' },
-            { label: 'Consenso', value: `${ensembleConsensus}/${totalModels}`, color: 'text-foreground' },
-            { label: 'WR Geral', value: `${overallWR}%`, color: Number(overallWR) >= 40 ? 'text-green-400' : 'text-amber-400' },
-            { label: 'Entrada', value: sniperData?.entryForce?.toUpperCase() || '—', color: sniperData?.entryForce === 'forte' ? 'text-green-400' : sniperData?.entryForce === 'padrao' ? 'text-amber-400' : 'text-muted-foreground' },
-          ].map((stat, i) => (
-            <div key={i} className="text-center p-2 rounded-lg bg-background/30">
-              <div className="text-[7px] text-muted-foreground uppercase font-bold">{stat.label}</div>
-              <div className={`text-[13px] font-black font-mono ${stat.color}`}>{stat.value}</div>
-            </div>
-          ))}
+          <div className="relative grid grid-cols-4 gap-2">
+            {[
+              { label: 'Confiança', value: `${ensembleConfidence}%`, color: 'text-primary' },
+              { label: 'Consenso', value: `${ensembleConsensus}/${totalModels}`, color: 'text-foreground' },
+              { label: 'WR Geral', value: `${overallWR}%`, color: Number(overallWR) >= 40 ? 'text-neon-green' : 'text-gold' },
+              { label: 'Entrada', value: sniperData?.entryForce?.toUpperCase() || '—', color: sniperData?.entryForce === 'forte' ? 'text-neon-green' : sniperData?.entryForce === 'padrao' ? 'text-gold' : 'text-muted-foreground' },
+            ].map((stat, i) => (
+              <div key={i} className="text-center p-2.5 rounded-xl glass border border-border/15">
+                <div className="text-[7px] text-muted-foreground/50 uppercase font-display tracking-wider">{stat.label}</div>
+                <div className={`text-[14px] font-black font-mono ${stat.color}`}>{stat.value}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

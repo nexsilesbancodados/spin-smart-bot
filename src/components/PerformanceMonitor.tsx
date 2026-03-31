@@ -52,18 +52,21 @@ const PerformanceMonitor = memo(({ betHistory, balance, allNumbers }: Props) => 
   const PIE_COLORS = ['hsl(0, 72%, 51%)', 'hsl(0, 0%, 20%)', 'hsl(142, 76%, 36%)'];
 
   return (
-    <div className="glass rounded-xl overflow-hidden">
-      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center gap-2 p-3 border-b border-border/10">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-neon-green/15 to-neon-cyan/10 border border-neon-green/20 flex items-center justify-center shadow-neon-green">
-          <BarChart3 className="w-3.5 h-3.5 text-neon-green" />
+    <div className="glass rounded-2xl overflow-hidden border border-border/20">
+      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center gap-3 p-4 border-b border-border/10">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-neon-green/15 to-neon-cyan/10 border border-neon-green/20 flex items-center justify-center shadow-neon-green">
+          <BarChart3 className="w-4 h-4 text-neon-green" />
         </div>
-        <span className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-wider flex-1 text-left">Monitor de Performance</span>
-        <div className="flex items-center gap-2">
-          <span className={`text-[9px] font-mono font-bold ${metrics.totalPnl >= 0 ? 'text-neon-green' : 'text-destructive'}`}>
+        <div className="flex-1 text-left">
+          <span className="text-[10px] font-display font-bold text-muted-foreground/60 uppercase tracking-[0.15em]">Monitor de Performance</span>
+          <div className="text-[7px] text-muted-foreground/40 font-mono mt-0.5">{metrics.total} apostas registradas</div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className={`text-[11px] font-mono font-bold ${metrics.totalPnl >= 0 ? 'text-neon-green' : 'text-destructive'}`}>
             {metrics.totalPnl >= 0 ? '+' : ''}{metrics.totalPnl.toFixed(2)}
           </span>
-          <span className="text-[8px] font-mono text-muted-foreground/40">WR {Math.round(metrics.winRate * 100)}%</span>
-          <ChevronDown className={`w-3 h-3 text-muted-foreground/30 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          <span className="text-[8px] font-mono text-muted-foreground/40 px-2 py-0.5 rounded-lg glass border border-border/15">WR {Math.round(metrics.winRate * 100)}%</span>
+          <ChevronDown className={`w-4 h-4 text-muted-foreground/25 transition-transform ${expanded ? 'rotate-180' : ''}`} />
         </div>
       </button>
 
