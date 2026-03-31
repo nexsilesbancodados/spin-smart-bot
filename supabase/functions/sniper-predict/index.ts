@@ -2063,8 +2063,9 @@ Deno.serve(async (req) => {
     // K1-K30: CONCENTRAÇÃO vs DISPERSÃO (Cluster vs Gangorra)
     // Mede se os últimos 15 números caem em poucos setores (concentrado)
     // ou cruzam o cilindro alternadamente (gangorra)
-    const mesaFlowState: { mode: 'concentracao' | 'gangorra' | 'neutro'; clusterZone: string | null; gangorraSequence: string[]; strength: number } = {
-      mode: 'neutro', clusterZone: null, gangorraSequence: [], strength: 0
+    const mesaFlowState: { mode: 'concentracao' | 'gangorra' | 'neutro'; clusterZone: string | null; gangorraSequence: string[]; strength: number; sectorAlternation: { active: boolean; patternPair: [string, string] | null; predictedNextSector: string | null; confidence: number; historicalHitRate: number; depth: number } } = {
+      mode: 'neutro', clusterZone: null, gangorraSequence: [], strength: 0,
+      sectorAlternation: { active: false, patternPair: null, predictedNextSector: null, confidence: 0, historicalHitRate: 0, depth: 0 }
     };
 
     if (numbers.length >= 15) {
@@ -2089,18 +2090,115 @@ Deno.serve(async (req) => {
           if (secSeq[i] !== secSeq[i-1]) alternations++;
         }
         const alternationRate = alternations / (secSeq.length - 1);
+
+        // ============================================================
+        // SECTOR ALTERNATION PATTERN RECOGNITION — Deep Pattern Scan
+        // Detects repeating A↔B sequences: Zero↔Tiers, Voisins↔Orphelins, etc.
+        // Validates against full history (up to 200 giros) before confirming
+        // ============================================================
+        const SECTOR_NAMES = ['Voisins', 'Tiers', 'Orphelins', 'Zero'] as const;
+        const allSectorSeq = numbers.slice(0, Math.min(200, numbers.length)).map(n => getSector(n));
+
+        // 1. Detect recent sector pair alternation (last 8 giros)
+        const recentSec = allSectorSeq.slice(0, 8);
+        let bestAltPair: [string, string] | null = null;
+        let bestAltDepth = 0;
+        let bestAltScore = 0;
+
+        for (let a = 0; a < SECTOR_NAMES.length; a++) {
+          for (let b = a + 1; b < SECTOR_NAMES.length; b++) {
+            const sA = SECTOR_NAMES[a], sB = SECTOR_NAMES[b];
+            // Check if recent numbers follow A→B→A→B or B→A→B→A pattern
+            let matchDepth = 0;
+            for (let i = 0; i < recentSec.length - 1; i++) {
+              const cur = recentSec[i], prev = recentSec[i + 1];
+              if ((cur === sA && prev === sB) || (cur === sB && prev === sA)) {
+                matchDepth++;
+              } else if (cur !== sA && cur !== sB) {
+                break; // broken chain
+              }
+            }
+            if (matchDepth >= 2 && matchDepth > bestAltDepth) {
+              bestAltPair = [sA, sB];
+              bestAltDepth = matchDepth;
+              bestAltScore = matchDepth;
+            }
+          }
+        }
+
+        // 2. Validate against deeper history (scan 200 giros for same pair)
+        if (bestAltPair && bestAltDepth >= 2) {
+          const [pA, pB] = bestAltPair;
+          let historicalMatches = 0;
+          let historicalTests = 0;
+          // Scan for transitions pA→pB or pB→pA in full history
+          for (let i = 0; i < allSectorSeq.length - 2; i++) {
+            const cur = allSectorSeq[i], prev = allSectorSeq[i + 1];
+            if ((prev === pA && cur === pB) || (prev === pB && cur === pA)) {
+              historicalTests++;
+              // Did the NEXT one after this transition continue the pattern?
+              if (i > 0) {
+                const next = allSectorSeq[i - 1];
+                if ((cur === pA && next === pB) || (cur === pB && next === pA)) {
+                  historicalMatches++;
+                }
+              }
+            }
+          }
+          const histHitRate = historicalTests >= 5 ? historicalMatches / historicalTests : 0;
+
+          // Predict which sector comes next based on the alternation
+          const lastSector = recentSec[0];
+          const predictedNext = lastSector === pA ? pB : lastSector === pB ? pA : null;
+
+          if (bestAltDepth >= 2 && (histHitRate > 0.30 || bestAltDepth >= 3)) {
+            mesaFlowState.sectorAlternation = {
+              active: true,
+              patternPair: bestAltPair,
+              predictedNextSector: predictedNext,
+              confidence: Math.min(90, 40 + bestAltDepth * 12 + Math.round(histHitRate * 30)),
+              historicalHitRate: +histHitRate.toFixed(2),
+              depth: bestAltDepth,
+            };
+            blocoK += Math.min(25, 8 + bestAltDepth * 5);
+            const confPct = mesaFlowState.sectorAlternation.confidence;
+            aiLearnings.push(`🔄 ALTERNÂNCIA DE SETOR: ${pA}↔${pB} (${bestAltDepth}x consecutivo, hist ${(histHitRate*100).toFixed(0)}%) → próximo: ${predictedNext || '?'} [${confPct}%]`);
+            if (bestAltDepth >= 4) {
+              aiLearnings.push(`⚡ PADRÃO FORTE: ${pA}↔${pB} ${bestAltDepth}x seguido — alta probabilidade de continuação`);
+            }
+          }
+        }
+
+        // 3. Also detect 3-sector rotation: A→B→C→A→B→C
+        if (!mesaFlowState.sectorAlternation.active && recentSec.length >= 6) {
+          const triplet = [recentSec[2], recentSec[1], recentSec[0]]; // oldest→newest
+          if (triplet[0] !== triplet[1] && triplet[1] !== triplet[2] && triplet[0] !== triplet[2]) {
+            // Check if pattern repeats
+            if (recentSec[3] === triplet[0] && recentSec[4] === triplet[1] && recentSec[5] === triplet[2]) {
+              const predictedNext = triplet[(3 - 0) % 3]; // next in rotation
+              const nextInRotation = recentSec[0] === triplet[2] ? triplet[0] : recentSec[0] === triplet[0] ? triplet[1] : triplet[2];
+              mesaFlowState.sectorAlternation = {
+                active: true,
+                patternPair: [triplet.join('→'), ''],
+                predictedNextSector: nextInRotation,
+                confidence: 65,
+                historicalHitRate: 0,
+                depth: 2,
+              };
+              blocoK += 15;
+              aiLearnings.push(`🔄 ROTAÇÃO 3 SETORES: ${triplet.join('→')} → próximo: ${nextInRotation}`);
+            }
+          }
+        }
+
         if (alternationRate > 0.75) {
           mesaFlowState.mode = 'gangorra';
           mesaFlowState.gangorraSequence = secSeq.slice(0, 5);
           mesaFlowState.strength = alternationRate;
-          blocoK += 25;
-          aiLearnings.push(`🔄 GANGORRA: ${alternationRate.toFixed(0)}% alternância de setores`);
-
-          // Detect sector alternation pattern (Tiers→Voisins→Tiers→Voisins)
-          if (secSeq.length >= 4 && secSeq[0] !== secSeq[1] && secSeq[1] === secSeq[3] && secSeq[0] === secSeq[2]) {
-            aiLearnings.push(`⚡ CONVERGÊNCIA DE ALTERNÂNCIA: ${secSeq[0]}↔${secSeq[1]} (padrão cíclico)`);
-            blocoK += 15;
+          if (!mesaFlowState.sectorAlternation.active) {
+            blocoK += 25;
           }
+          aiLearnings.push(`🔄 GANGORRA: ${(alternationRate * 100).toFixed(0)}% alternância de setores`);
         } else {
           blocoK += 10;
         }
