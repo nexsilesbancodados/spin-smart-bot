@@ -47,7 +47,30 @@ interface Props {
   rtInsights?: any[];
   allNumbers?: number[];
   autoLearnStatus?: 'idle' | 'learning' | 'analyzing' | 'backtesting';
+  strategyFilter?: string;
+  setStrategyFilter?: (s: string) => void;
 }
+
+const ANALYSIS_TYPES = [
+  { value: 'all', emoji: '🧠', label: 'Auto (Melhor)' },
+  { value: 'terminal', emoji: '🔢', label: 'Terminal' },
+  { value: 'vizinhos', emoji: '🎯', label: 'Vizinhos' },
+  { value: 'setor', emoji: '🌍', label: 'Setor' },
+  { value: 'duzia', emoji: '📊', label: 'Dúzia' },
+  { value: 'coluna', emoji: '📐', label: 'Coluna' },
+  { value: 'pleno', emoji: '💎', label: 'Pleno' },
+  { value: 'cavalos', emoji: '🐴', label: 'Cavalos' },
+  { value: 'cor', emoji: '🎨', label: 'Cor' },
+  { value: 'paridade', emoji: '⚖️', label: 'Par/Ímpar' },
+  { value: 'alto_baixo', emoji: '📏', label: 'Alto/Baixo' },
+  { value: 'rua', emoji: '🛤️', label: 'Rua' },
+  { value: 'carre', emoji: '🔲', label: 'Quadra' },
+  { value: 'orphelins', emoji: '🌀', label: 'Orphelins' },
+  { value: 'tiers', emoji: '🎪', label: 'Tiers' },
+  { value: 'voisins', emoji: '🎡', label: 'Voisins' },
+  { value: 'jeu_zero', emoji: '🟢', label: 'Jeu Zéro' },
+  { value: 'combinado', emoji: '🧬', label: 'Combinado' },
+];
 
 const SubSection = memo(({ title, icon: Icon, color, children, defaultOpen = false }: {
   title: string; icon: any; color: string; children: React.ReactNode; defaultOpen?: boolean;
