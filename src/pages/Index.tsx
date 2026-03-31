@@ -928,45 +928,53 @@ const Index = () => {
             {/* ── CARDS DE CONTEXTO ──────────────────────────── */}
             {allNumbers.length >= 5 && (
               <div className="grid grid-cols-4 gap-2">
-                <div className="glass rounded-xl border border-border/20 p-3 text-center space-y-1">
-                  <div className="text-[8px] text-muted-foreground/60 uppercase font-bold tracking-wider">Puxados</div>
-                  <div className="text-[12px] font-black text-primary font-mono leading-tight">
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
+                  className="glass rounded-xl border border-primary/15 p-3 text-center space-y-1 hover:border-primary/30 transition-all group">
+                  <div className="text-[8px] text-muted-foreground/50 uppercase font-bold tracking-wider font-display">Puxados</div>
+                  <div className="text-[12px] font-black text-primary font-mono leading-tight group-hover:scale-105 transition-transform">
                     {(PULL[allNumbers[0]] || []).slice(0,3).join(' ')}
                   </div>
-                  <div className="text-[8px] text-muted-foreground/40">do {allNumbers[0]}</div>
-                </div>
-                <div className="glass rounded-xl border border-border/20 p-3 text-center space-y-1">
-                  <div className="text-[8px] text-muted-foreground/60 uppercase font-bold tracking-wider">Terminal</div>
-                  <div className="text-[12px] font-black text-amber-400 font-mono">T{hotTerm?.[0]}</div>
-                  <div className="text-[8px] text-muted-foreground/40">{hotTerm?.[1]}× em 20</div>
-                </div>
-                <div className="glass rounded-xl border border-border/20 p-3 text-center space-y-1">
-                  <div className="text-[8px] text-muted-foreground/60 uppercase font-bold tracking-wider">Zero</div>
-                  <div className={`text-[12px] font-black font-mono ${zeroPressure > 40 ? 'text-green-400' : zeroPressure > 25 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                  <div className="text-[7px] text-muted-foreground/30 font-mono">do {allNumbers[0]}</div>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+                  className="glass rounded-xl border border-gold/15 p-3 text-center space-y-1 hover:border-gold/30 transition-all group">
+                  <div className="text-[8px] text-muted-foreground/50 uppercase font-bold tracking-wider font-display">Terminal</div>
+                  <div className="text-[12px] font-black text-[hsl(var(--gold))] font-mono group-hover:scale-105 transition-transform">T{hotTerm?.[0]}</div>
+                  <div className="text-[7px] text-muted-foreground/30 font-mono">{hotTerm?.[1]}× em 20</div>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                  className={`glass rounded-xl border p-3 text-center space-y-1 transition-all ${
+                    zeroPressure > 40 ? 'border-neon-green/25 bg-neon-green/3' : zeroPressure > 25 ? 'border-gold/15' : 'border-border/15'
+                  }`}>
+                  <div className="text-[8px] text-muted-foreground/50 uppercase font-bold tracking-wider font-display">Zero</div>
+                  <div className={`text-[12px] font-black font-mono ${zeroPressure > 40 ? 'text-neon-green' : zeroPressure > 25 ? 'text-[hsl(var(--gold))]' : 'text-muted-foreground'}`}>
                     {zeroPressure}g
                   </div>
-                  <div className="text-[8px] text-muted-foreground/40">{zeroPressure > 40 ? '⚡ pressão' : zeroPressure > 25 ? 'atenção' : 'ok'}</div>
-                </div>
-                <div className="glass rounded-xl border border-border/20 p-3 text-center space-y-1">
-                  <div className="text-[8px] text-muted-foreground/60 uppercase font-bold tracking-wider">Hits</div>
-                  <div className="text-[12px] font-black text-foreground font-mono">
+                  <div className="text-[7px] text-muted-foreground/30 font-mono">{zeroPressure > 40 ? '⚡ pressão' : zeroPressure > 25 ? 'atenção' : 'ok'}</div>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+                  className="glass rounded-xl border border-border/15 p-3 text-center space-y-1 hover:border-neon-cyan/20 transition-all group">
+                  <div className="text-[8px] text-muted-foreground/50 uppercase font-bold tracking-wider font-display">Hits</div>
+                  <div className="text-[12px] font-black text-foreground font-mono group-hover:scale-105 transition-transform">
                     {predStats.hits}/{predStats.total || 1}
                   </div>
-                  <div className="text-[8px] text-muted-foreground/40">
+                  <div className="text-[7px] text-muted-foreground/30 font-mono">
                     {predStats.total > 0 ? `${Math.round(predStats.hits/predStats.total*100)}%` : '—'}
                   </div>
-                </div>
+                </motion.div>
               </div>
             )}
 
             {/* Botão de forçar análise */}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
               onClick={triggerLearn}
               disabled={isAnalyzing}
-              className="w-full py-2.5 rounded-xl border border-primary/15 glass text-[9px] font-bold text-muted-foreground hover:text-primary hover:border-primary/30 transition-all disabled:opacity-30"
+              className="w-full py-3 rounded-xl border border-primary/10 glass text-[9px] font-bold text-muted-foreground/60 hover:text-primary hover:border-primary/25 hover:bg-primary/3 transition-all disabled:opacity-30 font-display tracking-wider"
             >
               {isAnalyzing ? '🔄 Analisando...' : '⚡ Forçar análise da IA agora'}
-            </button>
+            </motion.button>
           </div>
         )}
 
