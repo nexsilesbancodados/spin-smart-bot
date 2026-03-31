@@ -658,7 +658,7 @@ const Index = () => {
               </div>
             )}
 
-            {/* Resultado da última jogada */}
+            {/* ── ÚLTIMO GIRO ──────────────────────────────── */}
             <AnimatePresence mode="wait">
               {lastPredResult && lastPredResult.hit !== null && (
                 <motion.div
@@ -666,55 +666,58 @@ const Index = () => {
                   initial={{ opacity: 0, y: -10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border bg-card/70"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 ${
+                    lastPredResult.hit ? 'border-green-500/30 bg-green-500/5' : 'border-border/60 bg-card/80'
+                  }`}
                 >
-                  <span className="text-xl">{lastPredResult.hit ? '✅' : '❌'}</span>
+                  <span className="text-2xl shrink-0">{lastPredResult.hit ? '✅' : '❌'}</span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[9px] font-black uppercase tracking-[0.14em] text-muted-foreground">Último giro</div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">
-                      Saiu: <b className="text-foreground">{lastPredResult.actual}</b>
-                      {' · '}Sua jogada anterior {lastPredResult.hit ? 'bateu' : 'não bateu'}
+                    <div className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">Último giro</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
+                      Saiu <b className="text-foreground">{lastPredResult.actual}</b>
+                      {' · '}Sua jogada anterior {lastPredResult.hit ? <span className="text-green-400 font-bold">bateu</span> : <span className="text-destructive font-bold">não bateu</span>}
                     </div>
                   </div>
-                  <div className={`w-10 h-10 rounded-xl text-[13px] font-black text-white flex items-center justify-center ${numBg(lastPredResult.actual ?? 0)}`}>
+                  <motion.div
+                    initial={{ scale: 0, rotate: -90 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: 'spring', stiffness: 250 }}
+                    className={`w-12 h-12 rounded-xl text-base font-black text-white flex items-center justify-center shadow-lg ${numBg(lastPredResult.actual ?? 0)}`}
+                  >
                     {lastPredResult.actual}
-                  </div>
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Cards rápidos de contexto */}
+            {/* ── CARDS DE CONTEXTO ──────────────────────────── */}
             {allNumbers.length >= 5 && (
               <div className="grid grid-cols-4 gap-2">
-                {/* Puxados */}
-                <div className="bg-card rounded-xl border border-border p-2.5 text-center">
-                  <div className="text-[7px] text-muted-foreground uppercase font-bold mb-1">Puxados</div>
-                  <div className="text-[11px] font-black text-primary font-mono">
+                <div className="bg-card rounded-xl border border-border/50 p-3 text-center space-y-1">
+                  <div className="text-[8px] text-muted-foreground uppercase font-bold tracking-wider">Puxados</div>
+                  <div className="text-[12px] font-black text-primary font-mono leading-tight">
                     {(PULL[allNumbers[0]] || []).slice(0,3).join(' ')}
                   </div>
-                  <div className="text-[7px] text-muted-foreground mt-0.5">do {allNumbers[0]}</div>
+                  <div className="text-[8px] text-muted-foreground">do {allNumbers[0]}</div>
                 </div>
-                {/* Terminal */}
-                <div className="bg-card rounded-xl border border-border p-2.5 text-center">
-                  <div className="text-[7px] text-muted-foreground uppercase font-bold mb-1">Terminal</div>
-                  <div className="text-[11px] font-black text-amber-400 font-mono">T{hotTerm?.[0]}</div>
-                  <div className="text-[7px] text-muted-foreground mt-0.5">{hotTerm?.[1]}× em 20</div>
+                <div className="bg-card rounded-xl border border-border/50 p-3 text-center space-y-1">
+                  <div className="text-[8px] text-muted-foreground uppercase font-bold tracking-wider">Terminal</div>
+                  <div className="text-[12px] font-black text-amber-400 font-mono">T{hotTerm?.[0]}</div>
+                  <div className="text-[8px] text-muted-foreground">{hotTerm?.[1]}× em 20</div>
                 </div>
-                {/* Zero */}
-                <div className="bg-card rounded-xl border border-border p-2.5 text-center">
-                  <div className="text-[7px] text-muted-foreground uppercase font-bold mb-1">Zero</div>
-                  <div className={`text-[11px] font-black font-mono ${zeroPressure > 40 ? 'text-green-400' : zeroPressure > 25 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                <div className="bg-card rounded-xl border border-border/50 p-3 text-center space-y-1">
+                  <div className="text-[8px] text-muted-foreground uppercase font-bold tracking-wider">Zero</div>
+                  <div className={`text-[12px] font-black font-mono ${zeroPressure > 40 ? 'text-green-400' : zeroPressure > 25 ? 'text-amber-400' : 'text-muted-foreground'}`}>
                     {zeroPressure}g
                   </div>
-                  <div className="text-[7px] text-muted-foreground mt-0.5">{zeroPressure > 40 ? '⚡ pressão' : zeroPressure > 25 ? 'atenção' : 'ok'}</div>
+                  <div className="text-[8px] text-muted-foreground">{zeroPressure > 40 ? '⚡ pressão' : zeroPressure > 25 ? 'atenção' : 'ok'}</div>
                 </div>
-                {/* Predições */}
-                <div className="bg-card rounded-xl border border-border p-2.5 text-center">
-                  <div className="text-[7px] text-muted-foreground uppercase font-bold mb-1">Hits</div>
-                  <div className="text-[11px] font-black text-foreground font-mono">
+                <div className="bg-card rounded-xl border border-border/50 p-3 text-center space-y-1">
+                  <div className="text-[8px] text-muted-foreground uppercase font-bold tracking-wider">Hits</div>
+                  <div className="text-[12px] font-black text-foreground font-mono">
                     {predStats.hits}/{predStats.total || 1}
                   </div>
-                  <div className="text-[7px] text-muted-foreground mt-0.5">
+                  <div className="text-[8px] text-muted-foreground">
                     {predStats.total > 0 ? `${Math.round(predStats.hits/predStats.total*100)}%` : '—'}
                   </div>
                 </div>

@@ -11,10 +11,10 @@ const numGradient = (n: number) =>
   n === 0 ? 'from-emerald-500 to-emerald-700' : RED_NUMBERS.has(n) ? 'from-red-500 to-red-700' : 'from-zinc-600 to-zinc-900';
 
 const getActionLevel = (prob: number) => {
-  if (prob >= 85) return { label: 'ENTRAR FORTE', emoji: '🔥', color: 'text-neon-green', borderClass: 'border-neon-green/50', glow: 'shadow-[0_0_30px_hsl(var(--neon-green)/0.2)]' };
-  if (prob >= 65) return { label: 'ENTRAR', emoji: '✅', color: 'text-primary', borderClass: 'border-primary/40', glow: 'shadow-[0_0_20px_hsl(var(--primary)/0.15)]' };
-  if (prob >= 45) return { label: 'ENTRAR LEVE', emoji: '⚡', color: 'text-yellow-400', borderClass: 'border-yellow-400/30', glow: '' };
-  return { label: 'OBSERVAR', emoji: '👁️', color: 'text-muted-foreground', borderClass: 'border-border', glow: '' };
+  if (prob >= 85) return { label: 'ENTRAR FORTE', emoji: '🔥', color: 'text-green-400', borderClass: 'border-green-500/40', bgClass: 'bg-green-500/10' };
+  if (prob >= 65) return { label: 'ENTRAR', emoji: '✅', color: 'text-primary', borderClass: 'border-primary/40', bgClass: 'bg-primary/10' };
+  if (prob >= 45) return { label: 'ENTRAR LEVE', emoji: '⚡', color: 'text-yellow-400', borderClass: 'border-yellow-500/30', bgClass: 'bg-yellow-500/10' };
+  return { label: 'OBSERVAR', emoji: '👁️', color: 'text-muted-foreground', borderClass: 'border-border', bgClass: 'bg-secondary/20' };
 };
 
 const BET_TYPE_LABELS: Record<string, { emoji: string; label: string; desc: string }> = {
@@ -92,7 +92,6 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
     const nums: number[] = sniperData.strategy.numbers || [];
     const rawProb = sniperData.signal.probability || 0;
 
-    // Derive analysis-specific detail based on betType or strategy
     const bt = sniperData.aiReasoning?.betType || sniperData.strategy?.type || '';
     let detail: { type: string; label: string; visual: string; colorClass: string } | null = null;
 
@@ -100,12 +99,7 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
       const redCount = nums.filter((n: number) => RED_NUMBERS.has(n)).length;
       const blackCount = nums.filter((n: number) => n > 0 && !RED_NUMBERS.has(n)).length;
       const isRed = redCount > blackCount;
-      detail = {
-        type: 'cor',
-        label: isRed ? 'VERMELHO' : 'PRETO',
-        visual: isRed ? '🔴' : '⚫',
-        colorClass: isRed ? 'bg-red-600/20 text-red-400 border-red-500/40' : 'bg-zinc-700/30 text-zinc-300 border-zinc-500/40',
-      };
+      detail = { type: 'cor', label: isRed ? 'VERMELHO' : 'PRETO', visual: isRed ? '🔴' : '⚫', colorClass: isRed ? 'bg-red-600/20 text-red-400 border-red-500/40' : 'bg-zinc-700/30 text-zinc-300 border-zinc-500/40' };
     } else if (bt === 'duzia' || strategyFilter === 'duzia') {
       const dzCounts = [0, 0, 0, 0];
       nums.forEach((n: number) => { if (n === 0) dzCounts[0]++; else if (n <= 12) dzCounts[1]++; else if (n <= 24) dzCounts[2]++; else dzCounts[3]++; });
@@ -154,25 +148,17 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
       detail = { type: 'fusao', label: 'Fusão Multi-IA', visual: '🧬', colorClass: 'bg-violet-600/20 text-violet-400 border-violet-500/40' };
     }
 
-    // Streak ativo: quantas vezes o número #1 saiu consecutivamente
     const streakInfo = (() => {
       if (!allNumbers || allNumbers.length < 2) return null;
       const n = top1;
       let count = 0;
-      for (const x of allNumbers) {
-        if (x === n) count++;
-        else break;
-      }
+      for (const x of allNumbers) { if (x === n) count++; else break; }
       if (count < 2) return null;
       const prob = Math.min(95, 50 + count * 12);
       return { num: n, count, prob, isExtreme: count >= 4 };
     })();
 
-    // WR recente (do sniperData)
-    const recentWR = typeof sniperData?.recentWinRate === 'number'
-      ? Math.round(sniperData.recentWinRate * 100)
-      : null;
-
+    const recentWR = typeof sniperData?.recentWinRate === 'number' ? Math.round(sniperData.recentWinRate * 100) : null;
     return { ensTop1: top1, finalNumbers: nums, displayProb: rawProb, analysisDetail: detail, streakInfo, recentWR };
   }, [sniperData, strategyFilter, allNumbers]);
 
@@ -200,29 +186,16 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
   if (sniperStale && lastPredResult && !sniperData?.signal) {
     const isHit = lastPredResult.hit;
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className={`rounded-2xl border-2 overflow-hidden ${isHit ? 'border-green-500/40 bg-green-500/5' : 'border-destructive/30 bg-destructive/5'}`}
-      >
+      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
+        className={`rounded-2xl border-2 overflow-hidden ${isHit ? 'border-green-500/40 bg-green-500/5' : 'border-destructive/30 bg-destructive/5'}`}>
         <div className="p-5 flex items-center gap-4">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', stiffness: 200 }}
-            className={`w-14 h-14 rounded-full flex items-center justify-center ${
-              isHit ? 'bg-green-500/20 ring-2 ring-green-500/40' : 'bg-destructive/15 ring-2 ring-destructive/30'
-            }`}
-          >
-            {isHit
-              ? <ShieldCheck className="w-7 h-7 text-green-400" />
-              : <AlertTriangle className="w-7 h-7 text-destructive" />}
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}
+            className={`w-14 h-14 rounded-full flex items-center justify-center ${isHit ? 'bg-green-500/20 ring-2 ring-green-500/40' : 'bg-destructive/15 ring-2 ring-destructive/30'}`}>
+            {isHit ? <ShieldCheck className="w-7 h-7 text-green-400" /> : <AlertTriangle className="w-7 h-7 text-destructive" />}
           </motion.div>
           <div className="flex-1">
             <span className={`text-lg font-black ${isHit ? 'text-green-400' : 'text-destructive'}`}>
-              {isHit
-                ? (lastPredResult.hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO!')
-                : '❌ ERRO'}
+              {isHit ? (lastPredResult.hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO!') : '❌ ERRO'}
             </span>
             <div className="flex gap-4 text-xs text-muted-foreground mt-1">
               <span>Previsto: <strong className="text-foreground">{lastPredResult.predicted}</strong></span>
@@ -258,7 +231,6 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
   const aiCountMatch = aiSourceMatch?.match(/(\d+)\/(\d+)/);
   const aiSuccessCount = aiCountMatch ? aiCountMatch[1] : null;
 
-  const countdownColor = sniperCountdown <= 4 ? 'text-destructive' : sniperCountdown <= 8 ? 'text-yellow-400' : 'text-primary';
   const conciseReason = ai?.suggestedBet || ai?.betDescription || ai?.patternIdentified || betTypeInfo?.desc || 'Jogada pronta para o próximo giro';
   const compactNumbers = finalNumbers.slice(0, 6);
   const remainingCount = Math.max(0, finalNumbers.length - compactNumbers.length);
@@ -269,87 +241,95 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-2xl border-2 overflow-hidden bg-card ${action.borderClass} ${action.glow}`}
+      className="space-y-3"
     >
       {/* REED STOP */}
       {reedStopped && (
-        <div className="bg-destructive/10 border-b border-destructive/30 px-4 py-2.5 text-center">
+        <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-2.5 text-center">
           <span className="text-xs font-black text-destructive">⛔ PAUSE — 4 erros seguidos • Aguarde nova tendência</span>
         </div>
       )}
 
-      <div className={reedStopped ? 'opacity-30 pointer-events-none' : ''}>
-        <div className="px-4 py-3 border-b border-border/20 bg-secondary/10">
-          <div className="flex items-start gap-3 justify-between">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-primary">
-                  <Brain className="w-3 h-3" />
-                  Juiz Supremo · {displayProb}%
-                </span>
-                {ai?.consensus > 0 && (
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">
-                    {ai.consensus} consensos
-                  </span>
-                )}
-                {aiSuccessCount && (
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground font-bold border border-border">
-                    {aiSuccessCount} IAs
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed line-clamp-2">
-                {conciseReason}
-              </p>
-            </div>
-
-            {sniperCountdown > 0 ? (
-              <div className="shrink-0 flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5">
-                <Clock className={`w-3.5 h-3.5 ${countdownColor}`} />
-                <span className={`text-sm font-black font-mono tabular-nums ${countdownColor}`}>{sniperCountdown}s</span>
-              </div>
-            ) : null}
+      <div className={reedStopped ? 'opacity-30 pointer-events-none space-y-3' : 'space-y-3'}>
+        {/* ── HEADER: Juiz Supremo ─────────────────────────── */}
+        <div className={`rounded-xl border ${action.borderClass} ${action.bgClass} p-3.5`}>
+          <div className="flex items-center gap-2 flex-wrap mb-2">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-primary">
+              <Brain className="w-3.5 h-3.5" />
+              Juiz Supremo · {displayProb}%
+            </span>
+            {ai?.consensus > 0 && (
+              <span className="text-[9px] px-2.5 py-0.5 rounded-full bg-primary/15 text-primary font-bold border border-primary/25">
+                {ai.consensus} consensos
+              </span>
+            )}
+            {aiSuccessCount && (
+              <span className="text-[9px] px-2.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-bold border border-border/50">
+                {aiSuccessCount} IAs
+              </span>
+            )}
           </div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
+            {conciseReason}
+          </p>
         </div>
 
-        <div className="px-4 py-4 space-y-3">
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-            <div className="flex items-center justify-between gap-3 mb-2">
-              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">🎯 Próximo giro — Aposte agora</span>
-              <span className={`text-xs font-black ${action.color}`}>{action.emoji} {action.label}</span>
-            </div>
+        {/* ── SIGNAL CARD: Próximo Giro ────────────────────── */}
+        <div className="rounded-xl border-2 border-primary/30 bg-card overflow-hidden">
+          {/* Header bar */}
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/30 bg-primary/5">
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary flex items-center gap-1.5">
+              🎯 Próximo giro — Aposte agora
+            </span>
+            <span className={`text-[11px] font-black ${action.color} flex items-center gap-1`}>
+              {action.emoji} {action.label}
+            </span>
+          </div>
 
+          <div className="p-4">
             {isSimpleMarket ? (
-              <div className="rounded-lg border border-border bg-card px-4 py-4 flex items-center gap-3">
-                <span className="text-3xl">{analysisDetail?.visual}</span>
+              <div className="flex items-center gap-4">
+                <span className="text-4xl">{analysisDetail?.visual}</span>
                 <div>
                   <p className="text-2xl font-black text-foreground leading-none">{primaryCall}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Válido para a próxima rodada</p>
+                  <p className="text-[11px] text-muted-foreground mt-1.5">Aposte nesses para a próxima rodada</p>
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black bg-gradient-to-br ${numGradient(ensTop1)} ring-2 ring-primary/40 shadow-lg`}>
+              <div className="space-y-3">
+                {/* Main number + label */}
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    initial={{ scale: 0, rotateY: 180 }}
+                    animate={{ scale: 1, rotateY: 0 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                    className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-white bg-gradient-to-br ${numGradient(ensTop1)} ring-2 ring-primary/50 shadow-lg shadow-primary/20`}
+                  >
                     {ensTop1}
-                  </div>
+                  </motion.div>
                   <div>
-                    <p className="text-lg font-black text-foreground leading-none">{primaryCall}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Aposte nesses para a próxima rodada</p>
+                    <p className="text-xl font-black text-foreground leading-none">{primaryCall}</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">Aposte nesses para a próxima rodada</p>
                   </div>
                 </div>
 
+                {/* Number pills */}
                 <div className="flex flex-wrap gap-2">
                   {compactNumbers.map((n: number, i: number) => (
-                    <div
+                    <motion.div
                       key={n}
-                      className={`h-10 min-w-10 px-3 rounded-xl flex items-center justify-center text-sm font-black bg-gradient-to-br ${numGradient(n)} ${i === 0 ? 'ring-2 ring-primary/40 shadow-lg' : 'ring-1 ring-border/40'}`}
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: i * 0.05 }}
+                      className={`h-11 min-w-11 px-3 rounded-xl flex items-center justify-center text-[15px] font-black text-white bg-gradient-to-br ${numGradient(n)} ${
+                        i === 0 ? 'ring-2 ring-primary/50 shadow-md shadow-primary/15' : 'ring-1 ring-white/10'
+                      }`}
                     >
                       {n}
-                    </div>
+                    </motion.div>
                   ))}
                   {remainingCount > 0 && (
-                    <div className="h-10 px-3 rounded-xl flex items-center justify-center text-sm font-black bg-secondary text-muted-foreground border border-border">
+                    <div className="h-11 px-4 rounded-xl flex items-center justify-center text-sm font-bold bg-secondary/50 text-muted-foreground border border-border/40">
                       +{remainingCount}
                     </div>
                   )}
@@ -358,39 +338,52 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <div className="px-3 py-1.5 rounded-lg bg-secondary/40 border border-border text-xs font-bold text-foreground/80">
-              Cobertura: {finalNumbers.length} números
-            </div>
-            <div className="px-3 py-1.5 rounded-lg bg-secondary/40 border border-border text-xs font-bold text-foreground/80">
-              Paga: {payout}x
-            </div>
+          {/* Stats bar */}
+          <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border/20 bg-secondary/10 flex-wrap">
+            <span className="text-[11px] font-bold text-foreground/70">
+              Cobertura: <b className="text-foreground">{finalNumbers.length} números</b>
+            </span>
+            <span className="text-border/60">·</span>
+            <span className="text-[11px] font-bold text-foreground/70">
+              Paga: <b className="text-foreground">{payout}x</b>
+            </span>
             {recentWR !== null && (
-              <div className="px-3 py-1.5 rounded-lg bg-secondary/40 border border-border text-xs font-bold text-foreground/80 inline-flex items-center gap-1.5">
-                <TrendingUp className="w-3 h-3 text-primary" /> WR: {recentWR}%
-              </div>
+              <>
+                <span className="text-border/60">·</span>
+                <span className="text-[11px] font-bold text-foreground/70 inline-flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3 text-primary" /> WR: <b className="text-foreground">{recentWR}%</b>
+                </span>
+              </>
             )}
             {streakInfo && (
-              <div className="px-3 py-1.5 rounded-lg bg-secondary/40 border border-border text-xs font-bold text-foreground/80">
-                Streak #{streakInfo.num}: {streakInfo.count}x
-              </div>
+              <>
+                <span className="text-border/60">·</span>
+                <span className="text-[11px] font-bold text-foreground/70">
+                  Streak #{streakInfo.num}: <b className="text-foreground">{streakInfo.count}x</b>
+                </span>
+              </>
             )}
           </div>
-
-          {topCandidates.length > 1 && !isSimpleMarket && (
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Top candidatos</span>
-              <div className="flex items-center gap-2 overflow-x-auto pt-2">
-                {topCandidates.slice(0, 6).map((c: any, i: number) => (
-                  <div key={c.num} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl shrink-0 border ${i === 0 ? 'bg-primary/10 border-primary/20' : 'bg-secondary/30 border-border/30'}`}>
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black bg-gradient-to-br ${numGradient(c.num)} ${i === 0 ? 'ring-1 ring-primary' : ''}`}>{c.num}</div>
-                    <span className="text-[10px] font-bold text-muted-foreground">{c.score?.toFixed(0) ?? '?'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
+
+        {/* ── TOP CANDIDATOS ────────────────────────────────── */}
+        {topCandidates.length > 1 && !isSimpleMarket && (
+          <div className="space-y-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Top candidatos</span>
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {topCandidates.slice(0, 6).map((c: any, i: number) => (
+                <div key={c.num} className={`flex items-center gap-2 px-3 py-2 rounded-xl shrink-0 border transition-all ${
+                  i === 0 ? 'bg-primary/10 border-primary/25 shadow-sm shadow-primary/10' : 'bg-card border-border/40 hover:border-border/60'
+                }`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-black text-white bg-gradient-to-br ${numGradient(c.num)} ${
+                    i === 0 ? 'ring-1.5 ring-primary/60' : ''
+                  }`}>{c.num}</div>
+                  <span className="text-[11px] font-bold text-muted-foreground tabular-nums">{c.score?.toFixed(0) ?? '?'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );
