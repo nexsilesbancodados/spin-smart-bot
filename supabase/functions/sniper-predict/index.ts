@@ -8395,6 +8395,7 @@ Responda APENAS JSON:
       betInstructions,
       topAlternatives,
       combinedBet,
+      allBetSignals,
       allStrategies,
       mesaMode,
       mode, message,
