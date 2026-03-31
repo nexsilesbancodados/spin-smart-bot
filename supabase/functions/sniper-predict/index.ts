@@ -7392,14 +7392,14 @@ Responda APENAS JSON:
 }`;
 
           try {
-            const laiH = { "Authorization": `Bearer ${LAI_KEY}` };
-            judgeResult = await callAi('Juiz-Supremo', LAI_URL, laiH, 'openai/gpt-5.2', judgeSystem, judgePrompt, 0.05);
+            const dsH = { "Authorization": `Bearer ${DEEPSEEK_API_KEY}` };
+            judgeResult = await callAi('Juiz-Supremo', DS_URL, dsH, 'deepseek-chat', judgeSystem, judgePrompt, 0.05);
             if (judgeResult.ok) {
               console.log(`Multi-AI Round 2: Judge succeeded — consensus=${judgeResult.parsed?.consensusStrength || '?'}`);
             } else {
-              // Fallback: try with Gemini
-              judgeResult = await callAi('Juiz-Gemini', LAI_URL, laiH, 'google/gemini-2.5-pro', judgeSystem, judgePrompt, 0.05);
-              if (judgeResult.ok) console.log(`Multi-AI Round 2: Judge fallback succeeded`);
+              // Retry once
+              judgeResult = await callAi('Juiz-Retry', DS_URL, dsH, 'deepseek-chat', judgeSystem, judgePrompt, 0.08);
+              if (judgeResult.ok) console.log(`Multi-AI Round 2: Judge retry succeeded`);
             }
           } catch (judgeErr) {
             console.error('Judge round failed:', judgeErr);
