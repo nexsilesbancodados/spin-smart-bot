@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, XCircle, Target, TrendingUp, BarChart3, Flame, Trophy, ArrowRight, ChevronDown, ChevronUp, Sparkles, Award, Zap } from 'lucide-react';
