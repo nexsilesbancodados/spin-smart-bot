@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Activity } from 'lucide-react';
+import { Brain, Activity, Sparkles } from 'lucide-react';
 
 interface LogEntry {
   id: number;
@@ -209,11 +209,11 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
 
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [logs]);
 
-  const typeStyles: Record<string, string> = {
-    info: 'text-muted-foreground/70',
-    alert: 'text-gold font-semibold',
-    pattern: 'text-neon-cyan',
-    calibration: 'text-neon-pink',
+  const typeStyles: Record<string, { text: string; bg: string; border: string }> = {
+    info: { text: 'text-muted-foreground/70', bg: 'bg-background/10', border: 'border-border/5' },
+    alert: { text: 'text-gold font-semibold', bg: 'bg-gold/3', border: 'border-gold/10' },
+    pattern: { text: 'text-neon-cyan', bg: 'bg-neon-cyan/3', border: 'border-neon-cyan/10' },
+    calibration: { text: 'text-neon-pink', bg: 'bg-neon-pink/3', border: 'border-neon-pink/10' },
   };
 
   const typeIcons: Record<string, string> = { info: '📡', alert: '⚡', pattern: '🔍', calibration: '⚙️' };
@@ -222,54 +222,77 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
     <div className="glass rounded-2xl overflow-hidden border border-border/20">
       <div className="relative px-4 pt-4 pb-3">
         <div className="absolute inset-0 bg-gradient-to-r from-neon-pink/4 via-transparent to-purple-500/3" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neon-pink/30 to-transparent" />
         <div className="relative flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-neon-pink/15 to-purple-500/10 border border-neon-pink/20 flex items-center justify-center shadow-neon-pink">
-            <Brain className="w-4 h-4 text-neon-pink" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-pink/15 to-purple-500/10 border border-neon-pink/20 flex items-center justify-center shadow-[0_0_15px_hsl(var(--neon-pink)/0.2)]">
+            <Brain className="w-5 h-5 text-neon-pink" />
           </div>
           <div className="flex-1">
-            <span className="font-display text-[10px] tracking-[0.15em] font-bold text-neon-pink uppercase">Log de Aprendizado</span>
-            <div className="text-[7px] text-muted-foreground/50 font-mono">Análise em tempo real</div>
+            <div className="flex items-center gap-2">
+              <span className="font-display text-xs tracking-[0.15em] font-bold text-neon-pink uppercase">Log de Aprendizado</span>
+              {scanning && (
+                <motion.div
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-neon-cyan/10 border border-neon-cyan/15"
+                >
+                  <Sparkles className="w-2.5 h-2.5 text-neon-cyan" />
+                  <span className="text-[7px] text-neon-cyan font-bold">SCANNING</span>
+                </motion.div>
+              )}
+            </div>
+            <div className="text-[8px] text-muted-foreground/50 font-mono mt-0.5">Análise em tempo real • {logs.length} entradas</div>
           </div>
-          {scanning && <Activity className="w-3.5 h-3.5 text-neon-cyan animate-pulse" />}
-          {!scanning && <span className="text-[7px] text-muted-foreground/40 font-mono">{logs.length} entradas</span>}
+          {!scanning && <Activity className="w-3.5 h-3.5 text-muted-foreground/25" />}
         </div>
       </div>
 
       <div className="px-4 pb-4">
 
       {/* Scan progress bar */}
-      <div className="w-full h-1 bg-background/30 rounded-full overflow-hidden mb-2.5 border border-border/10">
+      <div className="w-full h-1.5 bg-background/20 rounded-full overflow-hidden mb-3 border border-border/10 relative">
         <motion.div
-          className="h-full bg-gradient-to-r from-neon-cyan to-neon-pink rounded-full"
+          className="h-full bg-gradient-to-r from-neon-cyan via-neon-pink to-neon-purple rounded-full"
           animate={{ width: `${scanProgress}%` }}
           transition={{ duration: 0.3 }}
         />
+        {scanning && (
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer bg-[length:200%_100%]" />
+        )}
       </div>
 
       {/* Log entries */}
-      <div ref={scrollRef} className="space-y-1 max-h-[220px] overflow-y-auto scrollbar-thin pr-1">
+      <div ref={scrollRef} className="space-y-1 max-h-[240px] overflow-y-auto scrollbar-thin pr-1">
         <AnimatePresence initial={false}>
-          {logs.map(log => (
-            <motion.div
-              key={log.id}
-              initial={{ opacity: 0, x: -10, height: 0 }}
-              animate={{ opacity: 1, x: 0, height: 'auto' }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex items-start gap-1.5 py-0.5"
-            >
-              <span className="text-[8px] shrink-0 mt-0.5">{typeIcons[log.type]}</span>
-              <span className="text-[7px] font-mono text-muted-foreground/30 shrink-0 mt-0.5">
-                {log.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-              </span>
-              <span className={`text-[9px] leading-tight ${typeStyles[log.type]}`}>
-                "{log.text}"
-              </span>
-            </motion.div>
-          ))}
+          {logs.map(log => {
+            const style = typeStyles[log.type];
+            return (
+              <motion.div
+                key={log.id}
+                initial={{ opacity: 0, x: -10, height: 0 }}
+                animate={{ opacity: 1, x: 0, height: 'auto' }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className={`flex items-start gap-2 py-1.5 px-2 rounded-lg border ${style.bg} ${style.border}`}
+              >
+                <span className="text-[9px] shrink-0 mt-0.5">{typeIcons[log.type]}</span>
+                <span className="text-[7px] font-mono text-muted-foreground/30 shrink-0 mt-0.5">
+                  {log.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+                <span className={`text-[9px] leading-tight ${style.text}`}>
+                  {log.text}
+                </span>
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
         {logs.length === 0 && (
-          <div className="text-[9px] text-muted-foreground/30 italic py-2 text-center">Aguardando próximo giro...</div>
+          <div className="text-center py-6">
+            <div className="w-10 h-10 rounded-xl glass border border-border/15 flex items-center justify-center mx-auto mb-2">
+              <Brain className="w-5 h-5 text-muted-foreground/15" />
+            </div>
+            <div className="text-[9px] text-muted-foreground/30 italic">Aguardando próximo giro...</div>
+          </div>
         )}
         </div>
       </div>

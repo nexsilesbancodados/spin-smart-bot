@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingDown, TrendingUp, Flame, Snowflake } from 'lucide-react';
+import { TrendingDown, TrendingUp, Flame, Snowflake, BarChart3 } from 'lucide-react';
 
 const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 const VOISINS = new Set([22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25]);
@@ -94,12 +94,15 @@ const LiveStatsBar = memo(({ allNumbers }: Props) => {
         <div className="glass rounded-2xl overflow-hidden border border-border/20">
           <div className="relative px-4 pt-3.5 pb-2.5">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/3 via-transparent to-transparent" />
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent" />
             <div className="relative flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-blue-500/10 border border-blue-500/15 flex items-center justify-center">
-                <TrendingDown className="w-3.5 h-3.5 text-blue-400" />
+              <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/15 flex items-center justify-center shadow-[0_0_10px_rgba(59,130,246,0.1)]">
+                <TrendingDown className="w-4 h-4 text-blue-400" />
               </div>
-              <span className="text-[9px] font-display font-bold text-foreground uppercase tracking-[0.15em]">Atraso (Gap)</span>
-              <span className="text-[7px] text-muted-foreground/40 ml-auto font-mono">σ = desvio padrão</span>
+              <div className="flex-1">
+                <span className="text-[10px] font-display font-bold text-foreground uppercase tracking-[0.15em]">Atraso (Gap)</span>
+                <div className="text-[7px] text-muted-foreground/40 font-mono">Desvio padrão σ</div>
+              </div>
             </div>
           </div>
           <div className="px-4 pb-3.5">
@@ -110,7 +113,7 @@ const LiveStatsBar = memo(({ allNumbers }: Props) => {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.05 }}
-                  className={`px-3 py-2 rounded-xl border text-[9px] font-bold flex items-center gap-2 backdrop-blur-sm ${
+                  className={`px-3 py-2 rounded-xl border text-[9px] font-bold flex items-center gap-2 backdrop-blur-sm transition-all hover:scale-[1.02] ${
                     g.status === 'cold'
                       ? 'glass border-blue-500/20 text-blue-400'
                       : g.status === 'hot'
@@ -120,10 +123,10 @@ const LiveStatsBar = memo(({ allNumbers }: Props) => {
                 >
                   <span>{g.emoji}</span>
                   <span>{g.label}</span>
-                  <span className="font-mono text-[8px] bg-background/40 px-1.5 py-0.5 rounded-lg">{g.gap}g</span>
+                  <span className="font-mono text-[8px] bg-background/30 px-1.5 py-0.5 rounded-lg border border-border/10">{g.gap}g</span>
                   {Math.abs(g.sigma) >= 1.5 && (
                     <span className={`text-[7px] font-mono px-1.5 py-0.5 rounded-lg ${
-                      g.sigma > 2 ? 'bg-blue-500/15 text-blue-300' : 'bg-gold/10 text-gold'
+                      g.sigma > 2 ? 'bg-blue-500/15 text-blue-300 border border-blue-500/10' : 'bg-gold/10 text-gold border border-gold/10'
                     }`}>
                       {g.sigma > 0 ? '+' : ''}{g.sigma}σ
                     </span>
@@ -140,21 +143,31 @@ const LiveStatsBar = memo(({ allNumbers }: Props) => {
         <div className="glass rounded-2xl overflow-hidden border border-border/20">
           <div className="relative px-4 pt-3.5 pb-2.5">
             <div className="absolute inset-0 bg-gradient-to-r from-primary/3 via-transparent to-transparent" />
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
             <div className="relative flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center">
-                <TrendingUp className="w-3.5 h-3.5 text-primary" />
+              <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center shadow-[0_0_10px_hsl(var(--primary)/0.1)]">
+                <TrendingUp className="w-4 h-4 text-primary" />
               </div>
-              <span className="text-[9px] font-display font-bold text-foreground uppercase tracking-[0.15em]">Tendências (20 giros)</span>
+              <div className="flex-1">
+                <span className="text-[10px] font-display font-bold text-foreground uppercase tracking-[0.15em]">Tendências</span>
+                <div className="text-[7px] text-muted-foreground/40 font-mono">Últimos 20 giros</div>
+              </div>
             </div>
           </div>
           <div className="px-4 pb-3.5">
             <div className="flex flex-wrap gap-1.5">
               {stats.trends.map((t, i) => (
-                <div key={i} className="px-3 py-2 rounded-xl glass border border-primary/15 text-[9px] font-bold text-primary flex items-center gap-2">
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="px-3 py-2 rounded-xl glass border border-primary/15 text-[9px] font-bold text-primary flex items-center gap-2 hover:scale-[1.02] transition-all"
+                >
                   <span className="text-xs">{t.direction === 'up' ? '↑' : '→'}</span>
                   <span>{t.label}</span>
-                  <span className="text-[8px] text-primary/60 font-mono bg-primary/8 px-1.5 py-0.5 rounded-lg">{t.ratio}</span>
-                </div>
+                  <span className="text-[8px] text-primary/60 font-mono bg-primary/8 px-1.5 py-0.5 rounded-lg border border-primary/10">{t.ratio}</span>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -167,17 +180,24 @@ const LiveStatsBar = memo(({ allNumbers }: Props) => {
           <div className="glass rounded-2xl overflow-hidden border border-border/20">
             <div className="relative px-4 pt-3.5 pb-2.5">
               <div className="absolute inset-0 bg-gradient-to-r from-gold/4 via-transparent to-transparent" />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
               <div className="relative flex items-center gap-1.5">
-                <Flame className="w-3.5 h-3.5 text-gold" />
+                <Flame className="w-4 h-4 text-gold" />
                 <span className="text-[9px] font-display font-bold text-gold uppercase tracking-wider">Quentes</span>
               </div>
             </div>
             <div className="px-4 pb-3.5">
               <div className="flex flex-wrap gap-1.5">
-                {stats.hotNums.map(h => (
-                  <div key={h.num} className={`w-10 h-10 rounded-xl text-[11px] font-black text-white flex items-center justify-center ring-1 ring-gold/40 shadow-sm shadow-gold/15 ${numBg(h.num)}`}>
+                {stats.hotNums.map((h, i) => (
+                  <motion.div
+                    key={h.num}
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: i * 0.05 }}
+                    className={`w-10 h-10 rounded-xl text-[11px] font-black text-white flex items-center justify-center ring-1 ring-gold/40 shadow-sm shadow-gold/15 ${numBg(h.num)}`}
+                  >
                     {h.num}
-                  </div>
+                  </motion.div>
                 ))}
               </div>
               <div className="text-[7px] text-muted-foreground/40 mt-2 font-mono">
@@ -190,17 +210,24 @@ const LiveStatsBar = memo(({ allNumbers }: Props) => {
           <div className="glass rounded-2xl overflow-hidden border border-border/20">
             <div className="relative px-4 pt-3.5 pb-2.5">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500/3 via-transparent to-transparent" />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/15 to-transparent" />
               <div className="relative flex items-center gap-1.5">
-                <Snowflake className="w-3.5 h-3.5 text-blue-400" />
+                <Snowflake className="w-4 h-4 text-blue-400" />
                 <span className="text-[9px] font-display font-bold text-blue-400 uppercase tracking-wider">Frios</span>
               </div>
             </div>
             <div className="px-4 pb-3.5">
               <div className="flex flex-wrap gap-1.5">
-                {stats.coldNums.map(c => (
-                  <div key={c.num} className={`w-10 h-10 rounded-xl text-[11px] font-black text-white flex items-center justify-center opacity-45 ring-1 ring-blue-400/30 ${numBg(c.num)}`}>
+                {stats.coldNums.map((c, i) => (
+                  <motion.div
+                    key={c.num}
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: i * 0.05 }}
+                    className={`w-10 h-10 rounded-xl text-[11px] font-black text-white flex items-center justify-center opacity-45 ring-1 ring-blue-400/30 ${numBg(c.num)}`}
+                  >
                     {c.num}
-                  </div>
+                  </motion.div>
                 ))}
               </div>
               <div className="text-[7px] text-muted-foreground/40 mt-2 font-mono">
