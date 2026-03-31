@@ -785,34 +785,45 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           )}
         </div>
 
-        {/* Action buttons */}
+        {/* Action buttons — premium */}
         <div className="flex gap-2.5 pt-1">
-          <motion.div className="flex-1" whileHover={{ scale: canBet ? 1.01 : 1 }} whileTap={{ scale: canBet ? 0.98 : 1 }}>
+          <motion.div className="flex-1" whileHover={{ scale: canBet ? 1.01 : 1 }} whileTap={{ scale: canBet ? 0.95 : 1 }}>
             <Button
               onClick={placeBet}
               disabled={!canBet}
-              className={`w-full h-12 font-bold tracking-wider text-sm rounded-xl transition-all font-display ${
+              className={`w-full h-14 font-bold tracking-wider text-sm rounded-2xl transition-all font-display relative overflow-hidden ${
                 canBet
-                  ? 'bg-gradient-to-r from-primary via-pink-500 to-primary hover:opacity-90 text-primary-foreground shadow-[0_4px_20px_hsl(var(--primary)/0.25)]'
+                  ? 'bg-gradient-to-r from-primary via-neon-pink to-primary text-primary-foreground shadow-[0_6px_30px_hsl(var(--primary)/0.3)]'
                   : 'bg-secondary/60 text-muted-foreground/50 border border-border/10'
               }`}
             >
-              <Zap className="w-4 h-4 mr-1.5" />
-              {stats.waitingResult ? 'AGUARDANDO...' : !hasSignal ? 'SEM SINAL' : 'APOSTAR AGORA'}
+              {canBet && (
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                  animate={{ x: ['-100%', '200%'] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
+                />
+              )}
+              <span className="relative flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                <span className="text-[13px]">
+                  {stats.waitingResult ? '⏳ AGUARDANDO...' : !hasSignal ? 'SEM SINAL' : 'APOSTAR AGORA'}
+                </span>
+              </span>
             </Button>
           </motion.div>
 
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.93 }}>
             <Button
               onClick={toggleAutoBet}
-              className={`px-5 h-12 font-bold tracking-wider text-sm rounded-xl transition-all font-display ${
+              className={`px-6 h-14 font-bold tracking-wider text-sm rounded-2xl transition-all font-display relative overflow-hidden ${
                 config.enabled
-                  ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-[0_4px_15px_rgba(239,68,68,0.2)]'
-                  : 'bg-gradient-to-r from-neon-green/80 to-emerald-500 hover:opacity-90 text-white shadow-[0_4px_15px_hsl(var(--neon-green)/0.2)]'
+                  ? 'bg-gradient-to-r from-destructive to-red-600 text-destructive-foreground shadow-[0_6px_20px_rgba(239,68,68,0.3)]'
+                  : 'bg-gradient-to-r from-neon-green to-emerald-500 text-white shadow-[0_6px_20px_hsl(var(--neon-green)/0.3)]'
               }`}
             >
-              {config.enabled ? <Square className="w-4 h-4 mr-1.5" /> : <Play className="w-4 h-4 mr-1.5" />}
-              {config.enabled ? 'PARAR' : 'AUTO'}
+              {config.enabled ? <Square className="w-5 h-5 mr-1.5" /> : <Play className="w-5 h-5 mr-1.5" />}
+              <span className="text-[13px]">{config.enabled ? 'STOP' : 'AUTO'}</span>
             </Button>
           </motion.div>
         </div>
