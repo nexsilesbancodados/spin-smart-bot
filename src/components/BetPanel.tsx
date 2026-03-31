@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Zap, Play, Square, TrendingUp, TrendingDown, DollarSign, 
@@ -65,7 +65,7 @@ const MANUAL_BET_TYPES = [
   { id: 'col3', label: 'Col 3', desc: '3,6,9...36', numbers: [3,6,9,12,15,18,21,24,27,30,33,36] },
 ];
 
-const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
+const BetPanel = memo(({ sniperData, allNumbers }: BetPanelProps) => {
   const [config, setConfig] = useState<AutoBetState>({
     enabled: false,
     betValue: 1,
@@ -874,6 +874,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
       </div>
     </motion.div>
   );
-};
+});
 
+BetPanel.displayName = 'BetPanel';
 export default BetPanel;
