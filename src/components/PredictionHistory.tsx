@@ -50,7 +50,7 @@ const STRATEGY_FRIENDLY: Record<string, string> = {
 
 type TabType = 'resumo' | 'todos' | 'acertos' | 'erros' | 'estrategias';
 
-const PredictionHistory = () => {
+const PredictionHistory = memo(() => {
   const [predictions, setPredictions] = useState<PredictionRecord[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('resumo');
   const [expandedId, setExpandedId] = useState<string | null>(null);
