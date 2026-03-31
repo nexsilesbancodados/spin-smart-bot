@@ -966,10 +966,15 @@ const Index = () => {
           <div className="space-y-4">
 
             {/* Terminal Bias */}
-            <div className="bg-card rounded-xl border border-border p-4">
-              <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-wider mb-3">
-                Terminal Bias (últimos 200)
-              </h3>
+            <div className="glass rounded-xl border border-border/20 p-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gold/15 to-amber-500/10 border border-gold/20 flex items-center justify-center shadow-[0_0_8px_hsl(var(--gold)/0.15)]">
+                  <span className="text-sm">🔢</span>
+                </div>
+                <h3 className="text-[10px] font-black text-gold uppercase tracking-[0.15em]">
+                  Terminal Bias <span className="text-muted-foreground/40 font-normal">(200)</span>
+                </h3>
+              </div>
               <div className="flex items-end gap-1.5" style={{ height: 80 }}>
                 {Array.from({ length: 10 }, (_, t) => {
                   const cnt = allNumbers.slice(0,200).filter(n => n%10===t).length;
@@ -980,20 +985,20 @@ const Index = () => {
                   return (
                     <div key={t} className="flex-1 flex flex-col items-center gap-0.5">
                       {Math.abs(bias) > 20 && (
-                        <div className={`text-[6px] font-mono font-bold ${bias>0?'text-amber-400':'text-blue-400'}`}>
+                        <div className={`text-[6px] font-mono font-bold ${bias>0?'text-gold':'text-neon-cyan'}`}>
                           {bias>0?'+':''}{bias.toFixed(0)}%
                         </div>
                       )}
                       <div className="w-full flex items-end" style={{ flex: 1 }}>
                         <div
                           className={`w-full rounded-t transition-all ${
-                            bias > 50 ? 'bg-amber-500' : bias > 20 ? 'bg-primary/70' : bias < -30 ? 'bg-blue-500/40' : 'bg-muted-foreground/30'
+                            bias > 50 ? 'bg-gradient-to-t from-gold to-amber-400 shadow-[0_0_6px_hsl(var(--gold)/0.3)]' : bias > 20 ? 'bg-primary/70' : bias < -30 ? 'bg-neon-cyan/40' : 'bg-muted-foreground/20'
                           }`}
                           style={{ height: `${Math.max(4, pct)}%`, minHeight: 4 }}
                         />
                       </div>
-                      <div className="text-[7px] font-mono font-bold text-foreground">T{t}</div>
-                      <div className="text-[6px] text-muted-foreground">{cnt}</div>
+                      <div className="text-[7px] font-mono font-bold text-foreground/80">T{t}</div>
+                      <div className="text-[6px] text-muted-foreground/40">{cnt}</div>
                     </div>
                   );
                 })}
@@ -1001,12 +1006,15 @@ const Index = () => {
             </div>
 
             {/* Frequência numérica — grid 37 números */}
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Frequência (500 giros)</h3>
-                <div className="flex items-center gap-2 ml-auto text-[7px] text-muted-foreground">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block"/>quente</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block"/>frio</span>
+            <div className="glass rounded-xl border border-border/20 p-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-neon-cyan/15 to-neon-pink/10 border border-neon-cyan/20 flex items-center justify-center shadow-neon-cyan">
+                  <span className="text-sm">📊</span>
+                </div>
+                <h3 className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.15em]">Frequência <span className="text-muted-foreground/40 font-normal">(500)</span></h3>
+                <div className="flex items-center gap-2 ml-auto text-[7px] text-muted-foreground/50">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gold inline-block shadow-[0_0_4px_hsl(var(--gold)/0.4)]"/>quente</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-neon-cyan inline-block shadow-neon-cyan"/>frio</span>
                 </div>
               </div>
               <div className="grid grid-cols-9 gap-1">
@@ -1022,31 +1030,34 @@ const Index = () => {
                       onClick={() => { setDnaNumber(n); setDnaOpen(true); }}
                       title={`${n}: ${cnt}×`}
                       className={`h-8 rounded-md text-[9px] font-black text-white transition-all hover:scale-110 relative ${numBg(n)} ${
-                        hot ? 'ring-1 ring-amber-400' : cold ? 'ring-1 ring-blue-400/60' : ''
+                        hot ? 'ring-1 ring-gold shadow-[0_0_6px_hsl(var(--gold)/0.3)]' : cold ? 'ring-1 ring-neon-cyan/60 shadow-neon-cyan' : ''
                       }`}
                       style={{ opacity: op }}
                     >
                       {n}
                       {(hot || cnt === 0) && (
-                        <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${hot ? 'bg-amber-400' : 'bg-blue-400'}`} />
+                        <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${hot ? 'bg-gold shadow-[0_0_4px_hsl(var(--gold)/0.5)]' : 'bg-neon-cyan shadow-neon-cyan'}`} />
                       )}
                     </button>
                   );
                 })}
               </div>
-              <div className="mt-2 text-[7px] text-muted-foreground text-center">Toque em qualquer número para análise completa (DNA)</div>
+              <div className="mt-2.5 text-[7px] text-muted-foreground/30 text-center font-mono">Toque em qualquer número para DNA completo</div>
             </div>
 
             {/* Histórico sequencial */}
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Histórico</h3>
+            <div className="glass rounded-xl border border-border/20 p-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-neon-pink/15 to-purple-500/10 border border-neon-pink/20 flex items-center justify-center shadow-neon-pink">
+                  <span className="text-sm">📜</span>
+                </div>
+                <h3 className="text-[10px] font-black text-neon-pink uppercase tracking-[0.15em]">Histórico</h3>
                 <div className="flex gap-1 ml-auto">
                   {[50, 100, 200, 500].map(lim => (
                     <button key={lim}
                       onClick={() => startTransition(() => { setHistoryLimit(lim); setSelectedNum(null); })}
-                      className={`px-2 py-0.5 rounded text-[7px] font-bold transition-all ${
-                        historyLimit === lim ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'
+                      className={`px-2 py-0.5 rounded text-[7px] font-bold transition-all border ${
+                        historyLimit === lim ? 'bg-neon-pink/15 text-neon-pink border-neon-pink/25' : 'bg-background/20 text-muted-foreground/50 border-border/10 hover:text-foreground'
                       }`}>
                       {lim}
                     </button>
@@ -1055,17 +1066,17 @@ const Index = () => {
               </div>
 
               {selectedNum !== null && (
-                <div className="mb-2 flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/40 border border-border/30">
+                <div className="mb-2.5 flex items-center gap-2 px-2.5 py-1.5 rounded-lg glass border border-primary/15">
                   <div className={`w-6 h-6 rounded text-[9px] font-black text-white flex items-center justify-center ${numBg(selectedNum)}`}>{selectedNum}</div>
-                  <span className="text-[8px] text-muted-foreground">
+                  <span className="text-[8px] text-muted-foreground/60">
                     apareceu <b className="text-foreground">{allNumbers.slice(0, historyLimit).filter(n => n === selectedNum).length}×</b> em {historyLimit} giros
                   </span>
-                  <button onClick={() => setSelectedNum(null)} className="ml-auto text-[8px] text-muted-foreground hover:text-foreground">✕</button>
+                  <button onClick={() => setSelectedNum(null)} className="ml-auto text-[8px] text-muted-foreground/40 hover:text-foreground">✕</button>
                 </div>
               )}
 
               {historySlice.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground text-xs">Aguardando dados...</div>
+                <div className="text-center py-6 text-muted-foreground/40 text-xs">Aguardando dados...</div>
               ) : (
                 <div className="flex flex-wrap gap-1">
                   {historySlice.map((n, i) => (
@@ -1073,9 +1084,9 @@ const Index = () => {
                       key={i}
                       onClick={() => setSelectedNum(selectedNum === n ? null : n)}
                       className={`w-7 h-7 rounded text-[9px] font-bold text-white flex items-center justify-center transition-all ${numBg(n)} ${
-                        i === 0 ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''
-                      } ${selectedNum === n ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-background scale-110 z-10' : ''}
-                      ${selectedNum !== null && selectedNum !== n ? 'opacity-25' : ''}`}
+                        i === 0 ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background shadow-neon-cyan' : ''
+                      } ${selectedNum === n ? 'ring-2 ring-gold ring-offset-1 ring-offset-background scale-110 z-10 shadow-[0_0_8px_hsl(var(--gold)/0.3)]' : ''}
+                      ${selectedNum !== null && selectedNum !== n ? 'opacity-20' : ''}`}
                     >{n}</button>
                   ))}
                 </div>
@@ -1194,23 +1205,27 @@ const PatternsTab = memo(({ allNumbers, sniperData, streakNum, streakLen, streak
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: i * 0.04 }}
-          className={`flex items-start gap-3 p-3.5 rounded-xl border ${
-            p.type === 'hot' ? 'bg-amber-500/8 border-amber-500/25' :
-            p.type === 'cold' ? 'bg-blue-500/8 border-blue-500/25' :
-            'bg-card border-border'
+          className={`glass flex items-start gap-3 p-3.5 rounded-xl border backdrop-blur-sm ${
+            p.type === 'hot' ? 'bg-gold/5 border-gold/20 shadow-[0_0_8px_hsl(var(--gold)/0.08)]' :
+            p.type === 'cold' ? 'bg-neon-cyan/5 border-neon-cyan/20 shadow-neon-cyan' :
+            'border-border/15'
           }`}
         >
-          <span className="text-xl shrink-0 mt-0.5">{p.emoji}</span>
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 border backdrop-blur-sm ${
+            p.type === 'hot' ? 'bg-gold/10 border-gold/20' :
+            p.type === 'cold' ? 'bg-neon-cyan/10 border-neon-cyan/20' :
+            'bg-background/20 border-border/15'
+          }`}>{p.emoji}</div>
           <div className="flex-1 min-w-0">
             <div className={`text-[10px] font-black leading-snug ${
-              p.type === 'hot' ? 'text-amber-400' : p.type === 'cold' ? 'text-blue-400' : 'text-foreground'
+              p.type === 'hot' ? 'text-gold' : p.type === 'cold' ? 'text-neon-cyan' : 'text-foreground/80'
             }`}>{p.title}</div>
-            <p className="text-[8px] text-muted-foreground mt-1 leading-relaxed">{p.detail}</p>
+            <p className="text-[8px] text-muted-foreground/50 mt-1 leading-relaxed">{p.detail}</p>
           </div>
-          <div className={`shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-            p.conf >= 80 ? 'bg-green-500/20 text-green-400' :
-            p.conf >= 60 ? 'bg-amber-500/20 text-amber-400' :
-            'bg-secondary text-muted-foreground'
+          <div className={`shrink-0 text-[9px] font-black px-2 py-0.5 rounded-full border backdrop-blur-sm ${
+            p.conf >= 80 ? 'bg-neon-green/10 text-neon-green border-neon-green/20' :
+            p.conf >= 60 ? 'bg-gold/10 text-gold border-gold/20' :
+            'bg-background/15 text-muted-foreground/50 border-border/15'
           }`}>{p.conf}%</div>
         </motion.div>
       ))}
@@ -1241,31 +1256,31 @@ const IATab = memo(({ sniperData }: { sniperData: any }) => {
 
       {/* Veredito do Juiz Supremo */}
       {ai.suggestedBet && (
-        <div className="bg-violet-500/8 rounded-xl border border-violet-500/25 p-4">
+        <div className="glass rounded-xl border border-neon-purple/20 p-4 shadow-[0_0_12px_rgba(168,85,247,0.08)]">
           <div className="flex items-center gap-2 mb-2.5">
-            <div className="w-7 h-7 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-purple/20 to-neon-pink/10 border border-neon-purple/25 flex items-center justify-center shadow-[0_0_8px_rgba(168,85,247,0.2)]">
               <span className="text-sm">⚖️</span>
             </div>
             <div className="flex-1">
-              <div className="text-[9px] font-black text-violet-400 uppercase tracking-wide">Juiz Supremo</div>
-              <div className="text-[7px] text-violet-300/60">{ai.confidence}% confiança</div>
+              <div className="text-[10px] font-black text-neon-purple uppercase tracking-[0.15em]">Juiz Supremo</div>
+              <div className="text-[7px] text-neon-purple/50 font-mono">{ai.confidence}% confiança</div>
             </div>
             {ai.consensus > 0 && (
-              <span className="text-[8px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-bold border border-violet-500/30">
+              <span className="text-[8px] px-2 py-0.5 rounded-full bg-neon-purple/10 text-neon-purple font-bold border border-neon-purple/20">
                 {ai.consensus} consensos
               </span>
             )}
           </div>
-          <p className="text-[8px] text-foreground/80 leading-relaxed">{ai.suggestedBet?.slice(0, 300)}</p>
+          <p className="text-[8px] text-foreground/70 leading-relaxed">{ai.suggestedBet?.slice(0, 300)}</p>
           {ai.patternIdentified && (
-            <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-secondary/50 border border-border/30">
-              <p className="text-[7px] text-muted-foreground">🔍 {ai.patternIdentified?.slice(0, 120)}</p>
+            <div className="mt-2 px-2.5 py-1.5 rounded-lg glass border border-border/15">
+              <p className="text-[7px] text-muted-foreground/60">🔍 {ai.patternIdentified?.slice(0, 120)}</p>
             </div>
           )}
           {ai.marketAnalysis?.bestMarket && (
-            <div className="mt-2 flex items-center gap-2 px-2 py-1.5 rounded-lg bg-emerald-500/8 border border-emerald-500/20">
-              <span className="text-[9px] font-bold text-emerald-400">📈 Melhor mercado: {ai.marketAnalysis.bestMarket}</span>
-              <span className="text-[7px] text-muted-foreground ml-auto">{ai.marketAnalysis.marketConfidence}% conf.</span>
+            <div className="mt-2 flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-neon-green/5 border border-neon-green/15">
+              <span className="text-[9px] font-bold text-neon-green">📈 Melhor mercado: {ai.marketAnalysis.bestMarket}</span>
+              <span className="text-[7px] text-muted-foreground/40 ml-auto font-mono">{ai.marketAnalysis.marketConfidence}%</span>
             </div>
           )}
         </div>
@@ -1273,26 +1288,31 @@ const IATab = memo(({ sniperData }: { sniperData: any }) => {
 
       {/* Top candidatos */}
       {topCands.length > 0 && (
-        <div className="bg-card rounded-xl border border-border p-4">
-          <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-wider mb-3">Top Candidatos</h3>
+        <div className="glass rounded-xl border border-border/20 p-4">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary/15 to-neon-pink/10 border border-primary/20 flex items-center justify-center shadow-neon-cyan">
+              <span className="text-sm">🏆</span>
+            </div>
+            <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.15em]">Top Candidatos</h3>
+          </div>
           <div className="space-y-2">
             {topCands.slice(0, 7).map((c: any, i: number) => {
               const max = topCands[0]?.score || 1;
               return (
                 <div key={c.num} className="flex items-center gap-2.5">
-                  <div className={`w-8 h-8 rounded-lg text-[11px] font-black text-white flex items-center justify-center shrink-0 ${numBg(c.num)} ${i === 0 ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background' : ''}`}>
+                  <div className={`w-8 h-8 rounded-lg text-[11px] font-black text-white flex items-center justify-center shrink-0 ${numBg(c.num)} ${i === 0 ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background shadow-neon-cyan' : ''}`}>
                     {c.num}
                   </div>
                   <div className="flex-1">
-                    <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all ${i === 0 ? 'bg-primary' : i <= 2 ? 'bg-primary/60' : 'bg-muted-foreground/40'}`}
+                    <div className="h-1.5 bg-background/20 rounded-full overflow-hidden border border-border/10">
+                      <div className={`h-full rounded-full transition-all ${i === 0 ? 'bg-gradient-to-r from-primary to-neon-pink shadow-neon-cyan' : i <= 2 ? 'bg-primary/60' : 'bg-muted-foreground/30'}`}
                         style={{ width: `${(c.score/max)*100}%` }} />
                     </div>
                     {c.reasons && (
-                      <p className="text-[6px] text-muted-foreground mt-0.5 truncate">{c.reasons.slice(0,4).join(' · ')}</p>
+                      <p className="text-[6px] text-muted-foreground/40 mt-0.5 truncate">{c.reasons.slice(0,4).join(' · ')}</p>
                     )}
                   </div>
-                  <span className="text-[8px] font-mono text-muted-foreground shrink-0 w-10 text-right">{c.score?.toFixed(0)}</span>
+                  <span className="text-[8px] font-mono text-muted-foreground/50 shrink-0 w-10 text-right">{c.score?.toFixed(0)}</span>
                 </div>
               );
             })}
@@ -1302,13 +1322,13 @@ const IATab = memo(({ sniperData }: { sniperData: any }) => {
 
       {/* Layer scores */}
       {layers.total !== undefined && (
-        <div className="bg-card rounded-xl border border-border p-4">
+        <div className="glass rounded-xl border border-border/20 p-4">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Score Total</h3>
+            <h3 className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.15em]">Score Total</h3>
             <span className="text-[11px] font-black font-mono text-primary">{layers.total} / {layers.max}</span>
           </div>
-          <div className="h-2 bg-secondary rounded-full overflow-hidden mb-3">
-            <div className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
+          <div className="h-2 bg-background/20 rounded-full overflow-hidden mb-3 border border-border/10">
+            <div className="h-full bg-gradient-to-r from-primary via-neon-pink to-neon-purple rounded-full shadow-neon-cyan"
               style={{ width: `${(layers.total/layers.max)*100}%` }} />
           </div>
           <div className="grid grid-cols-2 gap-1.5">
@@ -1316,12 +1336,12 @@ const IATab = memo(({ sniperData }: { sniperData: any }) => {
               .filter(([k, v]) => k.startsWith('bloco') && typeof v === 'object' && (v as any).label)
               .map(([k, v]: [string, any]) => (
                 <div key={k} className="flex items-center gap-1.5">
-                  <div className="w-1 h-5 rounded-full shrink-0 overflow-hidden bg-secondary">
-                    <div className={`w-full rounded-full ${v.score/v.max > 0.7 ? 'bg-green-500' : v.score/v.max > 0.4 ? 'bg-amber-500' : 'bg-red-500/50'}`}
+                  <div className="w-1 h-5 rounded-full shrink-0 overflow-hidden bg-background/20">
+                    <div className={`w-full rounded-full ${v.score/v.max > 0.7 ? 'bg-neon-green' : v.score/v.max > 0.4 ? 'bg-gold' : 'bg-destructive/50'}`}
                       style={{ height: `${(v.score/(v.max||1))*100}%` }} />
                   </div>
-                  <span className="text-[7px] text-muted-foreground truncate flex-1">{v.label}</span>
-                  <span className="text-[7px] font-mono text-muted-foreground shrink-0">{v.score}</span>
+                  <span className="text-[7px] text-muted-foreground/50 truncate flex-1">{v.label}</span>
+                  <span className="text-[7px] font-mono text-muted-foreground/40 shrink-0">{v.score}</span>
                 </div>
               ))}
           </div>
@@ -1330,21 +1350,26 @@ const IATab = memo(({ sniperData }: { sniperData: any }) => {
 
       {/* Fidelidade de padrões */}
       {patterns.length > 0 && (
-        <div className="bg-card rounded-xl border border-border p-4">
-          <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-wider mb-3">Fidelidade de Padrões</h3>
-          <div className="space-y-1.5 max-h-56 overflow-y-auto">
+        <div className="glass rounded-xl border border-border/20 p-4">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gold/15 to-amber-500/10 border border-gold/20 flex items-center justify-center">
+              <span className="text-sm">🎯</span>
+            </div>
+            <h3 className="text-[10px] font-black text-gold uppercase tracking-[0.15em]">Fidelidade de Padrões</h3>
+          </div>
+          <div className="space-y-1.5 max-h-56 overflow-y-auto scrollbar-thin">
             {[...patterns]
               .sort((a: any, b: any) => b.fidelity - a.fidelity)
               .slice(0, 15)
               .map((p: any, i: number) => (
               <div key={i} className="flex items-center gap-2">
                 <span className="text-[9px] shrink-0">{p.emoji}</span>
-                <span className="text-[7px] text-muted-foreground flex-1 truncate">{p.name}</span>
-                <div className="w-16 h-1 bg-secondary rounded-full overflow-hidden shrink-0">
-                  <div className={`h-full rounded-full ${p.fidelity >= 70 ? 'bg-green-500' : p.fidelity >= 40 ? 'bg-amber-500' : 'bg-red-500/50'}`}
+                <span className="text-[7px] text-muted-foreground/50 flex-1 truncate">{p.name}</span>
+                <div className="w-16 h-1.5 bg-background/20 rounded-full overflow-hidden shrink-0 border border-border/10">
+                  <div className={`h-full rounded-full ${p.fidelity >= 70 ? 'bg-neon-green' : p.fidelity >= 40 ? 'bg-gold' : 'bg-destructive/50'}`}
                     style={{ width: `${p.fidelity}%` }} />
                 </div>
-                <span className="text-[7px] font-mono text-muted-foreground w-8 text-right shrink-0">{p.fidelity}%</span>
+                <span className="text-[7px] font-mono text-muted-foreground/40 w-8 text-right shrink-0">{p.fidelity}%</span>
               </div>
             ))}
           </div>
@@ -1353,12 +1378,17 @@ const IATab = memo(({ sniperData }: { sniperData: any }) => {
 
       {/* Logs de aprendizado */}
       {learnings.length > 0 && (
-        <div className="bg-card rounded-xl border border-border p-4">
-          <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-wider mb-3">Log de Aprendizado ({learnings.length})</h3>
-          <div className="space-y-1.5 max-h-52 overflow-y-auto">
+        <div className="glass rounded-xl border border-border/20 p-4">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-neon-pink/15 to-purple-500/10 border border-neon-pink/20 flex items-center justify-center shadow-neon-pink">
+              <span className="text-sm">📝</span>
+            </div>
+            <h3 className="text-[10px] font-black text-neon-pink uppercase tracking-[0.15em]">Log de Aprendizado <span className="text-muted-foreground/30 font-normal">({learnings.length})</span></h3>
+          </div>
+          <div className="space-y-1.5 max-h-52 overflow-y-auto scrollbar-thin">
             {learnings.map((l: string, i: number) => (
-              <div key={i} className="px-2.5 py-1.5 rounded-lg bg-secondary/30 border border-border/20">
-                <span className="text-[8px] text-foreground/70 leading-snug">{l}</span>
+              <div key={i} className="px-2.5 py-1.5 rounded-lg glass border border-border/10">
+                <span className="text-[8px] text-foreground/60 leading-snug">{l}</span>
               </div>
             ))}
           </div>
@@ -1374,14 +1404,14 @@ IATab.displayName = 'IATab';
 const CollapsibleSection = memo(({ title, badge, isOpen, onToggle, children }: {
   title: string; badge?: string; isOpen: boolean; onToggle: () => void; children: React.ReactNode;
 }) => (
-  <div className="bg-card/80 rounded-xl border border-border/50 overflow-hidden backdrop-blur-sm">
+  <div className="glass rounded-xl border border-border/15 overflow-hidden">
     <button onClick={onToggle} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5 transition-all group">
       <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-        <ChevronDown className="w-4 h-4 text-primary/50 group-hover:text-primary transition-colors" />
+        <ChevronDown className="w-4 h-4 text-primary/40 group-hover:text-primary transition-colors" />
       </motion.div>
-      <span className="font-display text-[11px] tracking-[0.12em] font-bold text-primary/80 group-hover:text-primary transition-colors">{title}</span>
+      <span className="font-display text-[11px] tracking-[0.12em] font-bold text-primary/70 group-hover:text-primary transition-colors">{title}</span>
       {badge && (
-        <span className="text-[8px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/15 font-bold font-mono ml-auto">
+        <span className="text-[8px] px-2 py-0.5 rounded-full bg-primary/8 text-primary border border-primary/15 font-bold font-mono ml-auto">
           {badge}
         </span>
       )}
