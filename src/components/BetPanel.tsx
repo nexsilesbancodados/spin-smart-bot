@@ -596,40 +596,44 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
         {/* Stats grid */}
         <div className="grid grid-cols-4 gap-2">
-          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
-            <DollarSign className="w-3.5 h-3.5 text-muted-foreground/40 mx-auto mb-1" />
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
+            className={`glass rounded-xl p-2.5 text-center border transition-all ${stats.profit >= 0 ? 'border-neon-green/15' : 'border-destructive/15'}`}>
+            <DollarSign className="w-3.5 h-3.5 text-muted-foreground/30 mx-auto mb-1" />
             <p className={`font-bold text-base font-mono ${stats.profit >= 0 ? 'text-neon-green' : 'text-destructive'}`}>
               R${stats.profit.toFixed(2)}
             </p>
-            <span className="text-[7px] text-muted-foreground/40">Lucro</span>
-          </div>
-          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
-            <Target className="w-3.5 h-3.5 text-primary/50 mx-auto mb-1" />
+            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">LUCRO</span>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+            className="glass rounded-xl p-2.5 text-center border border-border/10 hover:border-primary/15 transition-all">
+            <Target className="w-3.5 h-3.5 text-primary/40 mx-auto mb-1" />
             <p className="font-bold text-base font-mono text-foreground/80">{winRate}%</p>
-            <span className="text-[7px] text-muted-foreground/40">Acerto</span>
-          </div>
-          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
-            <TrendingUp className="w-3.5 h-3.5 text-neon-green/50 mx-auto mb-1" />
+            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">ACERTO</span>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="glass rounded-xl p-2.5 text-center border border-neon-green/10 hover:border-neon-green/20 transition-all">
+            <TrendingUp className="w-3.5 h-3.5 text-neon-green/40 mx-auto mb-1" />
             <p className="font-bold text-base font-mono text-neon-green">{stats.wins}</p>
-            <span className="text-[7px] text-muted-foreground/40">Wins</span>
-          </div>
-          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
-            <TrendingDown className="w-3.5 h-3.5 text-destructive/50 mx-auto mb-1" />
+            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">WINS</span>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+            className="glass rounded-xl p-2.5 text-center border border-destructive/10 hover:border-destructive/20 transition-all">
+            <TrendingDown className="w-3.5 h-3.5 text-destructive/40 mx-auto mb-1" />
             <p className="font-bold text-base font-mono text-destructive">{stats.losses}</p>
-            <span className="text-[7px] text-muted-foreground/40">Losses</span>
-          </div>
+            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">LOSSES</span>
+          </motion.div>
         </div>
 
         {/* Current bet info */}
         <div className="flex items-center gap-2 text-[10px] px-1">
-          <span className="text-muted-foreground">Aposta atual:</span>
+          <span className="text-muted-foreground/50">Aposta:</span>
           <span className="font-bold text-primary font-mono">R${getCurrentBetAmount().toFixed(2)}</span>
           {config.useGale && stats.currentGaleStep > 0 && (
-            <span className="text-[8px] px-2 py-0.5 bg-gold/10 text-gold rounded-md font-bold border border-gold/20">
+            <span className="text-[8px] px-2 py-0.5 bg-[hsl(var(--gold))]/10 text-[hsl(var(--gold))] rounded-md font-bold border border-[hsl(var(--gold))]/20">
               GALE {stats.currentGaleStep}/{config.maxGaleSteps}
             </span>
           )}
-          <span className="text-muted-foreground/40 ml-auto">Total: {stats.totalBets}</span>
+          <span className="text-muted-foreground/30 ml-auto font-mono">Total: {stats.totalBets}</span>
         </div>
 
         {/* Waiting result */}
