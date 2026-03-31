@@ -4201,40 +4201,17 @@ Deno.serve(async (req) => {
         s += 3; r.push(`🟢 VizZero(${daniGreen.mod4.delay}r)`); signalFlags['P3'] = true;
       }
       
-      // VALIDATED MATRIX: dados reais ATUALIZADOS 500 giros — esta mesa específica
-      // Calculados em 2026-03-31 — auto-repetição DOMINANTE nesta mesa
-      const VALIDATED_MATRIX_STATIC: Record<number, {target: number; prob: number}[]> = {
-        1:  [{target:1,  prob:0.86}], // 12/14 — EXTREMO
-        25: [{target:25, prob:0.83}], // 54/65 — EXTREMO
-        24: [{target:24, prob:0.81}], // 13/16 — EXTREMO
-        29: [{target:29, prob:0.80}], // 32/40 — EXTREMO
-        28: [{target:28, prob:0.78}], // 7/9
-        4:  [{target:4,  prob:0.77}], // 23/30
-        26: [{target:26, prob:0.77}], // 23/30
-        27: [{target:27, prob:0.73}], // 16/22
-        35: [{target:35, prob:0.73}], // 16/22
-        18: [{target:18, prob:0.71}], // 10/14
-        8:  [{target:8,  prob:0.71}], // 12/17
-        21: [{target:21, prob:0.70}], // 14/20
-        17: [{target:17, prob:0.68}], // 15/22
-        33: [{target:33, prob:0.64}], // 7/11
-        34: [{target:34, prob:0.64}], // 7/11
-        5:  [{target:5,  prob:0.60}], // estimado por padrão
-        7:  [{target:7,  prob:0.58}], // T7 dominante
-        0:  [{target:0,  prob:0.52}], // Zero pressão
-        14: [{target:14, prob:0.50}], // histórico
-        2:  [{target:2,  prob:0.45}], // histórico
-      };
-      // Merge: dinâmica do banco prevalece sobre estática
+      // VALIDATED MATRIX: usar APENAS dados dinâmicos do banco (calibrate-constants)
+      // Auto-repetição real em roleta justa = 1/37 ≈ 2.7%. Não usar valores hardcoded inflados.
       const VALIDATED_MATRIX: Record<number, {target: number; prob: number}[]> = hasDynCalibration && Object.keys(dynMatrix).length >= 5
-        ? { ...VALIDATED_MATRIX_STATIC, ...dynMatrix }
-        : VALIDATED_MATRIX_STATIC;
+        ? dynMatrix
+        : {};
       const validatedPairs = VALIDATED_MATRIX[numbers[0]] || [];
       for (const vp of validatedPairs) {
-        if (vp.target === n) {
-          const validatedBoost = vp.prob * 12;
+        if (vp.target === n && vp.prob > 0.04) { // só usar se significativamente acima do aleatório (2.7%)
+          const validatedBoost = Math.min(4, vp.prob * 8); // cap boost para não inflar
           s += validatedBoost;
-          r.push(`✅ Matriz Real(${(vp.prob*100).toFixed(0)}%)`);
+          r.push(`✅ Matriz(${(vp.prob*100).toFixed(0)}%)`);
           signalFlags['VALIDATED'] = true;
         }
       }
