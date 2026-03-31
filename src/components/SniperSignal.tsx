@@ -69,7 +69,7 @@ const ANALYSIS_TYPES = [
   { value: 'pleno', emoji: '💎', label: 'Pleno' },
 ];
 
-const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers = [], autoLearnStatus, strategyFilter = 'all', setStrategyFilter }: Props) => {
+const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredResult, allNumbers = [], autoLearnStatus, strategyFilter = 'all', setStrategyFilter }: Props) => {
   const [showAnalysisSelector, setShowAnalysisSelector] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [reedCount, setReedCount] = useState(0);
