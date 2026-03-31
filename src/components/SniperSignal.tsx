@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, memo, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { Crosshair, AlertTriangle, Clock, ShieldCheck, Zap, Brain, TrendingUp, BookOpen, Target, Layers } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Crosshair, AlertTriangle, Clock, ShieldCheck, Zap, Brain, TrendingUp, BookOpen, Target, Layers, GraduationCap, Sparkles, BarChart3, Radar, ChevronDown, Activity } from 'lucide-react';
 
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 
@@ -8,10 +8,10 @@ const numColor = (n: number) =>
   n === 0 ? 'bg-emerald-600 text-white' : RED_NUMBERS.has(n) ? 'bg-red-600 text-white' : 'bg-zinc-800 text-white';
 
 const getActionLevel = (prob: number) => {
-  if (prob >= 85) return { label: '🔥 ENTRAR FORTE', color: 'text-neon-green', borderClass: 'border-neon-green/50' };
-  if (prob >= 65) return { label: '✅ ENTRAR', color: 'text-primary', borderClass: 'border-primary/40' };
-  if (prob >= 45) return { label: '⚠️ SINAL MODERADO', color: 'text-yellow-400', borderClass: 'border-yellow-400/30' };
-  return { label: '⏸ AGUARDAR', color: 'text-muted-foreground', borderClass: 'border-border' };
+  if (prob >= 85) return { label: '🔥 ENTRAR FORTE', color: 'text-neon-green', borderClass: 'border-neon-green/50', bg: 'bg-neon-green/5' };
+  if (prob >= 65) return { label: '✅ ENTRAR', color: 'text-primary', borderClass: 'border-primary/40', bg: 'bg-primary/5' };
+  if (prob >= 45) return { label: '⚠️ SINAL MODERADO', color: 'text-yellow-400', borderClass: 'border-yellow-400/30', bg: 'bg-yellow-400/5' };
+  return { label: '⏸ AGUARDAR', color: 'text-muted-foreground', borderClass: 'border-border', bg: 'bg-secondary/5' };
 };
 
 const BET_TYPE_LABELS: Record<string, { emoji: string; label: string }> = {
@@ -46,9 +46,32 @@ interface Props {
   confidenceFilter: boolean;
   rtInsights?: any[];
   allNumbers?: number[];
+  autoLearnStatus?: 'idle' | 'learning' | 'analyzing' | 'backtesting';
 }
 
-const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers = [] }: Props) => {
+const SubSection = memo(({ title, icon: Icon, color, children, defaultOpen = false }: {
+  title: string; icon: any; color: string; children: React.ReactNode; defaultOpen?: boolean;
+}) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-t border-border/20">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-2 px-5 py-2.5 hover:bg-secondary/20 transition-colors">
+        <Icon className={`w-3.5 h-3.5 ${color}`} />
+        <span className={`text-[9px] font-black uppercase tracking-wider ${color}`}>{title}</span>
+        <ChevronDown className={`w-3 h-3 text-muted-foreground ml-auto transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <div className="px-5 pb-3">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+});
+
+const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers = [], autoLearnStatus }: Props) => {
   const [reedCount, setReedCount] = useState(0);
   const prevHitRef = useRef<boolean | null>(null);
 
@@ -79,6 +102,11 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
         <div className="text-center">
           <Crosshair className="w-8 h-8 text-primary/30 mx-auto mb-3 animate-pulse" />
           <p className="text-sm text-muted-foreground">Carregando IA...</p>
+          {autoLearnStatus && autoLearnStatus !== 'idle' && (
+            <p className="text-[10px] text-primary/60 mt-1 animate-pulse">
+              {autoLearnStatus === 'learning' ? '🧠 Aprendendo...' : autoLearnStatus === 'analyzing' ? '🔍 Analisando...' : '📊 Backtesting...'}
+            </p>
+          )}
         </div>
       </div>
     );
@@ -127,6 +155,13 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
   const ai = sniperData?.aiReasoning;
   const lastNumber = allNumbers?.[0];
   const betTypeInfo = ai?.betType ? BET_TYPE_LABELS[ai.betType] || { emoji: '🎯', label: ai.betType } : null;
+  const learnedInfluence = sniperData?.learnedBetInfluence || [];
+  const aiLearnings: string[] = sniperData?.aiLearnings || [];
+  const trendEngine = sniperData?.trendEngine;
+  const memoryWindows = sniperData?.memoryWindows;
+  const layerResults = sniperData?.layerResults;
+  const pullPatterns = sniperData?.pullPatterns || [];
+  const topCandidates = sniperData?.topCandidates || [];
 
   return (
     <motion.div
@@ -143,9 +178,7 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
 
       <div className={reedStopped ? 'opacity-30 pointer-events-none' : ''}>
 
-        {/* ═══ PROTOCOLO EXPANDIDO ═══ */}
-
-        {/* ① JOGADA SUGERIDA — Hero section */}
+        {/* ═══ ① JOGADA SUGERIDA — Hero ═══ */}
         <div className="p-5 pb-3">
           <div className="flex items-center gap-2 mb-3">
             <Crosshair className="w-4 h-4 text-primary" />
@@ -155,23 +188,16 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
                 {betTypeInfo.emoji} {betTypeInfo.label}
               </span>
             )}
-            {ai?.feedbackAction && (
-              <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full ml-auto ${
-                ai.feedbackAction === 'reforçar' ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                : ai.feedbackAction === 'descartar' ? 'bg-destructive/10 text-destructive border border-destructive/20'
-                : 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/20'
-              }`}>
-                {ai.feedbackAction === 'reforçar' ? '✅ Reforçado' : ai.feedbackAction === 'descartar' ? '🔄 Descartado' : '⚙️ Ajustando'}
+            {autoLearnStatus && autoLearnStatus !== 'idle' && (
+              <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold ml-auto animate-pulse">
+                {autoLearnStatus === 'learning' ? '🧠' : autoLearnStatus === 'analyzing' ? '🔍' : '📊'}
               </span>
             )}
           </div>
 
-          {/* Bet description (full) */}
           {ai?.betDescription && (
             <p className="text-xs font-bold text-primary/80 mb-1.5 leading-snug">{ai.betDescription}</p>
           )}
-
-          {/* Suggested bet text */}
           {ai?.suggestedBet && (
             <p className="text-sm font-bold text-foreground mb-3 leading-snug">{ai.suggestedBet}</p>
           )}
@@ -196,7 +222,6 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
                 <span className={`text-sm font-black ${action.color}`}>{action.label}</span>
               </div>
 
-              {/* Numbers to bet */}
               <div className="flex flex-wrap gap-1.5">
                 {finalNumbers.map((n: number, i: number) => {
                   const isMain = i === 0 || n === ensTop1;
@@ -220,7 +245,7 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
             </div>
           </div>
 
-          {/* Secondary bet suggestion */}
+          {/* Secondary bet */}
           {ai?.secondaryBet && (
             <div className="mt-2 px-3 py-2 rounded-lg bg-secondary/40 border border-border/40">
               <div className="flex items-center gap-1.5">
@@ -232,51 +257,7 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
           )}
         </div>
 
-        {/* ② ANÁLISE DE MERCADO */}
-        {ai?.marketAnalysis?.bestMarket && (
-          <div className="px-5 py-3 border-t border-border/20 bg-primary/5">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Layers className="w-3.5 h-3.5 text-primary" />
-              <span className="text-[9px] font-black text-primary uppercase tracking-wider">Melhor Mercado</span>
-              <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/25 font-bold ml-auto">
-                {ai.marketAnalysis.marketConfidence}%
-              </span>
-            </div>
-            <p className="text-[11px] font-bold text-foreground/90">{ai.marketAnalysis.bestMarket}</p>
-            {ai.marketAnalysis.reasoning && (
-              <p className="text-[10px] text-muted-foreground mt-1">{ai.marketAnalysis.reasoning}</p>
-            )}
-          </div>
-        )}
-
-        {/* ③ PADRÃO IDENTIFICADO */}
-        {ai?.patternIdentified && (
-          <div className="px-5 py-3 border-t border-border/20 bg-cyan-500/5">
-            <div className="flex items-center gap-2 mb-1.5">
-              <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="text-[9px] font-black text-cyan-400 uppercase tracking-wider">Padrão Identificado</span>
-              {ai.sectorFocus && ai.sectorFocus !== 'misto' && (
-                <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-bold ml-auto">
-                  {ai.sectorFocus}
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-foreground/80 leading-relaxed">{ai.patternIdentified}</p>
-          </div>
-        )}
-
-        {/* ④ O QUE APRENDI */}
-        {ai?.learned && (
-          <div className="px-5 py-3 border-t border-border/20 bg-amber-500/5">
-            <div className="flex items-center gap-2 mb-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-[9px] font-black text-amber-400 uppercase tracking-wider">O que Aprendi</span>
-            </div>
-            <p className="text-[11px] text-amber-200/70 leading-relaxed">{ai.learned}</p>
-          </div>
-        )}
-
-        {/* ⑤ ASSERTIVIDADE */}
+        {/* ═══ ② ASSERTIVIDADE ═══ */}
         <div className="px-5 py-3 border-t border-border/20 bg-secondary/30">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -302,6 +283,202 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
             {lastNumber !== undefined && ` • último: ${lastNumber}`}
           </p>
         </div>
+
+        {/* ═══ ③ MELHOR MERCADO ═══ */}
+        {ai?.marketAnalysis?.bestMarket && (
+          <div className="px-5 py-3 border-t border-border/20 bg-primary/5">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Layers className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[9px] font-black text-primary uppercase tracking-wider">Melhor Mercado</span>
+              <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/25 font-bold ml-auto">
+                {ai.marketAnalysis.marketConfidence}%
+              </span>
+            </div>
+            <p className="text-[11px] font-bold text-foreground/90">{ai.marketAnalysis.bestMarket}</p>
+            {ai.marketAnalysis.reasoning && (
+              <p className="text-[10px] text-muted-foreground mt-1">{ai.marketAnalysis.reasoning}</p>
+            )}
+          </div>
+        )}
+
+        {/* ═══ ④ PADRÃO IDENTIFICADO ═══ */}
+        {ai?.patternIdentified && (
+          <div className="px-5 py-3 border-t border-border/20 bg-cyan-500/5">
+            <div className="flex items-center gap-2 mb-1.5">
+              <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="text-[9px] font-black text-cyan-400 uppercase tracking-wider">Padrão Identificado</span>
+              {ai.sectorFocus && ai.sectorFocus !== 'misto' && (
+                <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-bold ml-auto">
+                  {ai.sectorFocus}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-foreground/80 leading-relaxed">{ai.patternIdentified}</p>
+          </div>
+        )}
+
+        {/* ═══ ⑤ TOP CANDIDATOS (mini ensemble) ═══ */}
+        {topCandidates.length > 1 && (
+          <SubSection title="Top Candidatos" icon={Crosshair} color="text-amber-400" defaultOpen>
+            <div className="flex flex-wrap gap-2">
+              {topCandidates.slice(0, 8).map((c: any, i: number) => (
+                <div key={c.num} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-secondary/40 border border-border/50">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black ${numColor(c.num)} ${i === 0 ? 'ring-2 ring-amber-400' : 'ring-1 ring-white/10'}`}>{c.num}</div>
+                  <div className="text-[8px]">
+                    <span className="font-bold text-foreground">{c.score?.toFixed(0) ?? '?'}pts</span>
+                    {c.reasons && <span className="text-muted-foreground ml-1">({c.reasons.length})</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SubSection>
+        )}
+
+        {/* ═══ ⑥ APRENDIZADO APLICADO ═══ */}
+        {learnedInfluence.length > 0 && (
+          <SubSection title={`Aprendizado Aplicado (${learnedInfluence.length})`} icon={GraduationCap} color="text-emerald-400" defaultOpen>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {learnedInfluence.slice(0, 6).map((inf: any, i: number) => (
+                <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/40 border border-border">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black shrink-0 ${numColor(inf.num)}`}>{inf.num}</div>
+                  <div className="min-w-0">
+                    <span className="text-[8px] text-emerald-300 font-bold block truncate">{inf.source}</span>
+                    <span className="text-[7px] text-muted-foreground">+{inf.boost}pts</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SubSection>
+        )}
+
+        {/* ═══ ⑦ TREND ENGINE ═══ */}
+        {trendEngine && trendEngine.mode !== 'NEUTRO' && (
+          <SubSection title={`Trend Engine — ${trendEngine.mode}`} icon={Activity} color={trendEngine.mode === 'TENDENCIA' ? 'text-green-400' : 'text-orange-400'}>
+            <div className="space-y-1.5">
+              {trendEngine.colorTrend?.direction && (
+                <div className="text-[10px] text-foreground/80">
+                  🎨 Cor: <strong className={trendEngine.colorTrend.direction === 'red' ? 'text-red-400' : 'text-foreground'}>{trendEngine.colorTrend.direction}</strong> ({trendEngine.colorTrend.strength}%)
+                </div>
+              )}
+              {trendEngine.dozenTrend?.direction && (
+                <div className="text-[10px] text-foreground/80">🎲 Dúzia: <strong>D{trendEngine.dozenTrend.direction}</strong> ({trendEngine.dozenTrend.strength}%)</div>
+              )}
+              {trendEngine.sectorTrend?.direction && (
+                <div className="text-[10px] text-foreground/80">🗺️ Setor: <strong>{trendEngine.sectorTrend.direction}</strong> ({trendEngine.sectorTrend.strength}%)</div>
+              )}
+              {trendEngine.reasoning?.slice(0, 3).map((r: string, i: number) => (
+                <div key={i} className="text-[9px] text-muted-foreground">{r}</div>
+              ))}
+            </div>
+          </SubSection>
+        )}
+
+        {/* ═══ ⑧ ANÁLISE IA (todos os insights) ═══ */}
+        {aiLearnings.length > 0 && (
+          <SubSection title={`Análise IA (${aiLearnings.length} insights)`} icon={Brain} color="text-purple-400">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {aiLearnings.slice(0, 12).map((learning: string, i: number) => (
+                <div key={i} className="flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-secondary/40 border border-border">
+                  <Sparkles className="w-3 h-3 text-purple-400 mt-0.5 shrink-0" />
+                  <span className="text-[9px] text-foreground/90 leading-tight">{learning}</span>
+                </div>
+              ))}
+            </div>
+          </SubSection>
+        )}
+
+        {/* ═══ ⑨ MEMÓRIA MULTI-JANELA ═══ */}
+        {memoryWindows && (
+          <SubSection title="Memória Multi-Janela" icon={BarChart3} color="text-blue-400">
+            <div className="grid grid-cols-3 gap-2">
+              {memoryWindows.micro && (
+                <div className="rounded-lg bg-secondary/40 border border-border p-2">
+                  <span className="text-[8px] font-black text-blue-400 block mb-1">MICRO (10)</span>
+                  <div className="text-[9px] text-foreground/80 space-y-0.5">
+                    <div>Arco: {memoryWindows.micro.arcMean}±{memoryWindows.micro.arcStd}</div>
+                    <div>Dealer: {memoryWindows.micro.dealerRhythm}</div>
+                    <div>{memoryWindows.micro.colorBias}</div>
+                  </div>
+                </div>
+              )}
+              {memoryWindows.mesa && (
+                <div className="rounded-lg bg-secondary/40 border border-border p-2">
+                  <span className="text-[8px] font-black text-blue-400 block mb-1">MESA (100)</span>
+                  <div className="text-[9px] text-foreground/80 space-y-0.5">
+                    <div>WR: {memoryWindows.mesa.winRate}%</div>
+                    <div>{memoryWindows.mesa.bestStrategy}</div>
+                    <div>{memoryWindows.mesa.totalPredictions} previsões</div>
+                  </div>
+                </div>
+              )}
+              {memoryWindows.macro && (
+                <div className="rounded-lg bg-secondary/40 border border-border p-2">
+                  <span className="text-[8px] font-black text-blue-400 block mb-1">MACRO (500)</span>
+                  <div className="text-[9px] text-foreground/80 space-y-0.5">
+                    <div>{memoryWindows.macro.totalNumbers} nums</div>
+                    <div>{memoryWindows.macro.uniqueNumbers} únicos</div>
+                    {memoryWindows.macro.topDebt?.length > 0 && (
+                      <div>Dívida: {memoryWindows.macro.topDebt.slice(0, 3).join(', ')}</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </SubSection>
+        )}
+
+        {/* ═══ ⑩ PULL RADAR ═══ */}
+        {pullPatterns.length > 0 && (
+          <SubSection title="Radar de Puxadas" icon={Radar} color="text-orange-400">
+            <div className="space-y-1.5">
+              {pullPatterns.slice(0, 4).map((p: any, i: number) => (
+                <div key={i} className="flex items-center gap-2 text-[10px]">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black ${numColor(p.source)}`}>{p.source}</div>
+                  <span className="text-muted-foreground">→</span>
+                  <div className="flex gap-1 flex-wrap">
+                    {(p.targets || []).slice(0, 5).map((t: any) => (
+                      <span key={t.num} className="px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-300 border border-orange-500/20 font-bold text-[8px]">
+                        {t.num} ({t.count}x)
+                      </span>
+                    ))}
+                  </div>
+                  <span className="text-[8px] text-muted-foreground ml-auto">{p.dominantSector}</span>
+                </div>
+              ))}
+            </div>
+          </SubSection>
+        )}
+
+        {/* ═══ ⑪ SCANNER 1700 CAMADAS ═══ */}
+        {layerResults && (
+          <SubSection title={`Scanner ${layerResults.total || 0}/1700 Camadas`} icon={BarChart3} color="text-indigo-400">
+            <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+              {Object.entries(layerResults).filter(([k]) => k !== 'total').map(([block, val]: [string, any]) => {
+                const pct = typeof val === 'object' ? (val.score / val.max * 100) : (typeof val === 'number' ? val : 0);
+                return (
+                  <div key={block} className="text-center">
+                    <div className="h-8 bg-secondary/30 rounded overflow-hidden flex flex-col justify-end">
+                      <div className={`rounded-t transition-all ${pct > 70 ? 'bg-primary' : pct > 40 ? 'bg-yellow-400/60' : 'bg-muted-foreground/30'}`}
+                        style={{ height: `${Math.min(100, pct)}%` }} />
+                    </div>
+                    <span className="text-[7px] font-bold text-foreground mt-0.5 block">{block}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </SubSection>
+        )}
+
+        {/* ═══ ⑫ O QUE APRENDI ═══ */}
+        {ai?.learned && (
+          <div className="px-5 py-3 border-t border-border/20 bg-amber-500/5">
+            <div className="flex items-center gap-2 mb-1.5">
+              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-[9px] font-black text-amber-400 uppercase tracking-wider">O que Aprendi</span>
+            </div>
+            <p className="text-[11px] text-amber-200/70 leading-relaxed">{ai.learned}</p>
+          </div>
+        )}
 
       </div>
     </motion.div>
