@@ -583,27 +583,27 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
         {/* Stats grid */}
         <div className="grid grid-cols-4 gap-2">
-          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
-            <DollarSign className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
-            <p className={`font-bold text-base font-mono ${stats.profit >= 0 ? 'text-green-400' : 'text-destructive'}`}>
+          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
+            <DollarSign className="w-3.5 h-3.5 text-muted-foreground/40 mx-auto mb-1" />
+            <p className={`font-bold text-base font-mono ${stats.profit >= 0 ? 'text-neon-green' : 'text-destructive'}`}>
               R${stats.profit.toFixed(2)}
             </p>
-            <span className="text-[8px] text-muted-foreground">Lucro</span>
+            <span className="text-[7px] text-muted-foreground/40">Lucro</span>
           </div>
-          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
-            <Target className="w-3.5 h-3.5 text-primary mx-auto mb-1" />
-            <p className="font-bold text-base font-mono text-foreground">{winRate}%</p>
-            <span className="text-[8px] text-muted-foreground">Acerto</span>
+          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
+            <Target className="w-3.5 h-3.5 text-primary/50 mx-auto mb-1" />
+            <p className="font-bold text-base font-mono text-foreground/80">{winRate}%</p>
+            <span className="text-[7px] text-muted-foreground/40">Acerto</span>
           </div>
-          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
-            <TrendingUp className="w-3.5 h-3.5 text-neon-green mx-auto mb-1" />
+          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
+            <TrendingUp className="w-3.5 h-3.5 text-neon-green/50 mx-auto mb-1" />
             <p className="font-bold text-base font-mono text-neon-green">{stats.wins}</p>
-            <span className="text-[8px] text-muted-foreground">Wins</span>
+            <span className="text-[7px] text-muted-foreground/40">Wins</span>
           </div>
-          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
-            <TrendingDown className="w-3.5 h-3.5 text-destructive mx-auto mb-1" />
+          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
+            <TrendingDown className="w-3.5 h-3.5 text-destructive/50 mx-auto mb-1" />
             <p className="font-bold text-base font-mono text-destructive">{stats.losses}</p>
-            <span className="text-[8px] text-muted-foreground">Losses</span>
+            <span className="text-[7px] text-muted-foreground/40">Losses</span>
           </div>
         </div>
 
