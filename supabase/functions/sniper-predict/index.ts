@@ -7271,22 +7271,17 @@ METODOLOGIA DE ANÁLISE:
 
         const round1Calls: Promise<AiResult>[] = [];
 
-        if (LAI_KEY) {
-          const laiH = { "Authorization": `Bearer ${LAI_KEY}` };
-          // 8 specialists using diverse models
-          round1Calls.push(callAi('Estatístico', LAI_URL, laiH, 'google/gemini-2.5-pro', specialistPrompts['Estatístico'], aiPrompt, 0.10));
-          round1Calls.push(callAi('Físico', LAI_URL, laiH, 'google/gemini-3.1-pro-preview', specialistPrompts['Físico'], aiPrompt, 0.12));
-          round1Calls.push(callAi('Padrões', LAI_URL, laiH, 'google/gemini-3-flash-preview', specialistPrompts['Padrões'], aiPrompt, 0.15));
-          round1Calls.push(callAi('Puxadas', LAI_URL, laiH, 'openai/gpt-5-mini', specialistPrompts['Puxadas'], aiPrompt, 0.10));
-          round1Calls.push(callAi('Contrarian', LAI_URL, laiH, 'google/gemini-2.5-flash', specialistPrompts['Contrarian'], aiPrompt, 0.20));
-          round1Calls.push(callAi('Momentum', LAI_URL, laiH, 'openai/gpt-5-nano', specialistPrompts['Momentum'], aiPrompt, 0.15));
-          round1Calls.push(callAi('Convergência', LAI_URL, laiH, 'openai/gpt-5', specialistPrompts['Convergência'], aiPrompt, 0.08));
-          round1Calls.push(callAi('Mercados', LAI_URL, laiH, 'google/gemini-2.5-flash-lite', specialistPrompts['Mercados'], aiPrompt, 0.12));
-        }
-
         if (DEEPSEEK_API_KEY) {
-          round1Calls.push(callAi('DeepSeek-Fusão', 'https://api.deepseek.com/chat/completions',
-            { "Authorization": `Bearer ${DEEPSEEK_API_KEY}` }, 'deepseek-chat', specialistPrompts['Convergência'], aiPrompt, 0.10));
+          const dsH = { "Authorization": `Bearer ${DEEPSEEK_API_KEY}` };
+          // 8 specialists ALL using DeepSeek
+          round1Calls.push(callAi('Estatístico', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Estatístico'], aiPrompt, 0.10));
+          round1Calls.push(callAi('Físico', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Físico'], aiPrompt, 0.12));
+          round1Calls.push(callAi('Padrões', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Padrões'], aiPrompt, 0.15));
+          round1Calls.push(callAi('Puxadas', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Puxadas'], aiPrompt, 0.10));
+          round1Calls.push(callAi('Contrarian', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Contrarian'], aiPrompt, 0.20));
+          round1Calls.push(callAi('Momentum', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Momentum'], aiPrompt, 0.15));
+          round1Calls.push(callAi('Convergência', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Convergência'], aiPrompt, 0.08));
+          round1Calls.push(callAi('Mercados', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Mercados'], aiPrompt, 0.12));
         }
 
         console.log(`Multi-AI Round 1: Dispatching ${round1Calls.length} specialist AIs...`);
