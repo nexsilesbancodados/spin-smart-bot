@@ -12,7 +12,7 @@ const colorClass = (n: number) =>
   : RED.includes(n) ? 'bg-gradient-to-br from-red-500 to-red-700 text-white border-red-400/20'
   : 'bg-gradient-to-br from-zinc-600 to-zinc-900 text-white border-zinc-500/20';
 
-const ManualInput = ({ onAddNumbers }: Props) => {
+const ManualInput = memo(({ onAddNumbers }: Props) => {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [queue, setQueue] = useState<number[]>([]);
