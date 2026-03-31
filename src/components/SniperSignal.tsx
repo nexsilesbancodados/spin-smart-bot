@@ -499,8 +499,8 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
           </div>
         )}
 
-        {/* ═══ TOP CANDIDATOS (compacto) ═══ */}
-        {topCandidates.length > 1 && (
+        {/* ═══ TOP CANDIDATOS (oculto para apostas simples) ═══ */}
+        {topCandidates.length > 1 && !(analysisDetail && ['cor', 'paridade', 'alto_baixo'].includes(analysisDetail.type)) && (
           <div className="px-4 pb-3">
             <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
               <span className="text-[8px] text-muted-foreground font-bold shrink-0 uppercase">Top:</span>
