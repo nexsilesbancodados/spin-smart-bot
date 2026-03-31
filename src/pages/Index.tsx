@@ -160,6 +160,7 @@ const Index = () => {
   const [lastSpinAt, setLastSpinAt] = useState<number | null>(null);
 
   const handleManualNumbers = (nums: number[]) => {
+    apiSnapshotRef.current = [...nums, ...apiSnapshotRef.current].slice(0, 1000);
     setApiNumbers(prev => [...nums, ...prev].slice(0, 1000));
   };
 
@@ -235,7 +236,8 @@ const Index = () => {
     sniperFetchingRef.current = true;
     lastSniperTriggerRef.current = now;
     try {
-      const clientNums = apiNumbers.length > 0 ? apiNumbers.slice(0, sampleSize) : undefined;
+      const latestNumbers = apiSnapshotRef.current.length > 0 ? apiSnapshotRef.current : apiNumbers;
+      const clientNums = latestNumbers.length > 0 ? latestNumbers.slice(0, sampleSize) : undefined;
       const res = await supabase.functions.invoke('sniper-predict', {
         body: { sampleSize, numbers: clientNums, strategyFilter: strategyFilter !== 'all' ? strategyFilter : undefined }
       });
@@ -257,6 +259,25 @@ const Index = () => {
     } finally { sniperFetchingRef.current = false; }
   }, [sampleSize, aiEnabled, apiNumbers, strategyFilter]);
   fetchSniperRef.current = fetchSniper;
+
+  const registerLiveSpin = useCallback((number: number, spinAt = Date.now(), source = 'live') => {
+    if (typeof number !== 'number' || number < 0 || number > 36) return false;
+    if (isBurstDuplicate(number)) return false;
+
+    markAcceptedSpin(number);
+    apiSnapshotRef.current = [number, ...apiSnapshotRef.current].slice(0, 1000);
+    setApiNumbers(prev => [number, ...prev].slice(0, 1000));
+    handleNewSpin(`${source}-${number}-${spinAt}`, spinAt);
+    setLastUpdate(new Date(spinAt));
+
+    spinCountSinceMicroLearnRef.current++;
+    if (spinCountSinceMicroLearnRef.current >= 10) {
+      spinCountSinceMicroLearnRef.current = 0;
+      triggerMicroLearn();
+    }
+
+    return true;
+  }, [handleNewSpin, isBurstDuplicate, markAcceptedSpin, triggerMicroLearn]);
 
   const fetchNumbers = useCallback(async () => {
     try {
@@ -316,31 +337,27 @@ const Index = () => {
     const ch = supabase.channel('sniper_trigger_rt')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'roulette_numbers' }, (payload: any) => {
         const row = payload?.new;
-        if (typeof row?.number === 'number' && !isBurstDuplicate(row.number)) {
+        if (typeof row?.number === 'number') {
           const spinAt = row.fetched_at ? new Date(row.fetched_at).getTime() : Date.now();
-          markAcceptedSpin(row.number);
-          apiSnapshotRef.current = [row.number, ...apiSnapshotRef.current].slice(0, 1000);
-          setApiNumbers(prev => prev[0] === row.number ? prev : [row.number, ...prev].slice(0, 1000));
-          handleNewSpin(`${row.number}-${row.fetched_at ?? ''}`, spinAt);
-          setLastUpdate(new Date(spinAt));
-          spinCountSinceMicroLearnRef.current++;
-          if (spinCountSinceMicroLearnRef.current >= 10) { spinCountSinceMicroLearnRef.current = 0; triggerMicroLearn(); }
+          registerLiveSpin(row.number, spinAt, `rt-${row.id ?? row.fetched_at ?? ''}`);
         }
       }).subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [fetchSniper, handleNewSpin, isBurstDuplicate, markAcceptedSpin, triggerMicroLearn]);
+  }, [registerLiveSpin]);
 
   // Extension message listener
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.data?.type === 'NUMBER_FROM_EXTENSION') {
         const n = event.data.number;
-        if (typeof n === 'number' && n >= 0 && n <= 36) setApiNumbers(prev => [n, ...prev].slice(0, 1000));
+        if (typeof n === 'number' && n >= 0 && n <= 36) {
+          registerLiveSpin(n, Date.now(), 'extension');
+        }
       }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, []);
+  }, [registerLiveSpin]);
 
   // Countdown
   useEffect(() => {
@@ -604,37 +621,6 @@ const Index = () => {
               </div>
             )}
 
-            {/* Resultado da última jogada */}
-            <AnimatePresence mode="wait">
-              {lastPredResult && lastPredResult.hit !== null && (
-                <motion.div
-                  key={lastPredResult.actual}
-                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${
-                    lastPredResult.hit
-                      ? 'bg-green-500/10 border-green-500/30'
-                      : 'bg-red-500/10 border-red-500/30'
-                  }`}
-                >
-                  <span className="text-2xl">{lastPredResult.hit ? '✅' : '❌'}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className={`text-[11px] font-black ${lastPredResult.hit ? 'text-green-400' : 'text-red-400'}`}>
-                      {lastPredResult.hit ? 'ACERTOU!' : 'ERROU'}
-                    </div>
-                    <div className="text-[8px] text-muted-foreground">
-                      Saiu: <b className="text-foreground">{lastPredResult.actual}</b>
-                      {' · '}Previsto: #{lastPredResult.predicted}
-                    </div>
-                  </div>
-                  <div className={`w-10 h-10 rounded-xl text-[13px] font-black text-white flex items-center justify-center ${numBg(lastPredResult.actual ?? 0)}`}>
-                    {lastPredResult.actual}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             {/* SNIPER SIGNAL — painel principal */}
             {aiEnabled ? (
               <SniperSignal
@@ -656,6 +642,31 @@ const Index = () => {
                 <p className="text-xs text-muted-foreground/60 mt-1">Clique "⚡ ON" para ativar</p>
               </div>
             )}
+
+            {/* Resultado da última jogada */}
+            <AnimatePresence mode="wait">
+              {lastPredResult && lastPredResult.hit !== null && (
+                <motion.div
+                  key={lastPredResult.actual}
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border bg-card/70"
+                >
+                  <span className="text-xl">{lastPredResult.hit ? '✅' : '❌'}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[9px] font-black uppercase tracking-[0.14em] text-muted-foreground">Último giro</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      Saiu: <b className="text-foreground">{lastPredResult.actual}</b>
+                      {' · '}Sua jogada anterior {lastPredResult.hit ? 'bateu' : 'não bateu'}
+                    </div>
+                  </div>
+                  <div className={`w-10 h-10 rounded-xl text-[13px] font-black text-white flex items-center justify-center ${numBg(lastPredResult.actual ?? 0)}`}>
+                    {lastPredResult.actual}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Cards rápidos de contexto */}
             {allNumbers.length >= 5 && (
