@@ -8289,9 +8289,15 @@ Responda APENAS JSON:
         payout: '1:1',
       };
     } else {
+      // Fallback: use Bayesian + momentum for better confidence even without strong trend
+      const red10 = numbers.slice(0,10).filter(n => RED.includes(n)).length;
       const red5 = numbers.slice(0,5).filter(n => RED.includes(n)).length;
-      const isRed = red5 >= 3;
-      allBetSignals.cor = { recommendation: isRed ? 'VERMELHO' : 'PRETO', numbers: [], confidence: 45, reasoning: 'Sem tendência clara', emoji: isRed ? '🔴' : '⚫', payout: '1:1' };
+      const bayesConf = bayesColor.probability || 40;
+      const momRed = colorMomentum['red']?.momentum || 0;
+      const momBlack = colorMomentum['black']?.momentum || 0;
+      const isRed = (momRed > momBlack) || (momRed === momBlack && red5 >= 3);
+      const baseConf = Math.min(65, 40 + Math.abs(red10 - 5) * 3 + (bayesConf > 50 ? 5 : 0));
+      allBetSignals.cor = { recommendation: isRed ? 'VERMELHO' : 'PRETO', numbers: [], confidence: baseConf, reasoning: `${isRed ? 'Vermelho' : 'Preto'} ${red10}/10 recentes, Bayes ${bayesConf}%`, emoji: isRed ? '🔴' : '⚫', payout: '1:1' };
     }
 
     // PARIDADE
