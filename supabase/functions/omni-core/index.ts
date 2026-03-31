@@ -1160,23 +1160,28 @@ Deno.serve(async (req) => {
       bet_type: s.betType,
       reasoning: s.reasoning,
       ensemble_weight: weights[s.modelId]?.weight ?? 1.0,
-      spin_context: { temperature, consensus, totalModels: 5 },
+      spin_context: { temperature, consensus, totalModels: 7 },
     }));
 
     // Fire and forget — don't block response
     supabase.from('model_predictions').insert(predInserts).then(() => {});
 
-    // Recalibrate weights every ~20 calls
-    if (Math.random() < 0.05) {
+    // Recalibrate weights every ~20 calls + trigger auto-recalibrate
+    if (Math.random() < 0.08) {
       recalibrateWeights(supabase).catch(() => {});
     }
 
     // ── 7. Build arbiter log ───────────────────────────────
+    const modelNames: Record<string, string> = {
+      markov: 'Markov', neural_pattern: 'Neural', gradient: 'Gradient',
+      bayesian: 'Bayesiano', statistical: 'Estatístico',
+      pattern_discovery: 'PatternDisc', rl_optimizer: 'RL-Opt',
+    };
     const arbiterLog: string[] = [];
     arbiterLog.push(`🌡️ Mesa ${temperature.toUpperCase()}`);
-    arbiterLog.push(`🤖 5 modelos ativos — ${allSignals.length} sinais gerados`);
+    arbiterLog.push(`🤖 7 modelos ativos — ${allSignals.length} sinais gerados`);
     for (const [id, w] of Object.entries(weights)) {
-      const name = id === 'markov' ? 'Markov' : id === 'neural_pattern' ? 'Neural' : id === 'gradient' ? 'Gradient' : id === 'bayesian' ? 'Bayesiano' : 'Estatístico';
+      const name = modelNames[id] || id;
       const wr = w.total_predictions > 0 ? `${(w.win_rate * 100).toFixed(0)}%` : 'N/A';
       arbiterLog.push(`${name}: WR ${wr} | peso ${w.weight.toFixed(2)} | streak ${w.current_streak}`);
     }
