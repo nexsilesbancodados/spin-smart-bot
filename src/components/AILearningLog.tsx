@@ -219,10 +219,11 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
   const typeIcons: Record<string, string> = { info: '📡', alert: '⚡', pattern: '🔍', calibration: '⚙️' };
 
   return (
-    <div className="glass rounded-2xl overflow-hidden border border-border/20">
+    <div className="glass rounded-2xl overflow-hidden border border-border/20 relative">
+      <div className="absolute inset-0 bg-gradient-to-br from-neon-pink/[0.01] via-transparent to-purple-500/[0.01]" />
       <div className="relative px-4 pt-4 pb-3">
         <div className="absolute inset-0 bg-gradient-to-r from-neon-pink/4 via-transparent to-purple-500/3" />
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neon-pink/30 to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-neon-pink/40 via-purple-500/30 to-neon-pink/40" />
         <div className="relative flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-pink/15 to-purple-500/10 border border-neon-pink/20 flex items-center justify-center shadow-[0_0_15px_hsl(var(--neon-pink)/0.2)]">
             <Brain className="w-5 h-5 text-neon-pink" />
