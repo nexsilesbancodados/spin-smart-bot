@@ -65,7 +65,7 @@ const MANUAL_BET_TYPES = [
   { id: 'col3', label: 'Col 3', desc: '3,6,9...36', numbers: [3,6,9,12,15,18,21,24,27,30,33,36] },
 ];
 
-const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
+const BetPanel = memo(({ sniperData, allNumbers }: BetPanelProps) => {
   const [config, setConfig] = useState<AutoBetState>({
     enabled: false,
     betValue: 1,

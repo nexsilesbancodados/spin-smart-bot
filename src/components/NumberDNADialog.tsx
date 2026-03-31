@@ -14,7 +14,7 @@ const wheelDist = (a: number, b: number) => { const ia = WHEEL.indexOf(a), ib = 
 
 interface Props { number: number | null; allNumbers: number[]; open: boolean; onClose: () => void }
 
-const NumberDNADialog = ({ number, allNumbers, open, onClose }: Props) => {
+const NumberDNADialog = memo(({ number, allNumbers, open, onClose }: Props) => {
   if (number === null) return null;
 
   const positions = allNumbers.map((n, i) => n === number ? i : -1).filter(i => i >= 0);

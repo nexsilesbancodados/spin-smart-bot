@@ -263,6 +263,7 @@ const WheelMap = memo(({ allNumbers, sniperData }: Props) => {
       </div>
     </motion.div>
   );
-};
+});
 
+WheelMap.displayName = 'WheelMap';
 export default WheelMap;
