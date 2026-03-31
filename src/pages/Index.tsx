@@ -634,95 +634,114 @@ const Index = () => {
     <div className="min-h-screen bg-background text-foreground">
 
       {/* ═══ HEADER FIXO ══════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-50 glass-strong border-b border-border/20 shadow-lg shadow-background/60">
-        <div className="max-w-2xl mx-auto px-3">
+      <header className="sticky top-0 z-50 glass-strong border-b border-border/10 shadow-2xl shadow-background/80 overflow-hidden">
+        {/* Top accent gradient */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-neon-cyan/50 via-neon-pink/40 to-neon-cyan/50" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.02] to-transparent pointer-events-none" />
+        
+        <div className="max-w-2xl mx-auto px-3 relative">
 
           {/* Linha 1: Marca + Status + Toggle */}
           <div className="flex items-center gap-2 py-2.5">
             <div className="flex items-center gap-2.5 flex-1 min-w-0">
               <div className="relative">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-neon-pink/10 border border-primary/20 flex items-center justify-center shadow-sm shadow-primary/10">
+                <motion.div 
+                  whileHover={{ scale: 1.05 }}
+                  className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/25 to-neon-pink/15 border border-primary/25 flex items-center justify-center shadow-[0_0_20px_hsl(var(--primary)/0.2)]"
+                >
                   <span className="font-display font-black text-sm text-primary text-glow-cyan">S</span>
-                </div>
+                </motion.div>
                 {isPolling && (
-                  <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-neon-green shadow-[0_0_8px_hsl(var(--neon-green)/0.5)]">
+                  <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-neon-green shadow-[0_0_10px_hsl(var(--neon-green)/0.6)]">
                     <div className="absolute inset-0 rounded-full bg-neon-green animate-ping opacity-30" />
                   </div>
                 )}
               </div>
               <div className="min-w-0">
-                <div className="font-display font-black text-[11px] tracking-[0.2em] leading-none">
-                  <span className="text-primary text-glow-cyan">SPIN</span> <span className="text-neon-pink text-glow-pink">SMART</span>
+                <div className="font-display font-black text-[12px] tracking-[0.2em] leading-none">
+                  <span className="text-primary text-glow-cyan">SPIN</span>{' '}
+                  <span className="bg-gradient-to-r from-neon-pink to-neon-purple bg-clip-text text-transparent">SMART</span>
                 </div>
-                <div className="text-[7px] text-muted-foreground/40 font-mono leading-none mt-0.5 tracking-wider">IA ROLETA BRASILEIRA</div>
+                <div className="text-[7px] text-muted-foreground/30 font-mono leading-none mt-0.5 tracking-wider">IA ROLETA BRASILEIRA · v5.0</div>
               </div>
             </div>
 
             {/* Status da IA */}
             <div className="flex items-center gap-1.5 shrink-0">
               {autoLearnStatus !== 'idle' && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-neon-purple/8 border border-neon-purple/15">
+                <motion.div 
+                  animate={{ opacity: [0.7, 1, 0.7] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-neon-purple/10 border border-neon-purple/20 backdrop-blur-sm"
+                >
                   <div className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
                   <span className="text-[8px] font-bold text-neon-purple font-mono">{autoLearnStatus === 'learning' ? 'LEARN' : autoLearnStatus === 'analyzing' ? 'ANALYZE' : 'TEST'}</span>
-                </div>
+                </motion.div>
               )}
               {sniperCountdown > 0 && autoLearnStatus === 'idle' && (
-                <span className="text-[9px] font-mono text-primary/50 tabular-nums font-bold">{sniperCountdown}s</span>
+                <span className="text-[9px] font-mono text-primary/60 tabular-nums font-bold px-2 py-0.5 rounded-lg glass border border-primary/10">{sniperCountdown}s</span>
               )}
               <SettingsPanel config={settingsConfig} onChange={setSettingsConfig} />
-              <button
+              <motion.button
+                whileTap={{ scale: 0.9 }}
                 onClick={() => setAiEnabled(v => !v)}
-                className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wide border transition-all backdrop-blur-sm font-display ${
+                className={`px-3 py-1.5 rounded-xl text-[9px] font-black tracking-wide border transition-all backdrop-blur-sm font-display ${
                   aiEnabled
-                    ? 'bg-primary/12 text-primary border-primary/20 hover:bg-primary/20 shadow-sm shadow-primary/10'
+                    ? 'bg-primary/12 text-primary border-primary/25 hover:bg-primary/20 shadow-[0_0_12px_hsl(var(--primary)/0.15)]'
                     : 'bg-destructive/8 text-destructive border-destructive/20'
                 }`}
               >
                 {aiEnabled ? '⚡ ON' : '○ OFF'}
-              </button>
+              </motion.button>
             </div>
           </div>
 
           {/* Linha 2: Últimos números + streak */}
           {allNumbers.length > 0 && (
-            <div className="flex items-center gap-1.5 pb-2">
-              <span className="text-[7px] text-muted-foreground/40 font-mono shrink-0">ÚLTIMOS:</span>
+            <div className="flex items-center gap-1.5 pb-2.5">
+              <span className="text-[7px] text-muted-foreground/30 font-mono shrink-0 uppercase tracking-wider">Últimos</span>
               {allNumbers.slice(0, 7).map((n, i) => (
-                <button
+                <motion.button
                   key={`${n}-${i}`}
+                  initial={i === 0 ? { scale: 0, rotate: -180 } : {}}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={i === 0 ? { type: 'spring', stiffness: 300, damping: 15 } : {}}
                   onClick={() => { setDnaNumber(n); setDnaOpen(true); }}
-                  className={`rounded-lg font-black text-white flex items-center justify-center transition-all hover:scale-110 shrink-0 ${numBg(n)} ${
+                  className={`rounded-xl font-black text-white flex items-center justify-center transition-all hover:scale-110 shrink-0 ${numBg(n)} ${
                     i === 0
-                      ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background w-8 h-8 text-[11px] shadow-md shadow-primary/20'
+                      ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background w-9 h-9 text-[12px] shadow-lg shadow-primary/25'
                       : i <= 2
-                      ? 'w-7 h-7 text-[10px] opacity-90'
-                      : 'w-6 h-6 text-[9px] opacity-60'
+                      ? 'w-7 h-7 text-[10px] opacity-85'
+                      : 'w-6 h-6 text-[9px] opacity-50'
                   }`}
                 >
                   {n}
-                </button>
+                </motion.button>
               ))}
               {streakActive && (
-                <div className={`ml-1 flex items-center gap-1 px-2 py-0.5 rounded-full border text-[8px] font-black ${
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className={`ml-1 flex items-center gap-1 px-2.5 py-1 rounded-xl border text-[8px] font-black backdrop-blur-sm ${
                   streakLen >= 4
-                    ? 'bg-gold/15 border-gold/40 text-gold animate-pulse'
+                    ? 'bg-gold/15 border-gold/30 text-gold animate-pulse shadow-[0_0_10px_hsl(var(--gold)/0.2)]'
                     : 'bg-primary/8 border-primary/20 text-primary'
                 }`}>
                   🔱 {streakNum} ×{streakLen}
-                </div>
+                </motion.div>
               )}
               {recentWR !== null && (
-                <div className={`ml-auto shrink-0 px-2 py-0.5 rounded-full text-[8px] font-black font-mono ${
-                  recentWR >= 50 ? 'bg-neon-green/10 text-neon-green' :
-                  recentWR >= 35 ? 'bg-gold/10 text-gold' :
-                  'bg-destructive/10 text-destructive'
+                <div className={`ml-auto shrink-0 px-2.5 py-1 rounded-xl text-[8px] font-black font-mono border backdrop-blur-sm ${
+                  recentWR >= 50 ? 'bg-neon-green/8 text-neon-green border-neon-green/20 shadow-[0_0_8px_hsl(var(--neon-green)/0.15)]' :
+                  recentWR >= 35 ? 'bg-gold/8 text-gold border-gold/15' :
+                  'bg-destructive/8 text-destructive border-destructive/15'
                 }`}>WR {recentWR}%</div>
               )}
             </div>
           )}
 
-          {/* Linha 3: Tabs de navegação */}
-          <div className="flex border-t border-border/10 bg-background/30 backdrop-blur-sm">
+          {/* Linha 3: Tabs de navegação — premium style */}
+          <div className="flex border-t border-border/10">
             {[
               { id: 'sinal' as const, label: 'SINAL', icon: '🎯', badge: sniperData?.signal?.probability ? `${sniperData.signal.probability}%` : undefined },
               { id: 'mesa' as const, label: 'MESA', icon: '📊', badge: allNumbers.length > 0 ? `${Math.min(allNumbers.length, 500)}` : undefined },
@@ -735,16 +754,16 @@ const Index = () => {
                 className={`flex-1 py-3 text-[8px] font-black tracking-[0.12em] transition-all relative font-display ${
                   activeTab === t.id
                     ? 'text-primary'
-                    : 'text-muted-foreground/40 hover:text-foreground/60'
+                    : 'text-muted-foreground/35 hover:text-foreground/60'
                 }`}
               >
                 <span className="text-[10px] mr-0.5">{t.icon}</span>
                 {t.label}
                 {t.badge && (
-                  <span className={`ml-1 text-[6px] font-mono px-1.5 py-0.5 rounded-md ${
+                  <span className={`ml-1 text-[6px] font-mono px-1.5 py-0.5 rounded-lg ${
                     activeTab === t.id 
                       ? 'bg-primary/15 text-primary border border-primary/20' 
-                      : 'bg-secondary/30 text-muted-foreground/40 border border-border/10'
+                      : 'bg-secondary/30 text-muted-foreground/30 border border-border/10'
                   }`}>
                     {t.badge}
                   </span>
@@ -752,8 +771,8 @@ const Index = () => {
                 {activeTab === t.id && (
                   <motion.div 
                     layoutId="header-tab" 
-                    className="absolute bottom-0 left-3 right-3 h-[2px] rounded-t" 
-                    style={{ background: 'linear-gradient(90deg, hsl(var(--primary)), hsl(var(--neon-pink)), hsl(var(--primary)))' }}
+                    className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t" 
+                    style={{ background: 'linear-gradient(90deg, hsl(var(--neon-cyan)), hsl(var(--neon-pink)), hsl(var(--neon-cyan)))' }}
                   />
                 )}
               </button>
