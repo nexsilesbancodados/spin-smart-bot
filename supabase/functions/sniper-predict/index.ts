@@ -6065,7 +6065,7 @@ Deno.serve(async (req) => {
       if (mesaMode === 'matematico' && ['cavalos', 'duzias', 'terminal_alternation'].includes(st.type)) st.score += 5;
 
       // TIME-OF-DAY BIAS: night favors physical, day favors math
-      if (['sniper', 'voisins', 'setor_oposto', 'cylinder_bias'].includes(st.type)) st.score += (timeAwareness.physicalBias - 1) * 15;
+      if (['sniper', 'voisins', 'setor_oposto', 'setor_alternancia', 'cylinder_bias'].includes(st.type)) st.score += (timeAwareness.physicalBias - 1) * 15;
       if (['cavalos', 'duzias', 'terminal_alternation', 'dozen_phase'].includes(st.type)) st.score += (timeAwareness.mathBias - 1) * 15;
 
       // CONSECUTIVE HIT PRIORITY BOOST — TRIPLICADO para priorizar acertos em sequência
@@ -6073,7 +6073,7 @@ Deno.serve(async (req) => {
       if (chBoost > 0) st.score += chBoost * 2;
 
       // ERROR-BASED ADAPTATION: if errors are mostly from wrong sector, penalize sector strategies
-      if (errorCategories.wrong_sector >= 2 && ['sniper', 'voisins', 'setor_oposto'].includes(st.type)) st.score -= 10;
+      if (errorCategories.wrong_sector >= 2 && ['sniper', 'voisins', 'setor_oposto', 'setor_alternancia'].includes(st.type)) st.score -= 10;
       if (errorCategories.wrong_terminal >= 2 && ['cavalos', 'terminal_alternation'].includes(st.type)) st.score -= 10;
       if (errorCategories.deflector_bounce >= 2) st.score -= 5;
 
@@ -6104,7 +6104,7 @@ Deno.serve(async (req) => {
       else if (kellyBetting.unitMultiplier <= 0.5) st.score -= 5;
 
       // ====== CHAOS PENALTY ======
-      if (chaoticDealer && ['sniper', 'voisins', 'setor_oposto'].includes(st.type)) st.score -= 10;
+      if (chaoticDealer && ['sniper', 'voisins', 'setor_oposto', 'setor_alternancia'].includes(st.type)) st.score -= 10;
       if (!chaoticDealer && microArcStd < 2 && ['sniper', 'voisins'].includes(st.type)) st.score += 8;
 
       // PERFORMANCE-BASED WEIGHT: REFORÇADO — prioriza estratégias com melhor histórico de acertos
@@ -6161,7 +6161,7 @@ Deno.serve(async (req) => {
       
       // Find best alternative from a DIFFERENT category
       const stuckCategory = (() => {
-        if (['sniper','voisins','setor_oposto','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','jeu_zero'].includes(stuckType)) return 'setor';
+        if (['sniper','voisins','setor_oposto','setor_alternancia','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','jeu_zero'].includes(stuckType)) return 'setor';
         if (['cavalos','cavalos_comp','cavalo_split'].includes(stuckType)) return 'cavalos';
         if (['terminal_alternation','duplo_terminal','terminais_cruzados','poucas_fichas','terminal_alto_baixo'].includes(stuckType)) return 'terminal';
         if (['duzia_unica','dozen_phase','duzias','pressao_retorno','duzia_progressiva'].includes(stuckType)) return 'duzia';
@@ -6170,7 +6170,7 @@ Deno.serve(async (req) => {
       })();
       
       const getCat = (type: string) => {
-        if (['sniper','voisins','setor_oposto','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','jeu_zero'].includes(type)) return 'setor';
+        if (['sniper','voisins','setor_oposto','setor_alternancia','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','jeu_zero'].includes(type)) return 'setor';
         if (['cavalos','cavalos_comp','cavalo_split'].includes(type)) return 'cavalos';
         if (['terminal_alternation','duplo_terminal','terminais_cruzados','poucas_fichas','terminal_alto_baixo'].includes(type)) return 'terminal';
         if (['duzia_unica','dozen_phase','duzias','pressao_retorno','duzia_progressiva'].includes(type)) return 'duzia';
@@ -6544,7 +6544,7 @@ Deno.serve(async (req) => {
     // STRATEGY FILTER — if user selected a category, only keep matching strategies
     if (strategyFilterParam) {
       const catMap: Record<string, string[]> = {
-        setor: ['sniper','voisins','setor_oposto','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','jeu_zero','vizinhos','setor','orphelins','tiers'],
+        setor: ['sniper','voisins','setor_oposto','setor_alternancia','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','setor_alternancia','jeu_zero','vizinhos','setor','orphelins','tiers'],
         cavalos: ['cavalos','cavalos_comp','cavalo_split'],
         terminal: ['terminal','terminal_comp','terminal_alternation','duplo_terminal','terminais_cruzados','duzia_terminal_corr','terminal_alto_baixo'],
         duzia: ['duzia','duzia_unica','dozen_phase','duzias','pressao_retorno','duzia_progressiva'],
@@ -8176,7 +8176,7 @@ Responda APENAS JSON:
       } else if (t === 'convergencia_absoluta') {
         const mainNum = nums[0];
         bets.push({ type: 'absoluta', label: `Convergência Absoluta → ${mainNum}`, detail: `MÁXIMA CONFIANÇA: ${nums.length} números validados por 5+ dimensões independentes. Pleno ${mainNum} + vizinhos: ${nums.slice(1, 5).join(', ')}`, emoji: '💠' });
-      } else if (t === 'sniper' || t === 'voisins' || t === 'setor_oposto') {
+      } else if (t === 'sniper' || t === 'voisins' || t === 'setor_oposto' || t === 'setor_alternancia') {
         const sector = nums.length > 0 ? getSector(nums[0]) : 'Voisins';
         bets.push({ type: 'setor', label: `Setor ${sector}`, detail: `Cubra o setor ${sector} na roda`, emoji: '🎯' });
         const mainNum = nums[0];
@@ -8281,7 +8281,7 @@ Responda APENAS JSON:
 
     // Generate diverse alternatives — pick from DIFFERENT bet categories
     const getBetCategory = (type: string): string => {
-      if (['sniper', 'voisins', 'setor_oposto', 'ultra_sniper', 'ritmo_calibrado', 'cylinder_bias', 'cluster_regional', 'jeu_zero'].includes(type)) return 'setor';
+      if (['sniper', 'voisins', 'setor_oposto', 'setor_alternancia', 'ultra_sniper', 'ritmo_calibrado', 'cylinder_bias', 'cluster_regional', 'jeu_zero'].includes(type)) return 'setor';
       if (['cavalos', 'cavalos_comp', 'cavalo_split'].includes(type)) return 'cavalos';
       if (['terminal_alternation', 'duplo_terminal', 'terminais_cruzados', 'poucas_fichas', 'terminal_alto_baixo', 'duzia_terminal_corr'].includes(type)) return 'terminal';
       if (['duzia_unica', 'dozen_phase', 'duzias', 'pressao_retorno', 'duzia_progressiva'].includes(type)) return 'duzia';
