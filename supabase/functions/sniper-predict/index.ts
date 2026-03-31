@@ -6711,7 +6711,7 @@ REGRAS ABSOLUTAS:
             const parsed = JSON.parse(cleaned);
             
             if (Array.isArray(parsed.numbers) && parsed.numbers.length >= 2) {
-              aiAdjustedNumbers = parsed.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 7);
+              aiAdjustedNumbers = parsed.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 12);
               aiReasoning = parsed.suggestedBet || parsed.reasoning || null;
               aiConfidence = typeof parsed.confidence === 'number' ? Math.min(100, Math.max(0, parsed.confidence)) : null;
               aiPatternAnalysis = parsed.patternIdentified || parsed.patternAnalysis || null;
