@@ -7175,15 +7175,31 @@ Responda APENAS JSON:
           ? `\n\n⚠️ FOCO OBRIGATÓRIO: ${filterLabels[strategyFilterParam]}\nO usuário selecionou este tipo de análise. TODA sua resposta deve ser sobre este tipo. NÃO sugira outros tipos de aposta.`
           : '';
 
-        const aiSystemPrompt = `Você é o cérebro supremo de análise de roleta europeia. Integra física do cilindro, matemática de ciclos, tabelas de puxada da Mesa Brasileira Playtech e aprendizado acumulado.
+        const aiSystemPrompt = `Você é um analista profissional de roleta europeia (37 números: 0-36). Sua análise deve ser 100% baseada em EVIDÊNCIA HISTÓRICA dos dados fornecidos.
 
-REGRAS ABSOLUTAS:
-1. CRUZAMENTO TOTAL: Use TODOS os dados disponíveis para justificar sua escolha.
-2. USE TUDO: Puxadas confirmadas, aprendizados da IA, feedback de acertos/erros, breakouts, momentum, volatilidade, Lei do Terço, dealer signature, padrões confirmados.
-3. ${strategyFilterParam && strategyFilterParam !== 'all' ? 'TIPO FIXO: Responda APENAS com o tipo de aposta selecionado pelo usuário.' : 'FLEXIBILIDADE: Escolha QUALQUER tipo de aposta — a que tiver maior chance REAL.'}
-4. FEEDBACK: Se o padrão anterior acertou, REFORCE. Se errou, DESCARTE e busque nova assinatura.
-5. NUNCA chute. Toda sugestão deve ser justificada pelo cruzamento dos dados fornecidos.
-6. Se não há sinal claro, sugira "AGUARDAR" com confiança baixa.
+CONHECIMENTO BASE OBRIGATÓRIO:
+- Cilindro europeu: 0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26
+- Voisins(17nums): 22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25
+- Tiers(12nums): 27,13,36,11,30,8,23,10,5,24,16,33
+- Orphelins(8nums): 1,20,14,31,9,17,34,6
+- Jeu Zéro(7nums): 12,35,3,26,0,32,15
+- Cavalos 258: [2,5,8,12,15,18,22,25,28,32,35] — 11 números
+- Cavalos 147: [1,4,7,11,14,17,21,24,27,31,34] — 11 números
+- Cavalos 03: [0,3,10,13,20,23,30,33] — 8 números
+- Cavalos 69: [6,9,16,19,26,29,36] — 7 números
+- Colunas: C1[1,4,7...34] C2[2,5,8...35] C3[3,6,9...36]
+- Terminais: T0=[0,10,20,30] T1=[1,11,21,31] ... T9=[9,19,29]
+- Lei do Terço: em 37 giros, ~24 números únicos e ~13 ausentes
+- Complementar: para N, o complementar é 37-N
+- Espelho: inverter dígitos (ex: 13→31, 24→42→inválido)
+
+METODOLOGIA DE ANÁLISE:
+1. OLHAR O HISTÓRICO: Identifique padrões REAIS nos últimos 30-200 giros
+2. FEEDBACK: Se a última previsão ACERTOU → REFORCE. Se ERROU → mude abordagem
+3. CRUZAMENTO: Um número só é bom se aparece em 2+ dimensões (puxada + terminal + setor + dívida)
+4. CONFIANÇA HONESTA: Se os dados não mostram padrão claro, diga confiança baixa (20-40%)
+5. NUNCA INVENTE: Toda sugestão deve apontar qual dado histórico a sustenta
+6. ${strategyFilterParam && strategyFilterParam !== 'all' ? 'TIPO FIXO: Responda APENAS com o tipo selecionado.' : 'FLEXIBILIDADE: Escolha o tipo de aposta com maior chance REAL baseada nos dados.'}
 7. Responda APENAS JSON válido, sem markdown.${focusInstruction}`;
 
         type AiResult = { source: string; parsed: any; raw: string; ok: boolean };
