@@ -173,6 +173,7 @@ const Index = () => {
   const lastSniperTriggerRef = useRef(0);
   const lastSpinSignatureRef = useRef('');
   const apiSnapshotRef = useRef<number[]>([]);
+  const fetchSniperRef = useRef<((retryCount?: number) => void) | null>(null);
   const lastAcceptedSpinRef = useRef<{ number: number | null; timestamp: number }>({ number: null, timestamp: 0 });
   const processedPredictionEventsRef = useRef<Record<string, number>>({});
   const spinCountSinceMicroLearnRef = useRef(0);
