@@ -25,7 +25,7 @@ const colorClass = (n: number) => {
   if (n === 0) return 'bg-gradient-to-br from-emerald-500 to-emerald-700 text-white';
   return RED_NUMBERS.includes(n)
     ? 'bg-gradient-to-br from-red-500 to-red-700 text-white'
-    : 'bg-gradient-to-br from-gray-600 to-gray-900 text-white';
+    : 'bg-gradient-to-br from-zinc-600 to-zinc-900 text-white';
 };
 
 const STRATEGY_EMOJI: Record<string, string> = {
@@ -79,7 +79,6 @@ const PredictionHistory = () => {
   const exactHits = resolved.filter(p => p.hit_type === 'exact');
   const winRate = resolved.length > 0 ? ((hits.length / resolved.length) * 100).toFixed(1) : '0.0';
 
-  // Strategy breakdown
   const strategyStats: Record<string, { hits: number; total: number }> = {};
   resolved.forEach(p => {
     if (!strategyStats[p.strategy_type]) strategyStats[p.strategy_type] = { hits: 0, total: 0 };
@@ -87,7 +86,6 @@ const PredictionHistory = () => {
     if (p.hit) strategyStats[p.strategy_type].hits++;
   });
 
-  // Recent streak
   let currentStreak = 0;
   let streakType: 'hit' | 'miss' | null = null;
   for (const p of resolved) {
@@ -99,7 +97,6 @@ const PredictionHistory = () => {
     } else break;
   }
 
-  // Best strategy
   const bestStrategy = Object.entries(strategyStats)
     .filter(([, s]) => s.total >= 3)
     .sort(([, a], [, b]) => (b.hits / b.total) - (a.hits / a.total))[0];
@@ -119,80 +116,59 @@ const PredictionHistory = () => {
   ];
 
   const winRateNum = parseFloat(winRate);
-  const winRateColor = winRateNum >= 60 ? 'text-emerald-400' : winRateNum >= 40 ? 'text-amber-400' : 'text-destructive';
 
   return (
-    <div className="bg-card/95 rounded-xl border border-primary/20 shadow-lg shadow-primary/5 overflow-hidden">
+    <div className="glass rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 border-b border-primary/15">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
-            <BarChart3 className="w-4 h-4 text-primary" />
+      <div className="relative p-4 border-b border-border/20">
+        <div className="absolute inset-0 bg-gradient-to-r from-neon-cyan/5 via-transparent to-neon-pink/5" />
+        <div className="relative flex items-center gap-2.5 mb-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-cyan/20 to-neon-pink/10 border border-neon-cyan/25 flex items-center justify-center shadow-neon-cyan">
+            <BarChart3 className="w-4 h-4 text-neon-cyan" />
           </div>
           <div>
-            <h3 className="font-display text-sm font-bold tracking-wider text-primary">HISTÓRICO</h3>
-            <p className="text-[8px] text-muted-foreground">Resultado de todas as previsões da IA</p>
+            <h3 className="font-display text-[11px] font-bold tracking-[0.15em] text-neon-cyan">HISTÓRICO</h3>
+            <p className="text-[7px] text-muted-foreground/60">Resultado de todas as previsões da IA</p>
           </div>
           {currentStreak >= 3 && streakType === 'hit' && (
-            <div className="ml-auto flex items-center gap-1 bg-emerald-500/15 border border-emerald-500/30 rounded-full px-2.5 py-1">
-              <Flame className="w-3 h-3 text-emerald-400" />
-              <span className="text-[9px] font-bold text-emerald-400">{currentStreak}x SEGUIDOS</span>
+            <div className="ml-auto flex items-center gap-1 bg-neon-green/10 border border-neon-green/25 rounded-full px-2.5 py-1 shadow-neon-green">
+              <Flame className="w-3 h-3 text-neon-green" />
+              <span className="text-[8px] font-bold text-neon-green">{currentStreak}× SEGUIDOS</span>
             </div>
           )}
         </div>
 
         {/* Hero Stats */}
-        <div className="grid grid-cols-4 gap-2">
-          <StatCard
-            value={resolved.length.toString()}
-            label="Previsões"
-            variant="default"
-          />
-          <StatCard
-            value={`${winRate}%`}
-            label="Win Rate"
-            variant={winRateNum >= 50 ? 'success' : winRateNum >= 35 ? 'warning' : 'danger'}
-            icon={<TrendingUp className="w-3 h-3" />}
-          />
-          <StatCard
-            value={hits.length.toString()}
-            label="Acertos"
-            variant="success"
-            icon={<CheckCircle2 className="w-3 h-3" />}
-          />
-          <StatCard
-            value={exactHits.length.toString()}
-            label="Exatos"
-            variant="primary"
-            icon={<Trophy className="w-3 h-3" />}
-          />
+        <div className="relative grid grid-cols-4 gap-2">
+          <StatCard value={resolved.length.toString()} label="Previsões" variant="default" />
+          <StatCard value={`${winRate}%`} label="Win Rate" variant={winRateNum >= 50 ? 'success' : winRateNum >= 35 ? 'warning' : 'danger'} icon={<TrendingUp className="w-3 h-3" />} />
+          <StatCard value={hits.length.toString()} label="Acertos" variant="success" icon={<CheckCircle2 className="w-3 h-3" />} />
+          <StatCard value={exactHits.length.toString()} label="Exatos" variant="primary" icon={<Trophy className="w-3 h-3" />} />
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-border/60">
+      <div className="flex border-b border-border/20 bg-background/20">
         {tabs.map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 py-2 text-[9px] font-bold tracking-wider transition-all relative ${
-              activeTab === tab.key
-                ? 'text-primary'
-                : 'text-muted-foreground hover:text-foreground'
+            className={`flex-1 py-2.5 text-[9px] font-bold tracking-wider transition-all relative ${
+              activeTab === tab.key ? 'text-neon-cyan' : 'text-muted-foreground/60 hover:text-foreground'
             }`}
           >
             {tab.label}
             {tab.count !== undefined && (
               <span className={`ml-1 text-[7px] px-1 py-px rounded-full ${
-                activeTab === tab.key ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'
+                activeTab === tab.key ? 'bg-neon-cyan/15 text-neon-cyan' : 'bg-secondary/40 text-muted-foreground/50'
               }`}>
                 {tab.count}
               </span>
             )}
             {activeTab === tab.key && (
               <motion.div
-                layoutId="tab-indicator"
-                className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full"
+                layoutId="hist-tab-indicator"
+                className="absolute bottom-0 left-2 right-2 h-[2px] bg-gradient-to-r from-neon-cyan to-neon-pink rounded-full shadow-neon-cyan"
               />
             )}
           </button>
@@ -202,29 +178,29 @@ const PredictionHistory = () => {
       <div className="p-3">
         {/* Best Strategy Badge */}
         {activeTab === 'resumo' && bestStrategy && (
-          <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg p-2 mb-3">
-            <Trophy className="w-4 h-4 text-primary shrink-0" />
+          <div className="flex items-center gap-2 glass rounded-lg p-2.5 mb-3 border border-gold/20">
+            <Trophy className="w-4 h-4 text-gold shrink-0" />
             <div className="flex-1 min-w-0">
-              <span className="text-[8px] text-muted-foreground block">MELHOR ESTRATÉGIA</span>
+              <span className="text-[7px] text-muted-foreground/60 block">MELHOR ESTRATÉGIA</span>
               <span className="text-[10px] font-bold text-foreground">
                 {STRATEGY_EMOJI[bestStrategy[0]] || '📌'} {STRATEGY_FRIENDLY[bestStrategy[0]] || bestStrategy[0]}
               </span>
             </div>
             <div className="text-right">
-              <span className="text-sm font-bold font-mono text-primary">
+              <span className="text-sm font-bold font-mono text-gold">
                 {((bestStrategy[1].hits / bestStrategy[1].total) * 100).toFixed(0)}%
               </span>
-              <span className="text-[7px] text-muted-foreground block">
+              <span className="text-[7px] text-muted-foreground/50 block">
                 {bestStrategy[1].hits}/{bestStrategy[1].total}
               </span>
             </div>
           </div>
         )}
 
-        {/* Strategy Performance (resumo tab) */}
+        {/* Strategy Performance */}
         {activeTab === 'resumo' && Object.keys(strategyStats).length > 0 && (
-          <div className="mb-3 space-y-1">
-            <span className="text-[8px] text-muted-foreground font-bold tracking-wider block mb-1.5">PERFORMANCE POR ESTRATÉGIA</span>
+          <div className="mb-3 space-y-1.5">
+            <span className="text-[8px] text-muted-foreground/60 font-bold tracking-wider block mb-2">PERFORMANCE POR ESTRATÉGIA</span>
             {Object.entries(strategyStats)
               .sort(([, a], [, b]) => (b.hits / b.total) - (a.hits / a.total))
               .map(([type, { hits: h, total: t }]) => {
@@ -232,29 +208,25 @@ const PredictionHistory = () => {
                 return (
                   <div key={type} className="flex items-center gap-2 group">
                     <span className="text-[9px] w-4 text-center">{STRATEGY_EMOJI[type] || '📌'}</span>
-                    <span className="text-[9px] text-foreground font-medium w-28 truncate">
-                      {STRATEGY_FRIENDLY[type] || type}
-                    </span>
-                    <div className="flex-1 h-2 bg-secondary/60 rounded-full overflow-hidden">
+                    <span className="text-[9px] text-foreground/80 font-medium w-28 truncate">{STRATEGY_FRIENDLY[type] || type}</span>
+                    <div className="flex-1 h-2 bg-background/40 rounded-full overflow-hidden border border-border/10">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${rate}%` }}
                         transition={{ duration: 0.6, delay: 0.1 }}
                         className={`h-full rounded-full ${
-                          rate >= 60 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                            : rate >= 40 ? 'bg-gradient-to-r from-amber-500 to-amber-400'
-                            : 'bg-gradient-to-r from-red-500 to-red-400'
+                          rate >= 60 ? 'bg-gradient-to-r from-neon-green to-emerald-400'
+                            : rate >= 40 ? 'bg-gradient-to-r from-gold to-amber-400'
+                            : 'bg-gradient-to-r from-destructive to-red-400'
                         }`}
                       />
                     </div>
                     <span className={`text-[9px] font-bold font-mono w-12 text-right ${
-                      rate >= 60 ? 'text-emerald-400' : rate >= 40 ? 'text-amber-400' : 'text-destructive'
+                      rate >= 60 ? 'text-neon-green' : rate >= 40 ? 'text-gold' : 'text-destructive'
                     }`}>
                       {rate.toFixed(0)}%
                     </span>
-                    <span className="text-[7px] text-muted-foreground/60 font-mono w-8 text-right">
-                      {h}/{t}
-                    </span>
+                    <span className="text-[7px] text-muted-foreground/40 font-mono w-8 text-right">{h}/{t}</span>
                   </div>
                 );
               })}
@@ -263,23 +235,14 @@ const PredictionHistory = () => {
 
         {/* Streak indicator */}
         {currentStreak >= 2 && streakType && (
-          <div className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg mb-2 ${
+          <div className={`flex items-center justify-center gap-1.5 py-2 rounded-lg mb-2 backdrop-blur-sm ${
             streakType === 'hit'
-              ? 'bg-emerald-500/10 border border-emerald-500/25'
-              : 'bg-destructive/10 border border-destructive/25'
+              ? 'bg-neon-green/8 border border-neon-green/20'
+              : 'bg-destructive/8 border border-destructive/20'
           }`}>
-            {streakType === 'hit' ? (
-              <Flame className="w-3 h-3 text-emerald-400" />
-            ) : (
-              <XCircle className="w-3 h-3 text-destructive" />
-            )}
-            <span className={`text-[9px] font-bold ${
-              streakType === 'hit' ? 'text-emerald-400' : 'text-destructive'
-            }`}>
-              {streakType === 'hit'
-                ? `${currentStreak}x acertos seguidos — IA em boa fase!`
-                : `${currentStreak}x erros seguidos — IA recalibrando...`
-              }
+            {streakType === 'hit' ? <Flame className="w-3 h-3 text-neon-green" /> : <XCircle className="w-3 h-3 text-destructive" />}
+            <span className={`text-[9px] font-bold ${streakType === 'hit' ? 'text-neon-green' : 'text-destructive'}`}>
+              {streakType === 'hit' ? `${currentStreak}× acertos seguidos — IA em boa fase!` : `${currentStreak}× erros seguidos — IA recalibrando...`}
             </span>
           </div>
         )}
@@ -294,15 +257,13 @@ const PredictionHistory = () => {
                 const isHot = wr >= 45;
                 const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
                 return (
-                  <div key={type} className={`flex items-center gap-2 p-2 rounded-lg border text-[8px] ${
-                    isHot ? 'bg-green-500/[0.08] border-green-500/20' : 'bg-secondary/40 border-border'
+                  <div key={type} className={`flex items-center gap-2 p-2.5 rounded-lg border text-[8px] backdrop-blur-sm ${
+                    isHot ? 'bg-neon-green/5 border-neon-green/15' : 'bg-background/20 border-border/20'
                   }`}>
                     <span>{medal}</span>
-                    <span className="flex-1 truncate font-medium">{STRATEGY_FRIENDLY[type] || type.replace(/_/g,' ')}</span>
-                    <span className={`font-mono font-bold ${isHot?'text-green-400':'text-muted-foreground'}`}>
-                      {wr.toFixed(0)}%
-                    </span>
-                    <span className="text-muted-foreground">{s.hits}/{s.total}</span>
+                    <span className="flex-1 truncate font-medium text-foreground/80">{STRATEGY_FRIENDLY[type] || type.replace(/_/g,' ')}</span>
+                    <span className={`font-mono font-bold ${isHot ? 'text-neon-green' : 'text-muted-foreground'}`}>{wr.toFixed(0)}%</span>
+                    <span className="text-muted-foreground/50">{s.hits}/{s.total}</span>
                   </div>
                 );
               })}
@@ -312,9 +273,9 @@ const PredictionHistory = () => {
         {/* Prediction List */}
         {activeTab !== 'estrategias' && filteredPredictions.length === 0 ? (
           <div className="text-center py-8">
-            <Target className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
-            <p className="text-xs text-muted-foreground">Nenhuma previsão registrada.</p>
-            <p className="text-[9px] text-muted-foreground/60 mt-1">Aguarde a IA gerar sinais...</p>
+            <Target className="w-10 h-10 text-muted-foreground/15 mx-auto mb-3" />
+            <p className="text-xs text-muted-foreground/50">Nenhuma previsão registrada.</p>
+            <p className="text-[9px] text-muted-foreground/30 mt-1">Aguarde a IA gerar sinais...</p>
           </div>
         ) : (
           <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin">
@@ -328,62 +289,56 @@ const PredictionHistory = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
                     transition={{ delay: idx * 0.015 }}
-                    className={`rounded-lg border transition-all cursor-pointer ${
+                    className={`rounded-lg border transition-all cursor-pointer backdrop-blur-sm ${
                       p.hit === true
-                        ? 'bg-emerald-500/5 border-emerald-500/20 hover:border-emerald-500/40'
-                        : 'bg-destructive/5 border-destructive/15 hover:border-destructive/30'
+                        ? 'bg-neon-green/3 border-neon-green/15 hover:border-neon-green/30'
+                        : 'bg-destructive/3 border-destructive/10 hover:border-destructive/20'
                     }`}
                     onClick={() => setExpandedId(isExpanded ? null : p.id)}
                   >
-                    {/* Main Row */}
                     <div className="flex items-center gap-2 p-2">
-                      {/* Result Badge */}
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                         p.hit_type === 'exact'
-                          ? 'bg-primary/20 border border-primary/40'
+                          ? 'bg-neon-cyan/15 border border-neon-cyan/30 shadow-neon-cyan'
                           : p.hit
-                          ? 'bg-emerald-500/15 border border-emerald-500/30'
-                          : 'bg-destructive/10 border border-destructive/20'
+                          ? 'bg-neon-green/10 border border-neon-green/25'
+                          : 'bg-destructive/8 border border-destructive/15'
                       }`}>
                         {p.hit_type === 'exact' ? (
-                          <Trophy className="w-4 h-4 text-primary" />
+                          <Trophy className="w-4 h-4 text-neon-cyan" />
                         ) : p.hit ? (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <CheckCircle2 className="w-4 h-4 text-neon-green" />
                         ) : (
-                          <XCircle className="w-4 h-4 text-destructive/70" />
+                          <XCircle className="w-4 h-4 text-destructive/60" />
                         )}
                       </div>
 
-                      {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-bold text-foreground">
+                          <span className="text-[10px] font-bold text-foreground/90">
                             {STRATEGY_EMOJI[p.strategy_type] || ''} {STRATEGY_FRIENDLY[p.strategy_type] || p.strategy_label}
                           </span>
                           <span className={`text-[7px] px-1.5 py-0.5 rounded-full font-bold ${
-                            p.hit_type === 'exact'
-                              ? 'bg-primary/20 text-primary'
-                              : p.hit
-                              ? 'bg-emerald-500/20 text-emerald-400'
-                              : 'bg-destructive/15 text-destructive'
+                            p.hit_type === 'exact' ? 'bg-neon-cyan/15 text-neon-cyan'
+                              : p.hit ? 'bg-neon-green/15 text-neon-green'
+                              : 'bg-destructive/10 text-destructive/70'
                           }`}>
                             {p.hit_type === 'exact' ? '💎 EXATO' : p.hit ? '✅ ACERTOU' : '✗ ERROU'}
                           </span>
                         </div>
 
-                        {/* Numbers row */}
                         <div className="flex items-center gap-1.5 mt-1">
-                          <span className="text-[7px] text-muted-foreground/60">Previu:</span>
+                          <span className="text-[7px] text-muted-foreground/40">Previu:</span>
                           {p.predicted_main !== null && (
-                            <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[8px] font-bold shadow-sm ${colorClass(p.predicted_main)} border border-white/10`}>
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold shadow-sm ${colorClass(p.predicted_main)} border border-white/10`}>
                               {p.predicted_main}
                             </div>
                           )}
                           {p.actual_number !== null && (
                             <>
-                              <ArrowRight className="w-2.5 h-2.5 text-muted-foreground/40" />
-                              <span className="text-[7px] text-muted-foreground/60">Saiu:</span>
-                              <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center text-[8px] font-bold shadow-sm ${colorClass(p.actual_number)} border border-white/10`}>
+                              <ArrowRight className="w-2.5 h-2.5 text-muted-foreground/30" />
+                              <span className="text-[7px] text-muted-foreground/40">Saiu:</span>
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold shadow-sm ${colorClass(p.actual_number)} border border-white/10`}>
                                 {p.actual_number}
                               </div>
                             </>
@@ -391,27 +346,19 @@ const PredictionHistory = () => {
                         </div>
                       </div>
 
-                      {/* Right side */}
                       <div className="flex flex-col items-end gap-0.5 shrink-0">
-                        <span className="text-[7px] text-muted-foreground/50 font-mono">
+                        <span className="text-[7px] text-muted-foreground/40 font-mono">
                           {new Date(p.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </span>
-                        <div className="flex items-center gap-1">
-                          <span className={`text-[8px] font-mono font-bold ${
-                            p.probability >= 70 ? 'text-emerald-400' : p.probability >= 50 ? 'text-amber-400' : 'text-muted-foreground'
-                          }`}>
-                            {p.probability}%
-                          </span>
-                        </div>
-                        {isExpanded ? (
-                          <ChevronUp className="w-3 h-3 text-muted-foreground/40" />
-                        ) : (
-                          <ChevronDown className="w-3 h-3 text-muted-foreground/40" />
-                        )}
+                        <span className={`text-[8px] font-mono font-bold ${
+                          p.probability >= 70 ? 'text-neon-green' : p.probability >= 50 ? 'text-gold' : 'text-muted-foreground/50'
+                        }`}>
+                          {p.probability}%
+                        </span>
+                        {isExpanded ? <ChevronUp className="w-3 h-3 text-muted-foreground/30" /> : <ChevronDown className="w-3 h-3 text-muted-foreground/30" />}
                       </div>
                     </div>
 
-                    {/* Expanded Details */}
                     <AnimatePresence>
                       {isExpanded && (
                         <motion.div
@@ -421,42 +368,32 @@ const PredictionHistory = () => {
                           transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div className="px-3 pb-2.5 pt-0.5 border-t border-border/30 space-y-1.5">
-                            {/* Convergence + probability bar */}
+                          <div className="px-3 pb-2.5 pt-0.5 border-t border-border/15 space-y-1.5">
                             <div className="flex items-center gap-2">
-                              <span className="text-[7px] text-muted-foreground w-16">Confiança:</span>
-                              <div className="flex-1 h-1.5 bg-secondary/60 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full ${
-                                    p.probability >= 70 ? 'bg-emerald-500' : p.probability >= 50 ? 'bg-amber-500' : 'bg-red-500'
-                                  }`}
-                                  style={{ width: `${p.probability}%` }}
-                                />
+                              <span className="text-[7px] text-muted-foreground/50 w-16">Confiança:</span>
+                              <div className="flex-1 h-1.5 bg-background/30 rounded-full overflow-hidden border border-border/10">
+                                <div className={`h-full rounded-full ${
+                                  p.probability >= 70 ? 'bg-neon-green' : p.probability >= 50 ? 'bg-gold' : 'bg-destructive'
+                                }`} style={{ width: `${p.probability}%` }} />
                               </div>
-                              <span className="text-[8px] font-mono text-muted-foreground">{p.probability}%</span>
+                              <span className="text-[8px] font-mono text-muted-foreground/50">{p.probability}%</span>
                             </div>
 
                             <div className="flex items-center gap-2">
-                              <span className="text-[7px] text-muted-foreground w-16">Convergência:</span>
-                              <div className="flex-1 h-1.5 bg-secondary/60 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full rounded-full bg-primary"
-                                  style={{ width: `${Math.min(100, (p.convergence_score / 1700) * 100)}%` }}
-                                />
+                              <span className="text-[7px] text-muted-foreground/50 w-16">Convergência:</span>
+                              <div className="flex-1 h-1.5 bg-background/30 rounded-full overflow-hidden border border-border/10">
+                                <div className="h-full rounded-full bg-neon-cyan" style={{ width: `${Math.min(100, (p.convergence_score / 1700) * 100)}%` }} />
                               </div>
-                              <span className="text-[8px] font-mono text-muted-foreground">{p.convergence_score}/1700</span>
+                              <span className="text-[8px] font-mono text-muted-foreground/50">{p.convergence_score}/1700</span>
                             </div>
 
-                            {/* All predicted numbers */}
                             {p.predicted_numbers.length > 1 && (
                               <div>
-                                <span className="text-[7px] text-muted-foreground block mb-1">Números cobertos:</span>
+                                <span className="text-[7px] text-muted-foreground/50 block mb-1">Números cobertos:</span>
                                 <div className="flex flex-wrap gap-1">
                                   {p.predicted_numbers.map((n, i) => (
                                     <div key={i} className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ${
-                                      n === p.actual_number
-                                        ? 'ring-2 ring-primary ring-offset-1 ring-offset-background ' + colorClass(n)
-                                        : colorClass(n)
+                                      n === p.actual_number ? 'ring-2 ring-neon-cyan ring-offset-1 ring-offset-background ' + colorClass(n) : colorClass(n)
                                     } border border-white/10`}>
                                       {n}
                                     </div>
@@ -465,16 +402,15 @@ const PredictionHistory = () => {
                               </div>
                             )}
 
-                            {/* Justification */}
                             {p.justification && (
-                              <div className="bg-secondary/30 rounded-md p-1.5">
-                                <span className="text-[7px] text-muted-foreground/60 block mb-0.5">Justificativa da IA:</span>
-                                <span className="text-[8px] text-foreground/80 leading-relaxed">{p.justification}</span>
+                              <div className="bg-background/20 rounded-md p-1.5 border border-border/10">
+                                <span className="text-[7px] text-muted-foreground/40 block mb-0.5">Justificativa da IA:</span>
+                                <span className="text-[8px] text-foreground/70 leading-relaxed">{p.justification}</span>
                               </div>
                             )}
 
                             {p.mesa_mode && (
-                              <span className="text-[7px] text-muted-foreground/50">Modo mesa: {p.mesa_mode}</span>
+                              <span className="text-[7px] text-muted-foreground/40">Modo mesa: {p.mesa_mode}</span>
                             )}
                           </div>
                         </motion.div>
@@ -498,20 +434,20 @@ const StatCard = ({ value, label, variant, icon }: {
   icon?: React.ReactNode;
 }) => {
   const styles = {
-    default: 'bg-secondary/50 border-border text-foreground',
-    success: 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400',
-    danger: 'bg-destructive/10 border-destructive/25 text-destructive',
-    warning: 'bg-amber-500/10 border-amber-500/25 text-amber-400',
-    primary: 'bg-primary/10 border-primary/25 text-primary',
+    default: 'bg-background/20 border-border/15 text-foreground',
+    success: 'bg-neon-green/8 border-neon-green/20 text-neon-green',
+    danger: 'bg-destructive/8 border-destructive/20 text-destructive',
+    warning: 'bg-gold/8 border-gold/20 text-gold',
+    primary: 'bg-neon-cyan/8 border-neon-cyan/20 text-neon-cyan',
   };
 
   return (
-    <div className={`rounded-lg p-2 text-center border ${styles[variant]}`}>
+    <div className={`rounded-lg p-2 text-center border backdrop-blur-sm ${styles[variant]}`}>
       <div className="flex items-center justify-center gap-1">
         {icon}
         <span className="text-base font-bold font-mono">{value}</span>
       </div>
-      <span className="text-[7px] text-muted-foreground block mt-0.5">{label}</span>
+      <span className="text-[7px] text-muted-foreground/50 block mt-0.5">{label}</span>
     </div>
   );
 };
