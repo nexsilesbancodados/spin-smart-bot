@@ -6713,7 +6713,7 @@ serve(async (req) => {
     ])].slice(0, 7);
 
     // ========================================================
-    // 🧠 AI DEEP LEARNING LAYER — Lovable AI analyzes + learns + predicts
+    // 🧠 AI DEEP LEARNING LAYER — DeepSeek analyzes + learns + predicts
     // ========================================================
     let aiReasoning: string | null = null;
     let aiAdjustedNumbers: number[] | null = null;
