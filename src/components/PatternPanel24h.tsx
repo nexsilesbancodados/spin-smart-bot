@@ -188,6 +188,7 @@ const PatternPanel24h = ({ sniperData }: PatternPanel24hProps) => {
           </div>
         </div>
       )}
+      </div>
     </motion.div>
   );
 };
