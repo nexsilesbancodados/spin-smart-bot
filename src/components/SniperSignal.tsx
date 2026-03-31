@@ -1,37 +1,9 @@
 import { useState, useEffect, useRef, memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crosshair, AlertTriangle, Clock, ShieldCheck, Brain, TrendingUp, Zap, Target, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
-const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
-
-const numColor = (n: number) =>
-  n === 0 ? 'bg-roulette-green text-white' : RED_NUMBERS.has(n) ? 'bg-roulette-red text-white' : 'bg-roulette-black text-white';
-
-const numGradient = (n: number) =>
-  n === 0 ? 'from-emerald-500 to-emerald-700' : RED_NUMBERS.has(n) ? 'from-red-500 to-red-700' : 'from-zinc-600 to-zinc-900';
-
-const getConfidenceStyle = (conf: number) => {
-  if (conf >= 70) return { border: 'border-neon-green/40', bg: 'bg-neon-green/8', text: 'text-neon-green', glow: 'shadow-[0_0_12px_hsl(var(--neon-green)/0.15)]', label: 'FORTE', emoji: '🔥' };
-  if (conf >= 55) return { border: 'border-primary/40', bg: 'bg-primary/8', text: 'text-primary', glow: '', label: 'ENTRAR', emoji: '✅' };
-  if (conf >= 40) return { border: 'border-gold/30', bg: 'bg-gold/8', text: 'text-gold', glow: '', label: 'LEVE', emoji: '⚡' };
-  return { border: 'border-border/30', bg: 'bg-secondary/10', text: 'text-muted-foreground', glow: '', label: 'OBSERVAR', emoji: '👁️' };
-};
-
-const BET_ORDER = ['cor', 'paridade', 'alto_baixo', 'duzia', 'coluna', 'terminal', 'setor', 'vizinhos', 'cavalos', 'rua', 'pleno'] as const;
-
-const BET_TYPE_META: Record<string, { icon: string; label: string; category: 'simples' | 'medio' | 'avancado' }> = {
-  cor: { icon: '🎨', label: 'Cor', category: 'simples' },
-  paridade: { icon: '⚖️', label: 'Par/Ímpar', category: 'simples' },
-  alto_baixo: { icon: '📏', label: 'Alto/Baixo', category: 'simples' },
-  duzia: { icon: '🎲', label: 'Dúzia', category: 'medio' },
-  coluna: { icon: '📐', label: 'Coluna', category: 'medio' },
-  terminal: { icon: '🔢', label: 'Terminal', category: 'medio' },
-  setor: { icon: '🌍', label: 'Setor', category: 'avancado' },
-  vizinhos: { icon: '🎯', label: 'Vizinhos', category: 'avancado' },
-  cavalos: { icon: '🐴', label: 'Cavalos', category: 'avancado' },
-  rua: { icon: '🛤️', label: 'Rua', category: 'avancado' },
-  pleno: { icon: '💎', label: 'Pleno', category: 'avancado' },
-};
+const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const numBg = (n: number) => n === 0 ? 'bg-emerald-600' : RED.has(n) ? 'bg-red-600' : 'bg-zinc-700';
 
 interface BetSignal {
   recommendation: string;
@@ -56,79 +28,58 @@ interface Props {
   spinTimestamp?: number;
 }
 
-const SignalCard = memo(({ type, signal, delay }: { type: string; signal: BetSignal; delay: number }) => {
-  const [expanded, setExpanded] = useState(false);
-  const meta = BET_TYPE_META[type] || { icon: '🎯', label: type, category: 'avancado' as const };
-  const style = getConfidenceStyle(signal.confidence);
-  const isSimple = meta.category === 'simples';
+const BET_ORDER = ['cor','paridade','alto_baixo','duzia','coluna','terminal','setor','vizinhos','cavalos','rua','pleno'] as const;
+
+const BET_META: Record<string, { label: string; cat: 'S' | 'M' | 'A' }> = {
+  cor: { label: 'Cor', cat: 'S' }, paridade: { label: 'Par/Ímpar', cat: 'S' }, alto_baixo: { label: 'Alto/Baixo', cat: 'S' },
+  duzia: { label: 'Dúzia', cat: 'M' }, coluna: { label: 'Coluna', cat: 'M' }, terminal: { label: 'Terminal', cat: 'M' },
+  setor: { label: 'Setor', cat: 'A' }, vizinhos: { label: 'Vizinhos', cat: 'A' }, cavalos: { label: 'Cavalos', cat: 'A' },
+  rua: { label: 'Rua', cat: 'A' }, pleno: { label: 'Pleno', cat: 'A' },
+};
+
+const confColor = (c: number) => c >= 70 ? 'text-primary' : c >= 55 ? 'text-accent' : c >= 40 ? 'text-muted-foreground' : 'text-muted-foreground/50';
+const confBg = (c: number) => c >= 70 ? 'bg-primary/12 border-primary/25' : c >= 55 ? 'bg-accent/10 border-accent/20' : 'bg-secondary/50 border-border/30';
+const confLabel = (c: number) => c >= 70 ? '🔥' : c >= 55 ? '✅' : c >= 40 ? '⚡' : '👁️';
+
+// ── Compact signal row ──
+const SignalRow = memo(({ type, signal }: { type: string; signal: BetSignal }) => {
+  const [open, setOpen] = useState(false);
+  const meta = BET_META[type] || { label: type, cat: 'A' as const };
+  const hasNums = signal.numbers.length > 0 && signal.numbers.length <= 18;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: delay * 0.04 }}
-      className={`glass rounded-xl border ${style.border} ${style.glow} overflow-hidden transition-all`}
-    >
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left"
-      >
-        <span className="text-lg">{signal.emoji}</span>
+    <div className={`rounded-xl border ${confBg(signal.confidence)} overflow-hidden transition-all`}>
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-2 px-3 py-2 text-left">
+        <span className="text-base leading-none">{signal.emoji}</span>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className={`text-[11px] font-black tracking-wide ${style.text}`}>
-              {signal.recommendation}
-            </span>
-          </div>
-          <span className="text-[8px] text-muted-foreground/50 font-mono">{meta.label} · {signal.payout}</span>
+          <span className={`text-[11px] font-extrabold ${confColor(signal.confidence)}`}>{signal.recommendation}</span>
+          <span className="text-[8px] text-muted-foreground/40 ml-2 font-mono">{meta.label}</span>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${style.border} ${style.bg} ${style.text}`}>
-            {signal.confidence}%
-          </span>
-          <span className={`text-[8px] font-black ${style.text}`}>{style.emoji}</span>
-          {!isSimple && (
-            expanded ? <ChevronUp className="w-3 h-3 text-muted-foreground/40" /> : <ChevronDown className="w-3 h-3 text-muted-foreground/40" />
-          )}
-        </div>
+        <span className={`text-[10px] font-black tabular-nums ${confColor(signal.confidence)}`}>{signal.confidence}%</span>
+        <span className="text-[9px]">{confLabel(signal.confidence)}</span>
+        {hasNums && (open ? <ChevronUp className="w-3 h-3 text-muted-foreground/30" /> : <ChevronDown className="w-3 h-3 text-muted-foreground/30" />)}
       </button>
-
       <AnimatePresence>
-        {(expanded || isSimple) && signal.numbers.length > 0 && !isSimple && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="px-3 pb-2.5 space-y-1.5">
-              <p className="text-[8px] text-muted-foreground/60 leading-relaxed">{signal.reasoning}</p>
+        {open && hasNums && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <div className="px-3 pb-2.5 space-y-1">
+              <p className="text-[8px] text-muted-foreground/50 leading-relaxed">{signal.reasoning}</p>
               <div className="flex flex-wrap gap-1">
                 {signal.numbers.slice(0, 12).map((n, i) => (
-                  <span key={`${n}-${i}`}
-                    className={`w-6 h-6 rounded-md flex items-center justify-center text-[8px] font-black text-white ${
-                      n === 0 ? 'bg-emerald-600' : RED_NUMBERS.has(n) ? 'bg-red-600' : 'bg-zinc-700'
-                    } ${i === 0 ? 'ring-1 ring-primary/50' : ''}`}
-                  >
-                    {n}
-                  </span>
+                  <span key={`${n}-${i}`} className={`w-6 h-6 rounded text-[8px] font-black text-white flex items-center justify-center ${numBg(n)} ${i === 0 ? 'ring-1 ring-primary/50' : ''}`}>{n}</span>
                 ))}
-                {signal.numbers.length > 12 && (
-                  <span className="w-6 h-6 rounded-md flex items-center justify-center text-[7px] font-bold glass text-muted-foreground border border-border/30">
-                    +{signal.numbers.length - 12}
-                  </span>
-                )}
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 });
-SignalCard.displayName = 'SignalCard';
+SignalRow.displayName = 'SignalRow';
 
-const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredResult, allNumbers = [], autoLearnStatus, strategyFilter = 'all' }: Props) => {
+// ── Main Component ──
+const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredResult }: Props) => {
   const [reedCount, setReedCount] = useState(0);
   const prevHitRef = useRef<boolean | null>(null);
 
@@ -142,245 +93,148 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
 
   const reedStopped = reedCount >= 4;
 
-  const recentWR = typeof sniperData?.recentWinRate === 'number' ? Math.round(sniperData.recentWinRate * 100) : null;
-
-  // ── KILL SWITCH from Omni-Core ───
+  // Kill switch
   if (sniperData?.killSwitch) {
     return (
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-3">
-        <div className="glass rounded-2xl p-6 text-center border-2 border-destructive/25 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-destructive/[0.03] to-transparent" />
-          <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: 3 }} className="text-5xl mb-3 inline-block">🛡️</motion.div>
-          <p className="text-sm font-black text-destructive font-display tracking-[0.15em] mb-2">PROTEÇÃO DE BANCA</p>
-          <p className="text-[10px] text-muted-foreground/60 leading-relaxed max-w-xs mx-auto">{sniperData.killReason || 'Anomalia detectada — sinais suspensos temporariamente'}</p>
-        </div>
-      </motion.div>
-    );
-  }
-
-  // Loading state
-  if (!sniperData) {
-    return (
-      <div className="glass rounded-2xl border border-primary/15 p-5 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-neon-pink/[0.02]" />
-        <div className="relative flex items-center gap-3">
-          <div className="relative w-10 h-10 shrink-0">
-            <motion.div
-              className="absolute inset-0 rounded-full border-2 border-t-primary border-r-neon-pink/50 border-b-transparent border-l-transparent"
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
-            />
-            <Crosshair className="w-4 h-4 text-primary/50 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-          </div>
-          <div>
-            <p className="text-[10px] text-foreground/60 font-display tracking-[0.12em] font-bold">INICIALIZANDO IA</p>
-            <p className="text-[7px] text-muted-foreground/30 font-mono mt-0.5">Processando modelos de predição...</p>
-          </div>
-        </div>
+      <div className="rounded-2xl border-2 border-destructive/30 bg-destructive/5 p-6 text-center">
+        <div className="text-4xl mb-2">🛡️</div>
+        <p className="text-sm font-extrabold text-destructive tracking-wide">PROTEÇÃO ATIVA</p>
+        <p className="text-[10px] text-muted-foreground/60 mt-1">{sniperData.killReason || 'Mesa desfavorável — sinais pausados'}</p>
       </div>
     );
   }
 
-  // Stale — show last result
-  if (sniperStale && lastPredResult && !sniperData?.signal) {
-    const isHit = lastPredResult.hit;
+  // Loading
+  if (!sniperData) {
     return (
-      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
-        className={`glass rounded-2xl border-2 overflow-hidden relative ${isHit ? 'border-neon-green/25' : 'border-destructive/25'}`}>
-        <div className="relative p-5 flex items-center gap-4">
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }}
-            className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isHit ? 'bg-neon-green/10 ring-2 ring-neon-green/25' : 'bg-destructive/10 ring-2 ring-destructive/25'}`}>
-            {isHit ? <ShieldCheck className="w-7 h-7 text-neon-green" /> : <AlertTriangle className="w-7 h-7 text-destructive" />}
-          </motion.div>
-          <div>
-            <span className={`text-lg font-black font-display tracking-[0.12em] ${isHit ? 'text-neon-green' : 'text-destructive'}`}>
-              {isHit ? '✅ ACERTO!' : '❌ ERRO'}
-            </span>
-            <div className="flex gap-4 text-xs text-muted-foreground mt-1 font-mono">
-              <span>Previsto: <strong className="text-foreground">{lastPredResult.predicted}</strong></span>
-              <span>Saiu: <strong className="text-foreground">{lastPredResult.actual}</strong></span>
-            </div>
-          </div>
-        </div>
-      </motion.div>
+      <div className="rounded-2xl border border-border/30 bg-card/50 p-8 text-center">
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+          className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary mx-auto" />
+        <p className="text-[10px] text-muted-foreground/50 mt-3 font-medium">Inicializando IA...</p>
+      </div>
     );
   }
 
   // No signal
   if (!sniperData?.signal || !sniperData?.strategy) {
     return (
-      <div className="glass rounded-2xl border border-border/20 p-8 text-center">
-        <motion.div animate={{ opacity: [0.3, 0.8, 0.3], y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 3 }}>
-          <Clock className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+      <div className="rounded-2xl border border-border/20 bg-card/40 p-8 text-center">
+        <motion.div animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ repeat: Infinity, duration: 2.5 }}>
+          <div className="text-3xl mb-2">⏳</div>
         </motion.div>
-        <p className="text-[11px] text-muted-foreground/50 font-display tracking-wider font-bold">
-          {sniperData?.message || 'Aguardando dados...'}
-        </p>
+        <p className="text-[10px] text-muted-foreground/50">{sniperData?.message || 'Aguardando dados...'}</p>
       </div>
     );
   }
 
-  const allBetSignals: Record<string, BetSignal> = sniperData?.allBetSignals || {};
+  const allBets: Record<string, BetSignal> = sniperData?.allBetSignals || {};
   const displayProb = sniperData?.signal?.probability || 0;
   const ai = sniperData?.aiReasoning;
-  const conciseReason = ai?.suggestedBet || ai?.betDescription || ai?.patternIdentified || 'Sinais prontos para o próximo giro';
 
-  // Sort signals by confidence
-  const sortedSignals = BET_ORDER
-    .filter(type => allBetSignals[type])
-    .sort((a, b) => (allBetSignals[b]?.confidence || 0) - (allBetSignals[a]?.confidence || 0));
+  const sorted = BET_ORDER.filter(t => allBets[t]).sort((a, b) => (allBets[b]?.confidence || 0) - (allBets[a]?.confidence || 0));
+  const best = sorted[0] ? allBets[sorted[0]] : null;
+  const bestType = sorted[0];
 
-  // Best signal
-  const bestType = sortedSignals[0];
-  const bestSignal = bestType ? allBetSignals[bestType] : null;
-
-  // Group: simples (1:1), medio (2:1), avancado
-  const simples = sortedSignals.filter(t => BET_TYPE_META[t]?.category === 'simples');
-  const medio = sortedSignals.filter(t => BET_TYPE_META[t]?.category === 'medio');
-  const avancado = sortedSignals.filter(t => BET_TYPE_META[t]?.category === 'avancado');
+  const simples = sorted.filter(t => BET_META[t]?.cat === 'S');
+  const medio = sorted.filter(t => BET_META[t]?.cat === 'M');
+  const avancado = sorted.filter(t => BET_META[t]?.cat === 'A');
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-      {/* REED STOP */}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+      {/* Reed stop */}
       {reedStopped && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          className="glass border-2 border-destructive/30 rounded-2xl px-4 py-3 text-center">
-          <span className="text-xs font-black text-destructive font-display tracking-wider">⛔ PAUSE — 4 erros seguidos</span>
-          <p className="text-[9px] text-muted-foreground mt-1">Aguarde nova tendência</p>
-        </motion.div>
+        <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-2.5 text-center">
+          <span className="text-[10px] font-extrabold text-destructive">⛔ 4 erros seguidos — aguarde tendência</span>
+        </div>
       )}
 
-      <div className={reedStopped ? 'opacity-30 pointer-events-none space-y-3' : 'space-y-3'}>
-        {/* ── HEADER: AI Brain ─────────────────────────── */}
-        <div className="glass rounded-2xl border border-primary/25 p-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20">
-              <Brain className="w-3.5 h-3.5 text-primary" />
-              <span className="text-[9px] font-black uppercase tracking-[0.12em] text-primary font-display">PRÓXIMO GIRO</span>
-            </div>
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-              className={`px-2.5 py-1 rounded-full border font-display font-black text-[10px] ${
-                displayProb >= 70 ? 'bg-neon-green/10 text-neon-green border-neon-green/30' :
-                displayProb >= 50 ? 'bg-primary/10 text-primary border-primary/25' :
-                'bg-secondary text-muted-foreground border-border'
-              }`}>{displayProb}%</motion.div>
-            {recentWR !== null && (
-              <span className="text-[9px] font-bold text-foreground/60 font-mono ml-auto flex items-center gap-1">
-                <TrendingUp className="w-3 h-3 text-primary" /> WR {recentWR}%
-              </span>
-            )}
-          </div>
-          <p className="text-[10px] text-muted-foreground leading-relaxed mt-2 pl-1 line-clamp-2">{conciseReason}</p>
-        </div>
-
-        {/* ── BEST SIGNAL HIGHLIGHT ────────────────────── */}
-        {bestSignal && (
+      <div className={reedStopped ? 'opacity-25 pointer-events-none space-y-3' : 'space-y-3'}>
+        {/* ── HERO SIGNAL ── */}
+        {best && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass rounded-2xl border-2 border-primary/30 p-4 relative overflow-hidden"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/[0.06] to-card/80 p-4 relative overflow-hidden"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] to-transparent" />
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-            <div className="relative">
-              <div className="flex items-center gap-1 mb-2">
-                <Target className="w-3.5 h-3.5 text-primary" />
-                <span className="text-[8px] font-black text-primary uppercase tracking-[0.2em] font-display">MELHOR SINAL</span>
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+
+            {/* Countdown */}
+            {sniperCountdown > 0 && (
+              <div className="absolute top-2 right-3 flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                <span className="text-[9px] font-mono text-primary/60 tabular-nums">{sniperCountdown}s</span>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-4xl">{bestSignal.emoji}</span>
-                <div className="flex-1">
-                  <p className="text-xl font-black text-foreground leading-none font-display tracking-wide">{bestSignal.recommendation}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">{bestSignal.reasoning}</p>
+            )}
+
+            <div className="flex items-start gap-3">
+              <div className="text-[32px] leading-none mt-0.5">{best.emoji}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[8px] font-bold text-primary/60 uppercase tracking-[0.15em]">ENTRADA</span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${confBg(best.confidence)} ${confColor(best.confidence)}`}>
+                    {best.confidence}% {confLabel(best.confidence)}
+                  </span>
                 </div>
-                <div className={`text-[13px] font-black px-3 py-1.5 rounded-xl border ${getConfidenceStyle(bestSignal.confidence).border} ${getConfidenceStyle(bestSignal.confidence).bg} ${getConfidenceStyle(bestSignal.confidence).text}`}>
-                  {bestSignal.confidence}%
+                <p className="text-lg font-extrabold text-foreground leading-tight tracking-tight">{best.recommendation}</p>
+                <p className="text-[9px] text-muted-foreground/50 mt-1 leading-relaxed line-clamp-2">{best.reasoning}</p>
+
+                {/* Numbers */}
+                {best.numbers.length > 0 && best.numbers.length <= 18 && (
+                  <div className="flex flex-wrap gap-1 mt-2.5">
+                    {best.numbers.slice(0, 10).map((n, i) => (
+                      <span key={`hero-${n}-${i}`} className={`w-7 h-7 rounded-lg text-[10px] font-black text-white flex items-center justify-center ${numBg(n)} ${i === 0 ? 'ring-2 ring-primary/50 ring-offset-1 ring-offset-background' : ''}`}>{n}</span>
+                    ))}
+                    {best.numbers.length > 10 && (
+                      <span className="w-7 h-7 rounded-lg text-[8px] font-bold flex items-center justify-center bg-secondary text-muted-foreground border border-border/30">+{best.numbers.length - 10}</span>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 mt-2 text-[8px] text-muted-foreground/40 font-mono">
+                  <span>{BET_META[bestType]?.label}</span>
+                  <span>·</span>
+                  <span>Paga {best.payout}</span>
+                  {displayProb > 0 && <><span>·</span><span>Prob {displayProb}%</span></>}
                 </div>
-              </div>
-              {bestSignal.numbers.length > 0 && bestSignal.numbers.length <= 12 && (
-                <div className="flex flex-wrap gap-1 mt-3">
-                  {bestSignal.numbers.slice(0, 12).map((n, i) => (
-                    <span key={`best-${n}-${i}`}
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black text-white ${
-                        n === 0 ? 'bg-emerald-600' : RED_NUMBERS.has(n) ? 'bg-red-600' : 'bg-zinc-700'
-                      } ${i === 0 ? 'ring-1 ring-primary/50' : ''}`}>{n}</span>
-                  ))}
-                </div>
-              )}
-              <div className="flex items-center gap-2 mt-2.5">
-                <span className="text-[8px] text-muted-foreground/50 font-mono">Paga {bestSignal.payout}</span>
-                <span className="text-[8px] text-muted-foreground/50 font-mono">·</span>
-                <span className="text-[8px] text-muted-foreground/50 font-mono">{BET_TYPE_META[bestType]?.label}</span>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* ── SIMPLE BETS (1:1) ────────────────────────── */}
+        {/* ── ALL SIGNALS ── */}
         {simples.length > 0 && (
-          <div>
-            <span className="text-[8px] font-black text-muted-foreground/50 uppercase tracking-[0.2em] px-1 font-display">Apostas Simples · 1:1</span>
-            <div className="grid grid-cols-1 gap-1.5 mt-1.5">
-              {simples.map((type, i) => (
-                <SignalCard key={type} type={type} signal={allBetSignals[type]} delay={i} />
-              ))}
-            </div>
-          </div>
+          <Section label="Simples · 1:1">
+            {simples.map(t => <SignalRow key={t} type={t} signal={allBets[t]} />)}
+          </Section>
         )}
-
-        {/* ── MEDIUM BETS (2:1+) ───────────────────────── */}
         {medio.length > 0 && (
-          <div>
-            <span className="text-[8px] font-black text-muted-foreground/50 uppercase tracking-[0.2em] px-1 font-display">Dúzias · Colunas · Terminais</span>
-            <div className="grid grid-cols-1 gap-1.5 mt-1.5">
-              {medio.map((type, i) => (
-                <SignalCard key={type} type={type} signal={allBetSignals[type]} delay={simples.length + i} />
-              ))}
-            </div>
-          </div>
+          <Section label="Dúzia · Coluna · Terminal">
+            {medio.map(t => <SignalRow key={t} type={t} signal={allBets[t]} />)}
+          </Section>
         )}
-
-        {/* ── ADVANCED BETS ────────────────────────────── */}
         {avancado.length > 0 && (
-          <div>
-            <span className="text-[8px] font-black text-muted-foreground/50 uppercase tracking-[0.2em] px-1 font-display">Setores · Vizinhos · Plenos</span>
-            <div className="grid grid-cols-1 gap-1.5 mt-1.5">
-              {avancado.map((type, i) => (
-                <SignalCard key={type} type={type} signal={allBetSignals[type]} delay={simples.length + medio.length + i} />
-              ))}
-            </div>
-          </div>
+          <Section label="Setor · Vizinhos · Pleno">
+            {avancado.filter(t => t !== bestType).map(t => <SignalRow key={t} type={t} signal={allBets[t]} />)}
+          </Section>
         )}
 
-        {/* ── OMNI-CORE AGENTS ─────────────────────────── */}
-        {sniperData?.agents && sniperData?.omniCore && (
-          <div className="glass rounded-xl border border-border/30 overflow-hidden">
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-border/15">
-              <span className="text-[8px] font-black text-muted-foreground uppercase tracking-[0.2em] font-display">⚙️ OMNI-CORE</span>
-              {sniperData.temperature && (
-                <span className={`ml-auto text-[8px] font-bold px-2 py-0.5 rounded-full border ${
-                  sniperData.temperature === 'quente' ? 'bg-neon-green/10 text-neon-green border-neon-green/25' :
-                  sniperData.temperature === 'morna' ? 'bg-primary/10 text-primary border-primary/25' :
-                  'bg-destructive/10 text-destructive border-destructive/25'
-                }`}>🌡️ {sniperData.temperature.toUpperCase()}</span>
-              )}
-            </div>
-            <div className="grid grid-cols-3 gap-px bg-border/10">
-              {Object.entries(sniperData.agents as Record<string, any>).map(([id, agent]: [string, any]) => (
-                <div key={id} className="p-2.5 text-center bg-card/60">
-                  <div className="text-[7px] font-black text-muted-foreground uppercase tracking-wider font-mono">
-                    {id === 'statistical' ? '📊 ESTAT' : id === 'ballistic' ? '🎯 BALÍST' : '🔄 REVERS'}
-                  </div>
-                  <div className="text-[12px] font-black font-mono text-foreground/70 mt-0.5">{agent.winRate}</div>
-                </div>
-              ))}
-            </div>
+        {/* ── AI REASONING ── */}
+        {ai?.suggestedBet && (
+          <div className="rounded-xl border border-border/20 bg-card/40 px-3.5 py-2.5">
+            <p className="text-[8px] text-muted-foreground/50 leading-relaxed">🧠 {ai.suggestedBet.slice(0, 200)}</p>
           </div>
         )}
       </div>
     </motion.div>
   );
 });
+
+const Section = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div>
+    <span className="text-[7px] font-bold text-muted-foreground/35 uppercase tracking-[0.2em] px-0.5">{label}</span>
+    <div className="space-y-1.5 mt-1">{children}</div>
+  </div>
+);
 
 SniperSignal.displayName = 'SniperSignal';
 export default SniperSignal;
