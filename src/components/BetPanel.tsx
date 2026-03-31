@@ -91,6 +91,9 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
   const [simProfit, setSimProfit] = useState(0);
   const [simTotal, setSimTotal] = useState(0);
   const [simWins, setSimWins] = useState(0);
+  const [manualBetType, setManualBetType] = useState('auto');
+  const [customNumbers, setCustomNumbers] = useState('');
+  const [showBetTypes, setShowBetTypes] = useState(false);
   const prevNumberRef = useRef<number | null>(null);
   const autoBetRef = useRef(false);
   const [extStatus, setExtStatus] = useState<{
