@@ -363,48 +363,61 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
       animate={{ opacity: 1, y: 0 }}
       className={`glass rounded-2xl border transition-all overflow-hidden ${
         betFlash
-          ? 'border-primary/50 shadow-neon-cyan'
+          ? 'border-primary/50 shadow-[0_0_20px_hsl(var(--primary)/0.15)]'
           : config.enabled
-          ? 'border-neon-green/30 shadow-[0_0_12px_hsl(var(--neon-green)/0.1)]'
-          : 'border-border/20'
+          ? 'border-neon-green/30 shadow-[0_0_15px_hsl(var(--neon-green)/0.08)]'
+          : 'border-border/15'
       }`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/15">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary/15 to-neon-pink/10 border border-primary/20 flex items-center justify-center shadow-neon-cyan">
-            <Zap className={`w-3.5 h-3.5 ${config.enabled ? 'text-neon-green animate-pulse' : 'text-primary'}`} />
+      <div className="relative flex items-center justify-between px-4 py-3 border-b border-border/10">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/3 via-transparent to-neon-pink/3" />
+        <div className="relative flex items-center gap-2.5">
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-all ${
+            config.enabled 
+              ? 'bg-neon-green/10 border-neon-green/25 shadow-[0_0_8px_hsl(var(--neon-green)/0.2)]' 
+              : 'bg-gradient-to-br from-primary/15 to-neon-pink/10 border-primary/20 shadow-[0_0_8px_hsl(var(--primary)/0.1)]'
+          }`}>
+            <Zap className={`w-4 h-4 ${config.enabled ? 'text-neon-green animate-pulse' : 'text-primary'}`} />
           </div>
-          <span className="font-display font-bold text-[10px] tracking-[0.15em] text-primary">CENTRAL DE APOSTAS</span>
-          {config.enabled && (
-            <span className="text-[7px] px-2 py-0.5 bg-neon-green/10 rounded-md text-neon-green font-bold border border-neon-green/20 animate-pulse">
-              AUTO
-            </span>
-          )}
-          {stats.waitingResult && (
-            <span className="text-[7px] px-2 py-0.5 bg-gold/10 rounded-md text-gold font-bold border border-gold/20">
-              ⏳
-            </span>
-          )}
+          <div>
+            <span className="font-display font-bold text-[10px] tracking-[0.15em] text-primary">CENTRAL DE APOSTAS</span>
+            <div className="flex items-center gap-1.5">
+              {config.enabled && (
+                <span className="text-[7px] px-1.5 py-0.5 bg-neon-green/10 rounded-md text-neon-green font-bold border border-neon-green/20 animate-pulse">
+                  AUTO
+                </span>
+              )}
+              {stats.waitingResult && (
+                <span className="text-[7px] px-1.5 py-0.5 bg-[hsl(var(--gold))]/10 rounded-md text-[hsl(var(--gold))] font-bold border border-[hsl(var(--gold))]/20">
+                  ⏳ ATIVA
+                </span>
+              )}
+              {simMode && (
+                <span className="text-[7px] px-1.5 py-0.5 bg-[hsl(var(--neon-cyan))]/10 rounded-md text-[hsl(var(--neon-cyan))] font-bold border border-[hsl(var(--neon-cyan))]/20">
+                  🧪 SIM
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="relative flex items-center gap-1.5">
           <button
             onClick={() => setSimMode(prev => !prev)}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-bold border transition-all backdrop-blur-sm ${
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[8px] font-bold border transition-all ${
               simMode
-                ? 'bg-neon-cyan/10 text-neon-cyan border-neon-cyan/20'
-                : 'bg-background/15 text-muted-foreground/50 border-border/15 hover:text-foreground'
+                ? 'bg-[hsl(var(--neon-cyan))]/10 text-[hsl(var(--neon-cyan))] border-[hsl(var(--neon-cyan))]/20'
+                : 'glass text-muted-foreground/50 border-border/10 hover:text-foreground'
             }`}
-            title="Modo Simulação — apostas virtuais sem dinheiro real"
           >
             🧪 {simMode ? 'SIM' : 'REAL'}
           </button>
           <button onClick={() => setShowSettings(!showSettings)}
-            className="p-1.5 rounded-lg hover:bg-primary/8 transition-colors text-muted-foreground/40 hover:text-primary">
+            className="p-1.5 rounded-lg glass border border-border/10 hover:border-primary/15 transition-colors text-muted-foreground/40 hover:text-primary">
             <Settings className="w-4 h-4" />
           </button>
           <button onClick={resetStats}
-            className="p-1.5 rounded-lg hover:bg-primary/8 transition-colors text-muted-foreground/40 hover:text-primary">
+            className="p-1.5 rounded-lg glass border border-border/10 hover:border-primary/15 transition-colors text-muted-foreground/40 hover:text-primary">
             <RotateCcw className="w-4 h-4" />
           </button>
         </div>
@@ -583,40 +596,44 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
         {/* Stats grid */}
         <div className="grid grid-cols-4 gap-2">
-          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
-            <DollarSign className="w-3.5 h-3.5 text-muted-foreground/40 mx-auto mb-1" />
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
+            className={`glass rounded-xl p-2.5 text-center border transition-all ${stats.profit >= 0 ? 'border-neon-green/15' : 'border-destructive/15'}`}>
+            <DollarSign className="w-3.5 h-3.5 text-muted-foreground/30 mx-auto mb-1" />
             <p className={`font-bold text-base font-mono ${stats.profit >= 0 ? 'text-neon-green' : 'text-destructive'}`}>
               R${stats.profit.toFixed(2)}
             </p>
-            <span className="text-[7px] text-muted-foreground/40">Lucro</span>
-          </div>
-          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
-            <Target className="w-3.5 h-3.5 text-primary/50 mx-auto mb-1" />
+            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">LUCRO</span>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+            className="glass rounded-xl p-2.5 text-center border border-border/10 hover:border-primary/15 transition-all">
+            <Target className="w-3.5 h-3.5 text-primary/40 mx-auto mb-1" />
             <p className="font-bold text-base font-mono text-foreground/80">{winRate}%</p>
-            <span className="text-[7px] text-muted-foreground/40">Acerto</span>
-          </div>
-          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
-            <TrendingUp className="w-3.5 h-3.5 text-neon-green/50 mx-auto mb-1" />
+            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">ACERTO</span>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="glass rounded-xl p-2.5 text-center border border-neon-green/10 hover:border-neon-green/20 transition-all">
+            <TrendingUp className="w-3.5 h-3.5 text-neon-green/40 mx-auto mb-1" />
             <p className="font-bold text-base font-mono text-neon-green">{stats.wins}</p>
-            <span className="text-[7px] text-muted-foreground/40">Wins</span>
-          </div>
-          <div className="glass rounded-xl p-2.5 text-center border border-border/15 backdrop-blur-sm">
-            <TrendingDown className="w-3.5 h-3.5 text-destructive/50 mx-auto mb-1" />
+            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">WINS</span>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+            className="glass rounded-xl p-2.5 text-center border border-destructive/10 hover:border-destructive/20 transition-all">
+            <TrendingDown className="w-3.5 h-3.5 text-destructive/40 mx-auto mb-1" />
             <p className="font-bold text-base font-mono text-destructive">{stats.losses}</p>
-            <span className="text-[7px] text-muted-foreground/40">Losses</span>
-          </div>
+            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">LOSSES</span>
+          </motion.div>
         </div>
 
         {/* Current bet info */}
         <div className="flex items-center gap-2 text-[10px] px-1">
-          <span className="text-muted-foreground">Aposta atual:</span>
+          <span className="text-muted-foreground/50">Aposta:</span>
           <span className="font-bold text-primary font-mono">R${getCurrentBetAmount().toFixed(2)}</span>
           {config.useGale && stats.currentGaleStep > 0 && (
-            <span className="text-[8px] px-2 py-0.5 bg-gold/10 text-gold rounded-md font-bold border border-gold/20">
+            <span className="text-[8px] px-2 py-0.5 bg-[hsl(var(--gold))]/10 text-[hsl(var(--gold))] rounded-md font-bold border border-[hsl(var(--gold))]/20">
               GALE {stats.currentGaleStep}/{config.maxGaleSteps}
             </span>
           )}
-          <span className="text-muted-foreground/40 ml-auto">Total: {stats.totalBets}</span>
+          <span className="text-muted-foreground/30 ml-auto font-mono">Total: {stats.totalBets}</span>
         </div>
 
         {/* Waiting result */}
@@ -768,32 +785,36 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           )}
         </div>
 
-        {/* Action buttons — bold gradient style */}
+        {/* Action buttons */}
         <div className="flex gap-2.5 pt-1">
-          <Button
-            onClick={placeBet}
-            disabled={!canBet}
-            className={`flex-1 h-12 font-bold tracking-wider text-sm rounded-xl transition-all ${
-              canBet
-                ? 'bg-gradient-to-r from-primary via-pink-500 to-primary hover:opacity-90 text-primary-foreground shadow-lg shadow-primary/30'
-                : 'bg-secondary text-muted-foreground'
-            }`}
-          >
-            <Zap className="w-4 h-4 mr-1.5" />
-            {stats.waitingResult ? 'AGUARDANDO...' : !hasSignal ? 'SEM SINAL' : 'APOSTAR AGORA'}
-          </Button>
+          <motion.div className="flex-1" whileHover={{ scale: canBet ? 1.01 : 1 }} whileTap={{ scale: canBet ? 0.98 : 1 }}>
+            <Button
+              onClick={placeBet}
+              disabled={!canBet}
+              className={`w-full h-12 font-bold tracking-wider text-sm rounded-xl transition-all font-display ${
+                canBet
+                  ? 'bg-gradient-to-r from-primary via-pink-500 to-primary hover:opacity-90 text-primary-foreground shadow-[0_4px_20px_hsl(var(--primary)/0.25)]'
+                  : 'bg-secondary/60 text-muted-foreground/50 border border-border/10'
+              }`}
+            >
+              <Zap className="w-4 h-4 mr-1.5" />
+              {stats.waitingResult ? 'AGUARDANDO...' : !hasSignal ? 'SEM SINAL' : 'APOSTAR AGORA'}
+            </Button>
+          </motion.div>
 
-          <Button
-            onClick={toggleAutoBet}
-            className={`px-5 h-12 font-bold tracking-wider text-sm rounded-xl transition-all font-display ${
-              config.enabled
-                ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
-                : 'bg-gradient-to-r from-neon-green/80 to-emerald-500 hover:opacity-90 text-white shadow-lg shadow-neon-green/20'
-            }`}
-          >
-            {config.enabled ? <Square className="w-4 h-4 mr-1.5" /> : <Play className="w-4 h-4 mr-1.5" />}
-            {config.enabled ? 'PARAR' : 'AUTO'}
-          </Button>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+            <Button
+              onClick={toggleAutoBet}
+              className={`px-5 h-12 font-bold tracking-wider text-sm rounded-xl transition-all font-display ${
+                config.enabled
+                  ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-[0_4px_15px_rgba(239,68,68,0.2)]'
+                  : 'bg-gradient-to-r from-neon-green/80 to-emerald-500 hover:opacity-90 text-white shadow-[0_4px_15px_hsl(var(--neon-green)/0.2)]'
+              }`}
+            >
+              {config.enabled ? <Square className="w-4 h-4 mr-1.5" /> : <Play className="w-4 h-4 mr-1.5" />}
+              {config.enabled ? 'PARAR' : 'AUTO'}
+            </Button>
+          </motion.div>
         </div>
       </div>
     </motion.div>
