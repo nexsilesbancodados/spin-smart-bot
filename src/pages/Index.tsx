@@ -986,15 +986,17 @@ const PatternsTab = memo(({ allNumbers, sniperData, streakNum, streakLen, streak
     const topS = Object.entries(sc).sort(([,a],[,b])=>b-a)[0];
     if (topS && topS[1] >= 5) list.push({ id: 'sector', emoji: '🌍', title: `Setor ${topS[0]} dominante (${topS[1]}/15)`,
       detail: `${topS[0]} concentrou ${topS[1]} dos últimos 15 giros.`, conf: 60, type: 'info' });
-    (sniperData?.detectedPatterns || []).filter((p: any) => p.confidence >= 68).slice(0, 4).forEach((p: any) => {
+    const detectedPatterns = Array.isArray(sniperData?.detectedPatterns) ? sniperData.detectedPatterns : [];
+    detectedPatterns.filter((p: any) => p.confidence >= 68).slice(0, 4).forEach((p: any) => {
       if (list.length >= 9) return;
       list.push({ id: `det_${p.name}`, emoji: p.emoji || '📊', title: p.name,
         detail: p.description + (p.action ? ` → ${p.action}` : ''), conf: p.confidence, type: p.confidence >= 80 ? 'mid' : 'info' });
     });
-    (sniperData?.agents || []).slice(0, 2).forEach((a: any) => {
+    const agents = Array.isArray(sniperData?.agents) ? sniperData.agents : [];
+    agents.slice(0, 2).forEach((a: any) => {
       if (!a.signal || !a.numbers?.length || list.length >= 10) return;
       list.push({ id: `agent_${a.modelId}`, emoji: '🤖', title: `${a.modelName}: ${a.label}`,
-        detail: a.reasoning?.slice(0, 120) || '', conf: a.confidence, type: a.confidence >= 72 ? 'mid' : 'info', numbers: a.numbers?.slice(0, 5) });
+        detail: a.reasoning?.slice(0, 120) || '', conf: a.confidence, type: a.confidence >= 72 ? 'mid' : 'info', numbers: Array.isArray(a.numbers) ? a.numbers.slice(0, 5) : [] });
     });
     return list.slice(0, 10);
   }, [allNumbers.slice(0, 20).join(','), sniperData?.detectedPatterns?.length, sniperData?.agents?.length, streakActive, zeroPressure]);
