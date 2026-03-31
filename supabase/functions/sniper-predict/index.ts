@@ -6728,8 +6728,8 @@ serve(async (req) => {
     let aiMarketAnalysis: any = null;
     
     try {
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (LOVABLE_API_KEY && numbers.length >= 15) {
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY"); // kept for supabase auth only
+      if (numbers.length >= 15) {
         const last30 = numbers.slice(0, 30);
         const last5Terms = last30.slice(0, 5).map(n => n % 10);
         const last10Terms = last30.slice(0, 10).map(n => n % 10);
