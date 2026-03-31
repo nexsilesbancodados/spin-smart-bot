@@ -680,6 +680,216 @@ function modelStatistical(spins: number[]): ModelSignal[] {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// MODELO 6: PATTERN DISCOVERY (Association Rules / FP-Growth inspired)
+// Mineração de regras de associação em sequências
+// ═══════════════════════════════════════════════════════════════════
+function modelPatternDiscovery(spins: number[]): ModelSignal[] {
+  const signals: ModelSignal[] = [];
+  if (spins.length < 50) return signals;
+
+  // Mine frequent sequential patterns of length 2-3
+  const pairs: Record<string, number> = {};
+  const triples: Record<string, number> = {};
+
+  for (let i = 0; i < spins.length - 2; i++) {
+    const p = `${spins[i + 1]},${spins[i]}`;
+    pairs[p] = (pairs[p] || 0) + 1;
+    if (i < spins.length - 3) {
+      const t = `${spins[i + 2]},${spins[i + 1]},${spins[i]}`;
+      triples[t] = (triples[t] || 0) + 1;
+    }
+  }
+
+  // Check if current sequence matches any frequent pattern
+  const currentPair = `${spins[0]},${spins[1]}`;
+  const currentTriple = spins.length >= 3 ? `${spins[0]},${spins[1]},${spins[2]}` : null;
+
+  // Find what follows current pair
+  const followers: Record<number, number> = {};
+  for (let i = 0; i < spins.length - 2; i++) {
+    const p = `${spins[i + 1]},${spins[i]}`;
+    if (p === currentPair) {
+      if (i > 0) {
+        followers[spins[i - 1]] = (followers[spins[i - 1]] || 0) + 1;
+      }
+    }
+  }
+
+  const totalFollowers = Object.values(followers).reduce((a, b) => a + b, 0);
+  if (totalFollowers >= 3) {
+    const sortedFollowers = Object.entries(followers).sort(([, a], [, b]) => b - a);
+    const topNums = sortedFollowers.slice(0, 6).map(([n]) => parseInt(n));
+    const topProb = sortedFollowers[0][1] / totalFollowers;
+
+    if (topProb > 0.15) {
+      signals.push({
+        modelId: 'pattern_discovery',
+        modelName: 'Pattern Discovery',
+        betType: 'grupo',
+        label: `Padrão ${spins[1]}→${spins[0]}→? → [${topNums.slice(0, 4).join(',')}]`,
+        numbers: topNums,
+        confidence: Math.min(85, 45 + Math.round(topProb * 100) + Math.min(20, totalFollowers * 2)),
+        reasoning: `Regra de associação: após sequência [${spins[1]},${spins[0]}], os números [${topNums.slice(0, 3).join(',')}] apareceram ${sortedFollowers[0][1]}/${totalFollowers} vezes (${(topProb * 100).toFixed(0)}%)`,
+        predictedMain: topNums[0],
+      });
+    }
+  }
+
+  // Color pattern rules: "after N reds, what happens?"
+  const colorSeqs: Record<string, Record<string, number>> = {};
+  for (let w = 3; w <= 5; w++) {
+    for (let i = 0; i < spins.length - w; i++) {
+      const seq = spins.slice(i, i + w).map(n => getColor(n)).join('');
+      if (!colorSeqs[seq]) colorSeqs[seq] = {};
+      const next = getColor(spins[i + w]);
+      colorSeqs[seq][next] = (colorSeqs[seq][next] || 0) + 1;
+    }
+  }
+
+  // Check current color sequence
+  for (let w = 3; w <= 5; w++) {
+    if (spins.length < w) continue;
+    const currentSeq = spins.slice(0, w).map(n => getColor(n)).join('');
+    const nextColors = colorSeqs[currentSeq];
+    if (nextColors) {
+      const total = Object.values(nextColors).reduce((a, b) => a + b, 0);
+      if (total >= 5) {
+        for (const [color, count] of Object.entries(nextColors)) {
+          if (color === 'green') continue;
+          const prob = count / total;
+          if (prob > 0.65) {
+            const nums = Array.from({ length: 37 }, (_, i) => i).filter(n => getColor(n) === color);
+            signals.push({
+              modelId: 'pattern_discovery',
+              modelName: 'Pattern Discovery',
+              betType: 'cor',
+              label: `Regra: ${currentSeq}→${color === 'red' ? 'VERM' : 'PRETO'} (${(prob * 100).toFixed(0)}%)`,
+              numbers: nums,
+              confidence: Math.min(82, 50 + Math.round(prob * 40)),
+              reasoning: `Regra de associação: após padrão ${currentSeq}, ${color} apareceu ${count}/${total} vezes`,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return signals;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODELO 7: RL OPTIMIZER (Reinforcement Learning inspired)
+// Simula aprendizado por reforço para otimizar apostas
+// ═══════════════════════════════════════════════════════════════════
+function modelRLOptimizer(spins: number[], modelWeights: Record<string, ModelWeight>): ModelSignal[] {
+  const signals: ModelSignal[] = [];
+  if (spins.length < 30) return signals;
+
+  // State: recent pattern features
+  // Action: which bet type to recommend
+  // Reward: based on historical model performance
+
+  // Compute "value function" for each bet type by simulating past performance
+  const betTypes = ['duzia', 'cor', 'setor', 'vizinhos', 'coluna'];
+  const betScores: Record<string, { wins: number; total: number; ev: number }> = {};
+
+  for (const bet of betTypes) {
+    betScores[bet] = { wins: 0, total: 0, ev: 0 };
+  }
+
+  // Simulate: for each historical window, what bet would have been optimal?
+  const simWindow = 20;
+  for (let i = 0; i < Math.min(spins.length - simWindow - 1, 100); i++) {
+    const window = spins.slice(i + 1, i + 1 + simWindow);
+    const actual = spins[i];
+
+    // Dozen bet
+    for (let dz = 1; dz <= 3; dz++) {
+      const dzCount = window.filter(n => getDozen(n) === dz).length;
+      if (dzCount / simWindow > 0.38) {
+        betScores.duzia.total++;
+        if (getDozen(actual) === dz) { betScores.duzia.wins++; betScores.duzia.ev += 2; }
+        else betScores.duzia.ev -= 1;
+      }
+    }
+
+    // Color bet
+    const reds = window.filter(n => getColor(n) === 'red').length;
+    const nonZero = window.filter(n => n > 0).length;
+    if (nonZero > 0 && (reds / nonZero > 0.58 || reds / nonZero < 0.42)) {
+      betScores.cor.total++;
+      const predicted = reds / nonZero > 0.58 ? 'red' : 'black';
+      if (getColor(actual) === predicted) { betScores.cor.wins++; betScores.cor.ev += 1; }
+      else betScores.cor.ev -= 1;
+    }
+
+    // Sector bet
+    const sectors: Record<string, number> = { voisins: 0, tiers: 0, orphelins: 0 };
+    window.forEach(n => { const s = getSector(n); if (s !== 'zero') sectors[s]++; });
+    const hotSector = Object.entries(sectors).sort(([, a], [, b]) => b - a)[0];
+    if (hotSector && hotSector[1] / simWindow > 0.40) {
+      betScores.setor.total++;
+      if (getSector(actual) === hotSector[0]) { betScores.setor.wins++; betScores.setor.ev += 1.5; }
+      else betScores.setor.ev -= 1;
+    }
+  }
+
+  // Find optimal bet type by expected value
+  const bestBet = Object.entries(betScores)
+    .filter(([, s]) => s.total >= 10)
+    .sort(([, a], [, b]) => (b.ev / b.total) - (a.ev / a.total))[0];
+
+  if (bestBet) {
+    const [betType, stats] = bestBet;
+    const winRate = stats.wins / stats.total;
+    const avgEV = stats.ev / stats.total;
+
+    if (winRate > 0.30 && avgEV > 0) {
+      // Generate specific numbers based on best bet type
+      let nums: number[] = [];
+      let label = '';
+      const recent = spins.slice(0, 20);
+
+      if (betType === 'duzia') {
+        const dzCounts = [0, 0, 0, 0];
+        recent.forEach(n => dzCounts[getDozen(n)]++);
+        const bestDz = dzCounts.indexOf(Math.max(...dzCounts.slice(1)), 1);
+        nums = Array.from({ length: 12 }, (_, i) => (bestDz - 1) * 12 + i + 1);
+        label = `RL → D${bestDz} (EV+${avgEV.toFixed(2)})`;
+      } else if (betType === 'cor') {
+        const reds = recent.filter(n => getColor(n) === 'red').length;
+        const isRedHot = reds / recent.filter(n => n > 0).length > 0.55;
+        nums = Array.from({ length: 37 }, (_, i) => i).filter(n => getColor(n) === (isRedHot ? 'red' : 'black'));
+        label = `RL → ${isRedHot ? 'VERM' : 'PRETO'} (EV+${avgEV.toFixed(2)})`;
+      } else if (betType === 'setor') {
+        const VOISINS_S = new Set([22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25]);
+        const TIERS_S = new Set([27,13,36,11,30,8,23,10,5,24,16,33]);
+        const sc: Record<string, number> = { voisins: 0, tiers: 0, orphelins: 0 };
+        recent.forEach(n => { if (VOISINS_S.has(n)) sc.voisins++; else if (TIERS_S.has(n)) sc.tiers++; else sc.orphelins++; });
+        const hotS = Object.entries(sc).sort(([, a], [, b]) => b - a)[0][0];
+        nums = Array.from(hotS === 'voisins' ? VOISINS_S : hotS === 'tiers' ? TIERS_S : ORPHELINS);
+        label = `RL → ${hotS} (EV+${avgEV.toFixed(2)})`;
+      }
+
+      if (nums.length > 0) {
+        signals.push({
+          modelId: 'rl_optimizer',
+          modelName: 'RL Optimizer',
+          betType,
+          label,
+          numbers: nums,
+          confidence: Math.min(84, 45 + Math.round(winRate * 50) + Math.round(avgEV * 10)),
+          reasoning: `RL simulado: ${betType} teve WR ${(winRate * 100).toFixed(0)}% e EV +${avgEV.toFixed(2)} em ${stats.total} simulações recentes`,
+          predictedMain: nums[0],
+        });
+      }
+    }
+  }
+
+  return signals;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // ENSEMBLE VOTING: Combina todos os modelos com pesos dinâmicos
 // ═══════════════════════════════════════════════════════════════════
 interface ModelWeight {
