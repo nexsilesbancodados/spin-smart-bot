@@ -33,7 +33,8 @@ const PatternPanel24h = ({ sniperData }: PatternPanel24hProps) => {
   const visibleFidelity = showAllFidelity ? sortedFidelity : sortedFidelity.slice(0, 10);
 
   return (
-    <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl overflow-hidden border border-border/20 space-y-0">
+    <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl overflow-hidden border border-border/20 space-y-0 relative">
+      <div className="absolute inset-0 bg-gradient-to-br from-neon-cyan/[0.01] via-transparent to-purple-500/[0.01]" />
       {/* Header */}
       <div className="relative px-4 pt-4 pb-3">
         <div className="absolute inset-0 bg-gradient-to-r from-neon-cyan/4 via-transparent to-purple-500/3" />
