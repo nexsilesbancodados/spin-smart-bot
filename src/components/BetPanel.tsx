@@ -677,50 +677,69 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           </div>
         )}
 
-        {/* Scoreboard */}
+        {/* Scoreboard — premium */}
         {stats.history.length > 0 && (
-          <div className="glass rounded-xl border border-border/15 p-3 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[9px] font-bold text-primary tracking-wider">📊 PLACAR</span>
+          <div className="glass rounded-2xl border border-border/15 overflow-hidden backdrop-blur-sm">
+            <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/10 bg-gradient-to-r from-primary/[0.03] to-transparent">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <span className="text-[10px]">📊</span>
+                </div>
+                <span className="text-[9px] font-black text-primary tracking-[0.15em] font-display">PLACAR</span>
+              </div>
               <span className="text-[7px] text-muted-foreground/40 font-mono">{stats.history.length} resultado{stats.history.length > 1 ? 's' : ''}</span>
             </div>
-            <div className="flex flex-wrap gap-1.5 mb-2.5">
-              {stats.history.slice(0, 15).map((r) => (
+            <div className="p-3 space-y-2.5">
+              {/* Win/Loss dots */}
+              <div className="flex flex-wrap gap-1.5">
+                {stats.history.slice(0, 20).map((r, idx) => (
+                  <motion.div
+                    key={r.timestamp}
+                    initial={{ scale: 0, rotate: -90 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ delay: idx * 0.02, type: 'spring', stiffness: 400 }}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black border transition-all hover:scale-110 ${
+                      r.won
+                        ? 'bg-neon-green/10 border-neon-green/30 text-neon-green shadow-[0_0_6px_hsl(var(--neon-green)/0.15)]'
+                        : 'bg-destructive/8 border-destructive/20 text-destructive/70'
+                    }`}
+                    title={r.won ? `✅ Nº ${r.actual} +R$${r.profit.toFixed(2)}` : `❌ Nº ${r.actual} R$${r.profit.toFixed(2)}`}
+                  >
+                    {r.won ? '✓' : '✗'}
+                  </motion.div>
+                ))}
+              </div>
+              {/* Last result highlight */}
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`rounded-xl p-3 flex items-center gap-3 border ${
+                  stats.history[0].won
+                    ? 'bg-neon-green/5 border-neon-green/25 shadow-[0_0_12px_hsl(var(--neon-green)/0.08)]'
+                    : 'bg-destructive/5 border-destructive/20'
+                }`}
+              >
                 <motion.div
-                  key={r.timestamp}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold ring-1 ${
-                    r.won
-                      ? 'bg-green-500/15 ring-green-500/40 text-green-400'
-                      : 'bg-destructive/15 ring-destructive/40 text-destructive'
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 300 }}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center text-[13px] font-black text-white shadow-lg ${
+                    getColor(stats.history[0].actual) === 'red' ? 'bg-gradient-to-br from-red-500 to-red-700' :
+                    getColor(stats.history[0].actual) === 'black' ? 'bg-gradient-to-br from-zinc-600 to-zinc-900' :
+                    'bg-gradient-to-br from-emerald-500 to-emerald-700'
                   }`}
-                  title={r.won ? `✅ Nº ${r.actual}` : `❌ Nº ${r.actual}`}
                 >
-                  {r.won ? '✓' : '✗'}
+                  {stats.history[0].actual}
                 </motion.div>
-              ))}
-            </div>
-            <div className={`rounded-lg p-2.5 text-[9px] flex items-center gap-2.5 ${
-              stats.history[0].won
-                ? 'bg-green-500/8 border border-green-500/25'
-                : 'bg-destructive/8 border border-destructive/25'
-            }`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ring-1 ${
-                getColor(stats.history[0].actual) === 'red' ? 'bg-red-600 text-white ring-red-400/30' :
-                getColor(stats.history[0].actual) === 'black' ? 'bg-zinc-800 text-white ring-zinc-500/30' :
-                'bg-green-600 text-white ring-green-400/30'
-              }`}>
-                {stats.history[0].actual}
-              </div>
-              <div className="flex-1">
-                <span className={`font-bold ${stats.history[0].won ? 'text-green-400' : 'text-destructive'}`}>
-                  {stats.history[0].won ? '✅ ACERTOU!' : '❌ ERROU'}
-                </span>
-                <span className="text-muted-foreground ml-2 font-mono">
-                  {stats.history[0].profit >= 0 ? '+' : ''}R${stats.history[0].profit.toFixed(2)}
-                </span>
-              </div>
+                <div className="flex-1 min-w-0">
+                  <span className={`text-[11px] font-black font-display tracking-wide ${stats.history[0].won ? 'text-neon-green' : 'text-destructive'}`}>
+                    {stats.history[0].won ? '✅ ACERTOU!' : '❌ ERROU'}
+                  </span>
+                  <div className={`text-[10px] font-mono font-bold mt-0.5 ${stats.history[0].profit >= 0 ? 'text-neon-green/80' : 'text-destructive/80'}`}>
+                    {stats.history[0].profit >= 0 ? '+' : ''}R${stats.history[0].profit.toFixed(2)}
+                  </div>
+                </div>
+              </motion.div>
             </div>
           </div>
         )}

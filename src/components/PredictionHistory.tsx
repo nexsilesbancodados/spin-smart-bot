@@ -478,17 +478,28 @@ const StatCard = ({ value, label, variant, icon }: {
     primary: 'bg-neon-cyan/6 border-neon-cyan/20 text-neon-cyan',
   };
 
+  const glows: Record<string, string> = {
+    success: 'shadow-[0_0_12px_hsl(var(--neon-green)/0.1)]',
+    primary: 'shadow-[0_0_12px_hsl(var(--neon-cyan)/0.1)]',
+    warning: 'shadow-[0_0_12px_hsl(var(--gold)/0.1)]',
+    danger: '',
+    default: '',
+  };
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 5 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-xl p-2.5 text-center border backdrop-blur-sm transition-all hover:scale-[1.02] ${styles[variant]}`}
+      className={`rounded-xl p-3 text-center border backdrop-blur-sm transition-all hover:scale-[1.03] group relative overflow-hidden ${styles[variant]} ${glows[variant] || ''}`}
     >
-      <div className="flex items-center justify-center gap-1.5">
-        {icon}
-        <span className="text-lg font-black font-mono">{value}</span>
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent to-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="relative">
+        <div className="flex items-center justify-center gap-1.5 opacity-50 mb-0.5">
+          {icon}
+        </div>
+        <span className="text-xl font-black font-mono leading-none">{value}</span>
+        <span className="text-[6px] text-muted-foreground/40 block mt-1 font-display tracking-[0.2em] uppercase">{label}</span>
       </div>
-      <span className="text-[7px] text-muted-foreground/50 block mt-0.5 font-display tracking-wider uppercase">{label}</span>
     </motion.div>
   );
 };
