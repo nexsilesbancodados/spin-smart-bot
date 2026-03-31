@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
 import { Magnet, BarChart3, Target } from 'lucide-react';
