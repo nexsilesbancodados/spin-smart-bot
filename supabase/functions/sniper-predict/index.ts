@@ -8313,8 +8313,12 @@ Responda APENAS JSON:
         payout: '1:1',
       };
     } else {
+      const par10 = numbers.slice(0,10).filter(n => n>0 && n%2===0).length;
       const par5 = numbers.slice(0,5).filter(n => n>0 && n%2===0).length;
-      allBetSignals.paridade = { recommendation: par5>=3 ? 'PAR' : 'ÍMPAR', numbers: [], confidence: 42, reasoning: 'Sem tendência clara', emoji: par5>=3 ? '2️⃣' : '1️⃣', payout: '1:1' };
+      const bayesConf = bayesParity.probability || 40;
+      const isPar = par10 >= 6 || (par5 >= 3 && bayesParity.predicted === 'Par');
+      const baseConf = Math.min(65, 40 + Math.abs(par10 - 5) * 3 + (bayesConf > 50 ? 5 : 0));
+      allBetSignals.paridade = { recommendation: isPar ? 'PAR' : 'ÍMPAR', numbers: [], confidence: baseConf, reasoning: `${isPar ? 'Par' : 'Ímpar'} ${par10}/10 recentes, Bayes ${bayesConf}%`, emoji: isPar ? '2️⃣' : '1️⃣', payout: '1:1' };
     }
 
     // ALTO/BAIXO
