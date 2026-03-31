@@ -84,26 +84,41 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
 
   return (
     <div className="space-y-3">
-      {/* Tab Selector */}
-      <div className="flex gap-1 glass rounded-2xl p-1.5 border border-border/15">
-        {[
-          { id: 'models' as const, label: 'Modelos', icon: <Brain className="w-3 h-3" />, count: totalModels },
-          { id: 'patterns' as const, label: 'Padrões', icon: <FlaskConical className="w-3 h-3" />, count: significantPatterns.length },
-          { id: 'stats' as const, label: 'Stats', icon: <BarChart3 className="w-3 h-3" />, count: null },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveView(tab.id)}
-            className={`flex-1 text-[8px] font-display font-bold uppercase tracking-wider py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-              activeView === tab.id 
-                ? 'glass text-primary shadow-sm border border-primary/15 bg-primary/5' 
-                : 'text-muted-foreground/50 hover:text-foreground/70'
-            }`}
-          >
-            {tab.icon}
-            {tab.label}{tab.count !== null ? ` (${tab.count})` : ''}
-          </button>
-        ))}
+      {/* Tab Selector — premium */}
+      <div className="glass rounded-2xl p-1 border border-border/15 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/[0.02] via-transparent to-neon-pink/[0.02]" />
+        <div className="relative flex gap-1">
+          {[
+            { id: 'models' as const, label: 'Modelos', icon: <Brain className="w-3.5 h-3.5" />, count: totalModels },
+            { id: 'patterns' as const, label: 'Padrões', icon: <FlaskConical className="w-3.5 h-3.5" />, count: significantPatterns.length },
+            { id: 'stats' as const, label: 'Stats', icon: <BarChart3 className="w-3.5 h-3.5" />, count: null },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveView(tab.id)}
+              className={`flex-1 text-[8px] font-display font-bold uppercase tracking-wider py-3 rounded-xl transition-all flex items-center justify-center gap-1.5 relative ${
+                activeView === tab.id 
+                  ? 'glass text-primary shadow-[0_0_12px_hsl(var(--primary)/0.1)] border border-primary/20 bg-primary/5' 
+                  : 'text-muted-foreground/40 hover:text-foreground/60'
+              }`}
+            >
+              <span className={activeView === tab.id ? 'text-primary' : 'text-muted-foreground/30'}>{tab.icon}</span>
+              <span>{tab.label}</span>
+              {tab.count !== null && (
+                <span className={`text-[6px] font-mono px-1.5 py-0.5 rounded-lg ${
+                  activeView === tab.id ? 'bg-primary/15 text-primary border border-primary/20' : 'bg-secondary/20 text-muted-foreground/30'
+                }`}>{tab.count}</span>
+              )}
+              {activeView === tab.id && (
+                <motion.div
+                  layoutId="ensemble-tab"
+                  className="absolute bottom-0.5 left-3 right-3 h-[2px] rounded-full"
+                  style={{ background: 'linear-gradient(90deg, hsl(var(--neon-cyan)), hsl(var(--neon-pink)))' }}
+                />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Ensemble Summary */}
