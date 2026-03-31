@@ -838,8 +838,7 @@ const Index = () => {
               </div>
               {/* ── ENGINE ANALYSIS (Streaks, Cold Zones) ────── */}
               <EngineSignalCard allNumbers={allNumbers} />
-              </>
-              
+
               {/* ── STRATEGY SELECTOR ────── */}
               <StrategySelector
                 allNumbers={allNumbers}
