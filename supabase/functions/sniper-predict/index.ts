@@ -7207,6 +7207,7 @@ REGRAS ABSOLUTAS:
           const bestAiNums = bestParsed?.numbers?.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36) || [];
           const multiAiNumbers = [...new Set([
             ...consensusNums,
+            ...nearConsensus,
             ...bestAiNums,
             ...singleNums,
           ])].slice(0, 12);
