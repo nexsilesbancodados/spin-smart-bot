@@ -172,6 +172,12 @@ const Navbar = memo(({
             {isPolling ? 'LIVE' : 'OFF'}
           </motion.button>
 
+          {/* Session timer */}
+          <div className="hidden md:flex items-center gap-1.5 ml-1 px-2.5 py-1 rounded-xl glass border border-border/10">
+            <Clock className="w-3 h-3 text-muted-foreground/25" />
+            <span className="text-[8px] text-muted-foreground/35 font-mono tracking-wider">{elapsed}</span>
+          </div>
+
           {lastUpdate && (
             <div className="hidden lg:flex items-center gap-1 ml-1">
               <Activity className="w-3 h-3 text-muted-foreground/20" />

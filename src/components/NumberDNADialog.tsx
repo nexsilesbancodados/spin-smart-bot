@@ -67,18 +67,23 @@ const NumberDNADialog = ({ number, allNumbers, open, onClose }: Props) => {
           </DialogHeader>
         </div>
 
-        <div className="p-4 space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+        <div className="p-5 space-y-3.5">
+          <div className="grid grid-cols-3 gap-2.5">
             {[
-              { icon: <BarChart3 className="w-4 h-4 text-neon-cyan" />, value: count, label: 'APARIÇÕES' },
-              { icon: <Magnet className="w-4 h-4 text-gold" />, value: avgDist.toFixed(1), label: 'SALTO MÉDIO' },
-              { icon: <Target className="w-4 h-4 text-neon-pink" />, value: avgDelay.toFixed(0), label: 'DELAY MÉDIO' },
+              { icon: <BarChart3 className="w-4 h-4 text-neon-cyan" />, value: count, label: 'APARIÇÕES', color: 'from-neon-cyan/8 to-transparent border-neon-cyan/15' },
+              { icon: <Magnet className="w-4 h-4 text-gold" />, value: avgDist.toFixed(1), label: 'SALTO MÉDIO', color: 'from-gold/8 to-transparent border-gold/15' },
+              { icon: <Target className="w-4 h-4 text-neon-pink" />, value: avgDelay.toFixed(0), label: 'DELAY MÉDIO', color: 'from-neon-pink/8 to-transparent border-neon-pink/15' },
             ].map(s => (
-              <div key={s.label} className="bg-background/15 rounded-lg p-2 text-center border border-border/10 backdrop-blur-sm">
-                <div className="mx-auto mb-1 flex justify-center">{s.icon}</div>
-                <span className="text-xl font-bold font-mono text-foreground/80">{s.value}</span>
-                <span className="text-[7px] text-muted-foreground/40 block">{s.label}</span>
-              </div>
+              <motion.div 
+                key={s.label} 
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`glass rounded-xl p-3 text-center border backdrop-blur-sm bg-gradient-to-b ${s.color} relative overflow-hidden hover:scale-[1.02] transition-transform`}
+              >
+                <div className="mx-auto mb-1.5 flex justify-center">{s.icon}</div>
+                <span className="text-xl font-black font-mono text-foreground/85">{s.value}</span>
+                <span className="text-[7px] text-muted-foreground/40 block font-display tracking-wider uppercase mt-0.5">{s.label}</span>
+              </motion.div>
             ))}
           </div>
 
