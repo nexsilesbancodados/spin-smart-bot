@@ -722,30 +722,39 @@ const Index = () => {
           )}
 
           {/* Linha 3: Tabs de navegação */}
-          <div className="flex border-t border-border/15">
+          <div className="flex border-t border-border/10 bg-background/30 backdrop-blur-sm">
             {[
-              { id: 'sinal' as const, label: '🎯 SINAL', badge: sniperData?.signal?.probability ? `${sniperData.signal.probability}%` : undefined },
-              { id: 'mesa' as const, label: '📊 MESA', badge: allNumbers.length > 0 ? `${Math.min(allNumbers.length, 500)}` : undefined },
-              { id: 'padroes' as const, label: '🔍 ANÁLISE' },
-              { id: 'ia' as const, label: '🧠 IA' },
+              { id: 'sinal' as const, label: 'SINAL', icon: '🎯', badge: sniperData?.signal?.probability ? `${sniperData.signal.probability}%` : undefined },
+              { id: 'mesa' as const, label: 'MESA', icon: '📊', badge: allNumbers.length > 0 ? `${Math.min(allNumbers.length, 500)}` : undefined },
+              { id: 'padroes' as const, label: 'ANÁLISE', icon: '🔍' },
+              { id: 'ia' as const, label: 'IA', icon: '🧠' },
             ].map(t => (
               <button
                 key={t.id}
                 onClick={() => setActiveTab(t.id)}
-                className={`flex-1 py-2.5 text-[8px] font-black tracking-wider transition-all relative font-display ${
+                className={`flex-1 py-3 text-[8px] font-black tracking-[0.12em] transition-all relative font-display ${
                   activeTab === t.id
                     ? 'text-primary'
-                    : 'text-muted-foreground/50 hover:text-foreground/70'
+                    : 'text-muted-foreground/40 hover:text-foreground/60'
                 }`}
               >
+                <span className="text-[10px] mr-0.5">{t.icon}</span>
                 {t.label}
                 {t.badge && (
-                  <span className={`ml-1 text-[6px] font-mono px-1 py-0.5 rounded ${activeTab === t.id ? 'bg-primary/15 text-primary' : 'bg-secondary/40 text-muted-foreground/50'}`}>
+                  <span className={`ml-1 text-[6px] font-mono px-1.5 py-0.5 rounded-md ${
+                    activeTab === t.id 
+                      ? 'bg-primary/15 text-primary border border-primary/20' 
+                      : 'bg-secondary/30 text-muted-foreground/40 border border-border/10'
+                  }`}>
                     {t.badge}
                   </span>
                 )}
                 {activeTab === t.id && (
-                  <motion.div layoutId="header-tab" className="absolute bottom-0 left-2 right-2 h-[2px] bg-gradient-to-r from-primary to-neon-pink rounded-t shadow-[0_0_8px_hsl(var(--primary)/0.4)]" />
+                  <motion.div 
+                    layoutId="header-tab" 
+                    className="absolute bottom-0 left-3 right-3 h-[2px] rounded-t" 
+                    style={{ background: 'linear-gradient(90deg, hsl(var(--primary)), hsl(var(--neon-pink)), hsl(var(--primary)))' }}
+                  />
                 )}
               </button>
             ))}
