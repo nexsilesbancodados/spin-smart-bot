@@ -60,9 +60,11 @@ const Scanner500 = ({ layerResults }: Scanner500Props) => {
   const isConverged = total >= 400;
 
   return (
-    <div className={`glass rounded-2xl overflow-hidden border transition-all ${
-      isConverged ? 'border-primary/25 shadow-[0_0_20px_hsl(var(--primary)/0.15)]' : 'border-border/20'
+    <div className={`glass rounded-2xl overflow-hidden border transition-all relative ${
+      isConverged ? 'border-primary/25 shadow-[0_0_25px_hsl(var(--primary)/0.15)]' : 'border-border/20'
     }`}>
+      {/* Decorative background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/[0.02] via-transparent to-neon-green/[0.02]" />
       {/* Header */}
       <div className="relative px-4 pt-4 pb-3">
         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/4 via-neon-cyan/3 to-neon-green/3" />
