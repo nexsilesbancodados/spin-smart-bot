@@ -21,6 +21,7 @@ import BacktestPanel from '@/components/BacktestPanel';
 import PatternPanel24h from '@/components/PatternPanel24h';
 import EngineSignalCard from '@/components/EngineSignalCard';
 import NumberTicker from '@/components/NumberTicker';
+import AIIntelligenceLog from '@/components/AIIntelligenceLog';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
@@ -443,6 +444,9 @@ const Index = () => {
         } else if (phase === 3 || phase === 7) {
           setAutoLearnStatus('analyzing');
           await Promise.allSettled([supabase.functions.invoke('realtime-patterns'), phase === 7 ? supabase.functions.invoke('calibrate-constants') : Promise.resolve()]);
+        } else if (phase === 8) {
+          setAutoLearnStatus('analyzing');
+          await supabase.functions.invoke('markov-engine');
         } else {
           setAutoLearnStatus('backtesting');
           await supabase.functions.invoke('sniper-predict', { body: { sampleSize: phase === 2 || phase === 6 ? 200 : 50 } });
@@ -948,6 +952,7 @@ const Index = () => {
         {/* ── ABA: IA ─────────────────────────────────────────────────────── */}
         {activeTab === 'ia' && (
           <div className="space-y-3">
+            <AIIntelligenceLog />
             <IATab sniperData={sniperData} />
           </div>
         )}
