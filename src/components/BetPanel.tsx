@@ -685,14 +685,14 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
         {/* Sim mode summary */}
         {simMode && simTotal > 0 && (
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2 mt-2">
-            <p className="text-[8px] font-bold text-blue-400 mb-1">🧪 MODO SIMULAÇÃO</p>
+          <div className="bg-neon-cyan/5 border border-neon-cyan/15 rounded-lg p-2.5 mt-2 backdrop-blur-sm">
+            <p className="text-[8px] font-bold text-neon-cyan mb-1">🧪 MODO SIMULAÇÃO</p>
             <div className="flex gap-3 text-[8px]">
-              <span className="text-muted-foreground">Total: <strong className="text-foreground">{simTotal}</strong></span>
-              <span className="text-muted-foreground">P&L: <strong className={simProfit >= 0 ? 'text-green-400' : 'text-red-400'}>R${simProfit.toFixed(2)}</strong></span>
-              <span className="text-muted-foreground">Win: <strong className="text-foreground">{simTotal > 0 ? ((simWins/simTotal)*100).toFixed(0) : 0}%</strong></span>
+              <span className="text-muted-foreground/50">Total: <strong className="text-foreground/70">{simTotal}</strong></span>
+              <span className="text-muted-foreground/50">P&L: <strong className={simProfit >= 0 ? 'text-neon-green' : 'text-destructive'}>R${simProfit.toFixed(2)}</strong></span>
+              <span className="text-muted-foreground/50">Win: <strong className="text-foreground/70">{simTotal > 0 ? ((simWins/simTotal)*100).toFixed(0) : 0}%</strong></span>
             </div>
-            <p className="text-[7px] text-muted-foreground mt-1">Apostas virtuais — sem dinheiro real</p>
+            <p className="text-[7px] text-muted-foreground/30 mt-1">Apostas virtuais — sem dinheiro real</p>
           </div>
         )}
 
