@@ -641,7 +641,7 @@ const multiDimensionConvergence = (
   return results.sort((a, b) => b.dimensions - a.dimensions);
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {

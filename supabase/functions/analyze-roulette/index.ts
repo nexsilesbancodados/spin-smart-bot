@@ -45,7 +45,7 @@ const wheelDist = (a: number, b: number) => {
   const d = Math.abs(ia - ib); return Math.min(d, 37 - d);
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
