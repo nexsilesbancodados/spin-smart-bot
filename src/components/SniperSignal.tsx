@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crosshair, AlertTriangle, Clock, ShieldCheck, Zap, Brain, TrendingUp, BookOpen, Target, Layers, GraduationCap, Sparkles, BarChart3, Radar, ChevronDown, Activity } from 'lucide-react';
+import { Crosshair, AlertTriangle, Clock, ShieldCheck, Zap, Brain, TrendingUp, Target, ChevronDown, Sparkles } from 'lucide-react';
 
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 
@@ -55,46 +55,22 @@ const ANALYSIS_TYPES = [
   { value: 'all', emoji: '🧠', label: 'Auto (Melhor)' },
   { value: 'terminal', emoji: '🔢', label: 'Terminal' },
   { value: 'cavalos', emoji: '🐴', label: 'Cavalos' },
-  { value: 'setor', emoji: '🌍', label: 'Setor / Vizinhos' },
+  { value: 'setor', emoji: '🌍', label: 'Setor' },
   { value: 'duzia', emoji: '📊', label: 'Dúzia' },
   { value: 'coluna', emoji: '📐', label: 'Coluna' },
   { value: 'cor', emoji: '🎨', label: 'Cor' },
   { value: 'paridade', emoji: '⚖️', label: 'Par/Ímpar' },
   { value: 'alto_baixo', emoji: '📏', label: 'Alto/Baixo' },
   { value: 'rua', emoji: '🛤️', label: 'Rua' },
-  { value: 'zero', emoji: '🟢', label: 'Pressão Zero' },
+  { value: 'zero', emoji: '🟢', label: 'Zero' },
   { value: 'puxada', emoji: '🧲', label: 'Puxadas' },
-  { value: 'fusao', emoji: '🧬', label: 'Fusão / Ensemble' },
-  { value: 'hiper_quente', emoji: '🔥', label: 'Hiper Quente' },
-  { value: 'sequencia', emoji: '🔗', label: 'Sequências' },
+  { value: 'fusao', emoji: '🧬', label: 'Fusão' },
   { value: 'pleno', emoji: '💎', label: 'Pleno' },
-  { value: 'genetic', emoji: '🧪', label: 'Genético / Cluster' },
 ];
-
-const SubSection = memo(({ title, icon: Icon, color, children, defaultOpen = false }: {
-  title: string; icon: any; color: string; children: React.ReactNode; defaultOpen?: boolean;
-}) => {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="border-t border-border/20">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-2 px-5 py-2.5 hover:bg-secondary/20 transition-colors">
-        <Icon className={`w-3.5 h-3.5 ${color}`} />
-        <span className={`text-[9px] font-black uppercase tracking-wider ${color}`}>{title}</span>
-        <ChevronDown className={`w-3 h-3 text-muted-foreground ml-auto transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="px-5 pb-3">{children}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-});
 
 const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers = [], autoLearnStatus, strategyFilter = 'all', setStrategyFilter }: Props) => {
   const [showAnalysisSelector, setShowAnalysisSelector] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [reedCount, setReedCount] = useState(0);
   const prevHitRef = useRef<boolean | null>(null);
 
@@ -121,7 +97,7 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
   // Loading
   if (!sniperData) {
     return (
-      <div className="bg-card rounded-2xl border border-border p-12 flex items-center justify-center">
+      <div className="bg-card rounded-2xl border border-border p-10 flex items-center justify-center">
         <div className="text-center">
           <Crosshair className="w-8 h-8 text-primary/30 mx-auto mb-3 animate-pulse" />
           <p className="text-sm text-muted-foreground">Carregando IA...</p>
@@ -138,17 +114,17 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
   // Stale — show last result
   if (sniperStale && lastPredResult) {
     return (
-      <div className="bg-card rounded-2xl border border-border p-6">
+      <div className="bg-card rounded-2xl border border-border p-5">
         <div className="flex items-center gap-4">
-          <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 ${
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
             lastPredResult.hit ? 'bg-green-500/15 border-green-500/40' : 'bg-destructive/15 border-destructive/40'
           }`}>
             {lastPredResult.hit
-              ? <ShieldCheck className="w-7 h-7 text-green-400" />
-              : <AlertTriangle className="w-7 h-7 text-destructive" />}
+              ? <ShieldCheck className="w-6 h-6 text-green-400" />
+              : <AlertTriangle className="w-6 h-6 text-destructive" />}
           </div>
           <div>
-            <span className={`text-lg font-black ${lastPredResult.hit ? 'text-green-400' : 'text-destructive'}`}>
+            <span className={`text-base font-black ${lastPredResult.hit ? 'text-green-400' : 'text-destructive'}`}>
               {lastPredResult.hit
                 ? (lastPredResult.hitType === 'exact' ? '🎯 ACERTO EXATO!' : '✅ ACERTO!')
                 : '❌ ERRO'}
@@ -159,7 +135,7 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
             </div>
           </div>
         </div>
-        <p className="text-[10px] text-muted-foreground/50 mt-3 text-center">⏳ Aguardando próximo giro...</p>
+        <p className="text-[10px] text-muted-foreground/50 mt-2 text-center">⏳ Aguardando próximo giro...</p>
       </div>
     );
   }
@@ -168,7 +144,7 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
   if (!sniperData?.signal || !sniperData?.strategy) {
     return (
       <div className="bg-card rounded-2xl border border-border p-8 text-center">
-        <Clock className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+        <Clock className="w-7 h-7 text-muted-foreground/40 mx-auto mb-2" />
         <p className="text-sm text-muted-foreground">{sniperData?.message || 'Aguardando dados...'}</p>
       </div>
     );
@@ -178,13 +154,13 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
   const ai = sniperData?.aiReasoning;
   const lastNumber = allNumbers?.[0];
   const betTypeInfo = ai?.betType ? BET_TYPE_LABELS[ai.betType] || { emoji: '🎯', label: ai.betType } : null;
-  const learnedInfluence = sniperData?.learnedBetInfluence || [];
   const aiLearnings: string[] = sniperData?.aiLearnings || [];
-  const trendEngine = sniperData?.trendEngine;
-  const memoryWindows = sniperData?.memoryWindows;
-  const layerResults = sniperData?.layerResults;
-  const pullPatterns = sniperData?.pullPatterns || [];
   const topCandidates = sniperData?.topCandidates || [];
+
+  // Count AI sources from learnings
+  const aiSourceMatch = aiLearnings.find(l => l.includes('MEGA-IA') || l.includes('MULTI-IA'));
+  const aiCountMatch = aiSourceMatch?.match(/(\d+)\/(\d+)/);
+  const aiSuccessCount = aiCountMatch ? aiCountMatch[1] : null;
 
   return (
     <motion.div
@@ -194,34 +170,34 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
     >
       {/* REED STOP */}
       {reedStopped && (
-        <div className="bg-destructive/10 border-b border-destructive/30 p-3 text-center">
-          <span className="text-xs font-black text-destructive">⛔ PAUSE — 4 erros seguidos</span>
+        <div className="bg-destructive/10 border-b border-destructive/30 p-2.5 text-center">
+          <span className="text-xs font-black text-destructive">⛔ PAUSE — 4 erros seguidos • Aguarde nova tendência</span>
         </div>
       )}
 
       <div className={reedStopped ? 'opacity-30 pointer-events-none' : ''}>
 
-        {/* ═══ SELETOR DE ANÁLISE ═══ */}
-        <div className="px-5 pt-4 pb-2">
+        {/* ═══ SELETOR DE ANÁLISE (compacto) ═══ */}
+        <div className="px-4 pt-3 pb-1">
           <button
             onClick={() => setShowAnalysisSelector(!showAnalysisSelector)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/60 border border-border/50 hover:bg-secondary transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/60 border border-border/50 hover:bg-secondary transition-colors w-full"
           >
             <Target className="w-3.5 h-3.5 text-primary" />
             <span className="text-[9px] font-black text-primary uppercase tracking-wider">
-              Tipo de Análise: {ANALYSIS_TYPES.find(a => a.value === strategyFilter)?.emoji} {ANALYSIS_TYPES.find(a => a.value === strategyFilter)?.label || 'Auto'}
+              {ANALYSIS_TYPES.find(a => a.value === strategyFilter)?.emoji} {ANALYSIS_TYPES.find(a => a.value === strategyFilter)?.label || 'Auto'}
             </span>
-            <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${showAnalysisSelector ? 'rotate-180' : ''}`} />
+            {aiSuccessCount && (
+              <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-bold ml-auto">
+                {aiSuccessCount} IAs
+              </span>
+            )}
+            <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${showAnalysisSelector ? 'rotate-180' : ''} ${!aiSuccessCount ? 'ml-auto' : ''}`} />
           </button>
           <AnimatePresence>
             {showAnalysisSelector && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="flex flex-wrap gap-1.5 mt-2">
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                <div className="flex flex-wrap gap-1.5 mt-2 pb-1">
                   {ANALYSIS_TYPES.map(at => (
                     <button
                       key={at.value}
@@ -241,37 +217,15 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
           </AnimatePresence>
         </div>
 
-        {/* ═══ ① JOGADA SUGERIDA — Hero ═══ */}
-        <div className="p-5 pb-3">
-          <div className="flex items-center gap-2 mb-3">
-            <Crosshair className="w-4 h-4 text-primary" />
-            <span className="text-[10px] font-black text-primary uppercase tracking-widest">Jogada Sugerida</span>
-            {betTypeInfo && (
-              <span className="text-[8px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                {betTypeInfo.emoji} {betTypeInfo.label}
-              </span>
-            )}
-            {autoLearnStatus && autoLearnStatus !== 'idle' && (
-              <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold ml-auto animate-pulse">
-                {autoLearnStatus === 'learning' ? '🧠' : autoLearnStatus === 'analyzing' ? '🔍' : '📊'}
-              </span>
-            )}
-          </div>
-
-          {ai?.betDescription && (
-            <p className="text-xs font-bold text-primary/80 mb-1.5 leading-snug">{ai.betDescription}</p>
-          )}
-          {ai?.suggestedBet && (
-            <p className="text-sm font-bold text-foreground mb-3 leading-snug">{ai.suggestedBet}</p>
-          )}
-
-          {/* Hero number + confidence */}
-          <div className="flex items-center gap-5 mb-3">
+        {/* ═══ JOGADA PRINCIPAL — Hero compacto ═══ */}
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-4">
+            {/* Número principal */}
             <div className="relative shrink-0">
               <motion.div
-                animate={displayProb >= 85 ? { scale: [1, 1.05, 1] } : {}}
+                animate={displayProb >= 85 ? { scale: [1, 1.04, 1] } : {}}
                 transition={{ duration: 1.5, repeat: Infinity }}
-                className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black shadow-2xl ring-4 ${numColor(ensTop1)} ${
+                className={`w-[72px] h-[72px] rounded-full flex items-center justify-center text-3xl font-black shadow-2xl ring-4 ${numColor(ensTop1)} ${
                   displayProb >= 85 ? 'ring-neon-green/60 shadow-neon-green/30' : 'ring-primary/30'
                 }`}
               >
@@ -279,15 +233,21 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
               </motion.div>
             </div>
 
+            {/* Ação + Números */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className={`w-4 h-4 ${action.color}`} />
                 <span className={`text-sm font-black ${action.color}`}>{action.label}</span>
+                {betTypeInfo && (
+                  <span className="text-[8px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 ml-auto">
+                    {betTypeInfo.emoji} {betTypeInfo.label}
+                  </span>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-1.5">
                 {finalNumbers.map((n: number, i: number) => {
-                  const isMain = i === 0 || n === ensTop1;
+                  const isMain = n === ensTop1;
                   return (
                     <motion.div
                       key={n}
@@ -295,7 +255,7 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ delay: i * 0.03 }}
                       className={`flex items-center justify-center rounded-full font-black shadow-md
-                        ${isMain ? 'w-10 h-10 text-xs ring-2' : 'w-8 h-8 text-[10px] ring-1'}
+                        ${isMain ? 'w-9 h-9 text-xs ring-2' : 'w-7 h-7 text-[10px] ring-1'}
                         ${numColor(n)}
                         ${isMain ? (displayProb >= 85 ? 'ring-neon-green' : 'ring-primary') : 'ring-white/10 opacity-80'}
                       `}
@@ -308,236 +268,95 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
             </div>
           </div>
 
-          {/* Jogada única — sem múltiplas apostas */}
-          {ai?.suggestedBet && (
-            <div className="mt-1 px-3 py-2 rounded-lg bg-secondary/30 border border-border/30">
-              <p className="text-[10px] text-muted-foreground/70 leading-relaxed">{ai.suggestedBet}</p>
-            </div>
+          {/* Descrição da jogada */}
+          {ai?.betDescription && (
+            <p className="text-[11px] text-primary/70 mt-2 leading-snug font-medium">{ai.betDescription}</p>
           )}
         </div>
 
-        {/* ═══ ② ASSERTIVIDADE ═══ */}
-        <div className="px-5 py-3 border-t border-border/20 bg-secondary/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Brain className="w-3.5 h-3.5 text-primary" />
-              <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Assertividade</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${displayProb}%` }}
-                  transition={{ duration: 0.8, ease: 'easeOut' }}
-                  className={`h-full rounded-full ${
-                    displayProb >= 85 ? 'bg-neon-green' : displayProb >= 65 ? 'bg-primary' : displayProb >= 45 ? 'bg-yellow-400' : 'bg-muted-foreground'
-                  }`}
-                />
-              </div>
-              <span className={`text-2xl font-black font-mono ${action.color}`}>{displayProb}%</span>
-            </div>
+        {/* ═══ BARRA DE ASSERTIVIDADE ═══ */}
+        <div className="px-4 py-2.5 border-t border-border/20 bg-secondary/20 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Brain className="w-3.5 h-3.5 text-primary/60" />
+            <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">
+              {finalNumbers.length} nums • paga {Math.max(1, 36 - finalNumbers.length)}x
+              {lastNumber !== undefined && ` • último: ${lastNumber}`}
+            </span>
           </div>
-          <p className="text-[9px] text-muted-foreground/60 mt-1">
-            {finalNumbers.length} números • paga {Math.max(1, 36 - finalNumbers.length)}x
-            {lastNumber !== undefined && ` • último: ${lastNumber}`}
-          </p>
+          <div className="flex items-center gap-2.5">
+            <div className="w-20 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${displayProb}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+                className={`h-full rounded-full ${
+                  displayProb >= 85 ? 'bg-neon-green' : displayProb >= 65 ? 'bg-primary' : 'bg-yellow-400'
+                }`}
+              />
+            </div>
+            <span className={`text-xl font-black font-mono ${action.color}`}>{displayProb}%</span>
+          </div>
         </div>
 
-        {/* ═══ ③ MELHOR MERCADO ═══ */}
-        {ai?.marketAnalysis?.bestMarket && (
-          <div className="px-5 py-3 border-t border-border/20 bg-primary/5">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Layers className="w-3.5 h-3.5 text-primary" />
-              <span className="text-[9px] font-black text-primary uppercase tracking-wider">Melhor Mercado</span>
-              <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/25 font-bold ml-auto">
-                {ai.marketAnalysis.marketConfidence}%
-              </span>
-            </div>
-            <p className="text-[11px] font-bold text-foreground/90">{ai.marketAnalysis.bestMarket}</p>
-            {ai.marketAnalysis.reasoning && (
-              <p className="text-[10px] text-muted-foreground mt-1">{ai.marketAnalysis.reasoning}</p>
+        {/* ═══ PADRÃO + MERCADO (inline) ═══ */}
+        {(ai?.patternIdentified || ai?.marketAnalysis?.bestMarket) && (
+          <div className="px-4 py-2.5 border-t border-border/15 bg-secondary/10">
+            {ai?.marketAnalysis?.bestMarket && (
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="w-3 h-3 text-primary/60" />
+                <span className="text-[10px] font-bold text-foreground/80">{ai.marketAnalysis.bestMarket}</span>
+                <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-bold ml-auto">
+                  {ai.marketAnalysis.marketConfidence}%
+                </span>
+              </div>
+            )}
+            {ai?.patternIdentified && (
+              <p className="text-[9px] text-muted-foreground leading-relaxed">{ai.patternIdentified}</p>
             )}
           </div>
         )}
 
-        {/* ═══ ④ PADRÃO IDENTIFICADO ═══ */}
-        {ai?.patternIdentified && (
-          <div className="px-5 py-3 border-t border-border/20 bg-cyan-500/5">
-            <div className="flex items-center gap-2 mb-1.5">
-              <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="text-[9px] font-black text-cyan-400 uppercase tracking-wider">Padrão Identificado</span>
-              {ai.sectorFocus && ai.sectorFocus !== 'misto' && (
-                <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-bold ml-auto">
-                  {ai.sectorFocus}
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-foreground/80 leading-relaxed">{ai.patternIdentified}</p>
-          </div>
-        )}
-
-        {/* ═══ ⑤ TOP CANDIDATOS (mini ensemble) ═══ */}
+        {/* ═══ TOP 5 CANDIDATOS (compacto) ═══ */}
         {topCandidates.length > 1 && (
-          <SubSection title="Top Candidatos" icon={Crosshair} color="text-amber-400" defaultOpen>
-            <div className="flex flex-wrap gap-2">
-              {topCandidates.slice(0, 8).map((c: any, i: number) => (
-                <div key={c.num} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-secondary/40 border border-border/50">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black ${numColor(c.num)} ${i === 0 ? 'ring-2 ring-amber-400' : 'ring-1 ring-white/10'}`}>{c.num}</div>
-                  <div className="text-[8px]">
-                    <span className="font-bold text-foreground">{c.score?.toFixed(0) ?? '?'}pts</span>
-                    {c.reasons && <span className="text-muted-foreground ml-1">({c.reasons.length})</span>}
-                  </div>
+          <div className="px-4 py-2.5 border-t border-border/15">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              {topCandidates.slice(0, 6).map((c: any, i: number) => (
+                <div key={c.num} className={`flex items-center gap-1 px-2 py-1 rounded-lg shrink-0 ${
+                  i === 0 ? 'bg-primary/10 border border-primary/20' : 'bg-secondary/30 border border-border/30'
+                }`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black ${numColor(c.num)} ${i === 0 ? 'ring-1 ring-primary' : ''}`}>{c.num}</div>
+                  <span className="text-[8px] font-bold text-foreground/70">{c.score?.toFixed(0) ?? '?'}</span>
                 </div>
               ))}
             </div>
-          </SubSection>
-        )}
-
-        {/* ═══ ⑥ APRENDIZADO APLICADO ═══ */}
-        {learnedInfluence.length > 0 && (
-          <SubSection title={`Aprendizado Aplicado (${learnedInfluence.length})`} icon={GraduationCap} color="text-emerald-400" defaultOpen>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {learnedInfluence.slice(0, 6).map((inf: any, i: number) => (
-                <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/40 border border-border">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black shrink-0 ${numColor(inf.num)}`}>{inf.num}</div>
-                  <div className="min-w-0">
-                    <span className="text-[8px] text-emerald-300 font-bold block truncate">{inf.source}</span>
-                    <span className="text-[7px] text-muted-foreground">+{inf.boost}pts</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </SubSection>
-        )}
-
-        {/* ═══ ⑦ TREND ENGINE ═══ */}
-        {trendEngine && trendEngine.mode !== 'NEUTRO' && (
-          <SubSection title={`Trend Engine — ${trendEngine.mode}`} icon={Activity} color={trendEngine.mode === 'TENDENCIA' ? 'text-green-400' : 'text-orange-400'}>
-            <div className="space-y-1.5">
-              {trendEngine.colorTrend?.direction && (
-                <div className="text-[10px] text-foreground/80">
-                  🎨 Cor: <strong className={trendEngine.colorTrend.direction === 'red' ? 'text-red-400' : 'text-foreground'}>{trendEngine.colorTrend.direction}</strong> ({trendEngine.colorTrend.strength}%)
-                </div>
-              )}
-              {trendEngine.dozenTrend?.direction && (
-                <div className="text-[10px] text-foreground/80">🎲 Dúzia: <strong>D{trendEngine.dozenTrend.direction}</strong> ({trendEngine.dozenTrend.strength}%)</div>
-              )}
-              {trendEngine.sectorTrend?.direction && (
-                <div className="text-[10px] text-foreground/80">🗺️ Setor: <strong>{trendEngine.sectorTrend.direction}</strong> ({trendEngine.sectorTrend.strength}%)</div>
-              )}
-              {trendEngine.reasoning?.slice(0, 3).map((r: string, i: number) => (
-                <div key={i} className="text-[9px] text-muted-foreground">{r}</div>
-              ))}
-            </div>
-          </SubSection>
-        )}
-
-        {/* ═══ ⑧ ANÁLISE IA (todos os insights) ═══ */}
-        {aiLearnings.length > 0 && (
-          <SubSection title={`Análise IA (${aiLearnings.length} insights)`} icon={Brain} color="text-purple-400">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {aiLearnings.slice(0, 12).map((learning: string, i: number) => (
-                <div key={i} className="flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-secondary/40 border border-border">
-                  <Sparkles className="w-3 h-3 text-purple-400 mt-0.5 shrink-0" />
-                  <span className="text-[9px] text-foreground/90 leading-tight">{learning}</span>
-                </div>
-              ))}
-            </div>
-          </SubSection>
-        )}
-
-        {/* ═══ ⑨ MEMÓRIA MULTI-JANELA ═══ */}
-        {memoryWindows && (
-          <SubSection title="Memória Multi-Janela" icon={BarChart3} color="text-blue-400">
-            <div className="grid grid-cols-3 gap-2">
-              {memoryWindows.micro && (
-                <div className="rounded-lg bg-secondary/40 border border-border p-2">
-                  <span className="text-[8px] font-black text-blue-400 block mb-1">MICRO (10)</span>
-                  <div className="text-[9px] text-foreground/80 space-y-0.5">
-                    <div>Arco: {memoryWindows.micro.arcMean}±{memoryWindows.micro.arcStd}</div>
-                    <div>Dealer: {memoryWindows.micro.dealerRhythm}</div>
-                    <div>{memoryWindows.micro.colorBias}</div>
-                  </div>
-                </div>
-              )}
-              {memoryWindows.mesa && (
-                <div className="rounded-lg bg-secondary/40 border border-border p-2">
-                  <span className="text-[8px] font-black text-blue-400 block mb-1">MESA (100)</span>
-                  <div className="text-[9px] text-foreground/80 space-y-0.5">
-                    <div>WR: {memoryWindows.mesa.winRate}%</div>
-                    <div>{memoryWindows.mesa.bestStrategy}</div>
-                    <div>{memoryWindows.mesa.totalPredictions} previsões</div>
-                  </div>
-                </div>
-              )}
-              {memoryWindows.macro && (
-                <div className="rounded-lg bg-secondary/40 border border-border p-2">
-                  <span className="text-[8px] font-black text-blue-400 block mb-1">MACRO (500)</span>
-                  <div className="text-[9px] text-foreground/80 space-y-0.5">
-                    <div>{memoryWindows.macro.totalNumbers} nums</div>
-                    <div>{memoryWindows.macro.uniqueNumbers} únicos</div>
-                    {memoryWindows.macro.topDebt?.length > 0 && (
-                      <div>Dívida: {memoryWindows.macro.topDebt.slice(0, 3).join(', ')}</div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </SubSection>
-        )}
-
-        {/* ═══ ⑩ PULL RADAR ═══ */}
-        {pullPatterns.length > 0 && (
-          <SubSection title="Radar de Puxadas" icon={Radar} color="text-orange-400">
-            <div className="space-y-1.5">
-              {pullPatterns.slice(0, 4).map((p: any, i: number) => (
-                <div key={i} className="flex items-center gap-2 text-[10px]">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black ${numColor(p.source)}`}>{p.source}</div>
-                  <span className="text-muted-foreground">→</span>
-                  <div className="flex gap-1 flex-wrap">
-                    {(p.targets || []).slice(0, 5).map((t: any) => (
-                      <span key={t.num} className="px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-300 border border-orange-500/20 font-bold text-[8px]">
-                        {t.num} ({t.count}x)
-                      </span>
-                    ))}
-                  </div>
-                  <span className="text-[8px] text-muted-foreground ml-auto">{p.dominantSector}</span>
-                </div>
-              ))}
-            </div>
-          </SubSection>
-        )}
-
-        {/* ═══ ⑪ SCANNER 1700 CAMADAS ═══ */}
-        {layerResults && (
-          <SubSection title={`Scanner ${layerResults.total || 0}/1700 Camadas`} icon={BarChart3} color="text-indigo-400">
-            <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
-              {Object.entries(layerResults).filter(([k]) => k !== 'total').map(([block, val]: [string, any]) => {
-                const pct = typeof val === 'object' ? (val.score / val.max * 100) : (typeof val === 'number' ? val : 0);
-                return (
-                  <div key={block} className="text-center">
-                    <div className="h-8 bg-secondary/30 rounded overflow-hidden flex flex-col justify-end">
-                      <div className={`rounded-t transition-all ${pct > 70 ? 'bg-primary' : pct > 40 ? 'bg-yellow-400/60' : 'bg-muted-foreground/30'}`}
-                        style={{ height: `${Math.min(100, pct)}%` }} />
-                    </div>
-                    <span className="text-[7px] font-bold text-foreground mt-0.5 block">{block}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </SubSection>
-        )}
-
-        {/* ═══ ⑫ O QUE APRENDI ═══ */}
-        {ai?.learned && (
-          <div className="px-5 py-3 border-t border-border/20 bg-amber-500/5">
-            <div className="flex items-center gap-2 mb-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-[9px] font-black text-amber-400 uppercase tracking-wider">O que Aprendi</span>
-            </div>
-            <p className="text-[11px] text-amber-200/70 leading-relaxed">{ai.learned}</p>
           </div>
         )}
+
+        {/* ═══ DETALHES (colapsável) ═══ */}
+        <button
+          onClick={() => setShowDetails(!showDetails)}
+          className="w-full flex items-center justify-center gap-1.5 px-4 py-2 border-t border-border/15 hover:bg-secondary/20 transition-colors"
+        >
+          <Sparkles className="w-3 h-3 text-muted-foreground" />
+          <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">
+            {showDetails ? 'Ocultar' : 'Ver'} Detalhes ({aiLearnings.length} insights)
+          </span>
+          <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${showDetails ? 'rotate-180' : ''}`} />
+        </button>
+
+        <AnimatePresence>
+          {showDetails && aiLearnings.length > 0 && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+              <div className="px-4 pb-3 space-y-1">
+                {aiLearnings.slice(0, 8).map((learning: string, i: number) => (
+                  <div key={i} className="flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-secondary/30 border border-border/20">
+                    <span className="text-[9px] text-foreground/80 leading-tight">{learning}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
       </div>
     </motion.div>
