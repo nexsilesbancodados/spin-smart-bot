@@ -315,7 +315,7 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
         <div className="px-4 py-4 space-y-3">
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
             <div className="flex items-center justify-between gap-3 mb-2">
-              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Jogada agora</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">🎯 Próximo giro — Aposte agora</span>
               <span className={`text-xs font-black ${action.color}`}>{action.emoji} {action.label}</span>
             </div>
 
@@ -324,7 +324,7 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
                 <span className="text-3xl">{analysisDetail?.visual}</span>
                 <div>
                   <p className="text-2xl font-black text-foreground leading-none">{primaryCall}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Mercado direto para o próximo giro</p>
+                  <p className="text-xs text-muted-foreground mt-1">Válido para a próxima rodada</p>
                 </div>
               </div>
             ) : (
@@ -335,7 +335,7 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
                   </div>
                   <div>
                     <p className="text-lg font-black text-foreground leading-none">{primaryCall}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Alvo principal + cobertura recomendada</p>
+                    <p className="text-xs text-muted-foreground mt-1">Aposte nesses para a próxima rodada</p>
                   </div>
                 </div>
 

@@ -623,6 +623,17 @@ const Index = () => {
 
             {/* SNIPER SIGNAL — painel principal */}
             {aiEnabled ? (
+              {/* Mostrar último número que saiu como contexto */}
+              {allNumbers.length > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary/30 border border-border/40">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wide">Saiu agora:</span>
+                  <div className={`w-9 h-9 rounded-lg text-sm font-black text-white flex items-center justify-center ${numBg(allNumbers[0])} ring-2 ring-primary/40`}>
+                    {allNumbers[0]}
+                  </div>
+                  <span className="text-[9px] text-muted-foreground">→ veja abaixo a jogada para o <b className="text-primary">próximo giro</b></span>
+                </div>
+              )}
+
               <SniperSignal
                 sniperData={sniperData}
                 sniperCountdown={sniperCountdown}
