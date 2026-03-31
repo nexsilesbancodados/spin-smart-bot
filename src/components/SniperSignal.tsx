@@ -39,6 +39,8 @@ const BET_TYPE_LABELS: Record<string, { emoji: string; label: string; desc: stri
   jeu_zero: { emoji: '🟢', label: 'Jeu Zéro', desc: 'Aposte no Jeu Zéro' },
   final: { emoji: '🔚', label: 'Final', desc: 'Aposte nos finais' },
   combinado: { emoji: '🧬', label: 'Combinado', desc: 'Aposta combinada' },
+  fusion_top5: { emoji: '🎯', label: 'Fusão Top 5', desc: 'Convergência máxima de 7 modelos' },
+  grupo: { emoji: '🔢', label: 'Grupo', desc: 'Grupo de números convergentes' },
 };
 
 interface Props {
