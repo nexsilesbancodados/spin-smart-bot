@@ -1239,19 +1239,44 @@ Deno.serve(async (req) => {
 
     if (recalibrate) await recalibrateWeights(supabase);
 
-    // ── 1. Fetch data in parallel ──────────────────────────
-    const [numbersRes, weightsRes, qTableRes] = await Promise.all([
+    // ── 1. Fetch ALL historical data from multiple tables ──
+    const [numbersRes, historicoRes, resultadosRes, weightsRes, qTableRes] = await Promise.all([
       supabase.from('roulette_numbers').select('number, fetched_at')
         .order('fetched_at', { ascending: false }).limit(500),
+      supabase.from('historico_roleta').select('numero, created_at')
+        .order('created_at', { ascending: false }).limit(500)
+        .then((r: any) => r).catch(() => ({ data: [] })),
+      supabase.from('resultados_roleta').select('numero, created_at')
+        .order('created_at', { ascending: false }).limit(500)
+        .then((r: any) => r).catch(() => ({ data: [] })),
       supabase.from('ensemble_weights').select('*'),
       supabase.from('rl_qtable').select('state, action, q_value, visits').limit(500)
         .then((r: any) => r).catch(() => ({ data: [] })),
     ]);
 
+    // Merge all historical sources (DB is always the primary source)
     const dbNumbers = (numbersRes.data || []).map((r: any) => r.number as number);
-    const spins = clientNumbers && clientNumbers.length > 0
-      ? clientNumbers.slice(0, 500)
-      : dbNumbers;
+    const historicoNumbers = (historicoRes.data || []).map((r: any) => r.numero as number).filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36);
+    const resultadosNumbers = (resultadosRes.data || []).map((r: any) => r.numero as number).filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36);
+
+    // Use the longest available history from DB
+    let baseHistory = dbNumbers;
+    if (historicoNumbers.length > baseHistory.length) baseHistory = historicoNumbers;
+    if (resultadosNumbers.length > baseHistory.length) baseHistory = resultadosNumbers;
+
+    // If client sends numbers, prepend new ones that aren't in DB yet, but always keep DB as base
+    let spins: number[];
+    if (clientNumbers && clientNumbers.length > 0) {
+      // Merge: client numbers first (may have newer data), then fill with DB history
+      const merged = [...clientNumbers];
+      for (const n of baseHistory) {
+        if (merged.length >= 500) break;
+        merged.push(n);
+      }
+      spins = merged.slice(0, 500);
+    } else {
+      spins = baseHistory.slice(0, 500);
+    }
 
     if (spins.length < 10) {
       return new Response(JSON.stringify({
