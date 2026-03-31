@@ -23,6 +23,7 @@ const PatternPanel24h = lazy(() => import('@/components/PatternPanel24h'));
 import EngineSignalCard from '@/components/EngineSignalCard';
 import NumberTicker from '@/components/NumberTicker';
 const AIIntelligenceLog = lazy(() => import('@/components/AIIntelligenceLog'));
+const AIDebatePanel = lazy(() => import('@/components/AIDebatePanel'));
 import { motion, AnimatePresence } from 'framer-motion';
 import LiveStatsBar from '@/components/LiveStatsBar';
 const UnifiedAnalysis = lazy(() => import('@/components/UnifiedAnalysis'));
