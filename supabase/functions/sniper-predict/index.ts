@@ -7207,6 +7207,7 @@ REGRAS ABSOLUTAS:
             }
           }
         }
+      }
     } catch (aiErr) {
       // AI call failed — continue with statistical prediction only
       console.error("AI reasoning error:", aiErr);
