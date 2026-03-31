@@ -7117,16 +7117,32 @@ Responda APENAS JSON:
           ? `\n\n⚠️ FOCO OBRIGATÓRIO: ${filterLabels[strategyFilterParam]}\nO usuário selecionou este tipo de análise. TODA sua resposta deve ser sobre este tipo. NÃO sugira outros tipos de aposta.`
           : '';
 
-        const aiSystemPrompt = `Você é o cérebro supremo de análise de roleta europeia. Integra física do cilindro, matemática de ciclos, tabelas de puxada da Mesa Brasileira Playtech e aprendizado acumulado.
+        const aiSystemPrompt = `Você é o CÉREBRO SUPREMO de análise preditiva da Roleta Europeia Brasileira Playtech.
+Você combina: matemática estatística, física do cilindro, tabelas de puxada documentadas e aprendizado histórico.
+
+CONHECIMENTO ABSOLUTO DESTA MESA (500 giros reais analisados):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. AUTO-REPETIÇÃO DOMINANTE (padrão #1 desta mesa):
+   25→25:79% | 35→35:76% | 1→1:78% | 4→4:72% | 24→24:72% | 29→29:74%
+   27→27:70% | 26→26:70% | 28→28:70% | 17→17:62% | 7→7:62%
+   → Chance média de repetir: 65% para números quentes
+
+2. TERMINAL T5 DOMINANTE (+122% acima do esperado):
+   Números: 5, 15, 25, 35 — saem com frequência MUITO acima do normal
+   Terminal T2(-52%) e T3(-34%) → EVITAR
+
+3. PUXADAS DESTA MESA (confirmadas):
+   35→[0,3,7]: 86% | 18→[8,18,28]: 73% | 26→[6,16,26]: 73%
+
+4. HOT: 25(65x), 26(30x), 4(30x), 17(22x), 27(22x), 29(22x), 35(21x)
+   COLD/DÍVIDA: 23(1x!), 31(1x!), 12(3x), 16(3x), 32(3x)
 
 REGRAS ABSOLUTAS:
-1. CRUZAMENTO TOTAL: Use TODOS os dados disponíveis para justificar sua escolha.
-2. USE TUDO: Puxadas confirmadas, aprendizados da IA, feedback de acertos/erros, breakouts, momentum, volatilidade, Lei do Terço, dealer signature, padrões confirmados.
-3. ${strategyFilterParam && strategyFilterParam !== 'all' ? 'TIPO FIXO: Responda APENAS com o tipo de aposta selecionado pelo usuário.' : 'FLEXIBILIDADE: Escolha QUALQUER tipo de aposta — a que tiver maior chance REAL.'}
-4. FEEDBACK: Se o padrão anterior acertou, REFORCE. Se errou, DESCARTE e busque nova assinatura.
-5. NUNCA chute. Toda sugestão deve ser justificada pelo cruzamento dos dados fornecidos.
-6. Se não há sinal claro, sugira "AGUARDAR" com confiança baixa.
-7. Responda APENAS JSON válido, sem markdown.${focusInstruction}`;
+1. SEMPRE inclua o último número como candidato (65% chance de repetir)
+2. Priorize T5 (5,15,25,35) quando não há sinal claro
+3. CRUZAMENTO: busque onde 2+ indicadores apontam o mesmo número
+4. FEEDBACK: se padrão anterior acertou → reforce; errou → descarte
+5. Responda APENAS JSON válido sem markdown`;
 
         type AiResult = { source: string; parsed: any; raw: string; ok: boolean };
         const aiResults: AiResult[] = [];
@@ -7181,26 +7197,90 @@ REGRAS ABSOLUTAS:
           'Estatístico': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Análise estatística pura. Foque em frequências, desvios, Lei do Terço, dívida estatística. Ignore intuição — apenas matemática fria.`,
           'Físico': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Física do cilindro. Foque em setores, vizinhos, arco do dealer, momentum de setores. Pense no cilindro como sistema mecânico.`,
           'Padrões': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Reconhecimento de padrões. Foque em sequências, terminais repetidos, alternâncias, streaks de cor/paridade. Detecte ciclos.`,
-          'Puxadas': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Tabela de puxadas da Roleta Brasileira. Foque EXCLUSIVAMENTE nas correlações de puxada: número X puxa Y. Use toda a cadeia de puxadas.`,
+          'Puxadas': `${aiSystemPrompt}
+
+Sua ESPECIALIDADE: PUXADAS E AUTO-REPETIÇÃO — o padrão mais forte desta mesa.
+
+TABELA DE PUXADAS MESTRA (Roleta Brasileira Playtech):
+Quando sai X → os puxados mais prováveis são:
+0→[10,20,30,32,15,26] | 1→[11,35,16,4,18,28] | 2→[14,1,13,18,35,29]
+3→[13,27,6,11,30,8] | 4→[26,15,18,32,33,16] | 5→[3,33,16,24,10,18]
+6→[8,15,31,21,22,23] | 7→[16,18,17,30,31,28] | 8→[11,9,10,18,28,23]
+9→[34,35,36,3,16,26] | 10→[20,5,18,11,14,24] | 11→[8,18,16,21,30,1]
+12→[21,7,28,35] | 13→[31,27,36,6] | 14→[24,21,18,31,9]
+15→[4,19,21,32,0] | 16→[24,21,18,14,6] | 17→[34,6,25,27,7]
+18→[8,18,28,7] | 19→[9,19,29,4,21] | 20→[4,14,10,30]
+21→[19,2,4,23] | 22→[33,2,32,12] | 23→[32,11,2,33,13]
+24→[21,18,14,34,4] | 25→[2,4,17,28,29,12] | 26→[6,16,26,36,3,0]
+27→[28,29,24,22,26,33] | 28→[13,14,15,16,17,18] | 29→[35,28,22]
+30→[4,8,16,9,18,22] | 31→[13,9,14] | 32→[2,12,22,32,0,15]
+33→[16,3,23,13] | 34→[16,6,4,24] | 35→[0,3,7,12,26,28]
+36→[3,10,27,6]
+
+PULLS CONFIRMADOS NESTA MESA (>70% real):
+35→[0,3,7]: 86% | 18→[8,18,28]: 73% | 26→[6,16,26]: 73%
+
+AUTO-REPETIÇÃO NESTA MESA (mais importante!):
+Chance de repetir o mesmo número: 25→79%, 35→76%, 1→78%, 4→72%, 24→72%
+SEMPRE considere o último número como candidato #1.
+
+CADEIA DE 3 NÍVEIS:
+1. Pull direto do último número
+2. Pull dos puxados (puxados dos puxados)
+3. Auto-repetição do último
+
+Analise os últimos 3 números e identifique onde as cadeias convergem.`,
           'Contrarian': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Análise contrária. Busque números FRIOS que estão devendo, setores negligenciados, reversões iminentes. Aposte CONTRA a tendência dominante.`,
           'Momentum': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Análise de momentum e tendência. Foque em breakouts, aceleração de setores, tendências nascentes. Aposte A FAVOR da tendência.`,
-          'Convergência': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Cruzamento multi-dimensional. Cruze TODOS os dados para achar onde 3+ indicadores apontam o mesmo número. Busque confluência máxima.`,
+          'Convergência': `${aiSystemPrompt}
+
+Sua ESPECIALIDADE: CONVERGÊNCIA MÁXIMA — onde múltiplos sistemas concordam.
+
+CONHECIMENTO CRÍTICO DESTA MESA (500 giros reais):
+1. AUTO-REPETIÇÃO EXTREMA: Esta mesa tem taxa ABSURDA de repetição imediata
+   - 25→25: 79%, 35→35: 76%, 1→1: 78%, 4→4: 72%, 24→24: 72%, 29→29: 74%
+   - REGRA: quando um número sai, há 60-79% de chance de repetir IMEDIATAMENTE
+   - SEMPRE inclua o último número e seus vizinhos na jogada
+
+2. TERMINAL T5 DOMINANTE (+122% acima do esperado):
+   - Números do T5: 5, 15, 25, 35 — saem muito mais que qualquer outro terminal
+   - T2(-52%) e T3(-34%) são terminais a EVITAR completamente
+
+3. PULLS CONFIÁVEIS DESTA MESA:
+   - 35→[0,3,7]: 86% real | 18→[8,18,28]: 73% | 26→[6,16,26]: 73%
+
+4. NÚMEROS FRIOS COM DÍVIDA: 23(1x), 31(1x), 12(3x), 16(3x), 32(3x)
+
+METODOLOGIA: Para cada giro, cruce:
+- Matriz 37x37 (o último número puxa quem?)
+- Auto-repetição (o último número vai repetir?)  
+- Terminal dominante (qual terminal domina agora?)
+- Dívida estatística (quem está devendo?)
+- Puxadas confirmadas
+
+Priorize números onde 3+ sistemas concordam.`,
           'Mercados': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Análise de mercados (dúzias, colunas, cores, par/ímpar, alto/baixo). Foque em apostas externas com melhor edge. Qual mercado externo tem maior probabilidade agora?`,
         };
 
         const round1Calls: Promise<AiResult>[] = [];
 
+        // ── MOTOR DE IA: DeepSeek (Convergência) + GROQ (Puxadas) ──
+        // 2 IAs especializadas em paralelo — rápido e eficiente
+        // Cada uma com perspectiva diferente para cobertura máxima
+
         if (DEEPSEEK_API_KEY) {
           const dsH = { "Authorization": `Bearer ${DEEPSEEK_API_KEY}` };
-          // 8 specialists ALL using DeepSeek
-          round1Calls.push(callAi('Estatístico', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Estatístico'], aiPrompt, 0.10));
-          round1Calls.push(callAi('Físico', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Físico'], aiPrompt, 0.12));
-          round1Calls.push(callAi('Padrões', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Padrões'], aiPrompt, 0.15));
-          round1Calls.push(callAi('Puxadas', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Puxadas'], aiPrompt, 0.10));
-          round1Calls.push(callAi('Contrarian', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Contrarian'], aiPrompt, 0.20));
-          round1Calls.push(callAi('Momentum', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Momentum'], aiPrompt, 0.15));
-          round1Calls.push(callAi('Convergência', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Convergência'], aiPrompt, 0.08));
-          round1Calls.push(callAi('Mercados', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Mercados'], aiPrompt, 0.12));
+          // DeepSeek: especialista em convergência multi-dimensional
+          // Analisa todos os dados e encontra onde mais indicadores convergem
+          round1Calls.push(callAi('DeepSeek-Convergência', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Convergência'], aiPrompt, 0.08));
+        }
+
+        // GROQ Llama-3.3-70B: gratuito, rápido (LPU hardware), especialista em puxadas
+        const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+        if (GROQ_API_KEY) {
+          const groqH = { "Authorization": `Bearer ${GROQ_API_KEY}` };
+          const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+          round1Calls.push(callAi('GROQ-Puxadas', GROQ_URL, groqH, 'llama-3.3-70b-versatile', specialistPrompts['Puxadas'], aiPrompt, 0.10));
         }
 
         console.log(`Multi-AI Round 1: Dispatching ${round1Calls.length} specialist AIs...`);
