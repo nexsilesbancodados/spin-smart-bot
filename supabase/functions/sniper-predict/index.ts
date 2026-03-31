@@ -7009,11 +7009,14 @@ REGRAS ABSOLUTAS:
         type AiResult = { source: string; parsed: any; raw: string; ok: boolean };
         const aiResults: AiResult[] = [];
 
-        const callAi = async (name: string, url: string, headers: Record<string,string>, model: string): Promise<AiResult> => {
+        const callAi = async (name: string, url: string, hdrs: Record<string,string>, model: string): Promise<AiResult> => {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout per model
           try {
             const res = await fetch(url, {
               method: "POST",
-              headers: { ...headers, "Content-Type": "application/json" },
+              headers: { ...hdrs, "Content-Type": "application/json" },
+              signal: controller.signal,
               body: JSON.stringify({
                 model,
                 messages: [
@@ -7024,65 +7027,134 @@ REGRAS ABSOLUTAS:
                 max_tokens: 700,
               }),
             });
+            clearTimeout(timeout);
             if (!res.ok) {
               const errTxt = await res.text();
-              console.error(`${name} error ${res.status}:`, errTxt.slice(0, 200));
-              return { source: name, parsed: null, raw: errTxt, ok: false };
+              return { source: name, parsed: null, raw: errTxt.slice(0, 150), ok: false };
             }
             const data = await res.json();
             const content = data.choices?.[0]?.message?.content || '';
-            const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            const parsed = JSON.parse(cleaned);
-            return { source: name, parsed, raw: cleaned, ok: true };
+            const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').replace(/^[^{]*/, '').replace(/[^}]*$/, '').trim();
+            // Find valid JSON object
+            const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) return { source: name, parsed: null, raw: cleaned.slice(0, 100), ok: false };
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (!Array.isArray(parsed.numbers) || parsed.numbers.length < 1) {
+              return { source: name, parsed: null, raw: 'no numbers array', ok: false };
+            }
+            return { source: name, parsed, raw: cleaned.slice(0, 100), ok: true };
           } catch (e) {
-            console.error(`${name} call failed:`, e);
-            return { source: name, parsed: null, raw: String(e), ok: false };
+            clearTimeout(timeout);
+            return { source: name, parsed: null, raw: String(e).slice(0, 80), ok: false };
           }
         };
 
-        // Build parallel AI calls
+        const NV = 'https://integrate.api.nvidia.com/v1/chat/completions';
+        const nvH = NVIDIA_API_KEY ? { "Authorization": `Bearer ${NVIDIA_API_KEY}` } : {};
+        const nv = (name: string, model: string) => callAi(name, NV, nvH, model);
+
+        // Build parallel AI calls — ALL available chat models
         const aiCalls: Promise<AiResult>[] = [];
 
-        // 1. Lovable AI (Gemini)
+        // === LOVABLE AI (Gemini) ===
         if (LOVABLE_API_KEY_AI) {
-          aiCalls.push(callAi(
-            'Gemini',
-            'https://ai.gateway.lovable.dev/v1/chat/completions',
-            { "Authorization": `Bearer ${LOVABLE_API_KEY_AI}` },
-            'google/gemini-2.5-flash'
-          ));
+          aiCalls.push(callAi('Gemini-Flash', 'https://ai.gateway.lovable.dev/v1/chat/completions',
+            { "Authorization": `Bearer ${LOVABLE_API_KEY_AI}` }, 'google/gemini-2.5-flash'));
         }
 
-        // 2. DeepSeek
+        // === DEEPSEEK ===
         if (DEEPSEEK_API_KEY) {
-          aiCalls.push(callAi(
-            'DeepSeek',
-            'https://api.deepseek.com/chat/completions',
-            { "Authorization": `Bearer ${DEEPSEEK_API_KEY}` },
-            'deepseek-chat'
-          ));
+          aiCalls.push(callAi('DeepSeek', 'https://api.deepseek.com/chat/completions',
+            { "Authorization": `Bearer ${DEEPSEEK_API_KEY}` }, 'deepseek-chat'));
         }
 
-        // 3. NVIDIA (free models) — multiple models for diversity
+        // === NVIDIA FREE MODELS (all chat-capable) ===
         if (NVIDIA_API_KEY) {
-          aiCalls.push(callAi(
-            'NVIDIA-Llama',
-            'https://integrate.api.nvidia.com/v1/chat/completions',
-            { "Authorization": `Bearer ${NVIDIA_API_KEY}` },
-            'meta/llama-3.1-70b-instruct'
-          ));
-          aiCalls.push(callAi(
-            'NVIDIA-Mistral',
-            'https://integrate.api.nvidia.com/v1/chat/completions',
-            { "Authorization": `Bearer ${NVIDIA_API_KEY}` },
-            'mistralai/mistral-large-2-instruct'
-          ));
+          // --- Tier 1: Flagships (largest, most capable) ---
+          aiCalls.push(nv('Llama-405B', 'meta/llama-3.1-405b-instruct'));
+          aiCalls.push(nv('Nemotron-Ultra-253B', 'nvidia/llama-3.1-nemotron-ultra-253b-v1'));
+          aiCalls.push(nv('DeepSeek-V3.2', 'deepseek-ai/deepseek-v3.2'));
+          aiCalls.push(nv('DeepSeek-V3.1', 'deepseek-ai/deepseek-v3.1'));
+          aiCalls.push(nv('Mistral-Large-3-675B', 'mistralai/mistral-large-3-675b-instruct-2512'));
+          aiCalls.push(nv('Qwen3.5-397B', 'qwen/qwen3.5-397b-a17b'));
+          aiCalls.push(nv('Qwen3-Coder-480B', 'qwen/qwen3-coder-480b-a35b-instruct'));
+          aiCalls.push(nv('Nemotron-340B', 'nvidia/nemotron-4-340b-instruct'));
+          aiCalls.push(nv('Kimi-K2', 'moonshotai/kimi-k2-instruct'));
+          aiCalls.push(nv('Kimi-K2.5', 'moonshotai/kimi-k2.5'));
+          aiCalls.push(nv('GLM-5', 'z-ai/glm5'));
+          aiCalls.push(nv('GPT-OSS-120B', 'openai/gpt-oss-120b'));
+
+          // --- Tier 2: Strong 70B class ---
+          aiCalls.push(nv('Llama-3.3-70B', 'meta/llama-3.3-70b-instruct'));
+          aiCalls.push(nv('Llama-3.1-70B', 'meta/llama-3.1-70b-instruct'));
+          aiCalls.push(nv('Nemotron-70B', 'nvidia/llama-3.1-nemotron-70b-instruct'));
+          aiCalls.push(nv('Nemotron-Super-49B', 'nvidia/llama-3.3-nemotron-super-49b-v1.5'));
+          aiCalls.push(nv('Mistral-Large-2', 'mistralai/mistral-large-2-instruct'));
+          aiCalls.push(nv('Mistral-Medium-3', 'mistralai/mistral-medium-3-instruct'));
+          aiCalls.push(nv('Mistral-Small-4-119B', 'mistralai/mistral-small-4-119b-2603'));
+          aiCalls.push(nv('Mistral-Nemotron', 'mistralai/mistral-nemotron'));
+          aiCalls.push(nv('Mixtral-8x22B', 'mistralai/mixtral-8x22b-instruct-v0.1'));
+          aiCalls.push(nv('Qwen3.5-122B', 'qwen/qwen3.5-122b-a10b'));
+          aiCalls.push(nv('Qwen3-Next-80B', 'qwen/qwen3-next-80b-a3b-instruct'));
+          aiCalls.push(nv('QwQ-32B', 'qwen/qwq-32b'));
+          aiCalls.push(nv('Palmyra-Creative-122B', 'writer/palmyra-creative-122b'));
+          aiCalls.push(nv('DeepSeek-R1-Qwen-32B', 'deepseek-ai/deepseek-r1-distill-qwen-32b'));
+          aiCalls.push(nv('Jamba-1.5-Large', 'ai21labs/jamba-1.5-large-instruct'));
+          aiCalls.push(nv('Dracarys-70B', 'abacusai/dracarys-llama-3.1-70b-instruct'));
+          aiCalls.push(nv('DBRX', 'databricks/dbrx-instruct'));
+          aiCalls.push(nv('Nemotron-Super-120B', 'nvidia/nemotron-3-super-120b-a12b'));
+          aiCalls.push(nv('Colosseum-355B', 'igenius/colosseum_355b_instruct_16k'));
+          aiCalls.push(nv('MiniMax-M2.5', 'minimaxai/minimax-m2.5'));
+          aiCalls.push(nv('StepFun-3.5-Flash', 'stepfun-ai/step-3.5-flash'));
+          aiCalls.push(nv('ByteDance-Seed-36B', 'bytedance/seed-oss-36b-instruct'));
+          aiCalls.push(nv('Magistral-Small', 'mistralai/magistral-small-2506'));
+          aiCalls.push(nv('Devstral-123B', 'mistralai/devstral-2-123b-instruct-2512'));
+
+          // --- Tier 3: Efficient models (7B-27B) ---
+          aiCalls.push(nv('Gemma-3-27B', 'google/gemma-3-27b-it'));
+          aiCalls.push(nv('Gemma-3-12B', 'google/gemma-3-12b-it'));
+          aiCalls.push(nv('Llama-3.1-8B', 'meta/llama-3.1-8b-instruct'));
+          aiCalls.push(nv('Mistral-Small-3.1-24B', 'mistralai/mistral-small-3.1-24b-instruct-2503'));
+          aiCalls.push(nv('Qwen2.5-7B', 'qwen/qwen2.5-7b-instruct'));
+          aiCalls.push(nv('DeepSeek-R1-Qwen-14B', 'deepseek-ai/deepseek-r1-distill-qwen-14b'));
+          aiCalls.push(nv('Phi-3.5-MoE', 'microsoft/phi-3.5-moe-instruct'));
+          aiCalls.push(nv('Phi-4-Mini', 'microsoft/phi-4-mini-instruct'));
+          aiCalls.push(nv('Granite-3.3-8B', 'ibm/granite-3.3-8b-instruct'));
+          aiCalls.push(nv('Nemotron-Nano-9B', 'nvidia/nvidia-nemotron-nano-9b-v2'));
+          aiCalls.push(nv('Ministral-14B', 'mistralai/ministral-14b-instruct-2512'));
+          aiCalls.push(nv('GPT-OSS-20B', 'openai/gpt-oss-20b'));
+          aiCalls.push(nv('GLM-4.7', 'z-ai/glm4.7'));
+          aiCalls.push(nv('Yi-Large', '01-ai/yi-large'));
+          aiCalls.push(nv('Stockmark-100B', 'stockmark/stockmark-2-100b-instruct'));
+          aiCalls.push(nv('Palmyra-Fin-70B', 'writer/palmyra-fin-70b-32k'));
+          aiCalls.push(nv('Llama-4-Maverick', 'meta/llama-4-maverick-17b-128e-instruct'));
+          aiCalls.push(nv('Llama-4-Scout', 'meta/llama-4-scout-17b-16e-instruct'));
+          aiCalls.push(nv('Mixtral-8x7B', 'mistralai/mixtral-8x7b-instruct-v0.1'));
+          aiCalls.push(nv('Nemo-12B', 'nv-mistralai/mistral-nemo-12b-instruct'));
+          aiCalls.push(nv('Gemma-3N-E4B', 'google/gemma-3n-e4b-it'));
+          aiCalls.push(nv('Sarvam-M', 'sarvamai/sarvam-m'));
+          aiCalls.push(nv('Kimi-K2-Thinking', 'moonshotai/kimi-k2-thinking'));
         }
 
-        // Execute ALL in parallel
-        const allResults = await Promise.allSettled(aiCalls);
+        console.log(`Multi-AI: Dispatching ${aiCalls.length} AI calls in parallel...`);
+
+        // Execute ALL in parallel with 20s global timeout
+        const raceTimeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('global-timeout')), 20000));
+        let allResults: PromiseSettledResult<AiResult>[];
+        try {
+          allResults = await Promise.race([
+            Promise.allSettled(aiCalls),
+            raceTimeout.then(() => { throw new Error('timeout'); }),
+          ]) as PromiseSettledResult<AiResult>[];
+        } catch {
+          // Global timeout — collect whatever resolved so far
+          allResults = await Promise.allSettled(aiCalls.map(p => 
+            Promise.race([p, new Promise<AiResult>((_, rej) => setTimeout(() => rej('timeout'), 100))])
+          ));
+        }
+        
         for (const r of allResults) {
-          if (r.status === 'fulfilled' && r.value.ok && r.value.parsed) {
+          if (r.status === 'fulfilled' && r.value?.ok && r.value?.parsed) {
             aiResults.push(r.value);
           }
         }
