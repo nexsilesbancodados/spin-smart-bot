@@ -6730,9 +6730,9 @@ REGRAS ABSOLUTAS:
               const merged = [...new Set([
                 ...consensus,
                 ...(parsed.adjustTop1 !== null && parsed.adjustTop1 !== undefined ? [parsed.adjustTop1] : []),
-                ...aiOnly.slice(0, 3),
+                ...aiOnly.slice(0, 5),
                 ...statOnly,
-              ])].filter(n => n >= 0 && n <= 36).slice(0, 7);
+              ])].filter(n => n >= 0 && n <= 36).slice(0, 12);
               
               if (merged.length >= 3) {
                 finalBetNumbers = merged;
