@@ -158,6 +158,8 @@ const Index = () => {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'sinal' | 'mesa' | 'padroes' | 'ia'>('sinal');
   const [lastSpinAt, setLastSpinAt] = useState<number | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
+  const FRESHNESS_MAX_MS = 8000;
 
   const handleManualNumbers = (nums: number[]) => {
     apiSnapshotRef.current = [...nums, ...apiSnapshotRef.current].slice(0, 1000);
