@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Crosshair, Shield, Zap, Brain, Activity, CheckCircle2 } from 'lucide-react';
+import { Crosshair, Shield, Zap, Brain, Activity, CheckCircle2, Sparkles } from 'lucide-react';
 
 interface LayerResults {
   blocoA: { score: number; max: number; label: string };
@@ -60,21 +60,32 @@ const Scanner500 = ({ layerResults }: Scanner500Props) => {
   const isConverged = total >= 400;
 
   return (
-    <div className={`glass rounded-2xl overflow-hidden border transition-all card-hover ${
-      isConverged ? 'border-primary/25 shadow-neon-cyan' : 'border-border/20'
+    <div className={`glass rounded-2xl overflow-hidden border transition-all ${
+      isConverged ? 'border-primary/25 shadow-[0_0_20px_hsl(var(--primary)/0.15)]' : 'border-border/20'
     }`}>
       {/* Header */}
       <div className="relative px-4 pt-4 pb-3">
         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/4 via-neon-cyan/3 to-neon-green/3" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className={`w-2.5 h-2.5 rounded-full ${
-              animPhase === 'scanning' ? 'bg-amber-400 animate-pulse' : isConverged ? 'bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary)/0.4)]' : 'bg-muted-foreground/40'
+            <div className={`w-3 h-3 rounded-full transition-all ${
+              animPhase === 'scanning' ? 'bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.4)]' : isConverged ? 'bg-primary animate-pulse shadow-[0_0_10px_hsl(var(--primary)/0.5)]' : 'bg-muted-foreground/40'
             }`} />
-            <span className="font-display text-[10px] tracking-[0.2em] font-bold text-primary uppercase">Scanner 500</span>
+            <span className="font-display text-xs tracking-[0.2em] font-bold text-primary uppercase">Scanner 500</span>
+            {animPhase === 'scanning' && (
+              <motion.div
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 1, repeat: Infinity }}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/15"
+              >
+                <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                <span className="text-[7px] text-amber-400 font-bold">SCANNING</span>
+              </motion.div>
+            )}
           </div>
           <span className={`font-mono text-sm font-black ${
-            isConverged ? 'text-primary text-glow-cyan' : total >= 300 ? 'text-amber-400' : 'text-muted-foreground'
+            isConverged ? 'text-primary' : total >= 300 ? 'text-amber-400' : 'text-muted-foreground'
           }`}>
             {total}/{layerResults.max}
           </span>
@@ -83,7 +94,7 @@ const Scanner500 = ({ layerResults }: Scanner500Props) => {
 
       {/* Progress bar */}
       <div className="px-4 pb-3">
-        <div className="relative w-full h-3 bg-secondary/60 rounded-full overflow-hidden border border-border/10">
+        <div className="relative w-full h-3.5 bg-background/20 rounded-full overflow-hidden border border-border/10">
           {animPhase === 'scanning' ? (
             <motion.div
               className="h-full bg-gradient-to-r from-purple-500 via-primary via-amber-500 to-green-500 rounded-full"
@@ -102,6 +113,9 @@ const Scanner500 = ({ layerResults }: Scanner500Props) => {
             />
           )}
           <div className="absolute top-0 left-[80%] w-px h-full bg-primary/30" />
+          {isConverged && animPhase === 'done' && (
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer bg-[length:200%_100%]" />
+          )}
         </div>
       </div>
 
@@ -118,7 +132,7 @@ const Scanner500 = ({ layerResults }: Scanner500Props) => {
               <motion.div
                 key={key}
                 className={`rounded-xl p-2.5 border transition-all ${
-                  isActive ? 'border-primary/40 glass scale-105 shadow-neon-cyan' : isScanned ? 'glass border-border/15' : 'border-transparent bg-secondary/10 opacity-30'
+                  isActive ? 'border-primary/40 glass scale-105 shadow-[0_0_12px_hsl(var(--primary)/0.2)]' : isScanned ? 'glass border-border/15' : 'border-transparent bg-background/5 opacity-30'
                 }`}
                 animate={isActive ? { scale: [1, 1.05, 1] } : {}}
                 transition={{ duration: 0.3 }}
@@ -127,7 +141,7 @@ const Scanner500 = ({ layerResults }: Scanner500Props) => {
                   <Icon className={`w-3 h-3 ${isActive ? 'text-primary animate-pulse' : color}`} />
                   <span className="text-[6px] font-bold text-muted-foreground/60 truncate font-display tracking-wider">{label}</span>
                 </div>
-                <div className="w-full h-2 bg-background/60 rounded-full overflow-hidden border border-border/5">
+                <div className="w-full h-2.5 bg-background/20 rounded-full overflow-hidden border border-border/5">
                   <motion.div
                     className={`h-full rounded-full ${bg}`}
                     initial={{ width: '0%' }}
@@ -149,15 +163,15 @@ const Scanner500 = ({ layerResults }: Scanner500Props) => {
         <motion.div
           initial={{ opacity: 0, y: 5 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`mx-4 mb-4 text-center text-[9px] font-bold px-3 py-2 rounded-xl border flex items-center justify-center gap-1.5 ${
+          className={`mx-4 mb-4 text-center text-[10px] font-bold px-3 py-2.5 rounded-xl border flex items-center justify-center gap-2 ${
             isConverged
-              ? 'glass text-primary border-primary/20 text-glow-cyan'
+              ? 'glass text-primary border-primary/20 shadow-[0_0_12px_hsl(var(--primary)/0.15)]'
               : total >= 300
               ? 'glass text-amber-400 border-amber-500/15'
               : 'glass text-muted-foreground border-border/20'
           }`}
         >
-          {isConverged && <CheckCircle2 className="w-3.5 h-3.5" />}
+          {isConverged && <CheckCircle2 className="w-4 h-4" />}
           {isConverged
             ? `CONVERGÊNCIA: ${total}/500 — JOGADA CERTEIRA`
             : total >= 300

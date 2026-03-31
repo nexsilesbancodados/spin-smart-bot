@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Magnet, MapPin, Crosshair } from 'lucide-react';
+import { Magnet, MapPin, Crosshair, Sparkles } from 'lucide-react';
 
 const WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 const RED_NUMBERS = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
@@ -34,15 +34,17 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
       {/* Header */}
       <div className="relative px-4 pt-4 pb-3">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-neon-pink/4" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
         <div className="relative flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/15 to-neon-pink/10 border border-primary/20 flex items-center justify-center shadow-[0_0_12px_hsl(var(--primary)/0.15)]">
-            <Magnet className="w-4 h-4 text-primary" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 to-neon-pink/10 border border-primary/20 flex items-center justify-center shadow-[0_0_15px_hsl(var(--primary)/0.2)]">
+            <Magnet className="w-5 h-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <span className="font-display text-[10px] tracking-[0.15em] font-bold text-primary uppercase">Radar de Puxada</span>
-            <div className="text-[7px] text-muted-foreground/50 font-mono">Nº {latestNumber} → alvos mais prováveis</div>
+            <span className="font-display text-xs tracking-[0.15em] font-bold text-primary uppercase">Radar de Puxada</span>
+            <div className="text-[8px] text-muted-foreground/50 font-mono mt-0.5">Nº {latestNumber} → alvos mais prováveis</div>
           </div>
-          <span className="text-[8px] px-2.5 py-1 rounded-lg glass text-primary border border-primary/15 font-bold font-display tracking-wider">
+          <span className="text-[9px] px-3 py-1.5 rounded-xl glass text-primary border border-primary/15 font-bold font-display tracking-wider flex items-center gap-1.5">
+            <Sparkles className="w-3 h-3" />
             {activePull.dominantSector}
           </span>
         </div>
@@ -50,7 +52,8 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
 
       {/* Mini cylinder */}
       <div className="px-3 pb-3">
-        <div className="flex flex-wrap gap-[3px] justify-center py-2.5 glass rounded-xl p-3 border border-border/10">
+        <div className="flex flex-wrap gap-[3px] justify-center py-3 glass rounded-xl p-3 border border-border/10 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/2 via-transparent to-neon-pink/2" />
           {WHEEL.map((n, i) => {
             const isSource = n === latestNumber;
             const isTarget = targetNums.has(n);
@@ -68,7 +71,7 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
                 transition={{ duration: 0.3, delay: isTarget ? i * 0.01 : 0 }}
                 className={`relative w-[22px] h-[22px] rounded-full flex items-center justify-center text-[7px] font-bold border transition-all ${
                   isSource
-                    ? 'bg-primary text-primary-foreground border-primary ring-2 ring-primary/40 shadow-[0_0_12px_hsl(var(--primary)/0.3)] z-10'
+                    ? 'bg-primary text-primary-foreground border-primary ring-2 ring-primary/40 shadow-[0_0_12px_hsl(var(--primary)/0.4)] z-10'
                     : isTarget
                     ? `${c === 'red' ? 'bg-red-600' : c === 'black' ? 'bg-zinc-800' : 'bg-emerald-600'} text-white border-[hsl(var(--gold))]/50 shadow-[0_0_6px_hsl(var(--gold)/0.2)]`
                     : `${c === 'red' ? 'bg-red-600' : c === 'black' ? 'bg-zinc-800' : 'bg-emerald-600'} text-white/30 border-white/5`
@@ -76,7 +79,7 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
               >
                 {n}
                 {isTarget && targetInfo && (
-                  <span className="absolute -top-2.5 -right-1.5 text-[5px] font-bold text-[hsl(var(--gold))] bg-card/95 rounded-full px-1 py-px border border-[hsl(var(--gold))]/20">
+                  <span className="absolute -top-2.5 -right-1.5 text-[5px] font-bold text-[hsl(var(--gold))] bg-card/95 rounded-full px-1 py-px border border-[hsl(var(--gold))]/20 shadow-sm">
                     {targetInfo.count}×
                   </span>
                 )}
@@ -88,22 +91,28 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
 
       {/* Pull targets with bars */}
       <div className="px-4 pb-3 space-y-1.5">
-        <div className="flex items-center gap-1.5 mb-1">
-          <Crosshair className="w-3 h-3 text-primary/50" />
-          <span className="text-[8px] font-bold text-muted-foreground/60 font-display tracking-wider uppercase">Alvos Prioritários</span>
+        <div className="flex items-center gap-1.5 mb-2">
+          <Crosshair className="w-3.5 h-3.5 text-primary/50" />
+          <span className="text-[9px] font-bold text-muted-foreground/60 font-display tracking-[0.15em] uppercase">Alvos Prioritários</span>
         </div>
         {activePull.targets.slice(0, 5).map((t, i) => {
           const c = getColor(t.num);
           const pct = (t.count / maxCount) * 100;
           return (
-            <div key={t.num} className="flex items-center gap-2">
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${
+            <motion.div
+              key={t.num}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.08 }}
+              className="flex items-center gap-2.5 group"
+            >
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-bold text-white shrink-0 transition-all group-hover:scale-110 ${
                 c === 'red' ? 'bg-red-600' : c === 'green' ? 'bg-emerald-600' : 'bg-zinc-800'
-              } ${i === 0 ? 'ring-1 ring-primary/40 shadow-[0_0_6px_hsl(var(--primary)/0.15)]' : ''}`}>
+              } ${i === 0 ? 'ring-1 ring-primary/40 shadow-[0_0_8px_hsl(var(--primary)/0.2)]' : 'border border-white/10'}`}>
                 {t.num}
               </div>
               <div className="flex-1">
-                <div className="h-1.5 bg-background/20 rounded-full overflow-hidden border border-border/10">
+                <div className="h-2 bg-background/20 rounded-full overflow-hidden border border-border/10">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${pct}%` }}
@@ -115,18 +124,18 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
                   />
                 </div>
               </div>
-              <span className="text-[8px] font-mono font-bold text-foreground/70 w-6 text-right">{t.count}×</span>
-              <span className="text-[7px] text-muted-foreground/30 w-10 text-right">{t.sector.slice(0, 5)}</span>
-            </div>
+              <span className="text-[9px] font-mono font-bold text-foreground/70 w-7 text-right">{t.count}×</span>
+              <span className="text-[7px] text-muted-foreground/30 w-12 text-right font-mono">{t.sector.slice(0, 6)}</span>
+            </motion.div>
           );
         })}
       </div>
 
       {/* Footer */}
       <div className="px-4 pb-4">
-        <div className="flex items-center gap-4 pt-2.5 border-t border-border/15 text-[8px] text-muted-foreground/50">
-          <div className="flex items-center gap-1">
-            <MapPin className="w-2.5 h-2.5" />
+        <div className="flex items-center gap-4 pt-2.5 border-t border-border/10 text-[8px] text-muted-foreground/50">
+          <div className="flex items-center gap-1.5">
+            <MapPin className="w-3 h-3" />
             <span>Vizinhos: <b className="text-foreground/60">{activePull.neighborRepeat}×</b></span>
           </div>
           <span>Setor: <b className="text-primary/60">{activePull.dominantSector}</b></span>
