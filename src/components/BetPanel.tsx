@@ -433,7 +433,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
             >
               <div className="glass rounded-xl border border-border/15 p-3.5 space-y-3 backdrop-blur-sm">
                 <div>
-                  <label className="text-[9px] text-muted-foreground mb-1.5 block font-bold tracking-wide">VALOR DA APOSTA (R$)</label>
+                  <label className="text-[9px] text-muted-foreground/60 mb-1.5 block font-bold tracking-wider">VALOR DA APOSTA (R$)</label>
                   <div className="flex gap-1.5">
                     {[0.5, 1, 2, 5, 10, 25].map(v => (
                       <button key={v} onClick={() => setConfig(prev => ({ ...prev, betValue: v }))}
