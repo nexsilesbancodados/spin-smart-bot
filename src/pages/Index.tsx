@@ -586,20 +586,28 @@ const Index = () => {
 const CollapsibleSection = memo(({ title, badge, isOpen, onToggle, children }: {
   title: string; badge?: string; isOpen: boolean; onToggle: () => void; children: React.ReactNode;
 }) => (
-  <div className="bg-card rounded-xl border border-border/60 overflow-hidden">
-    <button onClick={onToggle} className="w-full flex items-center gap-2 px-4 py-3 hover:bg-primary/5 transition-colors">
-      <ChevronDown className={`w-4 h-4 text-primary/60 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      <span className="font-display text-[10px] tracking-[0.15em] font-bold text-primary">{title}</span>
+  <div className="bg-card/80 rounded-xl border border-border/50 overflow-hidden backdrop-blur-sm">
+    <button onClick={onToggle} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5 transition-all group">
+      <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+        <ChevronDown className="w-4 h-4 text-primary/50 group-hover:text-primary transition-colors" />
+      </motion.div>
+      <span className="font-display text-[11px] tracking-[0.12em] font-bold text-primary/80 group-hover:text-primary transition-colors">{title}</span>
       {badge && (
-        <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-bold font-mono ml-auto">
+        <span className="text-[8px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/15 font-bold font-mono ml-auto">
           {badge}
         </span>
       )}
     </button>
     <AnimatePresence>
       {isOpen && (
-        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-          <div className="p-4 border-t border-border/40">{children}</div>
+        <motion.div 
+          initial={{ height: 0, opacity: 0 }} 
+          animate={{ height: 'auto', opacity: 1 }} 
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.25, ease: 'easeInOut' }}
+          className="overflow-hidden"
+        >
+          <div className="p-4 border-t border-border/30">{children}</div>
         </motion.div>
       )}
     </AnimatePresence>
