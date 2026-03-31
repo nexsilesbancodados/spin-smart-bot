@@ -4174,7 +4174,17 @@ Deno.serve(async (req) => {
       // FLOW DYNAMICS: concentration bonus
       if (mesaFlowState.mode === 'concentracao' && mesaFlowState.clusterZone && getSector(n) === mesaFlowState.clusterZone) { s += 3; r.push(`🔥 Zona ${mesaFlowState.clusterZone}`); }
       // FLOW DYNAMICS: gangorra prediction (opposite sector)
-      if (mesaFlowState.mode === 'gangorra' && mesaFlowState.gangorraSequence.length >= 2) {
+      // SECTOR ALTERNATION PATTERN — strong boost when pattern is confirmed
+      if (mesaFlowState.sectorAlternation.active && mesaFlowState.sectorAlternation.predictedNextSector) {
+        const predSec = mesaFlowState.sectorAlternation.predictedNextSector;
+        if (getSector(n) === predSec) {
+          const altConf = mesaFlowState.sectorAlternation.confidence;
+          const altDepth = mesaFlowState.sectorAlternation.depth;
+          const boost = Math.min(8, 2 + altDepth * 1.5 + (altConf > 70 ? 2 : 0));
+          s += boost;
+          r.push(`🔄 Alternância ${mesaFlowState.sectorAlternation.patternPair?.[0]}↔${mesaFlowState.sectorAlternation.patternPair?.[1]}→${predSec} (${altDepth}x)`);
+        }
+      } else if (mesaFlowState.mode === 'gangorra' && mesaFlowState.gangorraSequence.length >= 2) {
         const lastSec = getSector(numbers[0]);
         const predictedSec = lastSec === 'Voisins' ? 'Tiers' : lastSec === 'Tiers' ? 'Voisins' : lastSec === 'Orphelins' ? 'Voisins' : 'Tiers';
         if (getSector(n) === predictedSec) { s += 2.5; r.push(`🔄 Gangorra→${predictedSec}`); }
