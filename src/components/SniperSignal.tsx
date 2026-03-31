@@ -70,7 +70,7 @@ const ANALYSIS_TYPES = [
   { value: 'fusao', emoji: '🧬', label: 'Fusão' },
 ];
 
-const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredResult, allNumbers = [], autoLearnStatus }: Props) => {
+const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredResult, allNumbers = [], autoLearnStatus, strategyFilter = 'all' }: Props) => {
   const [reedCount, setReedCount] = useState(0);
   const prevHitRef = useRef<boolean | null>(null);
 
