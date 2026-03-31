@@ -86,7 +86,7 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
 
   const reedStopped = reedCount >= 4;
 
-  const { ensTop1, finalNumbers, displayProb, analysisDetail } = useMemo(() => {
+  const { ensTop1, finalNumbers, displayProb, analysisDetail, streakInfo, recentWR } = useMemo(() => {
     if (!sniperData?.signal || !sniperData?.strategy) {
       return { ensTop1: 0, finalNumbers: [], displayProb: 0, analysisDetail: null };
     }
@@ -156,8 +156,27 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
       detail = { type: 'fusao', label: 'Fusão Multi-IA', visual: '🧬', colorClass: 'bg-violet-600/20 text-violet-400 border-violet-500/40' };
     }
 
-    return { ensTop1: top1, finalNumbers: nums, displayProb: rawProb, analysisDetail: detail };
-  }, [sniperData, strategyFilter]);
+    // Streak ativo: quantas vezes o número #1 saiu consecutivamente
+    const streakInfo = (() => {
+      if (!allNumbers || allNumbers.length < 2) return null;
+      const n = top1;
+      let count = 0;
+      for (const x of allNumbers) {
+        if (x === n) count++;
+        else break;
+      }
+      if (count < 2) return null;
+      const prob = Math.min(95, 50 + count * 12);
+      return { num: n, count, prob, isExtreme: count >= 4 };
+    })();
+
+    // WR recente (do sniperData)
+    const recentWR = typeof sniperData?.recentWinRate === 'number'
+      ? Math.round(sniperData.recentWinRate * 100)
+      : null;
+
+    return { ensTop1: top1, finalNumbers: nums, displayProb: rawProb, analysisDetail: detail, streakInfo, recentWR };
+  }, [sniperData, strategyFilter, allNumbers]);
 
   // Loading state
   if (!sniperData) {
@@ -482,25 +501,83 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
           )}
         </div>
 
-        {/* ═══ MULTI-AI VEREDITO ═══ */}
-        {ai?.suggestedBet && (
-          <div className="px-4 pb-2">
-            <div className="bg-purple-500/8 rounded-lg border border-purple-500/20 px-3 py-2">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Brain className="w-3 h-3 text-purple-400" />
-                <span className="text-[8px] font-black text-purple-400 uppercase tracking-wider">
-                  {ai.confidence ? `IA Multi-Especialista ${ai.confidence}%` : 'IA Multi-Especialista'}
-                </span>
-                {ai.consensus > 0 && (
-                  <span className="ml-auto text-[7px] text-purple-300/70">
-                    {ai.consensus} consensos
+        {/* ═══ PAINEL MULTI-IA ═══ */}
+        {(ai?.suggestedBet || ai?.patternIdentified) && (
+          <div className="px-4 pb-2 space-y-1.5">
+            {/* Veredito do Juiz Supremo */}
+            {ai.suggestedBet && (
+              <div className="bg-violet-500/8 rounded-xl border border-violet-500/25 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Brain className="w-3 h-3 text-violet-400" />
+                  <span className="text-[8px] font-black text-violet-400 uppercase tracking-wider">
+                    ⚖️ Juiz Supremo {ai.confidence ? `· ${ai.confidence}%` : ''}
                   </span>
-                )}
+                  {ai.consensus > 0 && (
+                    <span className="ml-auto text-[7px] px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-bold">
+                      {ai.consensus} consensos
+                    </span>
+                  )}
+                </div>
+                <p className="text-[8px] text-foreground/75 leading-relaxed line-clamp-3">
+                  {ai.suggestedBet?.slice(0, 200)}
+                </p>
               </div>
-              <p className="text-[9px] text-foreground/70 leading-relaxed line-clamp-2">
-                ⚖️ {ai.suggestedBet?.slice(0, 150)}
-              </p>
+            )}
+            {/* Padrão identificado */}
+            {ai.patternIdentified && (
+              <div className="flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-secondary/30 border border-border/20">
+                <Target className="w-3 h-3 text-primary/60 mt-0.5 shrink-0" />
+                <p className="text-[8px] text-foreground/60 leading-snug">
+                  {ai.patternIdentified?.slice(0, 100)}
+                </p>
+              </div>
+            )}
+            {/* Mercado recomendado */}
+            {ai.marketAnalysis?.bestMarket && (
+              <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-emerald-500/8 border border-emerald-500/20">
+                <TrendingUp className="w-3 h-3 text-emerald-400 shrink-0" />
+                <span className="text-[8px] text-emerald-400 font-bold">{ai.marketAnalysis.bestMarket}</span>
+                <span className="text-[7px] text-muted-foreground ml-auto">{ai.marketAnalysis.marketConfidence}%</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ STREAK ATIVO ═══ */}
+        {streakInfo && (
+          <div className={`mx-4 mb-2 px-3 py-2 rounded-xl border flex items-center gap-2 ${
+            streakInfo.isExtreme
+              ? 'bg-amber-500/15 border-amber-400/50 animate-pulse'
+              : 'bg-primary/10 border-primary/30'
+          }`}>
+            <span className="text-lg">🔱</span>
+            <div className="flex-1 min-w-0">
+              <div className={`text-[10px] font-black ${streakInfo.isExtreme ? 'text-amber-400' : 'text-primary'}`}>
+                STREAK ATIVO: #{streakInfo.num} saiu {streakInfo.count}x seguidas!
+              </div>
+              <div className="text-[8px] text-muted-foreground">
+                Probabilidade de repetir: {streakInfo.prob}% — APOSTAR NO {streakInfo.num}
+              </div>
             </div>
+            <span className={`text-[11px] font-black px-2 py-1 rounded-lg ${
+              streakInfo.isExtreme ? 'bg-amber-400 text-black' : 'bg-primary/20 text-primary'
+            }`}>{streakInfo.prob}%</span>
+          </div>
+        )}
+
+        {/* ═══ WR RECENTE ═══ */}
+        {recentWR !== null && (
+          <div className={`mx-4 mb-2 px-3 py-1.5 rounded-lg border flex items-center gap-2 ${
+            recentWR >= 50 ? 'bg-green-500/10 border-green-500/30'
+            : recentWR >= 35 ? 'bg-yellow-500/10 border-yellow-500/30'
+            : 'bg-red-500/10 border-red-500/30'
+          }`}>
+            <TrendingUp className={`w-3 h-3 ${recentWR >= 50 ? 'text-green-400' : recentWR >= 35 ? 'text-yellow-400' : 'text-red-400'}`} />
+            <span className="text-[8px] text-muted-foreground">WR sessão:</span>
+            <span className={`text-[10px] font-black ${recentWR >= 50 ? 'text-green-400' : recentWR >= 35 ? 'text-yellow-400' : 'text-red-400'}`}>
+              {recentWR}%
+            </span>
+            {recentWR < 30 && <span className="text-[8px] text-red-400 ml-auto">⚠️ Aguardar</span>}
           </div>
         )}
 
