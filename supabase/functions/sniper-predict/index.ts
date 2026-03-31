@@ -8237,6 +8237,131 @@ Responda APENAS JSON:
       }
     }
 
+    // ========================================================
+    // ALL BET SIGNALS — one recommendation per bet type
+    // ========================================================
+    const allBetSignals: Record<string, { recommendation: string; numbers: number[]; confidence: number; reasoning: string; emoji: string; payout: string }> = {};
+
+    // COR
+    const teColor = trendEngine.colorTrend;
+    if (teColor.direction) {
+      const isRed = teColor.direction === 'red';
+      allBetSignals.cor = {
+        recommendation: isRed ? 'VERMELHO' : 'PRETO',
+        numbers: isRed ? RED.filter(n => n > 0) : Array.from({length:36},(_, i)=>i+1).filter(n => !RED.includes(n)),
+        confidence: teColor.strength,
+        reasoning: trendEngine.reasoning.find(r => r.includes('ermelho') || r.includes('reto')) || `${teColor.direction} em tendência`,
+        emoji: isRed ? '🔴' : '⚫',
+        payout: '1:1',
+      };
+    } else {
+      const red5 = numbers.slice(0,5).filter(n => RED.includes(n)).length;
+      const isRed = red5 >= 3;
+      allBetSignals.cor = { recommendation: isRed ? 'VERMELHO' : 'PRETO', numbers: [], confidence: 45, reasoning: 'Sem tendência clara', emoji: isRed ? '🔴' : '⚫', payout: '1:1' };
+    }
+
+    // PARIDADE
+    const tePar = trendEngine.parityTrend;
+    if (tePar.direction) {
+      const isPar = tePar.direction === 'par';
+      allBetSignals.paridade = {
+        recommendation: isPar ? 'PAR' : 'ÍMPAR',
+        numbers: Array.from({length:36},(_, i)=>i+1).filter(n => isPar ? n%2===0 : n%2===1),
+        confidence: tePar.strength,
+        reasoning: trendEngine.reasoning.find(r => r.includes('Par') || r.includes('mpar')) || `${tePar.direction} em tendência`,
+        emoji: isPar ? '2️⃣' : '1️⃣',
+        payout: '1:1',
+      };
+    } else {
+      const par5 = numbers.slice(0,5).filter(n => n>0 && n%2===0).length;
+      allBetSignals.paridade = { recommendation: par5>=3 ? 'PAR' : 'ÍMPAR', numbers: [], confidence: 42, reasoning: 'Sem tendência clara', emoji: par5>=3 ? '2️⃣' : '1️⃣', payout: '1:1' };
+    }
+
+    // ALTO/BAIXO
+    const teHL = trendEngine.highLowTrend;
+    if (teHL.direction) {
+      const isAlto = teHL.direction === 'alto';
+      allBetSignals.alto_baixo = {
+        recommendation: isAlto ? 'ALTO (19-36)' : 'BAIXO (1-18)',
+        numbers: isAlto ? Array.from({length:18},(_, i)=>i+19) : Array.from({length:18},(_, i)=>i+1),
+        confidence: teHL.strength,
+        reasoning: trendEngine.reasoning.find(r => r.includes('Alto') || r.includes('Baixo')) || `${teHL.direction} em tendência`,
+        emoji: isAlto ? '⬆️' : '⬇️',
+        payout: '1:1',
+      };
+    } else {
+      const hi5 = numbers.slice(0,5).filter(n => n>=19).length;
+      allBetSignals.alto_baixo = { recommendation: hi5>=3 ? 'ALTO (19-36)' : 'BAIXO (1-18)', numbers: [], confidence: 42, reasoning: 'Sem tendência clara', emoji: hi5>=3 ? '⬆️' : '⬇️', payout: '1:1' };
+    }
+
+    // DÚZIA
+    const teDz = trendEngine.dozenTrend;
+    if (teDz.direction) {
+      const dz = teDz.direction as number;
+      const dzNums = Array.from({length:12},(_, i)=>(dz-1)*12+i+1);
+      allBetSignals.duzia = {
+        recommendation: `${dz}ª DÚZIA (${(dz-1)*12+1}-${dz*12})`,
+        numbers: dzNums,
+        confidence: teDz.strength,
+        reasoning: trendEngine.reasoning.find(r => r.includes('úzia')) || `Dúzia ${dz} em tendência`,
+        emoji: '🎲',
+        payout: '2:1',
+      };
+    } else {
+      const dzMode = [0,0,0];
+      numbers.slice(0,10).filter(n=>n>0).forEach(n => { if(n<=12) dzMode[0]++; else if(n<=24) dzMode[1]++; else dzMode[2]++; });
+      const bestDz = dzMode.indexOf(Math.max(...dzMode)) + 1;
+      const dzNums = Array.from({length:12},(_, i)=>(bestDz-1)*12+i+1);
+      allBetSignals.duzia = { recommendation: `${bestDz}ª DÚZIA`, numbers: dzNums, confidence: Math.min(60, 35 + dzMode[bestDz-1] * 3), reasoning: `Dúzia ${bestDz} mais frequente (${dzMode[bestDz-1]}/10)`, emoji: '🎲', payout: '2:1' };
+    }
+
+    // COLUNA
+    const colMode = [0,0,0];
+    numbers.slice(0,10).filter(n=>n>0).forEach(n => { if(COL1.includes(n)) colMode[0]++; else if(COL2.includes(n)) colMode[1]++; else colMode[2]++; });
+    const bestCol = colMode.indexOf(Math.max(...colMode)) + 1;
+    const colNums = bestCol===1 ? COL1 : bestCol===2 ? COL2 : COL3;
+    allBetSignals.coluna = { recommendation: `COLUNA ${bestCol}`, numbers: colNums, confidence: Math.min(65, 35 + colMode[bestCol-1] * 4), reasoning: `Coluna ${bestCol} com ${colMode[bestCol-1]}/10 recentes`, emoji: '📐', payout: '2:1' };
+
+    // SETOR
+    const teSec = trendEngine.sectorTrend;
+    if (teSec.direction) {
+      const secName = teSec.direction as string;
+      const secNums = secName === 'Voisins' ? VOISINS : secName === 'Tiers' ? TIERS : secName === 'Orphelins' ? ORPHELINS : JEU_ZERO;
+      allBetSignals.setor = { recommendation: `SETOR ${secName.toUpperCase()}`, numbers: secNums, confidence: teSec.strength, reasoning: trendEngine.reasoning.find(r => r.includes('Setor')) || `${secName} em tendência`, emoji: '🌍', payout: `${Math.round(36/secNums.length)}:1` };
+    } else {
+      const secCount: Record<string,number> = { Voisins:0, Tiers:0, Orphelins:0 };
+      numbers.slice(0,10).forEach(n => { const s = getSector(n); if(secCount[s]!==undefined) secCount[s]++; });
+      const bestSec = Object.entries(secCount).sort(([,a],[,b])=>b-a)[0];
+      const secNums = bestSec[0] === 'Voisins' ? VOISINS : bestSec[0] === 'Tiers' ? TIERS : ORPHELINS;
+      allBetSignals.setor = { recommendation: `SETOR ${bestSec[0].toUpperCase()}`, numbers: secNums, confidence: Math.min(55, 30 + bestSec[1] * 4), reasoning: `${bestSec[0]} com ${bestSec[1]}/10 recentes`, emoji: '🌍', payout: `${Math.round(36/secNums.length)}:1` };
+    }
+
+    // TERMINAL
+    const hotTerminal = detectHotTerminal(numbers, 15);
+    const termNums = TERMINALS_MAP[hotTerminal.terminal] || [];
+    allBetSignals.terminal = { recommendation: `TERMINAL ${hotTerminal.terminal}`, numbers: termNums, confidence: Math.min(70, 35 + hotTerminal.count * 7), reasoning: `T${hotTerminal.terminal} saiu ${hotTerminal.count}× em 15 giros`, emoji: '🔢', payout: `${Math.round(36/termNums.length)}:1` };
+
+    // VIZINHOS (do último número)
+    const lastNum = numbers[0];
+    const pullNums = FULL_PULL_MAP[lastNum] || [];
+    const vizNums = [...new Set([lastNum, ...getNeighbors(lastNum, 4), ...pullNums.slice(0,3)])].slice(0,9);
+    allBetSignals.vizinhos = { recommendation: `VIZINHOS DO ${lastNum}`, numbers: vizNums, confidence: Math.min(60, 40 + pullNums.length * 2), reasoning: `Vizinhos + puxados do ${lastNum}`, emoji: '🎯', payout: `${Math.round(36/vizNums.length)}:1` };
+
+    // CAVALOS
+    const cavCount: Record<string,number> = { '258':0, '147':0, '03':0, '69':0 };
+    numbers.slice(0,10).forEach(n => { const g = getCavalo(n); if(g) cavCount[g]++; });
+    const bestCav = Object.entries(cavCount).sort(([,a],[,b])=>b-a)[0];
+    allBetSignals.cavalos = { recommendation: `CAVALOS ${bestCav[0]}`, numbers: CAVALOS[bestCav[0]], confidence: Math.min(60, 30 + bestCav[1] * 5), reasoning: `Grupo ${bestCav[0]} com ${bestCav[1]}/10 recentes`, emoji: '🐴', payout: `${Math.round(36/CAVALOS[bestCav[0]].length)}:1` };
+
+    // PLENO (top1 da fusão)
+    allBetSignals.pleno = { recommendation: `PLENO ${numTop1}`, numbers: [numTop1], confidence: Math.min(finalProbability, 25), reasoning: `Número com maior convergência de modelos`, emoji: '💎', payout: '35:1' };
+
+    // RUA
+    const streetNum = numTop1 > 0 ? numTop1 : 1;
+    const streetStart = Math.floor((streetNum - 1) / 3) * 3 + 1;
+    const ruaNums = [streetStart, streetStart+1, streetStart+2].filter(n => n >= 1 && n <= 36);
+    allBetSignals.rua = { recommendation: `RUA ${ruaNums.join('-')}`, numbers: ruaNums, confidence: Math.min(50, 25 + (numbers.slice(0,10).filter(n => ruaNums.includes(n)).length) * 8), reasoning: `Rua contendo o número top (${numTop1})`, emoji: '🛤️', payout: '11:1' };
+
     return json({
       signal: {
         number: numTop1,
@@ -8270,6 +8395,7 @@ Responda APENAS JSON:
       betInstructions,
       topAlternatives,
       combinedBet,
+      allBetSignals,
       allStrategies,
       mesaMode,
       mode, message,
