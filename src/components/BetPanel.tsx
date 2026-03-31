@@ -370,10 +370,10 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
       }`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/20">
         <div className="flex items-center gap-2">
-          <Zap className={`w-5 h-5 ${config.enabled ? 'text-green-400 animate-pulse' : 'text-primary'}`} />
-          <span className="font-bold text-xs tracking-[0.15em] text-primary">CENTRAL DE APOSTAS</span>
+          <Zap className={`w-5 h-5 ${config.enabled ? 'text-neon-green animate-pulse' : 'text-primary'}`} />
+          <span className="font-display font-bold text-xs tracking-[0.15em] text-primary">CENTRAL DE APOSTAS</span>
           {config.enabled && (
             <span className="text-[8px] px-2 py-0.5 bg-green-500/15 rounded-md text-green-400 font-bold border border-green-500/30 animate-pulse">
               AUTO
