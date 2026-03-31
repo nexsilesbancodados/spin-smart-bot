@@ -588,17 +588,17 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
             </p>
             <span className="text-[8px] text-muted-foreground">Lucro</span>
           </div>
-          <div className="bg-secondary/40 rounded-xl p-2.5 text-center border border-border/30">
-            <Target className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
+          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
+            <Target className="w-3.5 h-3.5 text-primary mx-auto mb-1" />
             <p className="font-bold text-base font-mono text-foreground">{winRate}%</p>
             <span className="text-[8px] text-muted-foreground">Acerto</span>
           </div>
-          <div className="bg-secondary/40 rounded-xl p-2.5 text-center border border-border/30">
-            <TrendingUp className="w-3.5 h-3.5 text-green-400 mx-auto mb-1" />
-            <p className="font-bold text-base font-mono text-green-400">{stats.wins}</p>
+          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
+            <TrendingUp className="w-3.5 h-3.5 text-neon-green mx-auto mb-1" />
+            <p className="font-bold text-base font-mono text-neon-green">{stats.wins}</p>
             <span className="text-[8px] text-muted-foreground">Wins</span>
           </div>
-          <div className="bg-secondary/40 rounded-xl p-2.5 text-center border border-border/30">
+          <div className="glass rounded-xl p-2.5 text-center border border-border/20">
             <TrendingDown className="w-3.5 h-3.5 text-destructive mx-auto mb-1" />
             <p className="font-bold text-base font-mono text-destructive">{stats.losses}</p>
             <span className="text-[8px] text-muted-foreground">Losses</span>
