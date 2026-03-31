@@ -246,7 +246,7 @@ const Index = () => {
       if (res.data) {
         const key = `${res.data.strategy?.type}-${res.data.signal?.number}-${res.data.mode}`;
         if (key !== sniperPrevKey.current) { sniperPrevKey.current = key; sniperSameCount.current = 0; setSniperStale(false); }
-        else { sniperSameCount.current++; if (sniperSameCount.current >= 3) setSniperStale(true); }
+        else { sniperSameCount.current++; if (sniperSameCount.current >= 6) setSniperStale(true); }
         setSniperData(res.data);
       }
     } catch (err) {
