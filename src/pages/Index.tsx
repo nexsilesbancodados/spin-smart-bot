@@ -37,7 +37,7 @@ const CAVALOS_GROUPS: Record<string, number[]> = {
 
 const DUPLICATE_SPIN_WINDOW_MS = 12000;
 const SIGNAL_WINDOW_SECONDS = 18;
-const POLL_INTERVAL_MS = 2000;
+const POLL_INTERVAL_MS = 1000;
 const ROULETTE_TABLES = [
   { id: 'brasileira', name: 'Roleta Brasileira', provider: 'Playtech', iframeUrl: 'https://onabet.com/casino/roleta-brasileira' },
   { id: 'brasileira2', name: 'Roleta Brasileira 2', provider: 'Playtech', iframeUrl: 'https://onabet.com/casino/roleta-ao-vivo' },
@@ -301,13 +301,17 @@ const Index = () => {
           if (!isBurstDuplicate(newNumbers[0])) {
             markAcceptedSpin(newNumbers[0]);
             handleNewSpin(nums.slice(0, 3).join(','), Date.now());
+            // Force immediate sniper prediction for the next round
+            sniperFetchingRef.current = false;
+            lastSniperTriggerRef.current = 0;
+            fetchSniperRef.current?.(0, true);
           }
           prevNumbersRef.current = key;
         }
         setError(null);
       }
     } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Erro'); }
-  }, [fetchSniper, handleNewSpin, isBurstDuplicate, markAcceptedSpin]);
+  }, [handleNewSpin, isBurstDuplicate, markAcceptedSpin]);
 
   const fetchStored = useCallback(async () => {
     const { data } = await supabase.from('roulette_numbers').select('number').order('fetched_at', { ascending: false }).limit(1000);
