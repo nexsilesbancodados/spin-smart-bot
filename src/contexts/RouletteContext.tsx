@@ -258,6 +258,27 @@ export const RouletteProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [addNumber]);
 
+  // Supabase Realtime: listen for new inserts on roulette_numbers
+  useEffect(() => {
+    const channel = supabase
+      .channel('roulette_numbers_realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'roulette_numbers' },
+        (payload) => {
+          const row = payload.new as { number: number; color: string };
+          if (typeof row.number === 'number' && row.number >= 0 && row.number <= 36) {
+            addNumber(row.number);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [addNumber]);
+
   // Load 500+ recent numbers from ALL tables on mount
   useEffect(() => {
     const loadHistory = async () => {
