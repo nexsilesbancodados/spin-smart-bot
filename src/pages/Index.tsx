@@ -135,6 +135,14 @@ const HistoryGrid = memo(({ historySlice, selectedNum, setSelectedNum }: {
     </div>
   );
 });
+HistoryGrid.displayName = 'HistoryGrid';
+
+const LazyFallback = () => (
+  <div className="glass rounded-xl border border-border/15 p-6 text-center animate-pulse">
+    <div className="w-6 h-6 rounded-full border-2 border-primary/30 border-t-primary mx-auto animate-spin" />
+    <p className="text-[8px] text-muted-foreground/40 mt-2 font-mono">Carregando...</p>
+  </div>
+);
 
 const Index = () => {
   const [selectedTable, setSelectedTable] = useState(ROULETTE_TABLES[0]);
