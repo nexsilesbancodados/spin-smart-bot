@@ -2,8 +2,6 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 
 const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
-const VOISINS = new Set([22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25]);
-const TIERS = new Set([27,13,36,11,30,8,23,10,5,24,16,33]);
 
 interface Props { allNumbers: number[] }
 
@@ -31,24 +29,23 @@ const SessionSummary = ({ allNumbers }: Props) => {
 
     const distintos = new Set(s50.slice(0,15).map(n=>n%10)).size;
 
-    // Recomendação automática baseada nos indicadores
     let recomendacao = '';
     let recColor = 'text-muted-foreground';
     if (distintos <= 4 && zeroDelay < 40) {
       recomendacao = '✅ ENTRAR — Entropia baixa, sessão concentrada';
-      recColor = 'text-green-400';
+      recColor = 'text-neon-green';
     } else if (zeroDelay > 40) {
       recomendacao = '🚨 PRESSÃO ZERO CRÍTICA — priorizar Vizinhos do Zero';
-      recColor = 'text-red-400';
+      recColor = 'text-destructive';
     } else if (distintos >= 8) {
       recomendacao = '⏸ AGUARDAR — Alta dispersão, sem padrão claro';
-      recColor = 'text-orange-400';
+      recColor = 'text-amber-400';
     } else if (hot.length >= 3) {
       recomendacao = '🔥 MODO QUENTE — múltiplos números repetindo';
-      recColor = 'text-yellow-400';
+      recColor = 'text-amber-400';
     } else {
       recomendacao = '👁️ OBSERVAR — Sessão neutra';
-      recColor = 'text-blue-400';
+      recColor = 'text-primary/70';
     }
 
     return { hot, cold, corDom, reds, blacks, hotTerminal, zeroDelay, distintos, total: s50.length, recomendacao, recColor };
@@ -56,94 +53,83 @@ const SessionSummary = ({ allNumbers }: Props) => {
 
   if (!stats) return null;
 
+  const numBg = (n: number) => n === 0 ? 'bg-emerald-600' : RED.has(n) ? 'bg-red-600' : 'bg-zinc-800';
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="bg-card rounded-xl border border-border p-3"
-    >
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-sm">📋</span>
-        <span className="font-display text-[10px] tracking-[0.15em] font-bold text-foreground uppercase">
-          Resumo da Sessão
-        </span>
-        <span className="text-[7px] text-muted-foreground ml-auto">{stats.total} rodadas</span>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-xl p-3.5 card-hover">
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/15 flex items-center justify-center text-sm">📋</div>
+        <div className="flex-1">
+          <span className="font-display text-[10px] tracking-[0.12em] font-bold text-foreground uppercase">Resumo da Sessão</span>
+          <div className="text-[7px] text-muted-foreground">{stats.total} rodadas analisadas</div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <div className="bg-secondary/40 rounded-lg p-2 border border-border text-center">
+        <div className="bg-secondary/30 rounded-lg p-2.5 border border-border/20 text-center">
           <div className="text-lg mb-0.5">{stats.corDom}</div>
-          <div className="text-[7px] text-muted-foreground">Cor</div>
-          <div className="text-[8px] font-bold text-foreground">{stats.reds}V / {stats.blacks}P</div>
+          <div className="text-[7px] text-muted-foreground/60">Cor</div>
+          <div className="text-[8px] font-bold text-foreground/80">{stats.reds}V / {stats.blacks}P</div>
         </div>
 
-        <div className="bg-secondary/40 rounded-lg p-2 border border-border text-center">
-          <div className="text-[14px] font-mono font-black text-primary mb-0.5">
-            T{stats.hotTerminal?.[0]}
-          </div>
-          <div className="text-[7px] text-muted-foreground">Terminal Hot</div>
-          <div className="text-[8px] font-bold text-foreground">{stats.hotTerminal?.[1]}x / 50</div>
+        <div className="bg-secondary/30 rounded-lg p-2.5 border border-border/20 text-center">
+          <div className="text-[14px] font-mono font-black text-primary mb-0.5">T{stats.hotTerminal?.[0]}</div>
+          <div className="text-[7px] text-muted-foreground/60">Terminal Hot</div>
+          <div className="text-[8px] font-bold text-foreground/80">{stats.hotTerminal?.[1]}× / 50</div>
         </div>
 
-        <div className={`rounded-lg p-2 border text-center ${
-          stats.distintos <= 4 ? 'bg-green-500/10 border-green-500/20' :
-          stats.distintos <= 6 ? 'bg-yellow-500/10 border-yellow-500/20' :
-          'bg-secondary/40 border-border'
+        <div className={`rounded-lg p-2.5 border text-center ${
+          stats.distintos <= 4 ? 'bg-green-500/8 border-green-500/15' :
+          stats.distintos <= 6 ? 'bg-amber-500/8 border-amber-500/15' :
+          'bg-secondary/30 border-border/20'
         }`}>
           <div className="text-[14px] font-mono font-black mb-0.5 text-foreground">{stats.distintos}</div>
-          <div className="text-[7px] text-muted-foreground">T distintos/15</div>
+          <div className="text-[7px] text-muted-foreground/60">T distintos/15</div>
           <div className={`text-[8px] font-bold ${
-            stats.distintos <= 4 ? 'text-green-400' :
-            stats.distintos <= 6 ? 'text-yellow-400' : 'text-muted-foreground'
+            stats.distintos <= 4 ? 'text-neon-green' : stats.distintos <= 6 ? 'text-amber-400' : 'text-muted-foreground'
           }`}>
             {stats.distintos <= 4 ? 'ENTRAR' : stats.distintos <= 6 ? 'CAUTELA' : 'AGUARDAR'}
           </div>
         </div>
 
-        <div className={`rounded-lg p-2 border text-center ${
-          stats.zeroDelay > 40 ? 'bg-red-500/10 border-red-500/20' :
-          stats.zeroDelay > 25 ? 'bg-orange-500/10 border-orange-500/20' :
-          'bg-secondary/40 border-border'
+        <div className={`rounded-lg p-2.5 border text-center ${
+          stats.zeroDelay > 40 ? 'bg-red-500/8 border-red-500/15' :
+          stats.zeroDelay > 25 ? 'bg-amber-500/8 border-amber-500/15' :
+          'bg-secondary/30 border-border/20'
         }`}>
           <div className={`text-[14px] font-mono font-black mb-0.5 ${
-            stats.zeroDelay > 40 ? 'text-red-400' :
-            stats.zeroDelay > 25 ? 'text-orange-400' : 'text-foreground'
+            stats.zeroDelay > 40 ? 'text-destructive' : stats.zeroDelay > 25 ? 'text-amber-400' : 'text-foreground'
           }`}>{stats.zeroDelay}</div>
-          <div className="text-[7px] text-muted-foreground">Zero ausente</div>
+          <div className="text-[7px] text-muted-foreground/60">Zero ausente</div>
           <div className={`text-[8px] font-bold ${
-            stats.zeroDelay > 40 ? 'text-red-400' :
-            stats.zeroDelay > 25 ? 'text-orange-400' : 'text-muted-foreground'
+            stats.zeroDelay > 40 ? 'text-destructive' : stats.zeroDelay > 25 ? 'text-amber-400' : 'text-muted-foreground'
           }`}>
             {stats.zeroDelay > 40 ? '🚨 CRÍTICO' : stats.zeroDelay > 25 ? '⚠️ PRESSÃO' : 'Normal'}
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mt-2">
+      <div className="grid grid-cols-2 gap-2 mt-2.5">
         <div>
-          <span className="text-[7px] font-bold text-orange-400 block mb-1">🔥 Hot (≥3x/50)</span>
+          <span className="text-[7px] font-bold text-amber-400 block mb-1.5">🔥 Hot (≥3×/50)</span>
           <div className="flex gap-1 flex-wrap">
             {stats.hot.length > 0 ? stats.hot.map(n => (
-              <div key={n} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold border border-white/10 ${
-                n===0?'bg-emerald-600 text-white':RED.has(n)?'bg-red-600 text-white':'bg-zinc-800 text-white'
-              }`}>{n}</div>
-            )) : <span className="text-[7px] text-muted-foreground">Distribuição normal</span>}
+              <div key={n} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold border border-white/10 shadow-sm ${numBg(n)} text-white`}>{n}</div>
+            )) : <span className="text-[7px] text-muted-foreground/50">Distribuição normal</span>}
           </div>
         </div>
         <div>
-          <span className="text-[7px] font-bold text-blue-400 block mb-1">❄️ Cold (0x/50)</span>
+          <span className="text-[7px] font-bold text-blue-400 block mb-1.5">❄️ Cold (0×/50)</span>
           <div className="flex gap-1 flex-wrap">
             {stats.cold.slice(0,5).map(n => (
-              <div key={n} className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold border border-white/10 opacity-60 ${
-                n===0?'bg-emerald-600 text-white':RED.has(n)?'bg-red-600 text-white':'bg-zinc-800 text-white'
-              }`}>{n}</div>
+              <div key={n} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold border border-white/5 opacity-50 ${numBg(n)} text-white`}>{n}</div>
             ))}
           </div>
         </div>
       </div>
 
       {stats.recomendacao && (
-        <div className={`text-[9px] font-bold text-center pt-2 border-t border-border/50 ${stats.recColor}`}>
+        <div className={`text-[9px] font-bold text-center mt-3 pt-2.5 border-t border-border/20 ${stats.recColor}`}>
           {stats.recomendacao}
         </div>
       )}
