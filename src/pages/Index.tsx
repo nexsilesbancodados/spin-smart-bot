@@ -691,11 +691,17 @@ const Index = () => {
                     </motion.div>
                   </div>
                   <div className="flex-1">
-                    <span className="text-[10px] text-foreground font-bold">→ Jogada para o <span className="text-primary">próximo giro</span></span>
-                    {lastSpinAt && (
-                      <div className="text-[8px] text-muted-foreground mt-0.5">
-                        Detectado há {Math.max(0, Math.round((Date.now() - lastSpinAt) / 1000))}s
-                      </div>
+                    {sniperCountdown > 0 ? (
+                      <>
+                        <span className="text-[10px] text-foreground font-bold">→ Jogada para o <span className="text-primary">próximo giro</span></span>
+                        {lastSpinAt && (
+                          <div className="text-[8px] text-muted-foreground mt-0.5">
+                            Detectado há {Math.max(0, Math.round((Date.now() - lastSpinAt) / 1000))}s
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground font-bold">⏳ Aguardando próxima rodada...</span>
                     )}
                   </div>
                   <div className="shrink-0">
