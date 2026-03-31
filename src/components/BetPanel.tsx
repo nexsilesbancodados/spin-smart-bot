@@ -526,6 +526,66 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           )}
         </AnimatePresence>
 
+        {/* Bet Type Selector */}
+        <div>
+          <button
+            onClick={() => setShowBetTypes(!showBetTypes)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-secondary/50 border border-border/50 text-[9px] font-bold text-foreground hover:bg-secondary transition-all"
+          >
+            <span>
+              {manualBetType === 'auto' ? '🤖 Auto (Sinal da IA)' : 
+               manualBetType === 'custom' ? '✏️ Números personalizados' :
+               MANUAL_BET_TYPES.find(t => t.id === manualBetType)?.label || manualBetType}
+            </span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showBetTypes ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {showBetTypes && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                <div className="grid grid-cols-3 gap-1 mt-2">
+                  {MANUAL_BET_TYPES.map(bt => (
+                    <button
+                      key={bt.id}
+                      onClick={() => { setManualBetType(bt.id); setShowBetTypes(false); }}
+                      className={`py-2 px-1.5 rounded-lg text-[8px] font-bold transition-all text-center ${
+                        manualBetType === bt.id
+                          ? 'bg-primary/20 text-primary border border-primary/30'
+                          : 'bg-secondary/60 text-muted-foreground border border-border/20 hover:text-foreground'
+                      }`}
+                    >
+                      {bt.label}
+                      <div className="text-[6px] opacity-60">{bt.desc}</div>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => { setManualBetType('custom'); setShowBetTypes(false); }}
+                    className={`py-2 px-1.5 rounded-lg text-[8px] font-bold transition-all text-center ${
+                      manualBetType === 'custom'
+                        ? 'bg-primary/20 text-primary border border-primary/30'
+                        : 'bg-secondary/60 text-muted-foreground border border-border/20 hover:text-foreground'
+                    }`}
+                  >
+                    ✏️ Personalizar
+                    <div className="text-[6px] opacity-60">Seus números</div>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {manualBetType === 'custom' && (
+            <div className="mt-2">
+              <input
+                type="text"
+                value={customNumbers}
+                onChange={e => setCustomNumbers(e.target.value)}
+                placeholder="Ex: 0, 3, 7, 12, 26, 32"
+                className="w-full px-3 py-2 rounded-lg bg-secondary/60 border border-border text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <p className="text-[7px] text-muted-foreground mt-1">Separe os números por vírgula (0 a 36)</p>
+            </div>
+          )}
+        </div>
+
         {/* Stats grid — with gradient borders */}
         <div className="grid grid-cols-4 gap-2">
           <div className="bg-secondary/40 rounded-xl p-2.5 text-center border border-border/30">
