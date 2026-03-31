@@ -246,13 +246,13 @@ const Index = () => {
       // Force fetch immediately — bypass any in-flight lock
       sniperFetchingRef.current = false;
       lastSniperTriggerRef.current = 0;
-      fetchSniperRef.current?.(0, true);
-      supabase.functions.invoke('realtime-patterns')
-        .then(res => { if (res.data?.all_insights?.length > 0) setRtInsights(res.data.all_insights.slice(0, 6)); })
-        .catch(() => {});
-      // Fire Omni-Core in parallel
+      
+      // Get the freshest snapshot including the number that just landed
+      const freshNumbers = apiSnapshotRef.current.slice(0, 500);
+      
+      // Fire Omni-Core FIRST (primary AI) — send full history so prediction is instant
       supabase.functions.invoke('omni-core', {
-        body: { numbers: apiSnapshotRef.current.slice(0, 200) }
+        body: { numbers: freshNumbers }
       }).then(res => {
         if (res.data && res.data.mode === 'signal') {
           setSniperData((prev: any) => ({
@@ -270,6 +270,12 @@ const Index = () => {
           }));
         }
       }).catch(() => {});
+      
+      // Fire sniper-predict and realtime-patterns in parallel
+      fetchSniperRef.current?.(0, true);
+      supabase.functions.invoke('realtime-patterns')
+        .then(res => { if (res.data?.all_insights?.length > 0) setRtInsights(res.data.all_insights.slice(0, 6)); })
+        .catch(() => {});
     }
   }, [soundEnabled, aiEnabled]);
 
