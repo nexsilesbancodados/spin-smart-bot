@@ -7045,12 +7045,9 @@ Responda APENAS JSON:
 }`;
 
         // =====================================================
-        // MEGA MULTI-AI CONSENSUS ENGINE — POTENCIAL MÁXIMO
-        // Lovable AI (Gemini 2.5 Pro/Flash + GPT-5) + DeepSeek + NVIDIA (50+ modelos)
-        // Votação cruzada: números que aparecem em 2+ IAs ganham boost
+        // MULTI-AI CONVERGENCE ENGINE v2 — IAs Especialistas + Juiz
+        // 8 IAs com perspectivas diferentes → Juiz Supremo decide
         // =====================================================
-        const NVIDIA_API_KEY = Deno.env.get("NVIDIA_API_KEY");
-        const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
 
         // Dynamic AI focus based on user-selected analysis type
         const filterLabels: Record<string, string> = {
@@ -7090,9 +7087,9 @@ REGRAS ABSOLUTAS:
         type AiResult = { source: string; parsed: any; raw: string; ok: boolean };
         const aiResults: AiResult[] = [];
 
-        const callAi = async (name: string, url: string, hdrs: Record<string,string>, model: string): Promise<AiResult> => {
+        const callAi = async (name: string, url: string, hdrs: Record<string,string>, model: string, systemMsg: string, userMsg: string, temp = 0.15): Promise<AiResult> => {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout per model
+          const timeout = setTimeout(() => controller.abort(), 18000);
           try {
             const res = await fetch(url, {
               method: "POST",
@@ -7101,11 +7098,11 @@ REGRAS ABSOLUTAS:
               body: JSON.stringify({
                 model,
                 messages: [
-                  { role: "system", content: aiSystemPrompt },
-                  { role: "user", content: aiPrompt },
+                  { role: "system", content: systemMsg },
+                  { role: "user", content: userMsg },
                 ],
-                temperature: 0.12,
-                max_tokens: 700,
+                temperature: temp,
+                max_tokens: 800,
               }),
             });
             clearTimeout(timeout);
@@ -7116,7 +7113,6 @@ REGRAS ABSOLUTAS:
             const data = await res.json();
             const content = data.choices?.[0]?.message?.content || '';
             const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').replace(/^[^{]*/, '').replace(/[^}]*$/, '').trim();
-            // Find valid JSON object
             const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
             if (!jsonMatch) return { source: name, parsed: null, raw: cleaned.slice(0, 100), ok: false };
             const parsed = JSON.parse(jsonMatch[0]);
@@ -7130,46 +7126,58 @@ REGRAS ABSOLUTAS:
           }
         };
 
-        const NV = 'https://integrate.api.nvidia.com/v1/chat/completions';
-        const nvH = NVIDIA_API_KEY ? { "Authorization": `Bearer ${NVIDIA_API_KEY}` } : {};
-        const nv = (name: string, model: string) => callAi(name, NV, nvH, model);
-
-        // Build focused AI calls — quality over quantity
-        const aiCalls: Promise<AiResult>[] = [];
-
-        // === LOVABLE AI — FOCUSED HIGH-QUALITY MODELS ===
+        // =====================================================
+        // ROUND 1: 8 IAs ANALISAM INDEPENDENTEMENTE
+        // Cada uma com uma "personalidade" analítica diferente
+        // =====================================================
         const LAI_KEY = Deno.env.get("LOVABLE_API_KEY");
         const LAI_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+        const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+
+        const specialistPrompts: Record<string, string> = {
+          'Estatístico': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Análise estatística pura. Foque em frequências, desvios, Lei do Terço, dívida estatística. Ignore intuição — apenas matemática fria.`,
+          'Físico': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Física do cilindro. Foque em setores, vizinhos, arco do dealer, momentum de setores. Pense no cilindro como sistema mecânico.`,
+          'Padrões': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Reconhecimento de padrões. Foque em sequências, terminais repetidos, alternâncias, streaks de cor/paridade. Detecte ciclos.`,
+          'Puxadas': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Tabela de puxadas da Roleta Brasileira. Foque EXCLUSIVAMENTE nas correlações de puxada: número X puxa Y. Use toda a cadeia de puxadas.`,
+          'Contrarian': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Análise contrária. Busque números FRIOS que estão devendo, setores negligenciados, reversões iminentes. Aposte CONTRA a tendência dominante.`,
+          'Momentum': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Análise de momentum e tendência. Foque em breakouts, aceleração de setores, tendências nascentes. Aposte A FAVOR da tendência.`,
+          'Convergência': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Cruzamento multi-dimensional. Cruze TODOS os dados para achar onde 3+ indicadores apontam o mesmo número. Busque confluência máxima.`,
+          'Mercados': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Análise de mercados (dúzias, colunas, cores, par/ímpar, alto/baixo). Foque em apostas externas com melhor edge. Qual mercado externo tem maior probabilidade agora?`,
+        };
+
+        const round1Calls: Promise<AiResult>[] = [];
+
         if (LAI_KEY) {
           const laiH = { "Authorization": `Bearer ${LAI_KEY}` };
-          // Primary: Best reasoning model
-          aiCalls.push(callAi('Gemini-2.5-Pro', LAI_URL, laiH, 'google/gemini-2.5-pro'));
-          // Secondary: Fast balanced model  
-          aiCalls.push(callAi('Gemini-3-Flash', LAI_URL, laiH, 'google/gemini-3-flash-preview'));
-          // Tertiary: Different perspective
-          aiCalls.push(callAi('GPT-5-Mini', LAI_URL, laiH, 'openai/gpt-5-mini'));
+          // 8 specialists using diverse models
+          round1Calls.push(callAi('Estatístico', LAI_URL, laiH, 'google/gemini-2.5-pro', specialistPrompts['Estatístico'], aiPrompt, 0.10));
+          round1Calls.push(callAi('Físico', LAI_URL, laiH, 'google/gemini-3.1-pro-preview', specialistPrompts['Físico'], aiPrompt, 0.12));
+          round1Calls.push(callAi('Padrões', LAI_URL, laiH, 'google/gemini-3-flash-preview', specialistPrompts['Padrões'], aiPrompt, 0.15));
+          round1Calls.push(callAi('Puxadas', LAI_URL, laiH, 'openai/gpt-5-mini', specialistPrompts['Puxadas'], aiPrompt, 0.10));
+          round1Calls.push(callAi('Contrarian', LAI_URL, laiH, 'google/gemini-2.5-flash', specialistPrompts['Contrarian'], aiPrompt, 0.20));
+          round1Calls.push(callAi('Momentum', LAI_URL, laiH, 'openai/gpt-5-nano', specialistPrompts['Momentum'], aiPrompt, 0.15));
+          round1Calls.push(callAi('Convergência', LAI_URL, laiH, 'openai/gpt-5', specialistPrompts['Convergência'], aiPrompt, 0.08));
+          round1Calls.push(callAi('Mercados', LAI_URL, laiH, 'google/gemini-2.5-flash-lite', specialistPrompts['Mercados'], aiPrompt, 0.12));
         }
 
-        // === DEEPSEEK (if available) ===
         if (DEEPSEEK_API_KEY) {
-          aiCalls.push(callAi('DeepSeek', 'https://api.deepseek.com/chat/completions',
-            { "Authorization": `Bearer ${DEEPSEEK_API_KEY}` }, 'deepseek-chat'));
+          round1Calls.push(callAi('DeepSeek-Fusão', 'https://api.deepseek.com/chat/completions',
+            { "Authorization": `Bearer ${DEEPSEEK_API_KEY}` }, 'deepseek-chat', specialistPrompts['Convergência'], aiPrompt, 0.10));
         }
 
-        console.log(`Multi-AI: Dispatching ${aiCalls.length} AI calls in parallel...`);
+        console.log(`Multi-AI Round 1: Dispatching ${round1Calls.length} specialist AIs...`);
 
-        // Execute ALL in parallel with 25s global timeout
-        const raceTimeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('global-timeout')), 25000));
+        // Execute Round 1 with 20s timeout
+        const raceTimeout1 = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('r1-timeout')), 20000));
         let allResults: PromiseSettledResult<AiResult>[];
         try {
           allResults = await Promise.race([
-            Promise.allSettled(aiCalls),
-            raceTimeout.then(() => { throw new Error('timeout'); }),
+            Promise.allSettled(round1Calls),
+            raceTimeout1.then(() => { throw new Error('timeout'); }),
           ]) as PromiseSettledResult<AiResult>[];
         } catch {
-          // Global timeout — collect whatever resolved so far
-          allResults = await Promise.allSettled(aiCalls.map(p => 
-            Promise.race([p, new Promise<AiResult>((_, rej) => setTimeout(() => rej('timeout'), 100))])
+          allResults = await Promise.allSettled(round1Calls.map(p => 
+            Promise.race([p, new Promise<AiResult>((_, rej) => setTimeout(() => rej('timeout'), 200))])
           ));
         }
         
@@ -7179,77 +7187,172 @@ REGRAS ABSOLUTAS:
           }
         }
 
-        console.log(`Multi-AI: ${aiResults.length}/${aiCalls.length} succeeded — [${aiResults.map(r => r.source).join(', ')}]`);
+        console.log(`Multi-AI Round 1: ${aiResults.length}/${round1Calls.length} succeeded — [${aiResults.map(r => r.source).join(', ')}]`);
 
         // =====================================================
-        // CONSENSUS VOTING: Combine all AI responses
-        // Numbers that appear in 2+ AIs get massive boost
+        // ROUND 2: JUIZ SUPREMO — vê TODAS as respostas e decide
+        // Um modelo top analisa o consenso e emite o veredito final
         // =====================================================
-        if (aiResults.length > 0) {
-          const numberVotes: Record<number, { count: number; sources: string[]; totalConf: number }> = {};
-          const allParsed: any[] = [];
+        let judgeResult: AiResult | null = null;
+        if (aiResults.length >= 2 && LAI_KEY) {
+          const round1Summary = aiResults.map(r => {
+            const p = r.parsed;
+            return `[${r.source}] números: [${(p.numbers || []).join(',')}] | tipo: ${p.betType || '?'} | confiança: ${p.confidence || '?'}% | razão: ${(p.suggestedBet || p.reasoning || '').slice(0, 100)} | padrão: ${(p.patternIdentified || '').slice(0, 60)}`;
+          }).join('\n');
 
-          for (const result of aiResults) {
-            const p = result.parsed;
-            allParsed.push(p);
-            if (Array.isArray(p.numbers)) {
-              for (const n of p.numbers) {
-                if (typeof n === 'number' && n >= 0 && n <= 36) {
-                  if (!numberVotes[n]) numberVotes[n] = { count: 0, sources: [], totalConf: 0 };
-                  numberVotes[n].count++;
-                  numberVotes[n].sources.push(result.source);
-                  numberVotes[n].totalConf += (p.confidence || 50);
-                }
+          // Build vote tally for judge context
+          const voteMap: Record<number, string[]> = {};
+          for (const r of aiResults) {
+            for (const n of (r.parsed.numbers || [])) {
+              if (typeof n === 'number' && n >= 0 && n <= 36) {
+                if (!voteMap[n]) voteMap[n] = [];
+                voteMap[n].push(r.source);
               }
             }
           }
+          const voteSummary = Object.entries(voteMap)
+            .sort(([,a],[,b]) => b.length - a.length)
+            .slice(0, 15)
+            .map(([n, sources]) => `nº${n}: ${sources.length} votos [${sources.join(',')}]`)
+            .join('\n');
 
-          // Sort by votes desc, then by total confidence
-          const votedNumbers = Object.entries(numberVotes)
-            .map(([num, v]) => ({ num: parseInt(num), ...v, avgConf: v.totalConf / v.count }))
-            .sort((a, b) => b.count - a.count || b.avgConf - a.avgConf);
+          const judgeSystem = `Você é o JUIZ SUPREMO de um painel de ${aiResults.length} IAs especialistas em roleta europeia.
+Cada IA analisou os mesmos dados com uma perspectiva diferente (estatística, física, padrões, puxadas, contrarian, momentum, convergência, mercados).
+Sua missão: analisar TODAS as respostas, identificar ONDE elas concordam, resolver conflitos, e emitir o VEREDITO FINAL — a melhor jogada possível.
 
-          // With 3-4 focused AIs, require 2+ votes for consensus
-          const totalAIs = aiResults.length;
-          const minVotes = 2;
+REGRAS DO JUIZ:
+1. Números votados por 3+ IAs = SINAL FORTÍSSIMO (consenso alto)
+2. Números votados por 2 IAs = SINAL BOM (considerar)
+3. Se um Contrarian discorda de todos = verificar se há fundamento
+4. Se Estatístico + Físico + Puxadas concordam = CONFIANÇA MÁXIMA
+5. Priorize números que aparecem em múltiplas perspectivas diferentes
+6. Se houver conflito entre Momentum e Contrarian, o Estatístico desempata
+7. O betType deve refletir o consenso dominante
+8. NUNCA ignore um número votado por 4+ IAs — ele DEVE estar na lista final
+9. Responda APENAS JSON válido${focusInstruction}`;
+
+          const judgePrompt = `## RESPOSTAS DAS ${aiResults.length} IAs ESPECIALISTAS:
+
+${round1Summary}
+
+## TABULAÇÃO DE VOTOS (números mais votados):
+${voteSummary}
+
+## DADOS ESTATÍSTICOS DE REFERÊNCIA:
+Candidatos estatísticos: [${finalBetNumbers.join(',')}] (top1=${numTop1})
+Confirmações estatísticas: ${confirmations}/6
+Último número: ${numbers[0]}
+Últimos 10: [${numbers.slice(0,10).join(',')}]
+
+## SUA DECISÃO FINAL
+Analise as ${aiResults.length} respostas acima. Onde há CONSENSO? Onde há CONFLITO? 
+Emita o veredito final com os números mais prováveis, priorizando consenso multi-IA.
+Explique brevemente POR QUE escolheu cada número.
+
+Responda APENAS JSON:
+{
+  "numbers": [números finais, max 10],
+  "betType": "tipo dominante",
+  "betDescription": "Descrição clara da aposta final",
+  "suggestedBet": "Jogada principal do juiz",
+  "secondaryBet": "Jogada de proteção",
+  "patternIdentified": "Padrão consensual identificado",
+  "learned": "O que o painel de IAs aprendeu desta mesa",
+  "confidence": 0-100,
+  "adjustTop1": numero_principal_ou_null,
+  "sectorFocus": "setor dominante",
+  "feedbackAction": "reforçar|ajustar|descartar",
+  "judgeReasoning": "Explicação do veredito: por que estes números, qual consenso, quais conflitos resolvidos",
+  "consensusStrength": "forte|moderado|fraco",
+  "dissent": "Quais IAs discordaram e por quê (resumido)",
+  "marketAnalysis": {
+    "bestMarket": "mercado externo com melhor edge",
+    "marketConfidence": 0-100,
+    "reasoning": "por quê"
+  }
+}`;
+
+          try {
+            const laiH = { "Authorization": `Bearer ${LAI_KEY}` };
+            judgeResult = await callAi('Juiz-Supremo', LAI_URL, laiH, 'openai/gpt-5.2', judgeSystem, judgePrompt, 0.05);
+            if (judgeResult.ok) {
+              console.log(`Multi-AI Round 2: Judge succeeded — consensus=${judgeResult.parsed?.consensusStrength || '?'}`);
+            } else {
+              // Fallback: try with Gemini
+              judgeResult = await callAi('Juiz-Gemini', LAI_URL, laiH, 'google/gemini-2.5-pro', judgeSystem, judgePrompt, 0.05);
+              if (judgeResult.ok) console.log(`Multi-AI Round 2: Judge fallback succeeded`);
+            }
+          } catch (judgeErr) {
+            console.error('Judge round failed:', judgeErr);
+          }
+        }
+
+        // =====================================================
+        // MERGE: Judge verdict + Round 1 consensus + Statistics
+        // =====================================================
+        // Build vote map from Round 1
+        const numberVotes: Record<number, { count: number; sources: string[]; totalConf: number }> = {};
+        const allParsed: any[] = [];
+
+        for (const result of aiResults) {
+          const p = result.parsed;
+          allParsed.push(p);
+          if (Array.isArray(p.numbers)) {
+            for (const n of p.numbers) {
+              if (typeof n === 'number' && n >= 0 && n <= 36) {
+                if (!numberVotes[n]) numberVotes[n] = { count: 0, sources: [], totalConf: 0 };
+                numberVotes[n].count++;
+                numberVotes[n].sources.push(result.source);
+                numberVotes[n].totalConf += (p.confidence || 50);
+              }
+            }
+          }
+        }
+
+        const votedNumbers = Object.entries(numberVotes)
+          .map(([num, v]) => ({ num: parseInt(num), ...v, avgConf: v.totalConf / v.count }))
+          .sort((a, b) => b.count - a.count || b.avgConf - a.avgConf);
+
+        const totalAIs = aiResults.length;
+        const minVotes = totalAIs >= 6 ? 3 : 2;
+        const consensusNums = votedNumbers.filter(v => v.count >= minVotes).map(v => v.num);
+
+        // Use judge result if available, otherwise use best Round 1 response
+        const finalAiSource = judgeResult?.ok ? judgeResult.parsed : allParsed.sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
+        const isJudgeDecision = judgeResult?.ok === true;
+
+        if (finalAiSource || consensusNums.length > 0) {
+          // Judge numbers take priority, then consensus, then best AI
+          const judgeNums = finalAiSource?.numbers?.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36) || [];
+          const singleHighConf = votedNumbers.filter(v => v.count === 1 && v.avgConf >= 80).map(v => v.num);
           
-          // Consensus numbers: voted by minVotes+ AIs
-          const consensusNums = votedNumbers.filter(v => v.count >= minVotes).map(v => v.num);
-          // Strong singles (voted by at least 2 but below threshold)
-          const nearConsensus = votedNumbers.filter(v => v.count >= 2 && v.count < minVotes && v.avgConf >= 60).map(v => v.num);
-          // Single-vote but very high confidence
-          const singleNums = votedNumbers.filter(v => v.count === 1 && v.avgConf >= 75).map(v => v.num);
-
-          // Pick best overall parsed response (highest confidence)
-          const bestParsed = allParsed.sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
-
-          // Build final AI numbers: consensus first, then best AI, then singles
-          const bestAiNums = bestParsed?.numbers?.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36) || [];
           const multiAiNumbers = [...new Set([
+            ...(isJudgeDecision ? judgeNums : []),
             ...consensusNums,
-            ...nearConsensus,
-            ...bestAiNums,
-            ...singleNums,
+            ...(isJudgeDecision ? [] : judgeNums),
+            ...singleHighConf.slice(0, 3),
           ])].slice(0, 12);
 
           if (multiAiNumbers.length >= 2) {
             aiAdjustedNumbers = multiAiNumbers;
-            aiReasoning = bestParsed?.suggestedBet || bestParsed?.reasoning || null;
-            aiConfidence = consensusNums.length >= 5
-              ? Math.min(97, (bestParsed?.confidence || 50) + consensusNums.length * 3)
-              : consensusNums.length >= 3
-              ? Math.min(92, (bestParsed?.confidence || 50) + consensusNums.length * 4)
-              : bestParsed?.confidence || null;
-            aiPatternAnalysis = bestParsed?.patternIdentified || null;
-            aiSectorFocus = bestParsed?.sectorFocus || null;
-            aiFeedbackAction = bestParsed?.feedbackAction || null;
-            aiLearned = bestParsed?.learned || null;
-            aiSecondaryBet = bestParsed?.secondaryBet || null;
-            aiBetDescription = bestParsed?.betDescription || null;
-            aiBetType = bestParsed?.betType || null;
-            aiMarketAnalysis = bestParsed?.marketAnalysis || null;
+            aiReasoning = isJudgeDecision 
+              ? (finalAiSource?.judgeReasoning || finalAiSource?.suggestedBet || null)
+              : (finalAiSource?.suggestedBet || finalAiSource?.reasoning || null);
+            aiConfidence = isJudgeDecision
+              ? finalAiSource?.confidence || null
+              : consensusNums.length >= 5 ? Math.min(95, (finalAiSource?.confidence || 50) + consensusNums.length * 3)
+              : consensusNums.length >= 3 ? Math.min(90, (finalAiSource?.confidence || 50) + consensusNums.length * 4)
+              : finalAiSource?.confidence || null;
+            aiPatternAnalysis = finalAiSource?.patternIdentified || null;
+            aiSectorFocus = finalAiSource?.sectorFocus || null;
+            aiFeedbackAction = finalAiSource?.feedbackAction || null;
+            aiLearned = finalAiSource?.learned || null;
+            aiSecondaryBet = finalAiSource?.secondaryBet || null;
+            aiBetDescription = finalAiSource?.betDescription || null;
+            aiBetType = finalAiSource?.betType || null;
+            aiMarketAnalysis = finalAiSource?.marketAnalysis || null;
 
-            // MERGE: Multi-AI + Statistical consensus
+            // MERGE: AI verdict + Statistical consensus
             const aiSet = new Set(aiAdjustedNumbers);
             const statSet = new Set(finalBetNumbers);
             const consensus = finalBetNumbers.filter(n => aiSet.has(n));
@@ -7258,57 +7361,70 @@ REGRAS ABSOLUTAS:
 
             const merged = [...new Set([
               ...consensus,
-              ...(bestParsed?.adjustTop1 !== null && bestParsed?.adjustTop1 !== undefined ? [bestParsed.adjustTop1] : []),
+              ...(finalAiSource?.adjustTop1 != null ? [finalAiSource.adjustTop1] : []),
               ...aiOnly.slice(0, 5),
               ...statOnly,
             ])].filter(n => n >= 0 && n <= 36).slice(0, 12);
 
             if (merged.length >= 3) {
               finalBetNumbers = merged;
-              if (bestParsed?.adjustTop1 !== null && bestParsed?.adjustTop1 !== undefined && typeof bestParsed.adjustTop1 === 'number') {
-                numTop1 = bestParsed.adjustTop1;
+              if (finalAiSource?.adjustTop1 != null && typeof finalAiSource.adjustTop1 === 'number') {
+                numTop1 = finalAiSource.adjustTop1;
               }
 
               const aiSources = aiResults.map(r => r.source);
-              const topSources = aiSources.length > 8 ? aiSources.slice(0, 8).join('+') + `+${aiSources.length - 8}more` : aiSources.join('+');
-              aiLearnings.unshift(`🧠 MEGA-IA [${aiResults.length}/${aiCalls.length} modelos]: ${aiReasoning || 'Padrão confirmado'} (${aiConfidence || '?'}% confiança)`);
+              if (isJudgeDecision) {
+                aiLearnings.unshift(`⚖️ JUIZ SUPREMO [${totalAIs} IAs → veredito]: ${aiReasoning || 'Consenso validado'} (${aiConfidence || '?'}% confiança, consenso ${finalAiSource?.consensusStrength || '?'})`);
+                if (finalAiSource?.dissent) {
+                  aiLearnings.push(`🗣️ Dissidências: ${finalAiSource.dissent}`);
+                }
+              } else {
+                aiLearnings.unshift(`🧠 CONSENSO ${totalAIs} IAs: ${aiReasoning || 'Padrão confirmado'} (${aiConfidence || '?'}% confiança)`);
+              }
 
               if (consensusNums.length >= 2) {
                 const top10Votes = votedNumbers.slice(0, 10);
                 const consensusDetail = top10Votes
                   .filter(v => v.count >= minVotes)
-                  .map(v => `nº${v.num}(${v.count}votos)`)
+                  .map(v => `nº${v.num}(${v.count}votos: ${v.sources.join(',')})`)
                   .join(', ');
-                aiLearnings.push(`🤝 CONSENSO ${aiResults.length} IAs (min ${minVotes} votos): ${consensusDetail}`);
+                aiLearnings.push(`🤝 VOTAÇÃO [${totalAIs} IAs, mín ${minVotes} votos]: ${consensusDetail}`);
                 
-                // Top voted number — mega signal
-                if (votedNumbers[0] && votedNumbers[0].count >= 5) {
-                  aiLearnings.push(`🏆 MEGA-SINAL: nº${votedNumbers[0].num} votado por ${votedNumbers[0].count} IAs! [${votedNumbers[0].sources.slice(0,5).join(',')}...]`);
+                if (votedNumbers[0] && votedNumbers[0].count >= 4) {
+                  aiLearnings.push(`🏆 MEGA-SINAL: nº${votedNumbers[0].num} votado por ${votedNumbers[0].count}/${totalAIs} IAs! [${votedNumbers[0].sources.join(',')}]`);
                 }
               }
 
+              // Show each specialist's pick for transparency
+              for (const r of aiResults.slice(0, 6)) {
+                const p = r.parsed;
+                aiLearnings.push(`🔬 ${r.source}: [${(p.numbers || []).slice(0,5).join(',')}] ${p.betType || ''} ${p.confidence || '?'}%`);
+              }
+
               if (consensus.length >= 3) {
-                aiLearnings.push(`✅ TRIPLO CONSENSO: ${consensus.length} nums validados por Multi-IA + Estatística`);
+                aiLearnings.push(`✅ TRIPLO CONSENSO: ${consensus.length} nums validados por IAs + Estatística`);
               }
             }
 
             // Save AI learning
-            if (isNewNumber && bestParsed?.learned) {
+            if (isNewNumber && (finalAiSource?.learned || aiResults.length >= 3)) {
               await supabase.from('ai_learned_patterns').insert({
-                learning_type: 'multi_ai_consensus',
-                title: `Multi-IA Spin ${numbers[0]}: ${(bestParsed.betType || 'geral').toUpperCase()} [${aiResults.length} IAs]`,
-                knowledge: `${bestParsed.reasoning || ''} | Aprendizado: ${bestParsed.learned} | Consenso: ${consensusNums.length} nums em ${aiResults.length} IAs`,
+                learning_type: isJudgeDecision ? 'judge_verdict' : 'multi_ai_consensus',
+                title: `${isJudgeDecision ? 'Juiz' : 'Consenso'} Spin ${numbers[0]}: ${(finalAiSource?.betType || 'geral').toUpperCase()} [${totalAIs} IAs${isJudgeDecision ? ' + Juiz' : ''}]`,
+                knowledge: `${aiReasoning || ''} | Aprendizado: ${finalAiSource?.learned || 'N/A'} | Consenso: ${consensusNums.length} nums em ${totalAIs} IAs | Força: ${finalAiSource?.consensusStrength || 'N/A'}`,
                 accuracy: aiConfidence || 50,
                 data_points: numbers.length,
                 metadata: {
                   hotNumbers: aiAdjustedNumbers,
-                  betType: bestParsed.betType || 'geral',
-                  learned: bestParsed.learned,
+                  betType: finalAiSource?.betType || 'geral',
+                  learned: finalAiSource?.learned,
                   confidence: aiConfidence,
                   lastNumber: numbers[0],
                   consensus: consensusNums.length,
                   aiSources: aiResults.map(r => r.source),
                   votes: votedNumbers.slice(0, 15),
+                  isJudgeDecision,
+                  consensusStrength: finalAiSource?.consensusStrength,
                 },
               });
             }
