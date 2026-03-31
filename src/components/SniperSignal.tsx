@@ -212,10 +212,14 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
 
   // No signal
   if (!sniperData?.signal || !sniperData?.strategy) {
+    const waitingMessage = sniperCountdown === 0
+      ? '🔎 Analisando... aguardando próxima rodada'
+      : sniperData?.message || 'Aguardando dados...';
+
     return (
       <div className="bg-card rounded-2xl border border-border p-8 text-center">
         <Clock className="w-7 h-7 text-muted-foreground/40 mx-auto mb-2" />
-        <p className="text-sm text-muted-foreground">{sniperData?.message || 'Aguardando dados...'}</p>
+        <p className="text-sm text-muted-foreground">{waitingMessage}</p>
       </div>
     );
   }

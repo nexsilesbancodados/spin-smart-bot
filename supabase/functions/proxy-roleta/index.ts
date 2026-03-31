@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const RED_NUMBERS = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
 const getColor = (n: number) => n === 0 ? 'green' : RED_NUMBERS.includes(n) ? 'red' : 'black';
+const RECENT_DUPLICATE_WINDOW_MS = 12000;
 
 // Simple in-memory lock to prevent concurrent inserts
 let isProcessing = false;
@@ -82,106 +83,54 @@ Deno.serve(async (req) => {
     isProcessing = true;
 
     try {
-      // Get last 20 stored numbers with timestamps for robust comparison
+      const latestNumber = numbers[0];
+
+      if (typeof latestNumber !== 'number' || latestNumber < 0 || latestNumber > 36) {
+        return new Response(JSON.stringify({ ...data, mesa: 'Roleta Brasileira', newCount: 0, skipped: true, reason: 'invalid_head' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       const { data: lastStored } = await supabase
         .from('roulette_numbers')
         .select('number, fetched_at')
         .order('fetched_at', { ascending: false })
-        .limit(20);
+        .limit(6);
 
-      const storedNums = (lastStored || []).map((r: any) => r.number);
+      const now = Date.now();
+      const recentDuplicate = (lastStored || []).find((row: any) => {
+        if (row.number !== latestNumber || !row.fetched_at) return false;
+        return now - new Date(row.fetched_at).getTime() < RECENT_DUPLICATE_WINDOW_MS;
+      });
 
-      let newNumbers: number[] = [];
-
-      if (storedNums.length === 0) {
-        // First time: store all available
-        newNumbers = numbers.slice(0, 200);
-      } else {
-        // Strategy: find where the API sequence aligns with stored sequence
-        // The API returns numbers newest-first, same as our stored order
-        // We need to find the offset where API[offset:] matches stored[0:]
-        
-        // Build a unique fingerprint using position-aware comparison
-        // Look for the position in the API array where stored sequence starts
-        const storedSig = storedNums.slice(0, 6).join(',');
-        
-        let matchAt = -1;
-        for (let i = 0; i < Math.min(numbers.length - 5, 20); i++) {
-          const apiSig = numbers.slice(i, i + 6).join(',');
-          if (apiSig === storedSig) {
-            matchAt = i;
-            break;
-          }
-        }
-
-        if (matchAt === -1) {
-          // Try with fewer elements (4 match)
-          const storedSig4 = storedNums.slice(0, 4).join(',');
-          for (let i = 0; i < Math.min(numbers.length - 3, 20); i++) {
-            const apiSig4 = numbers.slice(i, i + 4).join(',');
-            if (apiSig4 === storedSig4) {
-              matchAt = i;
-              break;
-            }
-          }
-        }
-
-        if (matchAt > 0) {
-          // Found alignment — everything before matchAt is new
-          newNumbers = numbers.slice(0, matchAt);
-        } else if (matchAt === 0) {
-          // Perfect alignment — no new numbers
-          newNumbers = [];
-        } else {
-          // No alignment found — only add first number if it differs from last stored
-          // Use a stricter check: compare first 2 API nums vs first 2 stored
-          if (numbers[0] !== storedNums[0] || (numbers.length > 1 && storedNums.length > 1 && numbers[1] !== storedNums[1])) {
-            // Only the first number is new (conservative approach)
-            newNumbers = [numbers[0]];
-          }
-        }
+      if (recentDuplicate) {
+        lastApiFingerprint = apiFingerprint;
+        return new Response(JSON.stringify({
+          ...data,
+          mesa: 'Roleta Brasileira',
+          newCount: 0,
+          skipped: true,
+          reason: 'recent_duplicate_head',
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
-      // Safety: never insert more than 5 at once (a real roulette spins every ~30-60s, 
-      // with 3s polling we should get at most 1 new number per call)
-      if (newNumbers.length > 5) {
-        console.warn(`[proxy-roleta] Too many new numbers (${newNumbers.length}), capping to 5`);
-        newNumbers = newNumbers.slice(0, 5);
-      }
-
-      if (newNumbers.length > 0) {
-        // Double-check: make sure the most recent new number isn't already the latest stored
-        if (storedNums.length > 0 && newNumbers.length === 1 && newNumbers[0] === storedNums[0]) {
-          // Check timestamp — if last insert was < 10s ago, skip
-          const lastTime = lastStored?.[0]?.fetched_at;
-          if (lastTime) {
-            const elapsed = Date.now() - new Date(lastTime).getTime();
-            if (elapsed < 10000) {
-              newNumbers = [];
-              console.log('[proxy-roleta] Skipping duplicate within 10s window');
-            }
-          }
-        }
-      }
-
-      if (newNumbers.length > 0) {
-        const rows = newNumbers.map(n => ({ number: n, color: getColor(n) }));
-        await supabase.from('roulette_numbers').insert(rows);
-
-        const roletaRows = newNumbers.map(n => ({
-          numero: String(n),
+      await Promise.all([
+        supabase.from('roulette_numbers').insert([{ number: latestNumber, color: getColor(latestNumber) }]),
+        supabase.from('resultados_roleta').insert([{
+          numero: String(latestNumber),
           mesa: 'Roleta Brasileira',
           provedor: 'Playtech',
-        }));
-        await supabase.from('resultados_roleta').insert(roletaRows);
+        }]),
+      ]);
 
-        console.log(`[proxy-roleta] Inserted ${newNumbers.length} new: [${newNumbers.join(',')}]`);
-      }
+      console.log(`[proxy-roleta] Inserted latest number: ${latestNumber}`);
 
       // Update fingerprint after successful processing
       lastApiFingerprint = apiFingerprint;
 
-      return new Response(JSON.stringify({ ...data, mesa: 'Roleta Brasileira', newCount: newNumbers.length }), {
+      return new Response(JSON.stringify({ ...data, mesa: 'Roleta Brasileira', newCount: 1, latestNumber }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } finally {

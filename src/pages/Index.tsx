@@ -41,6 +41,7 @@ const CAVALOS_GROUPS: Record<string, number[]> = {
 const DUPLICATE_SPIN_WINDOW_MS = 12000;
 const SIGNAL_WINDOW_SECONDS = 18;
 const POLL_INTERVAL_MS = 1000;
+const HISTORY_SYNC_INTERVAL_MS = 15000;
 const ROULETTE_TABLES = [
   { id: 'brasileira', name: 'Roleta Brasileira', provider: 'Playtech', iframeUrl: 'https://onabet.com/casino/roleta-brasileira' },
   { id: 'brasileira2', name: 'Roleta Brasileira 2', provider: 'Playtech', iframeUrl: 'https://onabet.com/casino/roleta-ao-vivo' },
@@ -303,10 +304,10 @@ const Index = () => {
           apiSnapshotRef.current = nums;
           setApiNumbers(prev => [...newNumbers, ...prev].slice(0, 1000));
           setLastUpdate(new Date());
-          if (!isBurstDuplicate(newNumbers[0])) {
+          if (realtimeStatus !== 'connected' && !isBurstDuplicate(newNumbers[0])) {
+            const fallbackSpinAt = Date.now();
             markAcceptedSpin(newNumbers[0]);
-            handleNewSpin(nums.slice(0, 3).join(','), Date.now());
-            // Force immediate sniper prediction for the next round
+            handleNewSpin(`poll-${newNumbers[0]}-${fallbackSpinAt}`, fallbackSpinAt);
             sniperFetchingRef.current = false;
             lastSniperTriggerRef.current = 0;
             fetchSniperRef.current?.(0, true);
@@ -316,7 +317,7 @@ const Index = () => {
         setError(null);
       }
     } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Erro'); }
-  }, [handleNewSpin, isBurstDuplicate, markAcceptedSpin]);
+  }, [handleNewSpin, isBurstDuplicate, markAcceptedSpin, realtimeStatus]);
 
   const fetchStored = useCallback(async () => {
     const { data } = await supabase.from('roulette_numbers').select('number').order('fetched_at', { ascending: false }).limit(1000);
@@ -327,7 +328,8 @@ const Index = () => {
   useEffect(() => {
     fetchNumbers(); fetchStored(); fetchSniper();
     if (!isPolling) return;
-    const interval = setInterval(() => { fetchNumbers(); fetchStored(); }, POLL_INTERVAL_MS);
+    const liveInterval = setInterval(fetchNumbers, POLL_INTERVAL_MS);
+    const historyInterval = setInterval(fetchStored, HISTORY_SYNC_INTERVAL_MS);
     // Safety: if sniperData is still null after 12s, force a retry
     const safetyTimeout = setTimeout(() => {
       setSniperData((prev: any) => {
@@ -338,7 +340,7 @@ const Index = () => {
         return prev;
       });
     }, 12000);
-    return () => { clearInterval(interval); clearTimeout(safetyTimeout); };
+    return () => { clearInterval(liveInterval); clearInterval(historyInterval); clearTimeout(safetyTimeout); };
   }, [fetchNumbers, fetchStored, fetchSniper, isPolling]);
 
   // Realtime trigger — roulette_numbers
@@ -707,7 +709,7 @@ const Index = () => {
                         )}
                       </>
                     ) : (
-                      <span className="text-[10px] text-muted-foreground font-bold">⏳ Aguardando próxima rodada...</span>
+                      <span className="text-[10px] text-muted-foreground font-bold">🔎 Analisando... aguardando próxima rodada</span>
                     )}
                   </div>
                   <div className="shrink-0">
@@ -716,7 +718,7 @@ const Index = () => {
                 </motion.div>
               )}
               <div className={`transition-all duration-500 rounded-2xl ${
-                sniperCountdown > 0 && sniperData?.signal ? 'shadow-[0_0_25px_hsl(142,70%,45%,0.15)] ring-1 ring-green-500/20' : ''
+                sniperCountdown > 0 && sniperData?.signal ? 'shadow-neon-green ring-1 ring-neon-green/30' : ''
               }`}>
                 <SniperSignal
                   sniperData={sniperData}
