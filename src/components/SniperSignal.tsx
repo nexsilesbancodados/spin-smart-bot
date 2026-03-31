@@ -420,7 +420,7 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
           {/* Stats bar */}
           <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border/20 bg-secondary/10 flex-wrap">
             <span className="text-[11px] font-bold text-foreground/70">
-              Cobertura: <b className="text-foreground">{finalNumbers.length} números</b>
+              {fusionTop5.length > 0 ? 'Top 5 Fusão' : `Cobertura: ${finalNumbers.length} números`}
             </span>
             <span className="text-border/60">·</span>
             <span className="text-[11px] font-bold text-foreground/70">
