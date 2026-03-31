@@ -1,15 +1,15 @@
-import { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import EnsembleDashboard from '@/components/EnsembleDashboard';
+const EnsembleDashboard = lazy(() => import('@/components/EnsembleDashboard'));
 import {
   Activity, Brain, ChevronDown, Power, MonitorPlay, Crosshair
 } from 'lucide-react';
-import PredictionHistory from '@/components/PredictionHistory';
+const PredictionHistory = lazy(() => import('@/components/PredictionHistory'));
 import BetPanel from '@/components/BetPanel';
-import AILearningLog from '@/components/AILearningLog';
+const AILearningLog = lazy(() => import('@/components/AILearningLog'));
 import NumberDNADialog from '@/components/NumberDNADialog';
 import PullRadar from '@/components/PullRadar';
-import StrategyLeaderboard from '@/components/StrategyLeaderboard';
+const StrategyLeaderboard = lazy(() => import('@/components/StrategyLeaderboard'));
 import Navbar from '@/components/Navbar';
 import Last12Numbers from '@/components/Last12Numbers';
 import ZeroPressure from '@/components/ZeroPressure';
@@ -17,17 +17,17 @@ import SessionSummary from '@/components/SessionSummary';
 import SniperSignal from '@/components/SniperSignal';
 import ManualInput from '@/components/ManualInput';
 import WheelMap from '@/components/WheelMap';
-import Scanner500 from '@/components/Scanner500';
-import BacktestPanel from '@/components/BacktestPanel';
-import PatternPanel24h from '@/components/PatternPanel24h';
+const Scanner500 = lazy(() => import('@/components/Scanner500'));
+const BacktestPanel = lazy(() => import('@/components/BacktestPanel'));
+const PatternPanel24h = lazy(() => import('@/components/PatternPanel24h'));
 import EngineSignalCard from '@/components/EngineSignalCard';
 import NumberTicker from '@/components/NumberTicker';
-import AIIntelligenceLog from '@/components/AIIntelligenceLog';
+const AIIntelligenceLog = lazy(() => import('@/components/AIIntelligenceLog'));
 import { motion, AnimatePresence } from 'framer-motion';
 import LiveStatsBar from '@/components/LiveStatsBar';
-import UnifiedAnalysis from '@/components/UnifiedAnalysis';
+const UnifiedAnalysis = lazy(() => import('@/components/UnifiedAnalysis'));
 import SettingsPanel from '@/components/SettingsPanel';
-import PerformanceMonitor from '@/components/PerformanceMonitor';
+const PerformanceMonitor = lazy(() => import('@/components/PerformanceMonitor'));
 import StrategySelector from '@/components/StrategySelector';
 import { type StrategyId } from '@/lib/strategy-system';
 
@@ -135,6 +135,14 @@ const HistoryGrid = memo(({ historySlice, selectedNum, setSelectedNum }: {
     </div>
   );
 });
+HistoryGrid.displayName = 'HistoryGrid';
+
+const LazyFallback = () => (
+  <div className="glass rounded-xl border border-border/15 p-6 text-center animate-pulse">
+    <div className="w-6 h-6 rounded-full border-2 border-primary/30 border-t-primary mx-auto animate-spin" />
+    <p className="text-[8px] text-muted-foreground/40 mt-2 font-mono">Carregando...</p>
+  </div>
+);
 
 const Index = () => {
   const [selectedTable, setSelectedTable] = useState(ROULETTE_TABLES[0]);
@@ -1150,19 +1158,23 @@ const Index = () => {
 
         {/* ── ABA: ANÁLISE / PADRÕES ─────────────────────────────────────── */}
         {activeTab === 'padroes' && (
-          <div className="space-y-3">
-            <UnifiedAnalysis sniperData={sniperData} allNumbers={allNumbers} />
-            <PatternsTab allNumbers={allNumbers} sniperData={sniperData} streakNum={streakNum} streakLen={streakLen} streakActive={streakActive} zeroPressure={zeroPressure} hotTerm={hotTerm} pull={PULL} />
-          </div>
+          <Suspense fallback={<LazyFallback />}>
+            <div className="space-y-3">
+              <UnifiedAnalysis sniperData={sniperData} allNumbers={allNumbers} />
+              <PatternsTab allNumbers={allNumbers} sniperData={sniperData} streakNum={streakNum} streakLen={streakLen} streakActive={streakActive} zeroPressure={zeroPressure} hotTerm={hotTerm} pull={PULL} />
+            </div>
+          </Suspense>
         )}
 
         {/* ── ABA: IA ─────────────────────────────────────────────────────── */}
         {activeTab === 'ia' && (
-          <div className="space-y-3">
-            <EnsembleDashboard sniperData={sniperData} />
-            <AIIntelligenceLog />
-            <IATab sniperData={sniperData} />
-          </div>
+          <Suspense fallback={<LazyFallback />}>
+            <div className="space-y-3">
+              <EnsembleDashboard sniperData={sniperData} />
+              <AIIntelligenceLog />
+              <IATab sniperData={sniperData} />
+            </div>
+          </Suspense>
         )}
 
       </main>

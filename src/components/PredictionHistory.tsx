@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, XCircle, Target, TrendingUp, BarChart3, Flame, Trophy, ArrowRight, ChevronDown, ChevronUp, Sparkles, Award, Zap } from 'lucide-react';
@@ -50,7 +50,7 @@ const STRATEGY_FRIENDLY: Record<string, string> = {
 
 type TabType = 'resumo' | 'todos' | 'acertos' | 'erros' | 'estrategias';
 
-const PredictionHistory = () => {
+const PredictionHistory = memo(() => {
   const [predictions, setPredictions] = useState<PredictionRecord[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('resumo');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -462,7 +462,9 @@ const PredictionHistory = () => {
       </div>
     </div>
   );
-};
+});
+
+PredictionHistory.displayName = 'PredictionHistory';
 
 const StatCard = ({ value, label, variant, icon }: {
   value: string;
