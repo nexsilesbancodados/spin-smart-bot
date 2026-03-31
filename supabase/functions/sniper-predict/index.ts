@@ -6936,17 +6936,71 @@ ${matrizTop8.join(', ')}
 Números: [${pullInfo}]
 Terminais: [${(FULL_PULL_TERMINALS[numbers[0]] || []).join(',')}]
 
+## CADEIA DE PUXADAS (3 últimos)
+${numbers.slice(0, 3).map((n: number) => `${n} → [${(FULL_PULL_MAP[n] || []).slice(0, 6).join(',')}]`).join('\n')}
+Interseção (números puxados por 2+ dos últimos): [${(() => {
+  const pulls = numbers.slice(0, 3).map((n: number) => new Set(FULL_PULL_MAP[n] || []));
+  const all = new Set<number>();
+  const multi = new Set<number>();
+  for (const s of pulls) for (const n of s) { if (all.has(n)) multi.add(n); all.add(n); }
+  return [...multi].join(',');
+})()}]
+
+## VIÉS DE TERMINAL DA MESA (últimos 200)
+${(() => {
+  const termCounts = Array(10).fill(0);
+  for (const n of numbers.slice(0, 200)) termCounts[n % 10]++;
+  const avg = numbers.slice(0, Math.min(200, numbers.length)).length / 10;
+  return termCounts.map((c, t) => `T${t}: ${c}x (${c > avg ? '+' : ''}${((c/avg - 1)*100).toFixed(0)}%)`).join(' | ');
+})()}
+
+## DÍVIDA ESTATÍSTICA (números mais atrasados em 200 giros)
+${(() => {
+  const freq: Record<number, number> = {};
+  for (let i = 0; i <= 36; i++) freq[i] = 0;
+  for (const n of numbers.slice(0, 200)) freq[n]++;
+  return Object.entries(freq)
+    .filter(([, c]) => c === 0 || c <= 1)
+    .sort(([,a],[,b]) => (a as number) - (b as number))
+    .slice(0, 10)
+    .map(([n, c]) => `${n}(${c}x)`)
+    .join(', ');
+})()}
+
+## AUTO-REPETIÇÃO (repetidores recentes)
+${(() => {
+  const reps: string[] = [];
+  for (let i = 0; i < Math.min(20, numbers.length - 1); i++) {
+    if (numbers[i] === numbers[i+1]) reps.push(`${numbers[i]}→${numbers[i]} no giro ${i+1}`);
+  }
+  return reps.length > 0 ? reps.join(', ') : 'Nenhuma auto-rep nos últimos 20';
+})()}
+
 ## GAPS dos candidatos
 ${gapInfo}
 
 ## ESTRATÉGIAS RANKEADAS (com WR real)
 ${topStratsInfo}
 
+## WIN RATE POR TIPO (histórico completo)
+${(() => {
+  const perfEntries = Object.entries(strategyPerformance)
+    .filter(([, v]: any) => v.total >= 3)
+    .sort(([, a]: any, [, b]: any) => b.winRate - a.winRate)
+    .slice(0, 10);
+  return perfEntries.map(([type, v]: any) => 
+    `${type}: WR=${(v.winRate*100).toFixed(0)}% (${v.total} predições, trend=${(v.recentTrend*100).toFixed(0)}%)`
+  ).join('\n') || 'Insuficiente';
+})()}
+
 ## ÚLTIMOS 10 RESULTADOS (feedback)
 ${recentResults || 'Sem dados'}
 
-## APRENDIZADOS ACUMULADOS DA IA
-${recentLearningsContext || 'Nenhum'}
+## APRENDIZADOS ACUMULADOS DA IA (${learned.length} registros)
+${learned.slice(0, 15).map(l => {
+  const meta = l.metadata as any;
+  return `[${l.learning_type}] ${l.title}: acurácia ${l.accuracy}% | hot:[${(meta?.hotNumbers || []).slice(0,4).join(',')}] | ${l.knowledge?.slice(0, 80)}`;
+}).join('\n') || 'Nenhum'}
 
 ## CANDIDATOS ESTATÍSTICOS ATUAIS
 [${finalBetNumbers.join(',')}] (top1=${numTop1})
