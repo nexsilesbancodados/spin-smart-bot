@@ -158,6 +158,8 @@ const Index = () => {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'sinal' | 'mesa' | 'padroes' | 'ia'>('sinal');
   const [lastSpinAt, setLastSpinAt] = useState<number | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
+  const FRESHNESS_MAX_MS = 8000;
 
   const handleManualNumbers = (nums: number[]) => {
     apiSnapshotRef.current = [...nums, ...apiSnapshotRef.current].slice(0, 1000);
@@ -336,14 +338,38 @@ const Index = () => {
     return () => { clearInterval(interval); clearTimeout(safetyTimeout); };
   }, [fetchNumbers, fetchStored, fetchSniper, isPolling]);
 
-  // Realtime trigger
+  // Realtime trigger — roulette_numbers
   useEffect(() => {
     const ch = supabase.channel('sniper_trigger_rt')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'roulette_numbers' }, (payload: any) => {
         const row = payload?.new;
         if (typeof row?.number === 'number') {
           const spinAt = row.fetched_at ? new Date(row.fetched_at).getTime() : Date.now();
+          const age = Date.now() - spinAt;
+          if (age > FRESHNESS_MAX_MS) return; // Sinal atrasado — ignorar
           registerLiveSpin(row.number, spinAt, `rt-${row.id ?? row.fetched_at ?? ''}`);
+        }
+      }).subscribe((status) => {
+        if (status === 'SUBSCRIBED') setRealtimeStatus('connected');
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setRealtimeStatus('disconnected');
+        else setRealtimeStatus('connecting');
+      });
+    return () => { supabase.removeChannel(ch); };
+  }, [registerLiveSpin]);
+
+  // Realtime trigger — resultados_roleta (zero delay)
+  useEffect(() => {
+    const ch = supabase.channel('resultados_rt')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'resultados_roleta' }, (payload: any) => {
+        const row = payload?.new;
+        if (row?.numero !== undefined) {
+          const num = Number(row.numero);
+          if (!isNaN(num) && num >= 0 && num <= 36) {
+            const insertedAt = row.created_at ? new Date(row.created_at).getTime() : Date.now();
+            const age = Date.now() - insertedAt;
+            if (age > FRESHNESS_MAX_MS) return; // Sinal atrasado — ignorar
+            registerLiveSpin(num, insertedAt, `rt-res-${row.id ?? ''}`);
+          }
         }
       }).subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -618,6 +644,24 @@ const Index = () => {
             {/* Input manual */}
             <ManualInput onAddNumbers={handleManualNumbers} />
 
+            {/* Status de conexão */}
+            {realtimeStatus === 'disconnected' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="px-4 py-2.5 rounded-xl bg-destructive/10 border border-destructive/30 flex items-center gap-2"
+              >
+                <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+                <span className="text-[10px] font-bold text-destructive">🔌 Reconectando ao servidor...</span>
+              </motion.div>
+            )}
+            {realtimeStatus === 'connecting' && (
+              <div className="px-4 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+                <span className="text-[10px] font-bold text-yellow-400">Conectando ao Realtime...</span>
+              </div>
+            )}
+
             {/* Erro */}
             {error && (
               <div className="px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-[10px] text-destructive font-semibold">
@@ -647,11 +691,17 @@ const Index = () => {
                     </motion.div>
                   </div>
                   <div className="flex-1">
-                    <span className="text-[10px] text-foreground font-bold">→ Jogada para o <span className="text-primary">próximo giro</span></span>
-                    {lastSpinAt && (
-                      <div className="text-[8px] text-muted-foreground mt-0.5">
-                        Detectado há {Math.max(0, Math.round((Date.now() - lastSpinAt) / 1000))}s
-                      </div>
+                    {sniperCountdown > 0 ? (
+                      <>
+                        <span className="text-[10px] text-foreground font-bold">→ Jogada para o <span className="text-primary">próximo giro</span></span>
+                        {lastSpinAt && (
+                          <div className="text-[8px] text-muted-foreground mt-0.5">
+                            Detectado há {Math.max(0, Math.round((Date.now() - lastSpinAt) / 1000))}s
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground font-bold">⏳ Aguardando próxima rodada...</span>
                     )}
                   </div>
                   <div className="shrink-0">
@@ -659,18 +709,22 @@ const Index = () => {
                   </div>
                 </motion.div>
               )}
-              <SniperSignal
-                sniperData={sniperData}
-                sniperCountdown={sniperCountdown}
-                sniperStale={sniperStale}
-                lastPredResult={lastPredResult}
-                confidenceFilter={confidenceFilter}
-                rtInsights={rtInsights}
-                allNumbers={allNumbers}
-                autoLearnStatus={autoLearnStatus}
-                strategyFilter={strategyFilter}
-                setStrategyFilter={setStrategyFilter}
-              />
+              <div className={`transition-all duration-500 rounded-2xl ${
+                sniperCountdown > 0 && sniperData?.signal ? 'shadow-[0_0_25px_hsl(142,70%,45%,0.15)] ring-1 ring-green-500/20' : ''
+              }`}>
+                <SniperSignal
+                  sniperData={sniperData}
+                  sniperCountdown={sniperCountdown}
+                  sniperStale={sniperStale}
+                  lastPredResult={lastPredResult}
+                  confidenceFilter={confidenceFilter}
+                  rtInsights={rtInsights}
+                  allNumbers={allNumbers}
+                  autoLearnStatus={autoLearnStatus}
+                  strategyFilter={strategyFilter}
+                  setStrategyFilter={setStrategyFilter}
+                />
+              </div>
               </>
             ) : (
               <div className="bg-card rounded-2xl border border-border p-12 text-center">
