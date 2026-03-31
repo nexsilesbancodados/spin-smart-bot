@@ -384,40 +384,102 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
           </div>
         </div>
 
-        {/* ═══ NÚMEROS PARA APOSTAR ═══ */}
+        {/* ═══ ÁREA DE APOSTA — adapta ao tipo ═══ */}
         <div className="px-4 pb-4">
-          <div className="rounded-xl border border-border/30 overflow-hidden">
-            <div className="bg-secondary/20 px-3 py-2 border-b border-border/15 flex items-center justify-between">
-              <span className="text-[10px] font-bold text-foreground/70">
-                APOSTE EM {finalNumbers.length} NÚMEROS
-              </span>
-              <span className="text-[10px] font-bold text-primary">
-                💰 Paga {payout}x
-              </span>
+          {analysisDetail && ['cor', 'paridade', 'alto_baixo'].includes(analysisDetail.type) ? (
+            /* ── Aposta simples: Cor / Par-Ímpar / Alto-Baixo ── */
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className={`rounded-xl border-2 overflow-hidden ${analysisDetail.colorClass}`}
+            >
+              <div className="flex items-center justify-center gap-4 py-6">
+                <span className="text-4xl">{analysisDetail.visual}</span>
+                <div className="text-center">
+                  <p className="text-2xl font-black tracking-tight">{analysisDetail.label}</p>
+                  <p className="text-[10px] text-foreground/50 mt-1">
+                    {analysisDetail.type === 'cor' ? 'Aposte na cor indicada' 
+                      : analysisDetail.type === 'paridade' ? 'Aposte par ou ímpar' 
+                      : 'Aposte alto ou baixo'}
+                  </p>
+                </div>
+              </div>
+              <div className="border-t border-white/5 bg-black/10 px-3 py-1.5 flex justify-between items-center">
+                <span className="text-[9px] text-foreground/40">Aposta simples</span>
+                <span className="text-[10px] font-bold text-primary">💰 Paga 2x</span>
+              </div>
+            </motion.div>
+          ) : analysisDetail && ['duzia', 'coluna'].includes(analysisDetail.type) ? (
+            /* ── Aposta de grupo: Dúzia / Coluna ── */
+            <div className="rounded-xl border border-border/30 overflow-hidden">
+              <div className={`flex items-center justify-center gap-3 py-5 border-2 rounded-t-xl ${analysisDetail.colorClass}`}>
+                <span className="text-3xl">{analysisDetail.visual}</span>
+                <p className="text-xl font-black">{analysisDetail.label}</p>
+              </div>
+              <div className="bg-secondary/20 px-3 py-2 border-t border-border/15 flex items-center justify-between">
+                <span className="text-[10px] font-bold text-foreground/70">
+                  COBERTURA: {finalNumbers.length} NÚMEROS
+                </span>
+                <span className="text-[10px] font-bold text-primary">💰 Paga 3x</span>
+              </div>
+              <div className="p-3 flex flex-wrap gap-2 justify-center">
+                {finalNumbers.map((n: number, i: number) => {
+                  const isMain = n === ensTop1;
+                  return (
+                    <motion.div
+                      key={n}
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: i * 0.03, type: 'spring', stiffness: 300 }}
+                      className={`flex items-center justify-center rounded-lg font-black shadow-lg bg-gradient-to-br
+                        ${isMain ? 'w-11 h-11 text-base ring-2 shadow-xl' : 'w-9 h-9 text-sm'}
+                        ${numGradient(n)}
+                        ${isMain 
+                          ? (displayProb >= 85 ? 'ring-neon-green shadow-neon-green/20' : 'ring-primary shadow-primary/20') 
+                          : 'ring-1 ring-white/5'}
+                      `}
+                    >
+                      {n}
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="p-3 flex flex-wrap gap-2 justify-center">
-              {finalNumbers.map((n: number, i: number) => {
-                const isMain = n === ensTop1;
-                return (
-                  <motion.div
-                    key={n}
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: i * 0.03, type: 'spring', stiffness: 300 }}
-                    className={`flex items-center justify-center rounded-lg font-black shadow-lg bg-gradient-to-br
-                      ${isMain ? 'w-11 h-11 text-base ring-2 shadow-xl' : 'w-9 h-9 text-sm'}
-                      ${numGradient(n)}
-                      ${isMain 
-                        ? (displayProb >= 85 ? 'ring-neon-green shadow-neon-green/20' : 'ring-primary shadow-primary/20') 
-                        : 'ring-1 ring-white/5'}
-                    `}
-                  >
-                    {n}
-                  </motion.div>
-                );
-              })}
+          ) : (
+            /* ── Aposta numérica padrão ── */
+            <div className="rounded-xl border border-border/30 overflow-hidden">
+              <div className="bg-secondary/20 px-3 py-2 border-b border-border/15 flex items-center justify-between">
+                <span className="text-[10px] font-bold text-foreground/70">
+                  APOSTE EM {finalNumbers.length} NÚMEROS
+                </span>
+                <span className="text-[10px] font-bold text-primary">
+                  💰 Paga {payout}x
+                </span>
+              </div>
+              <div className="p-3 flex flex-wrap gap-2 justify-center">
+                {finalNumbers.map((n: number, i: number) => {
+                  const isMain = n === ensTop1;
+                  return (
+                    <motion.div
+                      key={n}
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: i * 0.03, type: 'spring', stiffness: 300 }}
+                      className={`flex items-center justify-center rounded-lg font-black shadow-lg bg-gradient-to-br
+                        ${isMain ? 'w-11 h-11 text-base ring-2 shadow-xl' : 'w-9 h-9 text-sm'}
+                        ${numGradient(n)}
+                        ${isMain 
+                          ? (displayProb >= 85 ? 'ring-neon-green shadow-neon-green/20' : 'ring-primary shadow-primary/20') 
+                          : 'ring-1 ring-white/5'}
+                      `}
+                    >
+                      {n}
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* ═══ INSIGHT DA IA (se houver) ═══ */}
@@ -437,8 +499,8 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
           </div>
         )}
 
-        {/* ═══ TOP CANDIDATOS (compacto) ═══ */}
-        {topCandidates.length > 1 && (
+        {/* ═══ TOP CANDIDATOS (oculto para apostas simples) ═══ */}
+        {topCandidates.length > 1 && !(analysisDetail && ['cor', 'paridade', 'alto_baixo'].includes(analysisDetail.type)) && (
           <div className="px-4 pb-3">
             <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
               <span className="text-[8px] text-muted-foreground font-bold shrink-0 uppercase">Top:</span>
