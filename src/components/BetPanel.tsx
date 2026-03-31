@@ -574,7 +574,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                 value={customNumbers}
                 onChange={e => setCustomNumbers(e.target.value)}
                 placeholder="Ex: 0, 3, 7, 12, 26, 32"
-                className="w-full px-3 py-2 rounded-lg bg-secondary/60 border border-border text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full px-3 py-2 rounded-lg glass border border-border/15 text-[10px] text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/40 font-mono"
               />
               <p className="text-[7px] text-muted-foreground mt-1">Separe os números por vírgula (0 a 36)</p>
             </div>
