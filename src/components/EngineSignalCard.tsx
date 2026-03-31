@@ -56,13 +56,23 @@ const EngineSignalCard = memo(({ allNumbers }: Props) => {
 
   if (!top) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-8 text-center border border-border/20">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-8 text-center border border-border/20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-neon-pink/[0.02]" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
         <motion.div
           animate={{ opacity: [0.4, 1, 0.4] }}
           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-          className="space-y-2"
+          className="relative space-y-3"
         >
-          <div className="text-3xl opacity-40">🔍</div>
+          <div className="relative mx-auto w-16 h-16">
+            <div className="absolute inset-0 rounded-full border-2 border-primary/10" />
+            <motion.div
+              className="absolute inset-0 rounded-full border-2 border-t-primary border-r-transparent border-b-transparent border-l-transparent"
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center text-2xl opacity-50">🔍</div>
+          </div>
           <p className="text-xs font-bold text-muted-foreground font-display tracking-wider">ANALISANDO PADRÕES</p>
           <p className="text-[9px] text-muted-foreground/50 font-mono">Aguardando convergência para entrada segura</p>
         </motion.div>
