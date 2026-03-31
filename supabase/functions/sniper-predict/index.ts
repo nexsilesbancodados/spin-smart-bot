@@ -7189,10 +7189,16 @@ REGRAS ABSOLUTAS:
             .map(([num, v]) => ({ num: parseInt(num), ...v, avgConf: v.totalConf / v.count }))
             .sort((a, b) => b.count - a.count || b.avgConf - a.avgConf);
 
-          // Consensus numbers: voted by 2+ AIs
-          const consensusNums = votedNumbers.filter(v => v.count >= 2).map(v => v.num);
-          // Single-vote but high confidence
-          const singleNums = votedNumbers.filter(v => v.count === 1 && v.avgConf >= 60).map(v => v.num);
+          // Dynamic threshold: with 50+ AIs, require more votes for consensus
+          const totalAIs = aiResults.length;
+          const minVotes = totalAIs >= 20 ? 3 : totalAIs >= 8 ? 2 : 2;
+          
+          // Consensus numbers: voted by minVotes+ AIs
+          const consensusNums = votedNumbers.filter(v => v.count >= minVotes).map(v => v.num);
+          // Strong singles (voted by at least 2 but below threshold)
+          const nearConsensus = votedNumbers.filter(v => v.count >= 2 && v.count < minVotes && v.avgConf >= 60).map(v => v.num);
+          // Single-vote but very high confidence
+          const singleNums = votedNumbers.filter(v => v.count === 1 && v.avgConf >= 75).map(v => v.num);
 
           // Pick best overall parsed response (highest confidence)
           const bestParsed = allParsed.sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
