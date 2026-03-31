@@ -8334,8 +8334,11 @@ Responda APENAS JSON:
         payout: '1:1',
       };
     } else {
-      const hi5 = numbers.slice(0,5).filter(n => n>=19).length;
-      allBetSignals.alto_baixo = { recommendation: hi5>=3 ? 'ALTO (19-36)' : 'BAIXO (1-18)', numbers: [], confidence: 42, reasoning: 'Sem tendência clara', emoji: hi5>=3 ? '⬆️' : '⬇️', payout: '1:1' };
+      const hi10 = numbers.slice(0,10).filter(n => n>=19).length;
+      const bayesConf = bayesHighLow.probability || 40;
+      const isAlto = hi10 >= 6 || (numbers.slice(0,5).filter(n => n>=19).length >= 3 && bayesHighLow.predicted === 'Alto');
+      const baseConf = Math.min(65, 40 + Math.abs(hi10 - 5) * 3 + (bayesConf > 50 ? 5 : 0));
+      allBetSignals.alto_baixo = { recommendation: isAlto ? 'ALTO (19-36)' : 'BAIXO (1-18)', numbers: [], confidence: baseConf, reasoning: `${isAlto ? 'Alto' : 'Baixo'} ${hi10}/10 recentes, Bayes ${bayesConf}%`, emoji: isAlto ? '⬆️' : '⬇️', payout: '1:1' };
     }
 
     // DÚZIA
