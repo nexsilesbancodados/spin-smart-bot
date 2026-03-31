@@ -33,19 +33,27 @@ const PatternPanel24h = ({ sniperData }: PatternPanel24hProps) => {
   const visibleFidelity = showAllFidelity ? sortedFidelity : sortedFidelity.slice(0, 10);
 
   return (
-    <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-xl p-3.5 space-y-3">
+    <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl overflow-hidden border border-border/20 space-y-0">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-neon-cyan/15 to-purple-500/10 border border-neon-cyan/20 flex items-center justify-center shadow-neon-cyan">
-          <Activity className="w-3.5 h-3.5 text-neon-cyan" />
-        </div>
-        <span className="font-display text-[10px] tracking-[0.15em] font-bold text-neon-cyan">PADRÕES 24H</span>
-        <div className={`ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border backdrop-blur-sm ${modeConf.bg} ${modeConf.border} ${modeConf.color}`}>
-          <span className="text-sm">{modeConf.icon}</span>
-          MODO {modeLabel}
-          <span className="font-mono text-[8px] opacity-60">{tm.mesaModeStrength}%</span>
+      <div className="relative px-4 pt-4 pb-3">
+        <div className="absolute inset-0 bg-gradient-to-r from-neon-cyan/4 via-transparent to-purple-500/3" />
+        <div className="relative flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-neon-cyan/15 to-purple-500/10 border border-neon-cyan/20 flex items-center justify-center shadow-neon-cyan">
+            <Activity className="w-4 h-4 text-neon-cyan" />
+          </div>
+          <div className="flex-1">
+            <span className="font-display text-[10px] tracking-[0.15em] font-bold text-neon-cyan uppercase">Padrões 24H</span>
+            <div className="text-[7px] text-muted-foreground/50 font-mono">Matriz de transição ativa</div>
+          </div>
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-display font-bold border backdrop-blur-sm ${modeConf.bg} ${modeConf.border} ${modeConf.color}`}>
+            <span className="text-sm">{modeConf.icon}</span>
+            MODO {modeLabel}
+            <span className="font-mono text-[8px] opacity-60">{tm.mesaModeStrength}%</span>
+          </div>
         </div>
       </div>
+
+      <div className="px-4 pb-4 space-y-3">
 
       {/* Detected Patterns */}
       {detectedPatterns.length > 0 && (
