@@ -1205,23 +1205,27 @@ const PatternsTab = memo(({ allNumbers, sniperData, streakNum, streakLen, streak
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: i * 0.04 }}
-          className={`flex items-start gap-3 p-3.5 rounded-xl border ${
-            p.type === 'hot' ? 'bg-amber-500/8 border-amber-500/25' :
-            p.type === 'cold' ? 'bg-blue-500/8 border-blue-500/25' :
-            'bg-card border-border'
+          className={`glass flex items-start gap-3 p-3.5 rounded-xl border backdrop-blur-sm ${
+            p.type === 'hot' ? 'bg-gold/5 border-gold/20 shadow-[0_0_8px_hsl(var(--gold)/0.08)]' :
+            p.type === 'cold' ? 'bg-neon-cyan/5 border-neon-cyan/20 shadow-neon-cyan' :
+            'border-border/15'
           }`}
         >
-          <span className="text-xl shrink-0 mt-0.5">{p.emoji}</span>
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 border backdrop-blur-sm ${
+            p.type === 'hot' ? 'bg-gold/10 border-gold/20' :
+            p.type === 'cold' ? 'bg-neon-cyan/10 border-neon-cyan/20' :
+            'bg-background/20 border-border/15'
+          }`}>{p.emoji}</div>
           <div className="flex-1 min-w-0">
             <div className={`text-[10px] font-black leading-snug ${
-              p.type === 'hot' ? 'text-amber-400' : p.type === 'cold' ? 'text-blue-400' : 'text-foreground'
+              p.type === 'hot' ? 'text-gold' : p.type === 'cold' ? 'text-neon-cyan' : 'text-foreground/80'
             }`}>{p.title}</div>
-            <p className="text-[8px] text-muted-foreground mt-1 leading-relaxed">{p.detail}</p>
+            <p className="text-[8px] text-muted-foreground/50 mt-1 leading-relaxed">{p.detail}</p>
           </div>
-          <div className={`shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-            p.conf >= 80 ? 'bg-green-500/20 text-green-400' :
-            p.conf >= 60 ? 'bg-amber-500/20 text-amber-400' :
-            'bg-secondary text-muted-foreground'
+          <div className={`shrink-0 text-[9px] font-black px-2 py-0.5 rounded-full border backdrop-blur-sm ${
+            p.conf >= 80 ? 'bg-neon-green/10 text-neon-green border-neon-green/20' :
+            p.conf >= 60 ? 'bg-gold/10 text-gold border-gold/20' :
+            'bg-background/15 text-muted-foreground/50 border-border/15'
           }`}>{p.conf}%</div>
         </motion.div>
       ))}
