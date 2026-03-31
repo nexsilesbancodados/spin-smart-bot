@@ -6417,6 +6417,10 @@ serve(async (req) => {
     let aiSectorFocus: string | null = null;
     let aiFeedbackAction: string | null = null;
     let aiLearned: string | null = null;
+    let aiSecondaryBet: string | null = null;
+    let aiBetDescription: string | null = null;
+    let aiBetType: string | null = null;
+    let aiMarketAnalysis: any = null;
     
     try {
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
