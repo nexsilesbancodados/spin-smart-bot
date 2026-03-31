@@ -666,7 +666,7 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const fetchLimit = Math.max(sampleSize, 200); // always fetch at least 200 for backtest depth
+    const fetchLimit = Math.max(sampleSize, 1000); // always fetch max history for deep analysis
     // Fetch data from ALL tables + AI learned patterns + predictions in parallel
     const [numbersRes, historicoRes, resultadosRes, learnedRes, unresolvedRes, resolvedRes, insightsRes] = await Promise.all([
       supabase.from('roulette_numbers').select('number, fetched_at').order('fetched_at', { ascending: false }).limit(fetchLimit),
