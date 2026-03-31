@@ -308,6 +308,37 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
             </div>
           </div>
 
+          {/* ═══ INSTRUÇÃO DE APOSTA ESPECÍFICA ═══ */}
+          {sniperData?.betInstructions?.bets?.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {sniperData.betInstructions.bets.map((bet: any, i: number) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className={`px-4 py-3 rounded-xl border-2 ${
+                    i === 0 ? 'bg-primary/10 border-primary/40' : 'bg-secondary/40 border-border/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{bet.emoji}</span>
+                    <span className={`text-sm font-black ${i === 0 ? 'text-primary' : 'text-foreground'}`}>
+                      {bet.label}
+                    </span>
+                    <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-secondary border border-border font-bold text-muted-foreground ml-auto uppercase">
+                      {bet.type}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-foreground/80 leading-relaxed">{bet.detail}</p>
+                </motion.div>
+              ))}
+              {sniperData.betInstructions.summary && (
+                <p className="text-[9px] text-muted-foreground/70 italic px-1">{sniperData.betInstructions.summary}</p>
+              )}
+            </div>
+          )}
+
           {/* Secondary bet */}
           {ai?.secondaryBet && (
             <div className="mt-2 px-3 py-2 rounded-lg bg-secondary/40 border border-border/40">
