@@ -37,6 +37,7 @@ const CAVALOS_GROUPS: Record<string, number[]> = {
 
 const DUPLICATE_SPIN_WINDOW_MS = 12000;
 const SIGNAL_WINDOW_SECONDS = 18;
+const POLL_INTERVAL_MS = 2000;
 const ROULETTE_TABLES = [
   { id: 'brasileira', name: 'Roleta Brasileira', provider: 'Playtech', iframeUrl: 'https://onabet.com/casino/roleta-brasileira' },
   { id: 'brasileira2', name: 'Roleta Brasileira 2', provider: 'Playtech', iframeUrl: 'https://onabet.com/casino/roleta-ao-vivo' },
@@ -210,6 +211,9 @@ const Index = () => {
     setSniperCountdown(SIGNAL_WINDOW_SECONDS);
     playSound('signal', soundEnabled);
     if (aiEnabled) {
+      // Force fetch immediately — bypass any in-flight lock
+      sniperFetchingRef.current = false;
+      lastSniperTriggerRef.current = 0;
       fetchSniperRef.current?.(0, true);
       supabase.functions.invoke('realtime-patterns')
         .then(res => { if (res.data?.all_insights?.length > 0) setRtInsights(res.data.all_insights.slice(0, 6)); })
@@ -224,8 +228,8 @@ const Index = () => {
 
   const fetchSniper = useCallback(async (retryCount = 0, force = false) => {
     const now = Date.now();
-    if (!force && now - lastSniperTriggerRef.current < 8000 && retryCount === 0) return;
-    if (sniperFetchingRef.current && retryCount === 0 && !force) return;
+    if (!force && now - lastSniperTriggerRef.current < 5000 && retryCount === 0) return;
+    if (sniperFetchingRef.current && !force) return;
     if (!aiEnabled) return;
     sniperFetchingRef.current = true;
     lastSniperTriggerRef.current = now;
@@ -292,7 +296,7 @@ const Index = () => {
   useEffect(() => {
     fetchNumbers(); fetchStored(); fetchSniper();
     if (!isPolling) return;
-    const interval = setInterval(() => { fetchNumbers(); fetchStored(); }, 3000);
+    const interval = setInterval(() => { fetchNumbers(); fetchStored(); }, POLL_INTERVAL_MS);
     // Safety: if sniperData is still null after 12s, force a retry
     const safetyTimeout = setTimeout(() => {
       setSniperData((prev: any) => {
