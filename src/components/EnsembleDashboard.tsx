@@ -84,7 +84,7 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
   return (
     <div className="space-y-3">
       {/* Tab Selector */}
-      <div className="flex gap-1 glass rounded-xl p-1">
+      <div className="flex gap-1 glass rounded-2xl p-1.5 border border-border/20">
         {[
           { id: 'models' as const, label: '🤖 Modelos', count: totalModels },
           { id: 'patterns' as const, label: '🔬 Padrões', count: significantPatterns.length },
@@ -93,8 +93,8 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
           <button
             key={tab.id}
             onClick={() => setActiveView(tab.id)}
-            className={`flex-1 text-[8px] font-black uppercase tracking-wider py-2.5 rounded-lg transition-all ${
-              activeView === tab.id ? 'bg-primary/15 text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            className={`flex-1 text-[8px] font-display font-bold uppercase tracking-wider py-2.5 rounded-xl transition-all ${
+              activeView === tab.id ? 'glass text-primary shadow-sm border border-primary/15' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {tab.label}{tab.count !== null ? ` (${tab.count})` : ''}
