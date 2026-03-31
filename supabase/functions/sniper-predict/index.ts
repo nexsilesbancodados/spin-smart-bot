@@ -6491,40 +6491,137 @@ serve(async (req) => {
         const present30 = new Set(last30);
         const absent30 = Array.from({length: 37}, (_, i) => i).filter(n => !present30.has(n));
 
-        const aiPrompt = `ROLETA EUROPEIA — PROTOCOLO DE ANÁLISE ESTRUTURADA
+        // Breakout patterns for AI context
+        const breakouts = detectBreakout(numbers);
+        const breakoutInfo = breakouts.length > 0 
+          ? breakouts.map(b => `${b.type}: ${b.description} (${b.confidence}%)`).join('\n')
+          : 'Nenhum breakout detectado';
+
+        // Momentum analysis
+        const sectorMomInfo = Object.entries(sectorMomentum)
+          .filter(([,m]) => m.trend !== 'stable')
+          .map(([s, m]) => `${s}: ${m.trend} (${(m.momentum*100).toFixed(0)}%, streak ${m.streak})`)
+          .join(' | ') || 'Estável';
+
+        // Volatility
+        const vol = calculateVolatility(numbers);
+
+        // Pattern insights from auto-analyze
+        const topInsights = patternInsights
+          .filter((p: any) => (p.confidence as number) >= 50)
+          .slice(0, 5)
+          .map((p: any) => `${p.pattern_type}: ${p.description?.slice(0, 80)} (${p.confidence}%) → [${((p.numbers_involved as number[]) || []).slice(0,4).join(',')}]`)
+          .join('\n') || 'Nenhum';
+
+        // Color streaks
+        const colorStreak = detectColorStreak(numbers);
+        const colorStreakInfo = colorStreak.active ? `${colorStreak.count}x ${colorStreak.color} consecutivos` : 'Sem streak';
+
+        // High/Low bias
+        const hlBias = detectHighLowBias(numbers);
+        const hlBiasInfo = hlBias ? `Viés: ${hlBias}` : 'Equilibrado';
+
+        // Even/Odd bias
+        const eoTermBias = detectTerminalAlternado(numbers);
+        const eoInfo = eoTermBias ? `Terminais ${eoTermBias === 'odd' ? 'ímpares dominam' : 'pares dominam'}` : 'Equilibrado';
+
+        // Zero pressure
+        const zp = detectZeroPressure(numbers);
+        const zpInfo = zp.active ? `Zero com ${zp.delay} giros de atraso, ${zp.neighborsActive} vizinhos ativos — PRESSÃO ALTA` : `Zero OK (${zp.delay} atraso)`;
+
+        // Dozen momentum
+        const dzMom = calculateMomentum(numbers, n => n === 0 ? '' : `D${getDozen(n)}`);
+        const dzMomInfo = Object.entries(dzMom)
+          .filter(([k, m]) => k && m.trend !== 'stable')
+          .map(([k, m]) => `${k}: ${m.trend}`)
+          .join(', ') || 'Estável';
+
+        // Column analysis
+        const colCount30 = [0, 0, 0];
+        last30.filter(n => n > 0).forEach(n => { const c = getColumn(n); if (c > 0) colCount30[c-1]++; });
+        const colInfo = `C1:${colCount30[0]} C2:${colCount30[1]} C3:${colCount30[2]}`;
+
+        // Par/Ímpar in last 30
+        const parCount = last30.filter(n => n > 0 && n % 2 === 0).length;
+        const imparCount = last30.filter(n => n > 0 && n % 2 === 1).length;
+        const parImparInfo = `Par:${parCount} Ímpar:${imparCount}`;
+
+        // Ruas (streets) analysis
+        const ruaCount: Record<string, number> = {};
+        for (let r = 1; r <= 12; r++) ruaCount[`R${r}`] = 0;
+        last30.filter(n => n > 0).forEach(n => { const r = Math.ceil(n / 3); ruaCount[`R${r}`]++; });
+        const hotRuas = Object.entries(ruaCount).sort(([,a],[,b]) => b - a).slice(0, 3);
+        const coldRuas = Object.entries(ruaCount).sort(([,a],[,b]) => a - b).slice(0, 3);
+        const ruaInfo = `Quentes: ${hotRuas.map(([r,c]) => `${r}(${c})`).join(',')} | Frias: ${coldRuas.map(([r,c]) => `${r}(${c})`).join(',')}`;
+
+        // Splits (cavalos) hot
+        const hotCavalosInfo = Object.entries(CAVALOS)
+          .map(([g, nums]) => {
+            const cnt = last30.filter(n => nums.includes(n)).length;
+            return { g, cnt, expected: Math.round(nums.length / 37 * 30) };
+          })
+          .sort((a, b) => b.cnt - a.cnt)
+          .map(c => `C${c.g}:${c.cnt}(exp ${c.expected})`)
+          .join(' ');
+
+        const aiPrompt = `ROLETA EUROPEIA — ANÁLISE COMPLETA MULTI-MERCADO
 
 ## ENTRADA: Último número sorteado = ${numbers[0]}
 
-## FEEDBACK LOOP (comparação com previsão anterior)
+## FEEDBACK LOOP
 ${feedbackLoop}
 
 ## HISTÓRICO (últimos 30 giros)
 [${last30.join(',')}]
 
-## ASSINATURA DA MESA (últimas 30 rodadas)
+## ASSINATURA DA MESA
 ${mesaSignature}
+Colunas: ${colInfo}
+Par/Ímpar: ${parImparInfo}
+Alto/Baixo: ${hlBiasInfo}
 
-## SATURAÇÃO DE SETORES
+## SETORES (saturação + momentum)
 ${sectorSatStr}
-Desvio da média: ${sectorDeviation}
+Desvio: ${sectorDeviation}
+Momentum: ${sectorMomInfo}
 
-## TERMINAIS (frequência em 30 giros)
+## TERMINAIS
 ${termFreqStr}
-Terminal quente: ${hotTermInfo} | Terminal frio: ${coldTermInfo}
-Entropia: ${(sessionEntropy*100).toFixed(0)}% (${sessionRegime}) | Volatilidade: ${calculateVolatility(numbers).level}
+Quente: ${hotTermInfo} | Frio: ${coldTermInfo}
+Entropia: ${(sessionEntropy*100).toFixed(0)}% (${sessionRegime}) | Volatilidade: ${vol.level} (${vol.score})
 
-## LEI DO TERÇO — Números ausentes nas últimas 30 rodadas
-[${absent30.join(',')}] (${absent30.length} ausentes de 37)
+## STREAKS & TENDÊNCIAS
+Cor: ${colorStreakInfo}
+Terminais par/ímpar: ${eoInfo}
+Pressão Zero: ${zpInfo}
+
+## DÚZIAS (momentum)
+${dzMomInfo}
+
+## RUAS (streets)
+${ruaInfo}
+
+## CAVALOS (splits)
+${hotCavalosInfo}
+
+## LEI DO TERÇO
+[${absent30.join(',')}] (${absent30.length} ausentes)
 
 ## DEALER
-Arco médio: ${dealerSignature.arcMean.toFixed(1)} | Consistência: ${dealerSignature.consistency} | Modo: ${dealerSignature.dealerMode}
+Arco: ${dealerSignature.arcMean.toFixed(1)} | Consistência: ${dealerSignature.consistency} | Modo: ${dealerSignature.dealerMode}
 
-## MATRIZ DE TRANSIÇÃO (top probabilidades após ${numbers[0]})
+## BREAKOUTS (mudanças bruscas)
+${breakoutInfo}
+
+## PADRÕES CONFIRMADOS (auto-analyze)
+${topInsights}
+
+## MATRIZ DE TRANSIÇÃO (após ${numbers[0]})
 ${matrizTop8.join(', ')}
 
 ## PUXADAS do ${numbers[0]}
-Números puxados: [${pullInfo}]
-Terminais puxados: [${(FULL_PULL_TERMINALS[numbers[0]] || []).join(',')}]
+Números: [${pullInfo}]
+Terminais: [${(FULL_PULL_TERMINALS[numbers[0]] || []).join(',')}]
 
 ## GAPS dos candidatos
 ${gapInfo}
@@ -6532,33 +6629,52 @@ ${gapInfo}
 ## ESTRATÉGIAS RANKEADAS (com WR real)
 ${topStratsInfo}
 
-## ÚLTIMOS 10 RESULTADOS DAS PREVISÕES (feedback)
+## ÚLTIMOS 10 RESULTADOS (feedback)
 ${recentResults || 'Sem dados'}
 
-## APRENDIZADOS ACUMULADOS
+## APRENDIZADOS ACUMULADOS DA IA
 ${recentLearningsContext || 'Nenhum'}
 
 ## CANDIDATOS ESTATÍSTICOS ATUAIS
 [${finalBetNumbers.join(',')}] (top1=${numTop1})
 Confirmações: ${confirmations}/6
 
-## PROTOCOLO DE RESPOSTA OBRIGATÓRIO
-Analise SIMULTANEAMENTE: Dúzias, Colunas, Vizinhos do Zero, Tiers, Orphelins, Cores e Paridade.
-Identifique qual mercado está em TENDÊNCIA ou ATRASO.
-Verifique o feedback anterior: se acertou, reforce; se errou, descarte e busque novo padrão.
-Escolha UMA ÚNICA jogada — a de maior probabilidade.
+## PROTOCOLO DE RESPOSTA
+Analise TODOS os mercados simultaneamente:
+- Dúzias (1-12, 13-24, 25-36)
+- Colunas (C1, C2, C3)
+- Vizinhos do Zero / Tiers / Orphelins / Jeu Zéro
+- Cores (Vermelho/Preto)
+- Paridade (Par/Ímpar)
+- Alto/Baixo (1-18/19-36)
+- Ruas (streets de 3 números)
+- Cavalos (splits de 2 números)
+- Terminais (números com mesmo final)
+- Plenos (números específicos)
+- Cantos/Quadras (carrés de 4)
+- Linhas/Sixlines (6 números)
+
+Escolha a jogada com MAIOR probabilidade real de acerto, independente do tipo.
+Use TODAS as informações disponíveis: puxadas, aprendizados, feedback, padrões, breakouts, momentum.
 
 Responda APENAS JSON:
 {
-  "numbers": [max 7 números],
-  "betType": "terminal|vizinhos|setor|duzia|coluna|pleno|cavalos|cor|paridade|alto_baixo",
-  "suggestedBet": "Descrição clara da jogada (ex: Dúzia 2 / Vizinhos do 17 / Preto)",
-  "patternIdentified": "Padrão detectado (ex: Quebra na 3ª dúzia + Acúmulo Tiers)",
-  "learned": "O que aprendi da mesa",
+  "numbers": [números a apostar, max 12],
+  "betType": "terminal|vizinhos|setor|duzia|coluna|pleno|cavalos|cor|paridade|alto_baixo|rua|linha|carre|sixline|split|orphelins|tiers|voisins|jeu_zero|final|combinado",
+  "betDescription": "Descrição COMPLETA da aposta (ex: Dúzia 2 + Vizinhos do 17 + Cor Preta)",
+  "suggestedBet": "Jogada principal clara e direta",
+  "secondaryBet": "Jogada secundária de proteção (opcional)",
+  "patternIdentified": "Padrão principal detectado",
+  "learned": "O que a mesa está mostrando agora",
   "confidence": 0-100,
   "adjustTop1": numero_ou_null,
   "sectorFocus": "Voisins|Tiers|Orphelins|Zero|misto",
-  "feedbackAction": "reforçar|ajustar|descartar"
+  "feedbackAction": "reforçar|ajustar|descartar",
+  "marketAnalysis": {
+    "bestMarket": "nome do mercado com maior chance",
+    "marketConfidence": 0-100,
+    "reasoning": "por que este mercado é o melhor agora"
+  }
 }`;
 
         const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
