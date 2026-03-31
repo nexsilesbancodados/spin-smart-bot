@@ -36,6 +36,20 @@ const Navbar = memo(({
   const winPct = predStats.total > 0 ? ((predStats.hits / predStats.total) * 100).toFixed(0) : '—';
   const isWinning = predStats.total > 0 && (predStats.hits / predStats.total) >= 0.5;
 
+  // Session timer
+  const [sessionStart] = useState(() => Date.now());
+  const [elapsed, setElapsed] = useState('00:00');
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const diff = Math.floor((Date.now() - sessionStart) / 1000);
+      const h = Math.floor(diff / 3600);
+      const m = Math.floor((diff % 3600) / 60);
+      const s = diff % 60;
+      setElapsed(h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [sessionStart]);
+
   return (
     <nav className="glass-strong border-b border-border/10 z-50 shrink-0 relative overflow-hidden">
       {/* Top accent line */}
