@@ -12,7 +12,7 @@ interface Props {
   sniperData: any;
 }
 
-const WheelMap = ({ allNumbers, sniperData }: Props) => {
+const WheelMap = memo(({ allNumbers, sniperData }: Props) => {
   const recommended = useMemo(() => {
     const nums = sniperData?.strategy?.numbers || sniperData?.signal?.numbers || [];
     return new Set<number>(nums);
