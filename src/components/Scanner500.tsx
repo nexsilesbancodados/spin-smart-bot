@@ -60,9 +60,11 @@ const Scanner500 = ({ layerResults }: Scanner500Props) => {
   const isConverged = total >= 400;
 
   return (
-    <div className={`glass rounded-2xl overflow-hidden border transition-all ${
-      isConverged ? 'border-primary/25 shadow-[0_0_20px_hsl(var(--primary)/0.15)]' : 'border-border/20'
+    <div className={`glass rounded-2xl overflow-hidden border transition-all relative ${
+      isConverged ? 'border-primary/25 shadow-[0_0_25px_hsl(var(--primary)/0.15)]' : 'border-border/20'
     }`}>
+      {/* Decorative background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/[0.02] via-transparent to-neon-green/[0.02]" />
       {/* Header */}
       <div className="relative px-4 pt-4 pb-3">
         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/4 via-neon-cyan/3 to-neon-green/3" />
@@ -163,21 +165,24 @@ const Scanner500 = ({ layerResults }: Scanner500Props) => {
         <motion.div
           initial={{ opacity: 0, y: 5 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`mx-4 mb-4 text-center text-[10px] font-bold px-3 py-2.5 rounded-xl border flex items-center justify-center gap-2 ${
+          className={`mx-4 mb-4 text-center text-[10px] font-bold px-3 py-3 rounded-xl border flex items-center justify-center gap-2 relative overflow-hidden ${
             isConverged
-              ? 'glass text-primary border-primary/20 shadow-[0_0_12px_hsl(var(--primary)/0.15)]'
+              ? 'glass text-primary border-primary/20 shadow-[0_0_15px_hsl(var(--primary)/0.15)]'
               : total >= 300
               ? 'glass text-amber-400 border-amber-500/15'
               : 'glass text-muted-foreground border-border/20'
           }`}
         >
-          {isConverged && <CheckCircle2 className="w-4 h-4" />}
-          {isConverged
-            ? `CONVERGÊNCIA: ${total}/500 — JOGADA CERTEIRA`
-            : total >= 300
-            ? `⚡ Parcial: ${total}/500 — Aguardando alinhamento`
-            : `🔍 Varredura: ${total}/500 — Monitorando`
-          }
+          {isConverged && <div className="absolute inset-0 bg-gradient-to-r from-primary/[0.03] via-transparent to-neon-green/[0.03]" />}
+          <div className="relative flex items-center gap-2">
+            {isConverged && <CheckCircle2 className="w-4 h-4" />}
+            {isConverged
+              ? `CONVERGÊNCIA: ${total}/500 — JOGADA CERTEIRA`
+              : total >= 300
+              ? `⚡ Parcial: ${total}/500 — Aguardando alinhamento`
+              : `🔍 Varredura: ${total}/500 — Monitorando`
+            }
+          </div>
         </motion.div>
       )}
     </div>

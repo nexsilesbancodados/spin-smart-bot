@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  CircleDot, Brain, Wifi, WifiOff, Power, Sparkles, RefreshCw, Shield
+  CircleDot, Brain, Wifi, WifiOff, Power, Sparkles, RefreshCw, Shield, Activity
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -39,25 +39,30 @@ const Navbar = memo(({
   return (
     <nav className="glass-strong border-b border-border/10 z-50 shrink-0 relative overflow-hidden">
       {/* Top accent line */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-neon-cyan/40 via-neon-pink/30 to-neon-cyan/40" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-neon-cyan/50 via-neon-pink/40 to-neon-cyan/50" />
+      {/* Bottom subtle glow */}
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border/20 to-transparent" />
       
       <div className="max-w-[1400px] mx-auto px-4 flex items-center justify-between h-14">
         {/* Brand */}
         <div className="flex items-center gap-3">
           <div className="relative">
             <motion.div
-              className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-cyan/20 to-neon-pink/15 border border-neon-cyan/25 flex items-center justify-center shadow-[0_0_15px_hsl(var(--neon-cyan)/0.2)]"
-              whileHover={{ scale: 1.05 }}
+              className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-cyan/20 to-neon-pink/15 border border-neon-cyan/25 flex items-center justify-center shadow-[0_0_20px_hsl(var(--neon-cyan)/0.25)]"
+              whileHover={{ scale: 1.08, rotate: 5 }}
               whileTap={{ scale: 0.95 }}
             >
               <CircleDot className="w-5 h-5 text-neon-cyan" />
             </motion.div>
             {isPolling && (
-              <motion.div
-                animate={{ scale: [1, 1.6, 1], opacity: [1, 0.4, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-                className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-neon-green shadow-[0_0_8px_hsl(var(--neon-green)/0.6)] border-2 border-background"
-              />
+              <>
+                <motion.div
+                  animate={{ scale: [1, 1.6, 1], opacity: [1, 0.4, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-neon-green shadow-[0_0_8px_hsl(var(--neon-green)/0.6)] border-2 border-background"
+                />
+                <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-neon-green/30 animate-ping" />
+              </>
             )}
           </div>
           <div className="flex flex-col leading-none">
@@ -69,19 +74,23 @@ const Navbar = memo(({
         </div>
 
         {/* Stats */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono font-bold">
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl glass border border-border/15">
               <span className="text-neon-green">{predStats.hits}<span className="text-[8px] text-neon-green/50 ml-0.5">✓</span></span>
               <div className="w-px h-3 bg-border/20" />
               <span className="text-destructive/60">{predStats.misses}<span className="text-[8px] text-destructive/30 ml-0.5">✗</span></span>
             </div>
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border backdrop-blur-sm transition-all ${
-              isWinning ? 'bg-neon-green/8 text-neon-green border-neon-green/20 shadow-[0_0_10px_hsl(var(--neon-green)/0.15)]' : 'bg-destructive/6 text-destructive border-destructive/10'
-            }`}>
+            <motion.div
+              animate={isWinning ? { boxShadow: ['0 0 0px hsl(var(--neon-green)/0)', '0 0 12px hsl(var(--neon-green)/0.15)', '0 0 0px hsl(var(--neon-green)/0)'] } : {}}
+              transition={{ duration: 2, repeat: Infinity }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border backdrop-blur-sm transition-all ${
+                isWinning ? 'bg-neon-green/8 text-neon-green border-neon-green/20' : 'bg-destructive/6 text-destructive border-destructive/10'
+              }`}
+            >
               <Shield className="w-3 h-3" />
               {winPct}%
-            </div>
+            </motion.div>
           </div>
 
           {autoLearnStatus !== 'idle' && aiEnabled && (
@@ -104,6 +113,7 @@ const Navbar = memo(({
             onClick={triggerLearn}
             disabled={isAnalyzing || !aiEnabled}
             whileTap={{ scale: 0.9 }}
+            whileHover={{ scale: 1.05 }}
             className="p-2.5 rounded-xl text-neon-cyan hover:bg-neon-cyan/8 transition-all disabled:opacity-20 border border-transparent hover:border-neon-cyan/15"
             title="Forçar Aprendizado"
           >
@@ -113,6 +123,7 @@ const Navbar = memo(({
           <motion.button
             onClick={() => { fetchNumbers(); fetchStored(); }}
             whileTap={{ scale: 0.9 }}
+            whileHover={{ scale: 1.05 }}
             className="p-2.5 rounded-xl text-muted-foreground/50 hover:text-neon-cyan hover:bg-neon-cyan/8 transition-all border border-transparent hover:border-neon-cyan/15"
             title="Atualizar"
           >
@@ -122,9 +133,10 @@ const Navbar = memo(({
           <motion.button
             onClick={() => setAiEnabled(!aiEnabled)}
             whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.03 }}
             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[10px] font-display font-bold transition-all border backdrop-blur-sm ${
               aiEnabled
-                ? 'bg-neon-cyan/8 text-neon-cyan border-neon-cyan/20 shadow-[0_0_10px_hsl(var(--neon-cyan)/0.15)]'
+                ? 'bg-neon-cyan/8 text-neon-cyan border-neon-cyan/20 shadow-[0_0_12px_hsl(var(--neon-cyan)/0.15)]'
                 : 'bg-destructive/5 text-destructive/60 border-destructive/10'
             }`}
           >
@@ -135,9 +147,10 @@ const Navbar = memo(({
           <motion.button
             onClick={() => setIsPolling(!isPolling)}
             whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.03 }}
             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[10px] font-display font-bold transition-all border backdrop-blur-sm ${
               isPolling
-                ? 'bg-neon-green/6 text-neon-green border-neon-green/20 shadow-[0_0_10px_hsl(var(--neon-green)/0.15)]'
+                ? 'bg-neon-green/6 text-neon-green border-neon-green/20 shadow-[0_0_12px_hsl(var(--neon-green)/0.15)]'
                 : 'bg-destructive/5 text-destructive/60 border-destructive/10'
             }`}
           >
@@ -146,9 +159,12 @@ const Navbar = memo(({
           </motion.button>
 
           {lastUpdate && (
-            <span className="text-[8px] text-muted-foreground/25 font-mono hidden lg:inline ml-1">
-              {lastUpdate.toLocaleTimeString('pt-BR')}
-            </span>
+            <div className="hidden lg:flex items-center gap-1 ml-1">
+              <Activity className="w-3 h-3 text-muted-foreground/20" />
+              <span className="text-[8px] text-muted-foreground/25 font-mono">
+                {lastUpdate.toLocaleTimeString('pt-BR')}
+              </span>
+            </div>
           )}
         </div>
       </div>

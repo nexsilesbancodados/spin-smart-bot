@@ -224,10 +224,18 @@ const SessionSummary = ({ allNumbers }: Props) => {
           className={`mx-4 mb-4 rounded-2xl border p-4 relative overflow-hidden ${stats.recBg}`}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/[0.02] to-transparent" />
+          {/* Shimmer for green/positive */}
+          {stats.recIcon === '✅' && (
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-neon-green/[0.03] to-transparent animate-shimmer bg-[length:200%_100%]" />
+          )}
           <div className="relative flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 border backdrop-blur-sm ${stats.recBg}`}>
+            <motion.div
+              animate={stats.recIcon === '🚨' ? { scale: [1, 1.1, 1], rotate: [0, 3, -3, 0] } : {}}
+              transition={{ repeat: Infinity, duration: 2 }}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 border backdrop-blur-sm ${stats.recBg}`}
+            >
               {stats.recIcon}
-            </div>
+            </motion.div>
             <div className="flex-1 min-w-0">
               <div className="text-[7px] text-muted-foreground/40 font-display tracking-[0.2em] uppercase mb-0.5">RECOMENDAÇÃO IA</div>
               <span className={`text-[11px] font-black font-display tracking-wide leading-tight ${stats.recColor}`}>

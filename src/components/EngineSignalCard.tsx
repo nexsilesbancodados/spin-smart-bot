@@ -56,13 +56,23 @@ const EngineSignalCard = memo(({ allNumbers }: Props) => {
 
   if (!top) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-8 text-center border border-border/20">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-8 text-center border border-border/20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-neon-pink/[0.02]" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
         <motion.div
           animate={{ opacity: [0.4, 1, 0.4] }}
           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-          className="space-y-2"
+          className="relative space-y-3"
         >
-          <div className="text-3xl opacity-40">🔍</div>
+          <div className="relative mx-auto w-16 h-16">
+            <div className="absolute inset-0 rounded-full border-2 border-primary/10" />
+            <motion.div
+              className="absolute inset-0 rounded-full border-2 border-t-primary border-r-transparent border-b-transparent border-l-transparent"
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center text-2xl opacity-50">🔍</div>
+          </div>
           <p className="text-xs font-bold text-muted-foreground font-display tracking-wider">ANALISANDO PADRÕES</p>
           <p className="text-[9px] text-muted-foreground/50 font-mono">Aguardando convergência para entrada segura</p>
         </motion.div>
@@ -144,26 +154,30 @@ const EngineSignalCard = memo(({ allNumbers }: Props) => {
         {/* SECONDARY SIGNALS */}
         {signals.length > 1 && (
           <div className="space-y-1.5">
-            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 px-1 font-display">
-              Outros padrões
-            </span>
+            <div className="flex items-center gap-2 px-1">
+              <div className="w-4 h-px bg-gradient-to-r from-muted-foreground/20 to-transparent" />
+              <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 font-display">
+                Outros padrões
+              </span>
+              <div className="flex-1 h-px bg-gradient-to-r from-muted-foreground/10 to-transparent" />
+            </div>
             {signals.slice(1, 3).map((s, idx) => (
               <motion.div 
                 key={s.id} 
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: idx * 0.08 }}
-                className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl glass border border-border/15 hover:border-border/30 transition-all group"
+                className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl glass border border-border/15 hover:border-primary/15 transition-all group cursor-default"
               >
-                <div className="w-8 h-8 rounded-lg glass border border-border/10 flex items-center justify-center shrink-0 group-hover:border-primary/20 transition-colors">
-                  <TrendingDown className="w-3.5 h-3.5 text-muted-foreground/50" />
+                <div className="w-8 h-8 rounded-lg glass border border-border/10 flex items-center justify-center shrink-0 group-hover:border-primary/20 group-hover:bg-primary/5 transition-all">
+                  <TrendingDown className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-primary/70 transition-colors" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-[10px] font-bold text-foreground">{s.action}</span>
                   <p className="text-[8px] text-muted-foreground/50 line-clamp-1">{s.detail}</p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <span className="text-[10px] font-black text-primary font-mono">{s.confidence}%</span>
+                  <span className={`text-[10px] font-black font-mono ${s.confidence >= 80 ? 'text-neon-green' : s.confidence >= 65 ? 'text-gold' : 'text-primary'}`}>{s.confidence}%</span>
                 </div>
               </motion.div>
             ))}
