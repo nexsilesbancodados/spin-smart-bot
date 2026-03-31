@@ -695,9 +695,20 @@ serve(async (req) => {
     });
     allEntries.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
 
+    const normalizedEntries: { number: number; time: string }[] = [];
+    for (const entry of allEntries) {
+      const entryTime = new Date(entry.time).getTime();
+      const isNearDuplicate = normalizedEntries.some((existing) => {
+        if (existing.number !== entry.number) return false;
+        const existingTime = new Date(existing.time).getTime();
+        return Math.abs(existingTime - entryTime) <= 12_000;
+      });
+      if (!isNearDuplicate) normalizedEntries.push(entry);
+    }
+
     // MERGE: If client sent numbers, prepend any that aren't in DB yet (instant reaction)
     let numbers: number[];
-    let entries = allEntries.slice(0, sampleSize);
+    let entries = normalizedEntries.slice(0, sampleSize);
     if (clientNumbers && clientNumbers.length >= 5) {
       // Client numbers are already in order (newest first) — use them as primary
       // But merge with DB for deeper history

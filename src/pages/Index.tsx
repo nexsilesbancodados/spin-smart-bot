@@ -35,7 +35,8 @@ const CAVALOS_GROUPS: Record<string, number[]> = {
   '69': [6,9,16,19,26,29,36],
 };
 
-const DUPLICATE_SPIN_WINDOW_MS = 20000;
+const DUPLICATE_SPIN_WINDOW_MS = 12000;
+const SIGNAL_WINDOW_SECONDS = 18;
 const ROULETTE_TABLES = [
   { id: 'brasileira', name: 'Roleta Brasileira', provider: 'Playtech', iframeUrl: 'https://onabet.com/casino/roleta-brasileira' },
   { id: 'brasileira2', name: 'Roleta Brasileira 2', provider: 'Playtech', iframeUrl: 'https://onabet.com/casino/roleta-ao-vivo' },
@@ -134,7 +135,7 @@ const Index = () => {
   const prevNumbersRef = useRef<string>('');
   const [sniperData, setSniperData] = useState<any>(null);
   const [rtInsights, setRtInsights] = useState<any[]>([]);
-  const [sniperCountdown, setSniperCountdown] = useState(14);
+  const [sniperCountdown, setSniperCountdown] = useState(SIGNAL_WINDOW_SECONDS);
   const sniperPrevKey = useRef<string>('');
   const sniperSameCount = useRef(0);
   const [sniperStale, setSniperStale] = useState(false);
@@ -154,6 +155,7 @@ const Index = () => {
   const [soundEnabled] = useState(true);
   const [activePatternCount, setActivePatternCount] = useState(0);
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [lastSpinAt, setLastSpinAt] = useState<number | null>(null);
 
   const handleManualNumbers = (nums: number[]) => {
     setApiNumbers(prev => [...nums, ...prev].slice(0, 1000));
@@ -174,7 +176,7 @@ const Index = () => {
   const lastSniperTriggerRef = useRef(0);
   const lastSpinSignatureRef = useRef('');
   const apiSnapshotRef = useRef<number[]>([]);
-  const fetchSniperRef = useRef<((retryCount?: number) => void) | null>(null);
+  const fetchSniperRef = useRef<((retryCount?: number, force?: boolean) => void) | null>(null);
   const lastAcceptedSpinRef = useRef<{ number: number | null; timestamp: number }>({ number: null, timestamp: 0 });
   const processedPredictionEventsRef = useRef<Record<string, number>>({});
   const spinCountSinceMicroLearnRef = useRef(0);
@@ -199,23 +201,19 @@ const Index = () => {
     return true;
   }, []);
 
-  const handleNewSpin = useCallback((signature: string) => {
+  const handleNewSpin = useCallback((signature: string, spinAt = Date.now()) => {
     if (!signature || signature === lastSpinSignatureRef.current) return;
     lastSpinSignatureRef.current = signature;
     sniperSameCount.current = 0;
     setSniperStale(false);
-    setSniperCountdown(14);
+    setLastSpinAt(spinAt);
+    setSniperCountdown(SIGNAL_WINDOW_SECONDS);
     playSound('signal', soundEnabled);
     if (aiEnabled) {
-      // Limpa predição atual imediatamente para mostrar que está recalculando
-      setSniperData(null);
-      // Aguarda 2s para o usuário ver o resultado antes de gerar nova predição
-      setTimeout(() => {
-        fetchSniperRef.current?.();
-        supabase.functions.invoke('realtime-patterns')
-          .then(res => { if (res.data?.all_insights?.length > 0) setRtInsights(res.data.all_insights.slice(0, 6)); })
-          .catch(() => {});
-      }, 2000);
+      fetchSniperRef.current?.(0, true);
+      supabase.functions.invoke('realtime-patterns')
+        .then(res => { if (res.data?.all_insights?.length > 0) setRtInsights(res.data.all_insights.slice(0, 6)); })
+        .catch(() => {});
     }
   }, [soundEnabled, aiEnabled]);
 
@@ -224,10 +222,10 @@ const Index = () => {
     try { await Promise.allSettled([supabase.functions.invoke('auto-analyze-patterns'), supabase.functions.invoke('realtime-patterns')]); } catch { /* */ }
   }, [aiEnabled]);
 
-  const fetchSniper = useCallback(async (retryCount = 0) => {
+  const fetchSniper = useCallback(async (retryCount = 0, force = false) => {
     const now = Date.now();
-    if (now - lastSniperTriggerRef.current < 8000 && retryCount === 0) return; // ← reduzido de 15s para 8s
-    if (sniperFetchingRef.current && retryCount === 0) return;
+    if (!force && now - lastSniperTriggerRef.current < 8000 && retryCount === 0) return;
+    if (sniperFetchingRef.current && retryCount === 0 && !force) return;
     if (!aiEnabled) return;
     sniperFetchingRef.current = true;
     lastSniperTriggerRef.current = now;
@@ -237,7 +235,7 @@ const Index = () => {
         body: { sampleSize, numbers: clientNums, strategyFilter: strategyFilter !== 'all' ? strategyFilter : undefined }
       });
       if (res.error) {
-        if (retryCount < 2) { sniperFetchingRef.current = false; setTimeout(() => fetchSniper(retryCount + 1), 2000 * (retryCount + 1)); return; }
+        if (retryCount < 2) { sniperFetchingRef.current = false; setTimeout(() => fetchSniper(retryCount + 1, force), 2000 * (retryCount + 1)); return; }
       }
       if (res.data) {
         const key = `${res.data.strategy?.type}-${res.data.signal?.number}-${res.data.mode}`;
@@ -246,7 +244,7 @@ const Index = () => {
         setSniperData(res.data);
       }
     } catch (err) {
-      if (retryCount < 2) { sniperFetchingRef.current = false; setTimeout(() => fetchSniper(retryCount + 1), 2000 * (retryCount + 1)); return; }
+      if (retryCount < 2) { sniperFetchingRef.current = false; setTimeout(() => fetchSniper(retryCount + 1, force), 2000 * (retryCount + 1)); return; }
     } finally { sniperFetchingRef.current = false; }
   }, [sampleSize, aiEnabled, apiNumbers, strategyFilter]);
   fetchSniperRef.current = fetchSniper;
@@ -272,8 +270,7 @@ const Index = () => {
           setLastUpdate(new Date());
           if (!isBurstDuplicate(newNumbers[0])) {
             markAcceptedSpin(newNumbers[0]);
-            handleNewSpin(nums.slice(0, 3).join(','));
-            fetchSniper();
+            handleNewSpin(nums.slice(0, 3).join(','), Date.now());
           }
           prevNumbersRef.current = key;
         }
@@ -301,12 +298,12 @@ const Index = () => {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'roulette_numbers' }, (payload: any) => {
         const row = payload?.new;
         if (typeof row?.number === 'number' && !isBurstDuplicate(row.number)) {
+          const spinAt = row.fetched_at ? new Date(row.fetched_at).getTime() : Date.now();
           markAcceptedSpin(row.number);
           apiSnapshotRef.current = [row.number, ...apiSnapshotRef.current].slice(0, 1000);
           setApiNumbers(prev => prev[0] === row.number ? prev : [row.number, ...prev].slice(0, 1000));
-          handleNewSpin(`${row.number}-${row.fetched_at ?? ''}`);
-          setLastUpdate(new Date());
-          fetchSniper();
+          handleNewSpin(`${row.number}-${row.fetched_at ?? ''}`, spinAt);
+          setLastUpdate(new Date(spinAt));
           spinCountSinceMicroLearnRef.current++;
           if (spinCountSinceMicroLearnRef.current >= 10) { spinCountSinceMicroLearnRef.current = 0; triggerMicroLearn(); }
         }
@@ -328,9 +325,20 @@ const Index = () => {
 
   // Countdown
   useEffect(() => {
-    const timer = setInterval(() => setSniperCountdown(prev => Math.max(0, prev - 1)), 1000);
+    if (!lastSpinAt) {
+      setSniperCountdown(SIGNAL_WINDOW_SECONDS);
+      return;
+    }
+
+    const updateCountdown = () => {
+      const elapsedSeconds = Math.floor((Date.now() - lastSpinAt) / 1000);
+      setSniperCountdown(Math.max(0, SIGNAL_WINDOW_SECONDS - elapsedSeconds));
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [lastSpinAt]);
 
   // Pred stats
   const loadPredStats = useCallback(async () => {
@@ -473,6 +481,7 @@ const Index = () => {
               autoLearnStatus={autoLearnStatus}
               strategyFilter={strategyFilter}
               setStrategyFilter={setStrategyFilter}
+              spinTimestamp={lastSpinAt ?? undefined}
             />
           ) : (
             <div className="bg-card rounded-2xl border border-destructive/30 p-12 text-center flex flex-col items-center justify-center">
