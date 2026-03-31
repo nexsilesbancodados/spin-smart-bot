@@ -28,19 +28,24 @@ const Last12Numbers = memo(({ allNumbers }: Props) => {
   const blacks = last12.filter(n => n > 0 && !RED_NUMBERS.has(n)).length;
   const greens = last12.filter(n => n === 0).length;
 
+  // Dominant color ratio
+  const redPct = last12.length > 0 ? Math.round((reds / last12.length) * 100) : 0;
+  const blackPct = last12.length > 0 ? Math.round((blacks / last12.length) * 100) : 0;
+
   return (
     <div className="glass rounded-2xl px-4 py-3.5 border border-border/20 relative overflow-hidden">
       {/* Top accent */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neon-cyan/25 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-neon-cyan/40 via-neon-pink/30 to-neon-cyan/40" />
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border/10 to-transparent" />
       
       <div className="flex items-center gap-2.5 overflow-x-auto scrollbar-thin pb-1">
-        <div className="shrink-0 flex flex-col items-center gap-1 pr-3 border-r border-border/15">
+        <div className="shrink-0 flex flex-col items-center gap-0.5 pr-3 border-r border-border/15">
           <span className="text-[6px] font-display font-bold tracking-[0.25em] text-neon-cyan/50 uppercase">Live</span>
           <motion.span
             key={last12.length}
             initial={{ scale: 1.3, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="text-sm font-black text-neon-cyan font-mono"
+            className="text-base font-black text-neon-cyan font-mono text-glow-cyan"
           >
             {last12.length}
           </motion.span>
@@ -54,7 +59,7 @@ const Last12Numbers = memo(({ allNumbers }: Props) => {
               transition={i === 0 ? { type: 'spring', stiffness: 400, damping: 18 } : undefined}
               className={`rounded-xl flex items-center justify-center font-black text-white shrink-0 shadow-md border border-white/8 transition-all
                 ${chipStyle(n, i)}
-                ${i === 0 ? 'ring-2 ring-neon-cyan/60 ring-offset-2 ring-offset-background shadow-[0_0_12px_hsl(var(--neon-cyan)/0.3)]' : 'hover:scale-105'}
+                ${i === 0 ? 'ring-2 ring-neon-cyan/60 ring-offset-2 ring-offset-background shadow-[0_0_15px_hsl(var(--neon-cyan)/0.35)]' : 'hover:scale-110 active:scale-95'}
               `}
             >
               {n}
@@ -63,35 +68,31 @@ const Last12Numbers = memo(({ allNumbers }: Props) => {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 mt-2.5 pt-2.5 border-t border-border/10">
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-red-500/8 border border-red-500/10">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
-            <span className="text-[9px] font-bold text-red-400/70 font-mono">{reds}</span>
+      <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-border/10">
+        {/* Color distribution bar */}
+        <div className="flex-1 flex items-center gap-2">
+          <div className="flex-1 h-2 rounded-full overflow-hidden flex bg-background/20 border border-border/10">
+            <div className="h-full bg-gradient-to-r from-red-500 to-red-600 transition-all duration-500" style={{ width: `${redPct}%` }} />
+            {greens > 0 && <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${Math.round((greens / last12.length) * 100)}%` }} />}
+            <div className="h-full bg-gradient-to-r from-zinc-600 to-zinc-800 transition-all duration-500" style={{ width: `${blackPct}%` }} />
           </div>
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-zinc-600/8 border border-zinc-600/10">
-            <div className="w-2.5 h-2.5 rounded-full bg-zinc-600/70" />
-            <span className="text-[9px] font-bold text-muted-foreground/50 font-mono">{blacks}</span>
+          <div className="flex items-center gap-1.5 text-[8px] font-mono shrink-0">
+            <span className="text-red-400 font-bold">{reds}</span>
+            <span className="text-muted-foreground/20">·</span>
+            <span className="text-muted-foreground/60 font-bold">{blacks}</span>
+            {greens > 0 && <><span className="text-muted-foreground/20">·</span><span className="text-emerald-400 font-bold">{greens}</span></>}
           </div>
-          {greens > 0 && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/8 border border-emerald-500/10">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/70" />
-              <span className="text-[9px] font-bold text-emerald-400/70 font-mono">{greens}</span>
-            </div>
-          )}
         </div>
+
         {streak >= 2 && (
           <motion.div
-            animate={{ scale: [1, 1.05, 1] }}
+            animate={{ scale: [1, 1.06, 1] }}
             transition={{ duration: 1.5, repeat: Infinity }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gold/8 border border-gold/20 shadow-[0_0_8px_hsl(var(--gold)/0.1)]"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gold/10 border border-gold/25 shadow-[0_0_10px_hsl(var(--gold)/0.15)]"
           >
             <span className="text-[9px] font-black text-gold font-mono">🔱 {last12[0]} ×{streak}</span>
           </motion.div>
         )}
-        <div className="ml-auto text-[8px] text-muted-foreground/25 font-mono">
-          {reds > blacks ? '🔴 tendência' : blacks > reds ? '⚫ tendência' : '→ neutro'}
-        </div>
       </div>
     </div>
   );

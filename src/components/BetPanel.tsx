@@ -594,34 +594,59 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           )}
         </div>
 
-        {/* Stats grid */}
+        {/* Stats grid — premium */}
         <div className="grid grid-cols-4 gap-2">
-          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
-            className={`glass rounded-xl p-2.5 text-center border transition-all ${stats.profit >= 0 ? 'border-neon-green/15' : 'border-destructive/15'}`}>
-            <DollarSign className="w-3.5 h-3.5 text-muted-foreground/30 mx-auto mb-1" />
-            <p className={`font-bold text-base font-mono ${stats.profit >= 0 ? 'text-neon-green' : 'text-destructive'}`}>
-              R${stats.profit.toFixed(2)}
-            </p>
-            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">LUCRO</span>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-            className="glass rounded-xl p-2.5 text-center border border-border/10 hover:border-primary/15 transition-all">
-            <Target className="w-3.5 h-3.5 text-primary/40 mx-auto mb-1" />
-            <p className="font-bold text-base font-mono text-foreground/80">{winRate}%</p>
-            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">ACERTO</span>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="glass rounded-xl p-2.5 text-center border border-neon-green/10 hover:border-neon-green/20 transition-all">
-            <TrendingUp className="w-3.5 h-3.5 text-neon-green/40 mx-auto mb-1" />
-            <p className="font-bold text-base font-mono text-neon-green">{stats.wins}</p>
-            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">WINS</span>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="glass rounded-xl p-2.5 text-center border border-destructive/10 hover:border-destructive/20 transition-all">
-            <TrendingDown className="w-3.5 h-3.5 text-destructive/40 mx-auto mb-1" />
-            <p className="font-bold text-base font-mono text-destructive">{stats.losses}</p>
-            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">LOSSES</span>
-          </motion.div>
+          {[
+            {
+              icon: <DollarSign className="w-4 h-4" />,
+              value: `R$${stats.profit.toFixed(2)}`,
+              label: 'LUCRO',
+              color: stats.profit >= 0 ? 'text-neon-green' : 'text-destructive',
+              border: stats.profit >= 0 ? 'border-neon-green/20 bg-neon-green/[0.03]' : 'border-destructive/20 bg-destructive/[0.03]',
+              glow: stats.profit > 0 ? 'shadow-[0_0_12px_hsl(var(--neon-green)/0.1)]' : '',
+              delay: 0,
+            },
+            {
+              icon: <Target className="w-4 h-4" />,
+              value: `${winRate}%`,
+              label: 'ACERTO',
+              color: parseFloat(winRate) >= 50 ? 'text-neon-green' : parseFloat(winRate) >= 35 ? 'text-gold' : 'text-foreground/80',
+              border: 'border-primary/10 hover:border-primary/25',
+              glow: '',
+              delay: 0.05,
+            },
+            {
+              icon: <TrendingUp className="w-4 h-4" />,
+              value: String(stats.wins),
+              label: 'WINS',
+              color: 'text-neon-green',
+              border: 'border-neon-green/15 bg-neon-green/[0.02]',
+              glow: '',
+              delay: 0.1,
+            },
+            {
+              icon: <TrendingDown className="w-4 h-4" />,
+              value: String(stats.losses),
+              label: 'LOSSES',
+              color: 'text-destructive',
+              border: 'border-destructive/15 bg-destructive/[0.02]',
+              glow: '',
+              delay: 0.15,
+            },
+          ].map((s, i) => (
+            <motion.div
+              key={s.label}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: s.delay }}
+              className={`glass rounded-xl p-3 text-center border transition-all group relative overflow-hidden hover:scale-[1.02] ${s.border} ${s.glow}`}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-transparent to-primary/[0.015] opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className={`mx-auto mb-1 ${s.color} opacity-40`}>{s.icon}</div>
+              <p className={`font-black text-lg font-mono leading-none ${s.color}`}>{s.value}</p>
+              <span className="text-[6px] text-muted-foreground/40 font-display tracking-[0.2em] block mt-1">{s.label}</span>
+            </motion.div>
+          ))}
         </div>
 
         {/* Current bet info */}
@@ -652,50 +677,69 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           </div>
         )}
 
-        {/* Scoreboard */}
+        {/* Scoreboard — premium */}
         {stats.history.length > 0 && (
-          <div className="glass rounded-xl border border-border/15 p-3 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[9px] font-bold text-primary tracking-wider">📊 PLACAR</span>
+          <div className="glass rounded-2xl border border-border/15 overflow-hidden backdrop-blur-sm">
+            <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/10 bg-gradient-to-r from-primary/[0.03] to-transparent">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <span className="text-[10px]">📊</span>
+                </div>
+                <span className="text-[9px] font-black text-primary tracking-[0.15em] font-display">PLACAR</span>
+              </div>
               <span className="text-[7px] text-muted-foreground/40 font-mono">{stats.history.length} resultado{stats.history.length > 1 ? 's' : ''}</span>
             </div>
-            <div className="flex flex-wrap gap-1.5 mb-2.5">
-              {stats.history.slice(0, 15).map((r) => (
+            <div className="p-3 space-y-2.5">
+              {/* Win/Loss dots */}
+              <div className="flex flex-wrap gap-1.5">
+                {stats.history.slice(0, 20).map((r, idx) => (
+                  <motion.div
+                    key={r.timestamp}
+                    initial={{ scale: 0, rotate: -90 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ delay: idx * 0.02, type: 'spring', stiffness: 400 }}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black border transition-all hover:scale-110 ${
+                      r.won
+                        ? 'bg-neon-green/10 border-neon-green/30 text-neon-green shadow-[0_0_6px_hsl(var(--neon-green)/0.15)]'
+                        : 'bg-destructive/8 border-destructive/20 text-destructive/70'
+                    }`}
+                    title={r.won ? `✅ Nº ${r.actual} +R$${r.profit.toFixed(2)}` : `❌ Nº ${r.actual} R$${r.profit.toFixed(2)}`}
+                  >
+                    {r.won ? '✓' : '✗'}
+                  </motion.div>
+                ))}
+              </div>
+              {/* Last result highlight */}
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`rounded-xl p-3 flex items-center gap-3 border ${
+                  stats.history[0].won
+                    ? 'bg-neon-green/5 border-neon-green/25 shadow-[0_0_12px_hsl(var(--neon-green)/0.08)]'
+                    : 'bg-destructive/5 border-destructive/20'
+                }`}
+              >
                 <motion.div
-                  key={r.timestamp}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold ring-1 ${
-                    r.won
-                      ? 'bg-green-500/15 ring-green-500/40 text-green-400'
-                      : 'bg-destructive/15 ring-destructive/40 text-destructive'
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 300 }}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center text-[13px] font-black text-white shadow-lg ${
+                    getColor(stats.history[0].actual) === 'red' ? 'bg-gradient-to-br from-red-500 to-red-700' :
+                    getColor(stats.history[0].actual) === 'black' ? 'bg-gradient-to-br from-zinc-600 to-zinc-900' :
+                    'bg-gradient-to-br from-emerald-500 to-emerald-700'
                   }`}
-                  title={r.won ? `✅ Nº ${r.actual}` : `❌ Nº ${r.actual}`}
                 >
-                  {r.won ? '✓' : '✗'}
+                  {stats.history[0].actual}
                 </motion.div>
-              ))}
-            </div>
-            <div className={`rounded-lg p-2.5 text-[9px] flex items-center gap-2.5 ${
-              stats.history[0].won
-                ? 'bg-green-500/8 border border-green-500/25'
-                : 'bg-destructive/8 border border-destructive/25'
-            }`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ring-1 ${
-                getColor(stats.history[0].actual) === 'red' ? 'bg-red-600 text-white ring-red-400/30' :
-                getColor(stats.history[0].actual) === 'black' ? 'bg-zinc-800 text-white ring-zinc-500/30' :
-                'bg-green-600 text-white ring-green-400/30'
-              }`}>
-                {stats.history[0].actual}
-              </div>
-              <div className="flex-1">
-                <span className={`font-bold ${stats.history[0].won ? 'text-green-400' : 'text-destructive'}`}>
-                  {stats.history[0].won ? '✅ ACERTOU!' : '❌ ERROU'}
-                </span>
-                <span className="text-muted-foreground ml-2 font-mono">
-                  {stats.history[0].profit >= 0 ? '+' : ''}R${stats.history[0].profit.toFixed(2)}
-                </span>
-              </div>
+                <div className="flex-1 min-w-0">
+                  <span className={`text-[11px] font-black font-display tracking-wide ${stats.history[0].won ? 'text-neon-green' : 'text-destructive'}`}>
+                    {stats.history[0].won ? '✅ ACERTOU!' : '❌ ERROU'}
+                  </span>
+                  <div className={`text-[10px] font-mono font-bold mt-0.5 ${stats.history[0].profit >= 0 ? 'text-neon-green/80' : 'text-destructive/80'}`}>
+                    {stats.history[0].profit >= 0 ? '+' : ''}R${stats.history[0].profit.toFixed(2)}
+                  </div>
+                </div>
+              </motion.div>
             </div>
           </div>
         )}
@@ -785,34 +829,45 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           )}
         </div>
 
-        {/* Action buttons */}
+        {/* Action buttons — premium */}
         <div className="flex gap-2.5 pt-1">
-          <motion.div className="flex-1" whileHover={{ scale: canBet ? 1.01 : 1 }} whileTap={{ scale: canBet ? 0.98 : 1 }}>
+          <motion.div className="flex-1" whileHover={{ scale: canBet ? 1.01 : 1 }} whileTap={{ scale: canBet ? 0.95 : 1 }}>
             <Button
               onClick={placeBet}
               disabled={!canBet}
-              className={`w-full h-12 font-bold tracking-wider text-sm rounded-xl transition-all font-display ${
+              className={`w-full h-14 font-bold tracking-wider text-sm rounded-2xl transition-all font-display relative overflow-hidden ${
                 canBet
-                  ? 'bg-gradient-to-r from-primary via-pink-500 to-primary hover:opacity-90 text-primary-foreground shadow-[0_4px_20px_hsl(var(--primary)/0.25)]'
+                  ? 'bg-gradient-to-r from-primary via-neon-pink to-primary text-primary-foreground shadow-[0_6px_30px_hsl(var(--primary)/0.3)]'
                   : 'bg-secondary/60 text-muted-foreground/50 border border-border/10'
               }`}
             >
-              <Zap className="w-4 h-4 mr-1.5" />
-              {stats.waitingResult ? 'AGUARDANDO...' : !hasSignal ? 'SEM SINAL' : 'APOSTAR AGORA'}
+              {canBet && (
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                  animate={{ x: ['-100%', '200%'] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
+                />
+              )}
+              <span className="relative flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                <span className="text-[13px]">
+                  {stats.waitingResult ? '⏳ AGUARDANDO...' : !hasSignal ? 'SEM SINAL' : 'APOSTAR AGORA'}
+                </span>
+              </span>
             </Button>
           </motion.div>
 
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.93 }}>
             <Button
               onClick={toggleAutoBet}
-              className={`px-5 h-12 font-bold tracking-wider text-sm rounded-xl transition-all font-display ${
+              className={`px-6 h-14 font-bold tracking-wider text-sm rounded-2xl transition-all font-display relative overflow-hidden ${
                 config.enabled
-                  ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-[0_4px_15px_rgba(239,68,68,0.2)]'
-                  : 'bg-gradient-to-r from-neon-green/80 to-emerald-500 hover:opacity-90 text-white shadow-[0_4px_15px_hsl(var(--neon-green)/0.2)]'
+                  ? 'bg-gradient-to-r from-destructive to-red-600 text-destructive-foreground shadow-[0_6px_20px_rgba(239,68,68,0.3)]'
+                  : 'bg-gradient-to-r from-neon-green to-emerald-500 text-white shadow-[0_6px_20px_hsl(var(--neon-green)/0.3)]'
               }`}
             >
-              {config.enabled ? <Square className="w-4 h-4 mr-1.5" /> : <Play className="w-4 h-4 mr-1.5" />}
-              {config.enabled ? 'PARAR' : 'AUTO'}
+              {config.enabled ? <Square className="w-5 h-5 mr-1.5" /> : <Play className="w-5 h-5 mr-1.5" />}
+              <span className="text-[13px]">{config.enabled ? 'STOP' : 'AUTO'}</span>
             </Button>
           </motion.div>
         </div>

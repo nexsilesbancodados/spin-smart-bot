@@ -216,17 +216,27 @@ const SessionSummary = ({ allNumbers }: Props) => {
         </div>
       </div>
 
-      {/* Recommendation */}
+      {/* Recommendation — premium */}
       {stats.recomendacao && (
-        <div className={`mx-4 mb-4 rounded-xl border p-3 flex items-center gap-2.5 ${stats.recBg}`}>
-          <span className="text-lg shrink-0">{stats.recIcon}</span>
-          <div className="flex-1 min-w-0">
-            <span className={`text-[10px] font-bold font-display tracking-wide ${stats.recColor}`}>
-              {stats.recomendacao}
-            </span>
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`mx-4 mb-4 rounded-2xl border p-4 relative overflow-hidden ${stats.recBg}`}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/[0.02] to-transparent" />
+          <div className="relative flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 border backdrop-blur-sm ${stats.recBg}`}>
+              {stats.recIcon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[7px] text-muted-foreground/40 font-display tracking-[0.2em] uppercase mb-0.5">RECOMENDAÇÃO IA</div>
+              <span className={`text-[11px] font-black font-display tracking-wide leading-tight ${stats.recColor}`}>
+                {stats.recomendacao}
+              </span>
+            </div>
+            <TrendingUp className={`w-5 h-5 shrink-0 ${stats.recColor} opacity-30`} />
           </div>
-          <TrendingUp className={`w-4 h-4 shrink-0 ${stats.recColor} opacity-40`} />
-        </div>
+        </motion.div>
       )}
     </motion.div>
   );
