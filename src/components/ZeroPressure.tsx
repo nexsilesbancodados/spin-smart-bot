@@ -129,6 +129,7 @@ const ZeroPressure = memo(({ allNumbers }: Props) => {
       )}
     </motion.div>
   );
-};
+});
 
+ZeroPressure.displayName = 'ZeroPressure';
 export default ZeroPressure;

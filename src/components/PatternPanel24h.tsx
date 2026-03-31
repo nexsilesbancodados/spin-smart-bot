@@ -220,6 +220,7 @@ const PatternPanel24h = memo(({ sniperData }: PatternPanel24hProps) => {
       </div>
     </motion.div>
   );
-};
+});
 
+PatternPanel24h.displayName = 'PatternPanel24h';
 export default PatternPanel24h;
