@@ -17,6 +17,7 @@ import SniperSignal from '@/components/SniperSignal';
 import ManualInput from '@/components/ManualInput';
 import WheelMap from '@/components/WheelMap';
 import Scanner500 from '@/components/Scanner500';
+import BacktestPanel from '@/components/BacktestPanel';
 import PatternPanel24h from '@/components/PatternPanel24h';
 import { motion, AnimatePresence } from 'framer-motion';
 
