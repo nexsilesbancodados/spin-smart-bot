@@ -6993,7 +6993,7 @@ Responda APENAS JSON:
         // =====================================================
         const NVIDIA_API_KEY = Deno.env.get("NVIDIA_API_KEY");
         const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-        const LOVABLE_API_KEY_AI = LOVABLE_API_KEY;
+        // Lovable AI removido — usando apenas NVIDIA + DeepSeek
 
         const aiSystemPrompt = `Você é o cérebro supremo de análise de roleta europeia. Integra física do cilindro, matemática de ciclos, tabelas de puxada da Mesa Brasileira Playtech e aprendizado acumulado.
 
