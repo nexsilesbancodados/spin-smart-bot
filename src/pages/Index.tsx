@@ -473,13 +473,10 @@ const Index = () => {
             </div>
           )}
 
-          {/* ════ INPUT MANUAL + LOG ════ */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <ManualInput onAddNumbers={handleManualNumbers} />
-            <AILearningLog allNumbers={allNumbers} sniperData={sniperData} autoLearnStatus={autoLearnStatus} rtInsights={rtInsights} />
-          </div>
+          {/* ════ INPUT MANUAL (compacto) ════ */}
+          <ManualInput onAddNumbers={handleManualNumbers} />
 
-          {/* ════ COLLAPSIBLE SECTIONS ════ */}
+          {/* ════ COLLAPSIBLE SECTIONS — apenas Ferramentas e Histórico ════ */}
           <div className="space-y-2">
 
             {/* Ferramentas */}
@@ -495,16 +492,6 @@ const Index = () => {
                   <WheelMap allNumbers={allNumbers} sniperData={sniperData} />
                   <BetPanel sniperData={sniperData} allNumbers={allNumbers} />
                 </div>
-              </div>
-            </CollapsibleSection>
-
-            {/* Rankings & Radar */}
-            <CollapsibleSection
-              title="📊 RANKINGS & RADAR"
-              isOpen={activeSection === 'rankings'}
-              onToggle={() => toggleSection('rankings')}
-            >
-              <div className="space-y-3">
                 <StrategyLeaderboard />
                 <PullRadar pullPatterns={sniperData?.pullPatterns || []} latestNumber={allNumbers[0] ?? 0} />
                 <Scanner500 layerResults={sniperData?.layerResults || null} isScanning={false} />
@@ -529,7 +516,6 @@ const Index = () => {
                       {lim}
                     </button>
                   ))}
-                  
                 </div>
 
                 {error && <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-2 text-[10px] text-destructive font-semibold">⚠️ {error}</div>}
