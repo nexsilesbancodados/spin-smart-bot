@@ -17,6 +17,7 @@ import SniperSignal from '@/components/SniperSignal';
 import ManualInput from '@/components/ManualInput';
 import WheelMap from '@/components/WheelMap';
 import Scanner500 from '@/components/Scanner500';
+import BacktestPanel from '@/components/BacktestPanel';
 import PatternPanel24h from '@/components/PatternPanel24h';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -500,6 +501,7 @@ const Index = () => {
                 <PullRadar pullPatterns={sniperData?.pullPatterns || []} latestNumber={allNumbers[0] ?? 0} />
                 <Scanner500 layerResults={sniperData?.layerResults || null} isScanning={false} />
                 <PatternPanel24h sniperData={sniperData} />
+                <BacktestPanel />
               </div>
             </CollapsibleSection>
 
