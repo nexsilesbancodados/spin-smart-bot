@@ -261,84 +261,121 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
           </div>
         )}
 
-        {/* ═══ JOGADA PRINCIPAL — Hero compacto ═══ */}
+        {/* ═══ JOGADA PRINCIPAL — Instruções claras ═══ */}
         <div className="px-4 py-3">
-          <div className="flex items-center gap-4">
-            {/* Número principal */}
-            <div className="relative shrink-0">
+          {/* PASSO 1: O que apostar */}
+          <div className="bg-secondary/40 rounded-xl border border-border/40 p-3 mb-3">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[9px] font-black text-primary bg-primary/15 px-2 py-0.5 rounded-md">PASSO 1</span>
+              <span className="text-[10px] font-bold text-foreground/80">TIPO DE APOSTA</span>
+            </div>
+            <div className="flex items-center gap-3">
+              {betTypeInfo ? (
+                <span className="text-base font-black text-foreground">
+                  {betTypeInfo.emoji} {betTypeInfo.label.toUpperCase()}
+                </span>
+              ) : (
+                <span className="text-base font-black text-foreground">🎯 PLENO / DIRETO</span>
+              )}
+              {ai?.marketAnalysis?.bestMarket && (
+                <span className="text-[9px] text-muted-foreground ml-auto">→ {ai.marketAnalysis.bestMarket}</span>
+              )}
+            </div>
+          </div>
+
+          {/* PASSO 2: Números para cobrir */}
+          <div className="bg-secondary/40 rounded-xl border border-border/40 p-3 mb-3">
+            <div className="flex items-center gap-2 mb-2.5">
+              <span className="text-[9px] font-black text-primary bg-primary/15 px-2 py-0.5 rounded-md">PASSO 2</span>
+              <span className="text-[10px] font-bold text-foreground/80">CUBRA ESTES {finalNumbers.length} NÚMEROS</span>
+            </div>
+            
+            {/* Número principal destacado */}
+            <div className="flex items-center gap-3 mb-2.5">
               <motion.div
                 animate={displayProb >= 85 ? { scale: [1, 1.04, 1] } : {}}
                 transition={{ duration: 1.5, repeat: Infinity }}
-                className={`w-[72px] h-[72px] rounded-full flex items-center justify-center text-3xl font-black shadow-2xl ring-4 ${numColor(ensTop1)} ${
+                className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black shadow-2xl ring-3 ${numColor(ensTop1)} ${
                   displayProb >= 85 ? 'ring-neon-green/60 shadow-neon-green/30' : 'ring-primary/30'
                 }`}
               >
                 {ensTop1}
               </motion.div>
-            </div>
-
-            {/* Ação + Números */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className={`w-4 h-4 ${action.color}`} />
+              <div>
+                <span className="text-[9px] text-muted-foreground block">⭐ Número principal</span>
                 <span className={`text-sm font-black ${action.color}`}>{action.label}</span>
-                {betTypeInfo && (
-                  <span className="text-[8px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 ml-auto">
-                    {betTypeInfo.emoji} {betTypeInfo.label}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-1.5">
-                {finalNumbers.map((n: number, i: number) => {
-                  const isMain = n === ensTop1;
-                  return (
-                    <motion.div
-                      key={n}
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: i * 0.03 }}
-                      className={`flex items-center justify-center rounded-full font-black shadow-md
-                        ${isMain ? 'w-9 h-9 text-xs ring-2' : 'w-7 h-7 text-[10px] ring-1'}
-                        ${numColor(n)}
-                        ${isMain ? (displayProb >= 85 ? 'ring-neon-green' : 'ring-primary') : 'ring-white/10 opacity-80'}
-                      `}
-                    >
-                      {n}
-                    </motion.div>
-                  );
-                })}
               </div>
             </div>
+
+            {/* Todos os números com instrução */}
+            <div className="flex flex-wrap gap-1.5">
+              {finalNumbers.map((n: number, i: number) => {
+                const isMain = n === ensTop1;
+                return (
+                  <motion.div
+                    key={n}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: i * 0.03 }}
+                    className={`flex items-center justify-center rounded-full font-black shadow-md
+                      ${isMain ? 'w-9 h-9 text-xs ring-2' : 'w-7 h-7 text-[10px] ring-1'}
+                      ${numColor(n)}
+                      ${isMain ? (displayProb >= 85 ? 'ring-neon-green' : 'ring-primary') : 'ring-white/10 opacity-80'}
+                    `}
+                  >
+                    {n}
+                  </motion.div>
+                );
+              })}
+            </div>
+            <p className="text-[9px] text-muted-foreground mt-2">
+              👆 Coloque 1 ficha em CADA número acima na mesa
+            </p>
           </div>
 
-          {/* Descrição da jogada */}
+          {/* PASSO 3: Confiança */}
+          <div className="bg-secondary/40 rounded-xl border border-border/40 p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[9px] font-black text-primary bg-primary/15 px-2 py-0.5 rounded-md">PASSO 3</span>
+              <span className="text-[10px] font-bold text-foreground/80">CONFIANÇA DA IA</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-2.5 bg-secondary rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${displayProb}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                  className={`h-full rounded-full ${
+                    displayProb >= 85 ? 'bg-neon-green' : displayProb >= 65 ? 'bg-primary' : 'bg-yellow-400'
+                  }`}
+                />
+              </div>
+              <span className={`text-2xl font-black font-mono ${action.color}`}>{displayProb}%</span>
+            </div>
+            <p className="text-[9px] text-muted-foreground mt-1">
+              {displayProb >= 85 ? '🔥 Confiança ALTA — pode apostar mais forte' 
+                : displayProb >= 65 ? '✅ Confiança boa — aposta normal recomendada'
+                : displayProb >= 45 ? '⚡ Confiança moderada — aposta mínima'
+                : '🎯 Confiança baixa — considere pular'}
+            </p>
+          </div>
+
+          {/* Descrição extra da IA */}
           {ai?.betDescription && (
-            <p className="text-[11px] text-primary/70 mt-2 leading-snug font-medium">{ai.betDescription}</p>
+            <div className="mt-2 px-1">
+              <p className="text-[10px] text-primary/70 leading-snug font-medium italic">💡 {ai.betDescription}</p>
+            </div>
           )}
         </div>
 
-        {/* ═══ BARRA DE ASSERTIVIDADE ═══ */}
-        <div className="px-4 py-2.5 border-t border-border/20 bg-secondary/20 flex items-center justify-between">
+        {/* ═══ RESUMO RÁPIDO ═══ */}
+        <div className="px-4 py-2 border-t border-border/20 bg-secondary/20 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Brain className="w-3.5 h-3.5 text-primary/60" />
-            <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">
-              {finalNumbers.length} nums • paga {Math.max(1, 36 - finalNumbers.length)}x
-              {lastNumber !== undefined && ` • último: ${lastNumber}`}
+            <span className="text-[9px] font-bold text-muted-foreground">
+              💰 Se acertar: paga <strong className="text-foreground">{Math.max(1, Math.round(35 / finalNumbers.length))}x</strong> o valor apostado
+              {lastNumber !== undefined && <> • Último saiu: <strong className="text-foreground">{lastNumber}</strong></>}
             </span>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-20 h-1.5 bg-secondary rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${displayProb}%` }}
-                transition={{ duration: 0.8, ease: 'easeOut' }}
-                className={`h-full rounded-full ${
-                  displayProb >= 85 ? 'bg-neon-green' : displayProb >= 65 ? 'bg-primary' : 'bg-yellow-400'
-                }`}
-              />
-            </div>
-            <span className={`text-xl font-black font-mono ${action.color}`}>{displayProb}%</span>
           </div>
         </div>
 
