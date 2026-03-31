@@ -84,6 +84,37 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
 
   const reedStopped = reedCount >= 4;
 
+  // ── KILL SWITCH from Omni-Core ──────────────────────
+  if (sniperData?.killSwitch) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+        <div className="bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-6 text-center">
+          <div className="text-4xl mb-3">🛡️</div>
+          <p className="text-sm font-black text-destructive mb-2">PROTEÇÃO DE BANCA ATIVADA</p>
+          <p className="text-xs text-muted-foreground">{sniperData.killReason || 'Anomalia detectada — sinais suspensos por 5 giros'}</p>
+          {sniperData.temperature && (
+            <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary border border-border text-[10px] font-bold text-muted-foreground">
+              🌡️ Mesa {sniperData.temperature.toUpperCase()}
+            </div>
+          )}
+        </div>
+        {sniperData.agents && (
+          <div className="grid grid-cols-3 gap-2">
+            {Object.entries(sniperData.agents as Record<string, any>).map(([id, agent]: [string, any]) => (
+              <div key={id} className="bg-card rounded-xl border border-border/50 p-2.5 text-center">
+                <div className="text-[8px] font-black text-muted-foreground uppercase tracking-wider mb-1">
+                  {id === 'statistical' ? '📊 Estatístico' : id === 'ballistic' ? '🎯 Balístico' : '🔄 Reversão'}
+                </div>
+                <div className="text-[11px] font-black text-destructive">{agent.winRate}</div>
+                <div className="text-[7px] text-muted-foreground">streak: {agent.streak > 0 ? `+${agent.streak}` : agent.streak}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+    );
+  }
+
   const { ensTop1, finalNumbers, displayProb, analysisDetail, streakInfo, recentWR } = useMemo(() => {
     if (!sniperData?.signal || !sniperData?.strategy) {
       return { ensTop1: 0, finalNumbers: [], displayProb: 0, analysisDetail: null };
@@ -351,6 +382,18 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
             <span className="text-[11px] font-bold text-foreground/70">
               Paga: <b className="text-foreground">{payout}x</b>
             </span>
+        {sniperData?.entryForce && (
+          <>
+            <span className="text-border/60">·</span>
+            <span className={`text-[11px] font-bold inline-flex items-center gap-1 ${
+              sniperData.entryForce === 'forte' ? 'text-green-400' :
+              sniperData.entryForce === 'padrao' ? 'text-primary' : 'text-muted-foreground'
+            }`}>
+              {sniperData.entryForce === 'forte' ? '🔥' : sniperData.entryForce === 'padrao' ? '✅' : '👁️'}
+              {' '}Entrada {sniperData.entryForce.charAt(0).toUpperCase() + sniperData.entryForce.slice(1)}
+            </span>
+          </>
+        )}
             {recentWR !== null && (
               <>
                 <span className="text-border/60">·</span>
@@ -369,6 +412,58 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
             )}
           </div>
         </div>
+
+    {/* ── OMNI-CORE: Agentes + Temperatura ─────────────── */}
+    {sniperData?.agents && sniperData?.omniCore && (
+      <div className="rounded-xl border border-border/40 bg-card/50 overflow-hidden">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border/20 bg-secondary/10">
+          <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">⚙️ OMNI-CORE</span>
+          {sniperData.temperature && (
+            <span className={`ml-auto text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+              sniperData.temperature === 'quente' ? 'bg-green-500/10 text-green-400 border-green-500/30' :
+              sniperData.temperature === 'morna' ? 'bg-primary/10 text-primary border-primary/30' :
+              sniperData.temperature === 'fria' ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' :
+              'bg-destructive/10 text-destructive border-destructive/30'
+            }`}>
+              🌡️ {sniperData.temperature.toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-3 gap-px bg-border/20">
+          {Object.entries(sniperData.agents as Record<string, any>).map(([id, agent]: [string, any]) => {
+            const isWinner = sniperData.strategy?.type && (
+              (id === 'statistical' && /duzia|coluna|cor/.test(sniperData.strategy.type)) ||
+              (id === 'ballistic' && /setor|vizinho/.test(sniperData.strategy.type)) ||
+              (id === 'reversion' && /revers|paridade|alto_baixo|cor/.test(sniperData.strategy.type))
+            );
+            return (
+              <div key={id} className={`p-2.5 text-center ${isWinner ? 'bg-primary/5' : 'bg-card/80'}`}>
+                <div className="text-[8px] font-black text-muted-foreground uppercase tracking-wider mb-1">
+                  {id === 'statistical' ? '📊 ESTAT' : id === 'ballistic' ? '🎯 BALÍST' : '🔄 REVERS'}
+                </div>
+                <div className={`text-[12px] font-black font-mono ${
+                  isWinner ? 'text-primary' : 'text-foreground/70'
+                }`}>{agent.winRate}</div>
+                <div className="flex items-center justify-center gap-1 mt-0.5">
+                  <div className={`h-1 rounded-full flex-1 max-w-[40px] ${
+                    agent.weight > 1.2 ? 'bg-green-500' : agent.weight > 0.7 ? 'bg-primary/50' : 'bg-destructive/50'
+                  }`} style={{ width: `${Math.min(100, agent.weight * 50)}%` }} />
+                  <span className="text-[7px] text-muted-foreground font-mono">{agent.weight?.toFixed(1)}</span>
+                </div>
+                {isWinner && <div className="text-[7px] text-primary font-bold mt-0.5">🏆 ATIVO</div>}
+              </div>
+            );
+          })}
+        </div>
+        {sniperData.arbiterLog && (
+          <div className="px-3 py-2 border-t border-border/20 space-y-0.5">
+            {(sniperData.arbiterLog as string[]).slice(0, 3).map((log: string, i: number) => (
+              <div key={i} className="text-[8px] text-muted-foreground font-mono truncate">{log}</div>
+            ))}
+          </div>
+        )}
+      </div>
+    )}
 
         {/* ── TOP CANDIDATOS ────────────────────────────────── */}
         {topCandidates.length > 1 && !isSimpleMarket && (
