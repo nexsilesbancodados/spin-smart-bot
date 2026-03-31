@@ -454,8 +454,8 @@ const Index = () => {
     let currentChannel: ReturnType<typeof supabase.channel> | null = null;
 
     const connect = () => {
-      if (currentChannel) supabase.removeChannel(currentChannel);
-      currentChannel = supabase.channel('resultados_rt')
+      if (currentChannel) { try { supabase.removeChannel(currentChannel); } catch {} currentChannel = null; }
+      currentChannel = supabase.channel(`resultados_rt_${Date.now()}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'resultados_roleta' }, (payload: any) => {
         const row = payload?.new;
         if (row?.numero !== undefined) {
