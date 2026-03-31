@@ -176,6 +176,8 @@ const Index = () => {
     riskLevel: 'moderado' as 'conservador' | 'moderado' | 'agressivo',
     betTypes: ['cor', 'duzia', 'coluna', 'setor', 'vizinhos', 'terminal', 'paridade', 'pleno'],
   });
+  const [activeStrategyId, setActiveStrategyId] = useState<StrategyId | 'auto'>('auto');
+  const [betHistoryForMonitor, setBetHistoryForMonitor] = useState<{ won: boolean; amount: number; profit: number; timestamp: number }[]>([]);
   const rtRetryRef = useRef(0);
 
   const handleManualNumbers = (nums: number[]) => {
