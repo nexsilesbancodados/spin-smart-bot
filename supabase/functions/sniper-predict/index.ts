@@ -646,17 +646,17 @@ Deno.serve(async (req) => {
 
   try {
     // Parse request body — accepts sampleSize and optional clientNumbers for instant reaction
-    let sampleSize = 100;
+    let sampleSize = 500;
     let clientNumbers: number[] | null = null;
     let strategyFilterParam: string | null = null;
     try {
       const body = await req.json();
       if (body?.sampleSize && typeof body.sampleSize === 'number') {
-        sampleSize = Math.max(10, Math.min(500, Math.round(body.sampleSize)));
+        sampleSize = Math.max(50, Math.min(1000, Math.round(body.sampleSize)));
       }
       // Accept client-side numbers for faster response (before DB sync)
       if (body?.numbers && Array.isArray(body.numbers)) {
-        clientNumbers = body.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 500);
+        clientNumbers = body.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 1000);
       }
       // Strategy category filter from UI
       if (body?.strategyFilter && typeof body.strategyFilter === 'string') {
@@ -666,7 +666,7 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const fetchLimit = Math.max(sampleSize, 200); // always fetch at least 200 for backtest depth
+    const fetchLimit = Math.max(sampleSize, 1000); // always fetch max history for deep analysis
     // Fetch data from ALL tables + AI learned patterns + predictions in parallel
     const [numbersRes, historicoRes, resultadosRes, learnedRes, unresolvedRes, resolvedRes, insightsRes] = await Promise.all([
       supabase.from('roulette_numbers').select('number, fetched_at').order('fetched_at', { ascending: false }).limit(fetchLimit),
@@ -707,7 +707,7 @@ Deno.serve(async (req) => {
 
     // MERGE: If client sent numbers, prepend any that aren't in DB yet (instant reaction)
     let numbers: number[];
-    let entries = normalizedEntries.slice(0, sampleSize);
+    let entries = normalizedEntries; // use ALL available history
     if (clientNumbers && clientNumbers.length >= 5) {
       // Client numbers are already in order (newest first) — use them as primary
       // But merge with DB for deeper history
@@ -721,11 +721,9 @@ Deno.serve(async (req) => {
         }
       }
       if (overlapIdx >= 0 && overlapIdx > 0) {
-        numbers = [...clientNumbers.slice(0, overlapIdx), ...dbNums].slice(0, sampleSize);
+        numbers = [...clientNumbers.slice(0, overlapIdx), ...dbNums];
       } else {
-        const clientSlice = clientNumbers.slice(0, sampleSize);
-        const remaining = sampleSize - clientSlice.length;
-        numbers = remaining > 0 ? [...clientSlice, ...dbNums.slice(0, remaining)] : clientSlice;
+        numbers = [...clientNumbers, ...dbNums.filter(n => !clientNumbers!.includes(n))];
       }
     } else {
       numbers = entries.map(e => e.number);
