@@ -7045,12 +7045,9 @@ Responda APENAS JSON:
 }`;
 
         // =====================================================
-        // MEGA MULTI-AI CONSENSUS ENGINE — POTENCIAL MÁXIMO
-        // Lovable AI (Gemini 2.5 Pro/Flash + GPT-5) + DeepSeek + NVIDIA (50+ modelos)
-        // Votação cruzada: números que aparecem em 2+ IAs ganham boost
+        // MULTI-AI CONVERGENCE ENGINE v2 — IAs Especialistas + Juiz
+        // 8 IAs com perspectivas diferentes → Juiz Supremo decide
         // =====================================================
-        const NVIDIA_API_KEY = Deno.env.get("NVIDIA_API_KEY");
-        const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
 
         // Dynamic AI focus based on user-selected analysis type
         const filterLabels: Record<string, string> = {
