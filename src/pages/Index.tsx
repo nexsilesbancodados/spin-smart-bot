@@ -574,7 +574,7 @@ const Index = () => {
                       {lim}
                     </button>
                   ))}
-                  <ManualInput onAddNumbers={handleManualNumbers} />
+                  
                 </div>
 
                 {error && <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-2 text-[10px] text-destructive font-semibold">⚠️ {error}</div>}
