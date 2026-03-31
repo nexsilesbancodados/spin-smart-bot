@@ -1049,6 +1049,7 @@ const Index = () => {
         {/* ── ABA: ANÁLISE / PADRÕES ─────────────────────────────────────── */}
         {activeTab === 'padroes' && (
           <div className="space-y-3">
+            <UnifiedAnalysis sniperData={sniperData} allNumbers={allNumbers} />
             <PatternsTab allNumbers={allNumbers} sniperData={sniperData} streakNum={streakNum} streakLen={streakLen} streakActive={streakActive} zeroPressure={zeroPressure} hotTerm={hotTerm} pull={PULL} />
           </div>
         )}
