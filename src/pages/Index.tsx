@@ -205,15 +205,14 @@ const Index = () => {
     setSniperStale(false);
     setSniperCountdown(14); // ← 14 segundos exatos para apostar
     playSound('signal', soundEnabled);
-    // Dispara sniper IMEDIATAMENTE — prioridade máxima
     if (aiEnabled) {
-      // Sniper first (blocking), then patterns in background
-      fetchSniper();
+      // Dispara sniper IMEDIATAMENTE via ref (evita forward-reference)
+      fetchSniperRef.current?.();
       supabase.functions.invoke('realtime-patterns')
         .then(res => { if (res.data?.all_insights?.length > 0) setRtInsights(res.data.all_insights.slice(0, 6)); })
         .catch(() => {});
     }
-  }, [soundEnabled, aiEnabled, fetchSniper]);
+  }, [soundEnabled, aiEnabled]);
 
   const triggerMicroLearn = useCallback(async () => {
     if (!aiEnabled) return;
