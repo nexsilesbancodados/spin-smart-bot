@@ -162,7 +162,7 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
     })();
 
     const recentWR = typeof sniperData?.recentWinRate === 'number' ? Math.round(sniperData.recentWinRate * 100) : null;
-    return { ensTop1: top1, finalNumbers: nums, displayProb: rawProb, analysisDetail: detail, streakInfo, recentWR };
+    return { ensTop1: top1, finalNumbers: nums, displayProb: rawProb, analysisDetail: detail, streakInfo, recentWR, fusionTop5: ft5 };
   }, [sniperData, strategyFilter, allNumbers]);
 
   // ── KILL SWITCH from Omni-Core (after all hooks) ───
