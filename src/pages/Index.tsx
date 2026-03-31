@@ -399,9 +399,11 @@ const Index = () => {
 
     const connect = () => {
       if (currentChannel) {
-        supabase.removeChannel(currentChannel);
+        try { supabase.removeChannel(currentChannel); } catch {}
+        currentChannel = null;
       }
-      currentChannel = supabase.channel('sniper_trigger_rt')
+      const channelName = `sniper_trigger_rt_${Date.now()}`;
+      currentChannel = supabase.channel(channelName)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'roulette_numbers' }, (payload: any) => {
         const row = payload?.new;
         if (typeof row?.number === 'number') {
