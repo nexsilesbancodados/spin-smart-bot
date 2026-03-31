@@ -39,6 +39,8 @@ const BET_TYPE_LABELS: Record<string, { emoji: string; label: string; desc: stri
   jeu_zero: { emoji: '🟢', label: 'Jeu Zéro', desc: 'Aposte no Jeu Zéro' },
   final: { emoji: '🔚', label: 'Final', desc: 'Aposte nos finais' },
   combinado: { emoji: '🧬', label: 'Combinado', desc: 'Aposta combinada' },
+  fusion_top5: { emoji: '🎯', label: 'Fusão Top 5', desc: 'Convergência máxima de 7 modelos' },
+  grupo: { emoji: '🔢', label: 'Grupo', desc: 'Grupo de números convergentes' },
 };
 
 interface Props {
@@ -84,13 +86,14 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
 
   const reedStopped = reedCount >= 4;
 
-  const { ensTop1, finalNumbers, displayProb, analysisDetail, streakInfo, recentWR } = useMemo(() => {
+  const { ensTop1, finalNumbers, displayProb, analysisDetail, streakInfo, recentWR, fusionTop5 } = useMemo(() => {
     if (!sniperData?.signal || !sniperData?.strategy) {
-      return { ensTop1: 0, finalNumbers: [], displayProb: 0, analysisDetail: null };
+      return { ensTop1: 0, finalNumbers: [], displayProb: 0, analysisDetail: null, fusionTop5: [] };
     }
-    const top1 = sniperData.ensemble?.top1 ?? sniperData.topCandidates?.[0]?.num ?? sniperData.strategy.numbers[0];
-    const nums: number[] = sniperData.strategy.numbers || [];
-    const rawProb = sniperData.signal.probability || 0;
+    const top1 = sniperData.fusionTop5?.[0]?.number ?? sniperData.ensemble?.top1 ?? sniperData.topCandidates?.[0]?.num ?? sniperData.strategy.numbers[0];
+    const nums: number[] = sniperData.fusionTop5 ? sniperData.fusionTop5.map((t: any) => t.number) : (sniperData.strategy.numbers || []);
+    const rawProb = sniperData.fusionConfidence ?? sniperData.signal.probability ?? 0;
+    const ft5 = sniperData.fusionTop5 || [];
 
     const bt = sniperData.aiReasoning?.betType || sniperData.strategy?.type || '';
     let detail: { type: string; label: string; visual: string; colorClass: string } | null = null;
@@ -144,8 +147,8 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
       detail = { type: 'pleno', label: `Pleno ${top1}`, visual: '💎', colorClass: 'bg-yellow-600/20 text-yellow-400 border-yellow-500/40' };
     } else if (bt === 'vizinhos' || strategyFilter === 'vizinhos' || bt === 'puxada' || strategyFilter === 'puxada') {
       detail = { type: bt || strategyFilter, label: bt === 'puxada' || strategyFilter === 'puxada' ? 'Puxadas' : 'Vizinhos', visual: bt === 'puxada' || strategyFilter === 'puxada' ? '🧲' : '🎯', colorClass: 'bg-pink-600/20 text-pink-400 border-pink-500/40' };
-    } else if (bt === 'fusao' || strategyFilter === 'fusao') {
-      detail = { type: 'fusao', label: 'Fusão Multi-IA', visual: '🧬', colorClass: 'bg-violet-600/20 text-violet-400 border-violet-500/40' };
+    } else if (bt === 'fusao' || bt === 'fusion_top5' || strategyFilter === 'fusao') {
+      detail = { type: 'fusao', label: 'Fusão Top 5 — 7 Modelos', visual: '🎯', colorClass: 'bg-violet-600/20 text-violet-400 border-violet-500/40' };
     }
 
     const streakInfo = (() => {
@@ -159,7 +162,7 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
     })();
 
     const recentWR = typeof sniperData?.recentWinRate === 'number' ? Math.round(sniperData.recentWinRate * 100) : null;
-    return { ensTop1: top1, finalNumbers: nums, displayProb: rawProb, analysisDetail: detail, streakInfo, recentWR };
+    return { ensTop1: top1, finalNumbers: nums, displayProb: rawProb, analysisDetail: detail, streakInfo, recentWR, fusionTop5: ft5 };
   }, [sniperData, strategyFilter, allNumbers]);
 
   // ── KILL SWITCH from Omni-Core (after all hooks) ───
@@ -344,31 +347,72 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
                   </motion.div>
                   <div>
                     <p className="text-xl font-black text-foreground leading-none">{primaryCall}</p>
-                    <p className="text-[11px] text-muted-foreground mt-1">Aposte nesses para a próxima rodada</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {fusionTop5.length > 0 ? `Fusão de ${sniperData?.totalModels || 7} modelos → Top 5` : 'Aposte nesses para a próxima rodada'}
+                    </p>
                   </div>
                 </div>
 
-                {/* Number pills */}
-                <div className="flex flex-wrap gap-2">
-                  {compactNumbers.map((n: number, i: number) => (
-                    <motion.div
-                      key={n}
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: i * 0.05 }}
-                      className={`h-11 min-w-11 px-3 rounded-xl flex items-center justify-center text-[15px] font-black text-white bg-gradient-to-br ${numGradient(n)} ${
-                        i === 0 ? 'ring-2 ring-primary/50 shadow-md shadow-primary/15' : 'ring-1 ring-white/10'
-                      }`}
-                    >
-                      {n}
-                    </motion.div>
-                  ))}
-                  {remainingCount > 0 && (
-                    <div className="h-11 px-4 rounded-xl flex items-center justify-center text-sm font-bold bg-secondary/50 text-muted-foreground border border-border/40">
-                      +{remainingCount}
-                    </div>
-                  )}
-                </div>
+                {/* FUSION TOP 5 with voter details */}
+                {fusionTop5.length > 0 ? (
+                  <div className="space-y-2">
+                    {fusionTop5.map((t: any, i: number) => (
+                      <motion.div
+                        key={t.number}
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: i * 0.06 }}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${
+                          i === 0 ? 'bg-primary/10 border-primary/30 ring-1 ring-primary/20' : 'bg-card border-border/50'
+                        }`}
+                      >
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-[15px] font-black text-white bg-gradient-to-br ${numGradient(t.number)} ${
+                          i === 0 ? 'ring-2 ring-primary/50 shadow-md shadow-primary/15' : 'ring-1 ring-white/10'
+                        }`}>
+                          {t.number}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[11px] font-black ${i === 0 ? 'text-primary' : 'text-foreground'}`}>
+                              #{i + 1}
+                            </span>
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-secondary border border-border/30 font-bold text-muted-foreground">
+                              {t.voterCount} modelo{t.voterCount > 1 ? 's' : ''}
+                            </span>
+                            <span className="text-[9px] font-mono text-muted-foreground ml-auto">
+                              score: {t.score}
+                            </span>
+                          </div>
+                          <p className="text-[8px] text-muted-foreground mt-0.5 truncate">
+                            {t.voters?.join(', ')}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  /* Fallback: original number pills */
+                  <div className="flex flex-wrap gap-2">
+                    {compactNumbers.map((n: number, i: number) => (
+                      <motion.div
+                        key={n}
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: i * 0.05 }}
+                        className={`h-11 min-w-11 px-3 rounded-xl flex items-center justify-center text-[15px] font-black text-white bg-gradient-to-br ${numGradient(n)} ${
+                          i === 0 ? 'ring-2 ring-primary/50 shadow-md shadow-primary/15' : 'ring-1 ring-white/10'
+                        }`}
+                      >
+                        {n}
+                      </motion.div>
+                    ))}
+                    {remainingCount > 0 && (
+                      <div className="h-11 px-4 rounded-xl flex items-center justify-center text-sm font-bold bg-secondary/50 text-muted-foreground border border-border/40">
+                        +{remainingCount}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -376,7 +420,7 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
           {/* Stats bar */}
           <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border/20 bg-secondary/10 flex-wrap">
             <span className="text-[11px] font-bold text-foreground/70">
-              Cobertura: <b className="text-foreground">{finalNumbers.length} números</b>
+              {fusionTop5.length > 0 ? 'Top 5 Fusão' : `Cobertura: ${finalNumbers.length} números`}
             </span>
             <span className="text-border/60">·</span>
             <span className="text-[11px] font-bold text-foreground/70">
