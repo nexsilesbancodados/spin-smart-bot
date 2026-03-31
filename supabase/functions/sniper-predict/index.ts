@@ -6737,7 +6737,7 @@ serve(async (req) => {
     ])].slice(0, 7);
 
     // ========================================================
-    // 🧠 AI DEEP LEARNING LAYER — Lovable AI analyzes + learns + predicts
+    // 🧠 AI DEEP LEARNING LAYER — DeepSeek analyzes + learns + predicts
     // ========================================================
     let aiReasoning: string | null = null;
     let aiAdjustedNumbers: number[] | null = null;
@@ -6752,7 +6752,7 @@ serve(async (req) => {
     let aiMarketAnalysis: any = null;
     
     try {
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY"); // kept for supabase auth only
+      // DeepSeek only — no Lovable AI
       if (numbers.length >= 15) {
         const last30 = numbers.slice(0, 30);
         const last5Terms = last30.slice(0, 5).map(n => n % 10);
@@ -7173,9 +7173,8 @@ REGRAS ABSOLUTAS:
         // ROUND 1: 8 IAs ANALISAM INDEPENDENTEMENTE
         // Cada uma com uma "personalidade" analítica diferente
         // =====================================================
-        const LAI_KEY = Deno.env.get("LOVABLE_API_KEY");
-        const LAI_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
         const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+        const DS_URL = 'https://api.deepseek.com/chat/completions';
 
         const specialistPrompts: Record<string, string> = {
           'Estatístico': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Análise estatística pura. Foque em frequências, desvios, Lei do Terço, dívida estatística. Ignore intuição — apenas matemática fria.`,
@@ -7190,22 +7189,17 @@ REGRAS ABSOLUTAS:
 
         const round1Calls: Promise<AiResult>[] = [];
 
-        if (LAI_KEY) {
-          const laiH = { "Authorization": `Bearer ${LAI_KEY}` };
-          // 8 specialists using diverse models
-          round1Calls.push(callAi('Estatístico', LAI_URL, laiH, 'google/gemini-2.5-pro', specialistPrompts['Estatístico'], aiPrompt, 0.10));
-          round1Calls.push(callAi('Físico', LAI_URL, laiH, 'google/gemini-3.1-pro-preview', specialistPrompts['Físico'], aiPrompt, 0.12));
-          round1Calls.push(callAi('Padrões', LAI_URL, laiH, 'google/gemini-3-flash-preview', specialistPrompts['Padrões'], aiPrompt, 0.15));
-          round1Calls.push(callAi('Puxadas', LAI_URL, laiH, 'openai/gpt-5-mini', specialistPrompts['Puxadas'], aiPrompt, 0.10));
-          round1Calls.push(callAi('Contrarian', LAI_URL, laiH, 'google/gemini-2.5-flash', specialistPrompts['Contrarian'], aiPrompt, 0.20));
-          round1Calls.push(callAi('Momentum', LAI_URL, laiH, 'openai/gpt-5-nano', specialistPrompts['Momentum'], aiPrompt, 0.15));
-          round1Calls.push(callAi('Convergência', LAI_URL, laiH, 'openai/gpt-5', specialistPrompts['Convergência'], aiPrompt, 0.08));
-          round1Calls.push(callAi('Mercados', LAI_URL, laiH, 'google/gemini-2.5-flash-lite', specialistPrompts['Mercados'], aiPrompt, 0.12));
-        }
-
         if (DEEPSEEK_API_KEY) {
-          round1Calls.push(callAi('DeepSeek-Fusão', 'https://api.deepseek.com/chat/completions',
-            { "Authorization": `Bearer ${DEEPSEEK_API_KEY}` }, 'deepseek-chat', specialistPrompts['Convergência'], aiPrompt, 0.10));
+          const dsH = { "Authorization": `Bearer ${DEEPSEEK_API_KEY}` };
+          // 8 specialists ALL using DeepSeek
+          round1Calls.push(callAi('Estatístico', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Estatístico'], aiPrompt, 0.10));
+          round1Calls.push(callAi('Físico', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Físico'], aiPrompt, 0.12));
+          round1Calls.push(callAi('Padrões', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Padrões'], aiPrompt, 0.15));
+          round1Calls.push(callAi('Puxadas', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Puxadas'], aiPrompt, 0.10));
+          round1Calls.push(callAi('Contrarian', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Contrarian'], aiPrompt, 0.20));
+          round1Calls.push(callAi('Momentum', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Momentum'], aiPrompt, 0.15));
+          round1Calls.push(callAi('Convergência', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Convergência'], aiPrompt, 0.08));
+          round1Calls.push(callAi('Mercados', DS_URL, dsH, 'deepseek-chat', specialistPrompts['Mercados'], aiPrompt, 0.12));
         }
 
         console.log(`Multi-AI Round 1: Dispatching ${round1Calls.length} specialist AIs...`);
@@ -7237,7 +7231,7 @@ REGRAS ABSOLUTAS:
         // Um modelo top analisa o consenso e emite o veredito final
         // =====================================================
         let judgeResult: AiResult | null = null;
-        if (aiResults.length >= 2 && LAI_KEY) {
+        if (aiResults.length >= 2 && DEEPSEEK_API_KEY) {
           const round1Summary = aiResults.map(r => {
             const p = r.parsed;
             return `[${r.source}] números: [${(p.numbers || []).join(',')}] | tipo: ${p.betType || '?'} | confiança: ${p.confidence || '?'}% | razão: ${(p.suggestedBet || p.reasoning || '').slice(0, 100)} | padrão: ${(p.patternIdentified || '').slice(0, 60)}`;
@@ -7316,14 +7310,14 @@ Responda APENAS JSON:
 }`;
 
           try {
-            const laiH = { "Authorization": `Bearer ${LAI_KEY}` };
-            judgeResult = await callAi('Juiz-Supremo', LAI_URL, laiH, 'openai/gpt-5.2', judgeSystem, judgePrompt, 0.05);
+            const dsH = { "Authorization": `Bearer ${DEEPSEEK_API_KEY}` };
+            judgeResult = await callAi('Juiz-Supremo', DS_URL, dsH, 'deepseek-chat', judgeSystem, judgePrompt, 0.05);
             if (judgeResult.ok) {
               console.log(`Multi-AI Round 2: Judge succeeded — consensus=${judgeResult.parsed?.consensusStrength || '?'}`);
             } else {
-              // Fallback: try with Gemini
-              judgeResult = await callAi('Juiz-Gemini', LAI_URL, laiH, 'google/gemini-2.5-pro', judgeSystem, judgePrompt, 0.05);
-              if (judgeResult.ok) console.log(`Multi-AI Round 2: Judge fallback succeeded`);
+              // Retry once
+              judgeResult = await callAi('Juiz-Retry', DS_URL, dsH, 'deepseek-chat', judgeSystem, judgePrompt, 0.08);
+              if (judgeResult.ok) console.log(`Multi-AI Round 2: Judge retry succeeded`);
             }
           } catch (judgeErr) {
             console.error('Judge round failed:', judgeErr);
