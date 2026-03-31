@@ -2,7 +2,7 @@
 // REALTIME PATTERNS — Captura padrões DO MOMENTO a cada giro
 // Roda em <500ms, salva no banco, sniper usa imediatamente
 // ============================================================
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
