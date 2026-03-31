@@ -7209,9 +7209,9 @@ REGRAS ABSOLUTAS:
             .map(([num, v]) => ({ num: parseInt(num), ...v, avgConf: v.totalConf / v.count }))
             .sort((a, b) => b.count - a.count || b.avgConf - a.avgConf);
 
-          // Dynamic threshold: with 50+ AIs, require more votes for consensus
+          // With 3-4 focused AIs, require 2+ votes for consensus
           const totalAIs = aiResults.length;
-          const minVotes = totalAIs >= 20 ? 3 : totalAIs >= 8 ? 2 : 2;
+          const minVotes = 2;
           
           // Consensus numbers: voted by minVotes+ AIs
           const consensusNums = votedNumbers.filter(v => v.count >= minVotes).map(v => v.num);
