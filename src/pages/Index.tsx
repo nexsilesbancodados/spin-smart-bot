@@ -19,6 +19,8 @@ import WheelMap from '@/components/WheelMap';
 import Scanner500 from '@/components/Scanner500';
 import BacktestPanel from '@/components/BacktestPanel';
 import PatternPanel24h from '@/components/PatternPanel24h';
+import EngineSignalCard from '@/components/EngineSignalCard';
+import NumberTicker from '@/components/NumberTicker';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
