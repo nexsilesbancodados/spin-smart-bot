@@ -94,7 +94,8 @@ const SubSection = memo(({ title, icon: Icon, color, children, defaultOpen = fal
   );
 });
 
-const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers = [], autoLearnStatus }: Props) => {
+const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers = [], autoLearnStatus, strategyFilter = 'all', setStrategyFilter }: Props) => {
+  const [showAnalysisSelector, setShowAnalysisSelector] = useState(false);
   const [reedCount, setReedCount] = useState(0);
   const prevHitRef = useRef<boolean | null>(null);
 
