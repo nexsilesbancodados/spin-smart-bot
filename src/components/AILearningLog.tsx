@@ -296,7 +296,7 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
       </div>
 
       {/* Log entries */}
-      <div ref={scrollRef} className="space-y-1 max-h-[160px] overflow-y-auto scrollbar-thin pr-1">
+      <div ref={scrollRef} className="space-y-1 max-h-[220px] overflow-y-auto scrollbar-thin pr-1">
         <AnimatePresence initial={false}>
           {logs.map(log => (
             <motion.div
