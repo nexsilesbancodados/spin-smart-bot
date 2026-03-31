@@ -6728,7 +6728,7 @@ serve(async (req) => {
     let aiMarketAnalysis: any = null;
     
     try {
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY"); // kept for supabase auth only
+      // DeepSeek only — no Lovable AI
       if (numbers.length >= 15) {
         const last30 = numbers.slice(0, 30);
         const last100 = numbers.slice(0, Math.min(100, numbers.length));
