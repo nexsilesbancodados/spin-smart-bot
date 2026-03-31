@@ -246,6 +246,7 @@ const Index = () => {
   }, [sampleSize, aiEnabled, apiNumbers, strategyFilter]);
   fetchSniperRef.current = fetchSniper;
 
+  const fetchNumbers = useCallback(async () => {
     try {
       const res = await supabase.functions.invoke('proxy-roleta');
       if (res.error) throw new Error(res.error.message);
