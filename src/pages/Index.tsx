@@ -462,6 +462,8 @@ const Index = () => {
               rtInsights={rtInsights}
               allNumbers={allNumbers}
               autoLearnStatus={autoLearnStatus}
+              strategyFilter={strategyFilter}
+              setStrategyFilter={setStrategyFilter}
             />
           ) : (
             <div className="bg-card rounded-2xl border border-destructive/30 p-12 text-center flex flex-col items-center justify-center">
