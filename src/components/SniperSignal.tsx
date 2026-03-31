@@ -202,6 +202,46 @@ const SniperSignal = memo(({ sniperData, sniperStale, lastPredResult, allNumbers
 
       <div className={reedStopped ? 'opacity-30 pointer-events-none' : ''}>
 
+        {/* ═══ SELETOR DE ANÁLISE ═══ */}
+        <div className="px-5 pt-4 pb-2">
+          <button
+            onClick={() => setShowAnalysisSelector(!showAnalysisSelector)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/60 border border-border/50 hover:bg-secondary transition-colors"
+          >
+            <Target className="w-3.5 h-3.5 text-primary" />
+            <span className="text-[9px] font-black text-primary uppercase tracking-wider">
+              Tipo de Análise: {ANALYSIS_TYPES.find(a => a.value === strategyFilter)?.emoji} {ANALYSIS_TYPES.find(a => a.value === strategyFilter)?.label || 'Auto'}
+            </span>
+            <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${showAnalysisSelector ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {showAnalysisSelector && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {ANALYSIS_TYPES.map(at => (
+                    <button
+                      key={at.value}
+                      onClick={() => { setStrategyFilter?.(at.value); setShowAnalysisSelector(false); }}
+                      className={`text-[9px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${
+                        strategyFilter === at.value
+                          ? 'bg-primary/20 text-primary border-primary/40 ring-1 ring-primary/30'
+                          : 'bg-secondary/40 text-muted-foreground border-border/50 hover:bg-secondary/60'
+                      }`}
+                    >
+                      {at.emoji} {at.label}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         {/* ═══ ① JOGADA SUGERIDA — Hero ═══ */}
         <div className="p-5 pb-3">
           <div className="flex items-center gap-2 mb-3">
