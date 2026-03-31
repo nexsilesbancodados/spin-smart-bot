@@ -134,23 +134,23 @@ const BacktestPanel = memo(() => {
           >
             {/* Summary Cards */}
             <div className="grid grid-cols-4 gap-2">
-              <div className="bg-secondary/30 rounded-lg border border-border/30 p-2.5 text-center">
-                <p className="text-lg font-black text-foreground">{data.totalStrategies}</p>
-                <p className="text-[8px] text-muted-foreground font-bold">IAs</p>
+              <div className="glass rounded-lg border border-border/15 p-2.5 text-center backdrop-blur-sm">
+                <p className="text-lg font-black text-foreground/80">{data.totalStrategies}</p>
+                <p className="text-[7px] text-muted-foreground/40 font-bold">IAs</p>
               </div>
-              <div className="bg-secondary/30 rounded-lg border border-border/30 p-2.5 text-center">
-                <p className="text-lg font-black text-foreground">{data.testedSpins}</p>
-                <p className="text-[8px] text-muted-foreground font-bold">Giros</p>
+              <div className="glass rounded-lg border border-border/15 p-2.5 text-center backdrop-blur-sm">
+                <p className="text-lg font-black text-foreground/80">{data.testedSpins}</p>
+                <p className="text-[7px] text-muted-foreground/40 font-bold">Giros</p>
               </div>
-              <div className="bg-secondary/30 rounded-lg border border-border/30 p-2.5 text-center">
+              <div className="glass rounded-lg border border-border/15 p-2.5 text-center backdrop-blur-sm">
                 <p className="text-lg font-black text-neon-green">{data.strategies[0]?.winRate || 0}%</p>
-                <p className="text-[8px] text-muted-foreground font-bold">Melhor</p>
+                <p className="text-[7px] text-muted-foreground/40 font-bold">Melhor</p>
               </div>
-              <div className="bg-secondary/30 rounded-lg border border-border/30 p-2.5 text-center">
+              <div className="glass rounded-lg border border-border/15 p-2.5 text-center backdrop-blur-sm">
                 <p className="text-lg font-black text-primary">
                   {data.strategies.length > 0 ? (data.strategies.reduce((a, s) => a + s.winRate, 0) / data.strategies.length).toFixed(0) : 0}%
                 </p>
-                <p className="text-[8px] text-muted-foreground font-bold">Média</p>
+                <p className="text-[7px] text-muted-foreground/40 font-bold">Média</p>
               </div>
             </div>
 
