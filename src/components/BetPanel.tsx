@@ -594,34 +594,59 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           )}
         </div>
 
-        {/* Stats grid */}
+        {/* Stats grid — premium */}
         <div className="grid grid-cols-4 gap-2">
-          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
-            className={`glass rounded-xl p-2.5 text-center border transition-all ${stats.profit >= 0 ? 'border-neon-green/15' : 'border-destructive/15'}`}>
-            <DollarSign className="w-3.5 h-3.5 text-muted-foreground/30 mx-auto mb-1" />
-            <p className={`font-bold text-base font-mono ${stats.profit >= 0 ? 'text-neon-green' : 'text-destructive'}`}>
-              R${stats.profit.toFixed(2)}
-            </p>
-            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">LUCRO</span>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-            className="glass rounded-xl p-2.5 text-center border border-border/10 hover:border-primary/15 transition-all">
-            <Target className="w-3.5 h-3.5 text-primary/40 mx-auto mb-1" />
-            <p className="font-bold text-base font-mono text-foreground/80">{winRate}%</p>
-            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">ACERTO</span>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="glass rounded-xl p-2.5 text-center border border-neon-green/10 hover:border-neon-green/20 transition-all">
-            <TrendingUp className="w-3.5 h-3.5 text-neon-green/40 mx-auto mb-1" />
-            <p className="font-bold text-base font-mono text-neon-green">{stats.wins}</p>
-            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">WINS</span>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="glass rounded-xl p-2.5 text-center border border-destructive/10 hover:border-destructive/20 transition-all">
-            <TrendingDown className="w-3.5 h-3.5 text-destructive/40 mx-auto mb-1" />
-            <p className="font-bold text-base font-mono text-destructive">{stats.losses}</p>
-            <span className="text-[7px] text-muted-foreground/40 font-display tracking-wider">LOSSES</span>
-          </motion.div>
+          {[
+            {
+              icon: <DollarSign className="w-4 h-4" />,
+              value: `R$${stats.profit.toFixed(2)}`,
+              label: 'LUCRO',
+              color: stats.profit >= 0 ? 'text-neon-green' : 'text-destructive',
+              border: stats.profit >= 0 ? 'border-neon-green/20 bg-neon-green/[0.03]' : 'border-destructive/20 bg-destructive/[0.03]',
+              glow: stats.profit > 0 ? 'shadow-[0_0_12px_hsl(var(--neon-green)/0.1)]' : '',
+              delay: 0,
+            },
+            {
+              icon: <Target className="w-4 h-4" />,
+              value: `${winRate}%`,
+              label: 'ACERTO',
+              color: parseFloat(winRate) >= 50 ? 'text-neon-green' : parseFloat(winRate) >= 35 ? 'text-gold' : 'text-foreground/80',
+              border: 'border-primary/10 hover:border-primary/25',
+              glow: '',
+              delay: 0.05,
+            },
+            {
+              icon: <TrendingUp className="w-4 h-4" />,
+              value: String(stats.wins),
+              label: 'WINS',
+              color: 'text-neon-green',
+              border: 'border-neon-green/15 bg-neon-green/[0.02]',
+              glow: '',
+              delay: 0.1,
+            },
+            {
+              icon: <TrendingDown className="w-4 h-4" />,
+              value: String(stats.losses),
+              label: 'LOSSES',
+              color: 'text-destructive',
+              border: 'border-destructive/15 bg-destructive/[0.02]',
+              glow: '',
+              delay: 0.15,
+            },
+          ].map((s, i) => (
+            <motion.div
+              key={s.label}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: s.delay }}
+              className={`glass rounded-xl p-3 text-center border transition-all group relative overflow-hidden hover:scale-[1.02] ${s.border} ${s.glow}`}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-transparent to-primary/[0.015] opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className={`mx-auto mb-1 ${s.color} opacity-40`}>{s.icon}</div>
+              <p className={`font-black text-lg font-mono leading-none ${s.color}`}>{s.value}</p>
+              <span className="text-[6px] text-muted-foreground/40 font-display tracking-[0.2em] block mt-1">{s.label}</span>
+            </motion.div>
+          ))}
         </div>
 
         {/* Current bet info */}
