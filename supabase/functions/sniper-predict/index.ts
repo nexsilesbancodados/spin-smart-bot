@@ -707,7 +707,7 @@ Deno.serve(async (req) => {
 
     // MERGE: If client sent numbers, prepend any that aren't in DB yet (instant reaction)
     let numbers: number[];
-    let entries = normalizedEntries.slice(0, sampleSize);
+    let entries = normalizedEntries; // use ALL available history
     if (clientNumbers && clientNumbers.length >= 5) {
       // Client numbers are already in order (newest first) — use them as primary
       // But merge with DB for deeper history
