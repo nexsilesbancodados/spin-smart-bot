@@ -785,32 +785,36 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           )}
         </div>
 
-        {/* Action buttons — bold gradient style */}
+        {/* Action buttons */}
         <div className="flex gap-2.5 pt-1">
-          <Button
-            onClick={placeBet}
-            disabled={!canBet}
-            className={`flex-1 h-12 font-bold tracking-wider text-sm rounded-xl transition-all ${
-              canBet
-                ? 'bg-gradient-to-r from-primary via-pink-500 to-primary hover:opacity-90 text-primary-foreground shadow-lg shadow-primary/30'
-                : 'bg-secondary text-muted-foreground'
-            }`}
-          >
-            <Zap className="w-4 h-4 mr-1.5" />
-            {stats.waitingResult ? 'AGUARDANDO...' : !hasSignal ? 'SEM SINAL' : 'APOSTAR AGORA'}
-          </Button>
+          <motion.div className="flex-1" whileHover={{ scale: canBet ? 1.01 : 1 }} whileTap={{ scale: canBet ? 0.98 : 1 }}>
+            <Button
+              onClick={placeBet}
+              disabled={!canBet}
+              className={`w-full h-12 font-bold tracking-wider text-sm rounded-xl transition-all font-display ${
+                canBet
+                  ? 'bg-gradient-to-r from-primary via-pink-500 to-primary hover:opacity-90 text-primary-foreground shadow-[0_4px_20px_hsl(var(--primary)/0.25)]'
+                  : 'bg-secondary/60 text-muted-foreground/50 border border-border/10'
+              }`}
+            >
+              <Zap className="w-4 h-4 mr-1.5" />
+              {stats.waitingResult ? 'AGUARDANDO...' : !hasSignal ? 'SEM SINAL' : 'APOSTAR AGORA'}
+            </Button>
+          </motion.div>
 
-          <Button
-            onClick={toggleAutoBet}
-            className={`px-5 h-12 font-bold tracking-wider text-sm rounded-xl transition-all font-display ${
-              config.enabled
-                ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
-                : 'bg-gradient-to-r from-neon-green/80 to-emerald-500 hover:opacity-90 text-white shadow-lg shadow-neon-green/20'
-            }`}
-          >
-            {config.enabled ? <Square className="w-4 h-4 mr-1.5" /> : <Play className="w-4 h-4 mr-1.5" />}
-            {config.enabled ? 'PARAR' : 'AUTO'}
-          </Button>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+            <Button
+              onClick={toggleAutoBet}
+              className={`px-5 h-12 font-bold tracking-wider text-sm rounded-xl transition-all font-display ${
+                config.enabled
+                  ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-[0_4px_15px_rgba(239,68,68,0.2)]'
+                  : 'bg-gradient-to-r from-neon-green/80 to-emerald-500 hover:opacity-90 text-white shadow-[0_4px_15px_hsl(var(--neon-green)/0.2)]'
+              }`}
+            >
+              {config.enabled ? <Square className="w-4 h-4 mr-1.5" /> : <Play className="w-4 h-4 mr-1.5" />}
+              {config.enabled ? 'PARAR' : 'AUTO'}
+            </Button>
+          </motion.div>
         </div>
       </div>
     </motion.div>
