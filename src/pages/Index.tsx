@@ -293,7 +293,17 @@ const Index = () => {
     fetchNumbers(); fetchStored(); fetchSniper();
     if (!isPolling) return;
     const interval = setInterval(() => { fetchNumbers(); fetchStored(); }, 3000);
-    return () => clearInterval(interval);
+    // Safety: if sniperData is still null after 12s, force a retry
+    const safetyTimeout = setTimeout(() => {
+      setSniperData((prev: any) => {
+        if (prev === null) {
+          fetchSniperRef.current?.(0, true);
+          return { signal: null, mode: 'loading', message: '🔄 Reconectando IA...', strategy: null };
+        }
+        return prev;
+      });
+    }, 12000);
+    return () => { clearInterval(interval); clearTimeout(safetyTimeout); };
   }, [fetchNumbers, fetchStored, fetchSniper, isPolling]);
 
   // Realtime trigger
