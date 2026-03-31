@@ -6342,7 +6342,7 @@ serve(async (req) => {
         hiper_quente: ['hiper_quente','hot_phase','auto_repeticao','divida_estatistica'],
         sequencia: ['multiplos_seq','diferenca_const','dynamic_jump'],
         pleno: ['sniper','ultra_sniper','convergencia_absoluta'],
-        genetic: ['genetic_cluster','cylinder_bias','archetype_fusion','cluster_regional'],
+        genetic: ['genetic_cluster','cylinder_bias','archetype_fusion','cluster_regional','sequence_replay','neighbor_chain','mirror_pattern','gap_rhythm','octave_momentum','weighted_recency','streak_reversal','super_consensus'],
       };
       const allowed = catMap[strategyFilterParam];
       if (allowed) {
