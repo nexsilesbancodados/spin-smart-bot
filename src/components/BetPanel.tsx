@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Zap, Play, Square, TrendingUp, TrendingDown, DollarSign, 
-  Target, Shield, Settings, RotateCcw, AlertTriangle
+  Target, Shield, Settings, RotateCcw, AlertTriangle, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -49,6 +49,22 @@ interface BetStats {
 const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
 const getColor = (n: number) => n === 0 ? 'green' : RED_NUMBERS.includes(n) ? 'red' : 'black';
 
+const MANUAL_BET_TYPES = [
+  { id: 'auto', label: '🤖 Auto (IA)', desc: 'Sinal da IA' },
+  { id: 'vermelho', label: '🔴 Vermelho', desc: '18 números', numbers: RED_NUMBERS },
+  { id: 'preto', label: '⚫ Preto', desc: '18 números', numbers: [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35] },
+  { id: 'par', label: '⚖️ Par', desc: '18 números', numbers: Array.from({length:18},(_,i)=>(i+1)*2) },
+  { id: 'impar', label: '⚖️ Ímpar', desc: '18 números', numbers: Array.from({length:18},(_,i)=>i*2+1) },
+  { id: 'alto', label: '📏 Alto', desc: '19-36', numbers: Array.from({length:18},(_,i)=>i+19) },
+  { id: 'baixo', label: '📏 Baixo', desc: '1-18', numbers: Array.from({length:18},(_,i)=>i+1) },
+  { id: 'dz1', label: '1ª Dúzia', desc: '1-12', numbers: Array.from({length:12},(_,i)=>i+1) },
+  { id: 'dz2', label: '2ª Dúzia', desc: '13-24', numbers: Array.from({length:12},(_,i)=>i+13) },
+  { id: 'dz3', label: '3ª Dúzia', desc: '25-36', numbers: Array.from({length:12},(_,i)=>i+25) },
+  { id: 'col1', label: 'Col 1', desc: '1,4,7...34', numbers: [1,4,7,10,13,16,19,22,25,28,31,34] },
+  { id: 'col2', label: 'Col 2', desc: '2,5,8...35', numbers: [2,5,8,11,14,17,20,23,26,29,32,35] },
+  { id: 'col3', label: 'Col 3', desc: '3,6,9...36', numbers: [3,6,9,12,15,18,21,24,27,30,33,36] },
+];
+
 const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
   const [config, setConfig] = useState<AutoBetState>({
     enabled: false,
@@ -75,6 +91,9 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
   const [simProfit, setSimProfit] = useState(0);
   const [simTotal, setSimTotal] = useState(0);
   const [simWins, setSimWins] = useState(0);
+  const [manualBetType, setManualBetType] = useState('auto');
+  const [customNumbers, setCustomNumbers] = useState('');
+  const [showBetTypes, setShowBetTypes] = useState(false);
   const prevNumberRef = useRef<number | null>(null);
   const autoBetRef = useRef(false);
   const [extStatus, setExtStatus] = useState<{
@@ -252,11 +271,23 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
     } catch { /* ignore */ }
   }, []);
 
+  // Get bet numbers based on manual type or AI signal
+  const getBetNumbers = useCallback((): number[] => {
+    if (manualBetType === 'auto') {
+      return sniperData?.strategy?.numbers?.slice(0, 12) || [];
+    }
+    if (manualBetType === 'custom') {
+      return customNumbers.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n >= 0 && n <= 36).slice(0, 15);
+    }
+    const found = MANUAL_BET_TYPES.find(t => t.id === manualBetType);
+    return found?.numbers || [];
+  }, [manualBetType, customNumbers, sniperData?.strategy?.numbers]);
+
   // Place a bet (manual or auto)
   const placeBet = useCallback(() => {
-    if (!sniperData?.signal || !sniperData?.strategy?.numbers || stats.waitingResult || stats.stopped) return;
-
-    const numbers = sniperData.strategy.numbers.slice(0, 12);
+    const numbers = getBetNumbers();
+    if (numbers.length === 0 || stats.waitingResult || stats.stopped) return;
+    if (manualBetType === 'auto' && (!sniperData?.signal || !sniperData?.strategy?.numbers)) return;
     const betAmount = getCurrentBetAmount();
 
     setStats(prev => ({
@@ -323,7 +354,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
   };
 
   const winRate = stats.totalBets > 0 ? ((stats.wins / stats.totalBets) * 100).toFixed(1) : '0.0';
-  const hasSignal = sniperData?.signal && sniperData?.strategy?.numbers?.length > 0;
+  const hasSignal = manualBetType !== 'auto' ? getBetNumbers().length > 0 : (sniperData?.signal && sniperData?.strategy?.numbers?.length > 0);
   const canBet = hasSignal && !stats.waitingResult && !stats.stopped;
 
   return (
@@ -494,6 +525,66 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Bet Type Selector */}
+        <div>
+          <button
+            onClick={() => setShowBetTypes(!showBetTypes)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-secondary/50 border border-border/50 text-[9px] font-bold text-foreground hover:bg-secondary transition-all"
+          >
+            <span>
+              {manualBetType === 'auto' ? '🤖 Auto (Sinal da IA)' : 
+               manualBetType === 'custom' ? '✏️ Números personalizados' :
+               MANUAL_BET_TYPES.find(t => t.id === manualBetType)?.label || manualBetType}
+            </span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showBetTypes ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {showBetTypes && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                <div className="grid grid-cols-3 gap-1 mt-2">
+                  {MANUAL_BET_TYPES.map(bt => (
+                    <button
+                      key={bt.id}
+                      onClick={() => { setManualBetType(bt.id); setShowBetTypes(false); }}
+                      className={`py-2 px-1.5 rounded-lg text-[8px] font-bold transition-all text-center ${
+                        manualBetType === bt.id
+                          ? 'bg-primary/20 text-primary border border-primary/30'
+                          : 'bg-secondary/60 text-muted-foreground border border-border/20 hover:text-foreground'
+                      }`}
+                    >
+                      {bt.label}
+                      <div className="text-[6px] opacity-60">{bt.desc}</div>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => { setManualBetType('custom'); setShowBetTypes(false); }}
+                    className={`py-2 px-1.5 rounded-lg text-[8px] font-bold transition-all text-center ${
+                      manualBetType === 'custom'
+                        ? 'bg-primary/20 text-primary border border-primary/30'
+                        : 'bg-secondary/60 text-muted-foreground border border-border/20 hover:text-foreground'
+                    }`}
+                  >
+                    ✏️ Personalizar
+                    <div className="text-[6px] opacity-60">Seus números</div>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {manualBetType === 'custom' && (
+            <div className="mt-2">
+              <input
+                type="text"
+                value={customNumbers}
+                onChange={e => setCustomNumbers(e.target.value)}
+                placeholder="Ex: 0, 3, 7, 12, 26, 32"
+                className="w-full px-3 py-2 rounded-lg bg-secondary/60 border border-border text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <p className="text-[7px] text-muted-foreground mt-1">Separe os números por vírgula (0 a 36)</p>
+            </div>
+          )}
+        </div>
 
         {/* Stats grid — with gradient borders */}
         <div className="grid grid-cols-4 gap-2">
