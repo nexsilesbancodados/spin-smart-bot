@@ -84,37 +84,6 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
 
   const reedStopped = reedCount >= 4;
 
-  // ── KILL SWITCH from Omni-Core ──────────────────────
-  if (sniperData?.killSwitch) {
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-        <div className="bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-6 text-center">
-          <div className="text-4xl mb-3">🛡️</div>
-          <p className="text-sm font-black text-destructive mb-2">PROTEÇÃO DE BANCA ATIVADA</p>
-          <p className="text-xs text-muted-foreground">{sniperData.killReason || 'Anomalia detectada — sinais suspensos por 5 giros'}</p>
-          {sniperData.temperature && (
-            <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary border border-border text-[10px] font-bold text-muted-foreground">
-              🌡️ Mesa {sniperData.temperature.toUpperCase()}
-            </div>
-          )}
-        </div>
-        {sniperData.agents && (
-          <div className="grid grid-cols-3 gap-2">
-            {Object.entries(sniperData.agents as Record<string, any>).map(([id, agent]: [string, any]) => (
-              <div key={id} className="bg-card rounded-xl border border-border/50 p-2.5 text-center">
-                <div className="text-[8px] font-black text-muted-foreground uppercase tracking-wider mb-1">
-                  {id === 'statistical' ? '📊 Estatístico' : id === 'ballistic' ? '🎯 Balístico' : '🔄 Reversão'}
-                </div>
-                <div className="text-[11px] font-black text-destructive">{agent.winRate}</div>
-                <div className="text-[7px] text-muted-foreground">streak: {agent.streak > 0 ? `+${agent.streak}` : agent.streak}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </motion.div>
-    );
-  }
-
   const { ensTop1, finalNumbers, displayProb, analysisDetail, streakInfo, recentWR } = useMemo(() => {
     if (!sniperData?.signal || !sniperData?.strategy) {
       return { ensTop1: 0, finalNumbers: [], displayProb: 0, analysisDetail: null };
@@ -192,6 +161,37 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
     const recentWR = typeof sniperData?.recentWinRate === 'number' ? Math.round(sniperData.recentWinRate * 100) : null;
     return { ensTop1: top1, finalNumbers: nums, displayProb: rawProb, analysisDetail: detail, streakInfo, recentWR };
   }, [sniperData, strategyFilter, allNumbers]);
+
+  // ── KILL SWITCH from Omni-Core (after all hooks) ───
+  if (sniperData?.killSwitch) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+        <div className="bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-6 text-center">
+          <div className="text-4xl mb-3">🛡️</div>
+          <p className="text-sm font-black text-destructive mb-2">PROTEÇÃO DE BANCA ATIVADA</p>
+          <p className="text-xs text-muted-foreground">{sniperData.killReason || 'Anomalia detectada — sinais suspensos por 5 giros'}</p>
+          {sniperData.temperature && (
+            <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary border border-border text-[10px] font-bold text-muted-foreground">
+              🌡️ Mesa {sniperData.temperature.toUpperCase()}
+            </div>
+          )}
+        </div>
+        {sniperData.agents && (
+          <div className="grid grid-cols-3 gap-2">
+            {Object.entries(sniperData.agents as Record<string, any>).map(([id, agent]: [string, any]) => (
+              <div key={id} className="bg-card rounded-xl border border-border/50 p-2.5 text-center">
+                <div className="text-[8px] font-black text-muted-foreground uppercase tracking-wider mb-1">
+                  {id === 'statistical' ? '📊 Estatístico' : id === 'ballistic' ? '🎯 Balístico' : '🔄 Reversão'}
+                </div>
+                <div className="text-[11px] font-black text-destructive">{agent.winRate}</div>
+                <div className="text-[7px] text-muted-foreground">streak: {agent.streak > 0 ? `+${agent.streak}` : agent.streak}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+    );
+  }
 
   // Loading state
   if (!sniperData) {
