@@ -727,6 +727,8 @@ const Index = () => {
                   setStrategyFilter={setStrategyFilter}
                 />
               </div>
+              {/* ── ENGINE ANALYSIS (Streaks, Cold Zones) ────── */}
+              <EngineSignalCard allNumbers={allNumbers} />
               </>
             ) : (
               <div className="bg-card rounded-2xl border border-border p-12 text-center">
