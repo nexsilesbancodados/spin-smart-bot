@@ -1489,6 +1489,7 @@ Deno.serve(async (req) => {
       strategyWeightAdjust['sniper'] = (strategyWeightAdjust['sniper'] || 0) + 12;
       strategyWeightAdjust['voisins'] = (strategyWeightAdjust['voisins'] || 0) + 12;
       strategyWeightAdjust['setor_oposto'] = (strategyWeightAdjust['setor_oposto'] || 0) + 10;
+      strategyWeightAdjust['setor_alternancia'] = (strategyWeightAdjust['setor_alternancia'] || 0) + 15;
       strategyWeightAdjust['jeu_zero'] = (strategyWeightAdjust['jeu_zero'] || 0) + 8;
     }
 
