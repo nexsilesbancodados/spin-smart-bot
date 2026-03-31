@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, Shield, Zap, Activity } from 'lucide-react';
 
