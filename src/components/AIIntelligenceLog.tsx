@@ -160,10 +160,11 @@ const AIIntelligenceLog = memo(() => {
       )}
 
       {data && (
-        <div className="text-[8px] text-muted-foreground/30 text-center">
+        <div className="text-[7px] text-muted-foreground/25 text-center font-mono pt-1 border-t border-border/10">
           Processado em {data.analysisMs}ms • {data.dataPoints.toLocaleString()} rodadas analisadas
         </div>
       )}
+      </div>
     </div>
   );
 });

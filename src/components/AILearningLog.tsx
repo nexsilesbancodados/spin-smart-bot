@@ -271,6 +271,7 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
         {logs.length === 0 && (
           <div className="text-[9px] text-muted-foreground/30 italic py-2 text-center">Aguardando próximo giro...</div>
         )}
+        </div>
       </div>
     </div>
   );
