@@ -166,6 +166,7 @@ const ManualInput = memo(({ onAddNumbers }: Props) => {
       </AnimatePresence>
     </>
   );
-};
+});
 
+ManualInput.displayName = 'ManualInput';
 export default ManualInput;
