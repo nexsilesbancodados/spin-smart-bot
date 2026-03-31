@@ -725,6 +725,7 @@ serve(async (req) => {
     const resolvedHistory = resolvedRes.data || [];
     const patternInsights = insightsRes.data || [];
 
+    const aiLearnings: string[] = [];
     // ========================================================
     // AI SELF-LEARNING ENGINE — learns from each new number
     // ========================================================

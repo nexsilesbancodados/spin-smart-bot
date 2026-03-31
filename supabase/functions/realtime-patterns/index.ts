@@ -409,16 +409,17 @@ Deno.serve(async (req) => {
       };
 
       if (exRT?.id) {
-        // Só atualizar se a accuracy melhorou
         if (topInsight.confidence > (exRT.accuracy || 0)) {
-          await supabase.from('ai_learned_patterns').update(rowRT).eq('id', exRT.id).catch(()=>{});
+          try { await supabase.from('ai_learned_patterns').update(rowRT).eq('id', exRT.id); } catch {}
         }
       } else {
-        await supabase.from('ai_learned_patterns').insert({
-          learning_type: 'session_spin',
-          title: titulo,
-          ...rowRT,
-        }).catch(()=>{});
+        try {
+          await supabase.from('ai_learned_patterns').insert({
+            learning_type: 'session_spin',
+            title: titulo,
+            ...rowRT,
+          });
+        } catch {}
       }
     } // fim for toSave
 
