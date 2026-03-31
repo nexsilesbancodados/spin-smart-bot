@@ -637,10 +637,10 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
         {/* Scoreboard */}
         {stats.history.length > 0 && (
-          <div className="bg-secondary/30 border border-border/40 rounded-xl p-3">
+          <div className="glass rounded-xl border border-border/15 p-3 backdrop-blur-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[9px] font-bold text-primary tracking-wider">📊 PLACAR</span>
-              <span className="text-[8px] text-muted-foreground">{stats.history.length} resultado{stats.history.length > 1 ? 's' : ''}</span>
+              <span className="text-[7px] text-muted-foreground/40 font-mono">{stats.history.length} resultado{stats.history.length > 1 ? 's' : ''}</span>
             </div>
             <div className="flex flex-wrap gap-1.5 mb-2.5">
               {stats.history.slice(0, 15).map((r) => (
