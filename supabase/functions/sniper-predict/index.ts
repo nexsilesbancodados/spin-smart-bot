@@ -7138,7 +7138,25 @@ REGRAS ABSOLUTAS:
         // Build parallel AI calls — ALL available chat models
         const aiCalls: Promise<AiResult>[] = [];
 
-        // === LOVABLE AI REMOVIDO — não usar ===
+        // === LOVABLE AI (Gemini) — REATIVADO COM POTENCIAL MÁXIMO ===
+        const LAI_KEY = Deno.env.get("LOVABLE_API_KEY");
+        const LAI_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+        if (LAI_KEY) {
+          const laiH = { "Authorization": `Bearer ${LAI_KEY}` };
+          // Top-tier reasoning
+          aiCalls.push(callAi('Gemini-2.5-Pro', LAI_URL, laiH, 'google/gemini-2.5-pro'));
+          // Balanced flash
+          aiCalls.push(callAi('Gemini-2.5-Flash', LAI_URL, laiH, 'google/gemini-2.5-flash'));
+          // Latest preview models
+          aiCalls.push(callAi('Gemini-3.1-Pro', LAI_URL, laiH, 'google/gemini-3.1-pro-preview'));
+          aiCalls.push(callAi('Gemini-3-Flash', LAI_URL, laiH, 'google/gemini-3-flash-preview'));
+          // Ultra-fast lite
+          aiCalls.push(callAi('Gemini-2.5-Flash-Lite', LAI_URL, laiH, 'google/gemini-2.5-flash-lite'));
+          // OpenAI via Lovable
+          aiCalls.push(callAi('GPT-5', LAI_URL, laiH, 'openai/gpt-5'));
+          aiCalls.push(callAi('GPT-5-Mini', LAI_URL, laiH, 'openai/gpt-5-mini'));
+          aiCalls.push(callAi('GPT-5.2', LAI_URL, laiH, 'openai/gpt-5.2'));
+        }
 
         // === DEEPSEEK ===
         if (DEEPSEEK_API_KEY) {
