@@ -6873,8 +6873,12 @@ serve(async (req) => {
           .map(c => `C${c.g}:${c.cnt}(exp ${c.expected})`)
           .join(' ');
 
-        const aiPrompt = `ROLETA EUROPEIA — ANÁLISE COMPLETA MULTI-MERCADO
+        const selectedAnalysis = strategyFilterParam && strategyFilterParam !== 'all'
+          ? `\n⚠️ TIPO SELECIONADO PELO USUÁRIO: ${strategyFilterParam.toUpperCase()} — Foque TODA a análise neste tipo!\n`
+          : '';
 
+        const aiPrompt = `ROLETA EUROPEIA — ANÁLISE ${strategyFilterParam && strategyFilterParam !== 'all' ? strategyFilterParam.toUpperCase() : 'COMPLETA MULTI-MERCADO'}
+${selectedAnalysis}
 ## ENTRADA: Último número sorteado = ${numbers[0]}
 
 ## FEEDBACK LOOP
@@ -6995,16 +6999,40 @@ Responda APENAS JSON:
         const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
         // Lovable AI removido — usando apenas NVIDIA + DeepSeek
 
+        // Dynamic AI focus based on user-selected analysis type
+        const filterLabels: Record<string, string> = {
+          terminal: 'TERMINAL — Foque EXCLUSIVAMENTE em terminais (números com mesmo dígito final: T0=[0,10,20,30], T1=[1,11,21,31], etc). Sua resposta DEVE ser betType:"terminal" e numbers devem compartilhar o mesmo terminal.',
+          cavalos: 'CAVALOS (SPLITS) — Foque EXCLUSIVAMENTE em cavalos/splits (pares adjacentes no pano: 1-2, 4-5, 7-8, etc). betType DEVE ser "cavalos" ou "split".',
+          setor: 'SETOR/VIZINHOS — Foque EXCLUSIVAMENTE em setores do cilindro (Voisins du Zero, Tiers du Cylindre, Orphelins, Jeu Zéro) e vizinhos. betType DEVE ser "voisins"|"tiers"|"orphelins"|"jeu_zero"|"vizinhos"|"setor".',
+          duzia: 'DÚZIA — Foque EXCLUSIVAMENTE em dúzias (D1:1-12, D2:13-24, D3:25-36). betType DEVE ser "duzia". Numbers devem estar na mesma dúzia.',
+          coluna: 'COLUNA — Foque EXCLUSIVAMENTE em colunas (C1,C2,C3). betType DEVE ser "coluna".',
+          cor: 'COR — Foque EXCLUSIVAMENTE em vermelho vs preto. betType DEVE ser "cor". Indique qual cor jogar.',
+          paridade: 'PARIDADE — Foque EXCLUSIVAMENTE em par vs ímpar. betType DEVE ser "paridade".',
+          alto_baixo: 'ALTO/BAIXO — Foque EXCLUSIVAMENTE em alto(19-36) vs baixo(1-18). betType DEVE ser "alto_baixo".',
+          rua: 'RUA (STREET) — Foque EXCLUSIVAMENTE em ruas de 3 números (1-2-3, 4-5-6, etc). betType DEVE ser "rua".',
+          zero: 'PRESSÃO ZERO — Foque EXCLUSIVAMENTE na região do zero e Jeu Zéro (0,3,12,15,26,32,35). betType DEVE ser "jeu_zero".',
+          puxada: 'PUXADAS — Foque EXCLUSIVAMENTE nas correlações de puxada (número X puxa Y). Use a tabela de puxadas fornecida. betType DEVE ser "pleno" com justificativa de puxada.',
+          fusao: 'FUSÃO/ENSEMBLE — Use TODOS os métodos e foque no consenso absoluto. Cruze tudo. betType pode ser qualquer um.',
+          hiper_quente: 'HIPER QUENTE — Foque EXCLUSIVAMENTE nos números mais frequentes/quentes da sessão. betType DEVE ser "pleno".',
+          sequencia: 'SEQUÊNCIAS — Foque EXCLUSIVAMENTE em padrões de sequência (repetições, cadeia, espelho). betType DEVE ser "pleno".',
+          pleno: 'PLENO — Foque em números específicos individuais com maior probabilidade. betType DEVE ser "pleno". Máximo 5 números.',
+          genetic: 'GENÉTICO/CLUSTER — Foque em clusters genéticos e regiões do cilindro com concentração anômala. betType DEVE ser "combinado".',
+        };
+
+        const focusInstruction = strategyFilterParam && filterLabels[strategyFilterParam]
+          ? `\n\n⚠️ FOCO OBRIGATÓRIO: ${filterLabels[strategyFilterParam]}\nO usuário selecionou este tipo de análise. TODA sua resposta deve ser sobre este tipo. NÃO sugira outros tipos de aposta.`
+          : '';
+
         const aiSystemPrompt = `Você é o cérebro supremo de análise de roleta europeia. Integra física do cilindro, matemática de ciclos, tabelas de puxada da Mesa Brasileira Playtech e aprendizado acumulado.
 
 REGRAS ABSOLUTAS:
-1. CRUZAMENTO TOTAL: Analise TODOS os mercados — Dúzias, Colunas, Setores, Cores, Paridade, Alto/Baixo, Ruas, Cavalos, Terminais, Plenos, Linhas, Cantos.
+1. CRUZAMENTO TOTAL: Use TODOS os dados disponíveis para justificar sua escolha.
 2. USE TUDO: Puxadas confirmadas, aprendizados da IA, feedback de acertos/erros, breakouts, momentum, volatilidade, Lei do Terço, dealer signature, padrões confirmados.
-3. FLEXIBILIDADE: Escolha QUALQUER tipo de aposta — a que tiver maior chance REAL. Pode ser cor, dúzia, terminal, setor, pleno, rua, combinação — o que for mais forte.
+3. ${strategyFilterParam && strategyFilterParam !== 'all' ? 'TIPO FIXO: Responda APENAS com o tipo de aposta selecionado pelo usuário.' : 'FLEXIBILIDADE: Escolha QUALQUER tipo de aposta — a que tiver maior chance REAL.'}
 4. FEEDBACK: Se o padrão anterior acertou, REFORCE. Se errou, DESCARTE e busque nova assinatura.
 5. NUNCA chute. Toda sugestão deve ser justificada pelo cruzamento dos dados fornecidos.
 6. Se não há sinal claro, sugira "AGUARDAR" com confiança baixa.
-7. Responda APENAS JSON válido, sem markdown.`;
+7. Responda APENAS JSON válido, sem markdown.${focusInstruction}`;
 
         type AiResult = { source: string; parsed: any; raw: string; ok: boolean };
         const aiResults: AiResult[] = [];
