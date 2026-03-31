@@ -226,6 +226,26 @@ const Index = () => {
       supabase.functions.invoke('realtime-patterns')
         .then(res => { if (res.data?.all_insights?.length > 0) setRtInsights(res.data.all_insights.slice(0, 6)); })
         .catch(() => {});
+      // Fire Omni-Core in parallel
+      supabase.functions.invoke('omni-core', {
+        body: { numbers: apiSnapshotRef.current.slice(0, 200) }
+      }).then(res => {
+        if (res.data && res.data.mode === 'signal') {
+          setSniperData((prev: any) => ({
+            ...(prev || {}),
+            ...res.data,
+            omniCore: true,
+          }));
+        } else if (res.data?.mode === 'kill_switch') {
+          setSniperData((prev: any) => ({
+            ...(prev || {}),
+            killSwitch: true,
+            killReason: res.data.message,
+            temperature: res.data.temperature,
+            agents: res.data.agents,
+          }));
+        }
+      }).catch(() => {});
     }
   }, [soundEnabled, aiEnabled]);
 
@@ -449,9 +469,14 @@ const Index = () => {
         } else if (phase === 8) {
           setAutoLearnStatus('analyzing');
           await supabase.functions.invoke('markov-engine');
+        } else if (phase === 2 || phase === 6) {
+          setAutoLearnStatus('analyzing');
+          await supabase.functions.invoke('omni-core', {
+            body: { numbers: apiSnapshotRef.current.slice(0, 200) }
+          });
         } else {
           setAutoLearnStatus('backtesting');
-          await supabase.functions.invoke('sniper-predict', { body: { sampleSize: phase === 2 || phase === 6 ? 200 : 50 } });
+          await supabase.functions.invoke('sniper-predict', { body: { sampleSize: 50 } });
         }
         autoLearnErrorCount.current = 0;
         consecutiveSuccessRef.current++;
