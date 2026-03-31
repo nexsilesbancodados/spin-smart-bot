@@ -1,6 +1,6 @@
+import { memo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Zap, Target, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
-import { useState } from 'react';
 
 interface PatternPanel24hProps { sniperData: any; }
 
