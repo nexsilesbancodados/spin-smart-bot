@@ -703,18 +703,22 @@ const Index = () => {
                   </div>
                 </motion.div>
               )}
-              <SniperSignal
-                sniperData={sniperData}
-                sniperCountdown={sniperCountdown}
-                sniperStale={sniperStale}
-                lastPredResult={lastPredResult}
-                confidenceFilter={confidenceFilter}
-                rtInsights={rtInsights}
-                allNumbers={allNumbers}
-                autoLearnStatus={autoLearnStatus}
-                strategyFilter={strategyFilter}
-                setStrategyFilter={setStrategyFilter}
-              />
+              <div className={`transition-all duration-500 rounded-2xl ${
+                sniperCountdown > 0 && sniperData?.signal ? 'shadow-[0_0_25px_hsl(142,70%,45%,0.15)] ring-1 ring-green-500/20' : ''
+              }`}>
+                <SniperSignal
+                  sniperData={sniperData}
+                  sniperCountdown={sniperCountdown}
+                  sniperStale={sniperStale}
+                  lastPredResult={lastPredResult}
+                  confidenceFilter={confidenceFilter}
+                  rtInsights={rtInsights}
+                  allNumbers={allNumbers}
+                  autoLearnStatus={autoLearnStatus}
+                  strategyFilter={strategyFilter}
+                  setStrategyFilter={setStrategyFilter}
+                />
+              </div>
               </>
             ) : (
               <div className="bg-card rounded-2xl border border-border p-12 text-center">
