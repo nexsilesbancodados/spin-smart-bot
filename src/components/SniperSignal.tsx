@@ -218,6 +218,49 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
           </AnimatePresence>
         </div>
 
+        {/* ═══ COUNTDOWN TIMER — 14s para apostar ═══ */}
+        {sniperCountdown > 0 && sniperCountdown <= 14 && (
+          <div className="px-4 pt-3 pb-1">
+            <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-1.5 ${
+                sniperCountdown <= 4 ? 'animate-pulse' : ''
+              }`}>
+                <Clock className={`w-4 h-4 ${
+                  sniperCountdown <= 4 ? 'text-destructive' : sniperCountdown <= 8 ? 'text-yellow-400' : 'text-primary'
+                }`} />
+                <span className={`text-lg font-black font-mono tabular-nums ${
+                  sniperCountdown <= 4 ? 'text-destructive' : sniperCountdown <= 8 ? 'text-yellow-400' : 'text-primary'
+                }`}>
+                  {sniperCountdown}s
+                </span>
+              </div>
+              <div className="flex-1 h-2 bg-secondary/40 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: '100%' }}
+                  animate={{ width: `${(sniperCountdown / 14) * 100}%` }}
+                  transition={{ duration: 0.3, ease: 'linear' }}
+                  className={`h-full rounded-full transition-colors ${
+                    sniperCountdown <= 4 ? 'bg-destructive' : sniperCountdown <= 8 ? 'bg-yellow-400' : 'bg-primary'
+                  }`}
+                />
+              </div>
+              <span className={`text-[9px] font-black uppercase tracking-wider ${
+                sniperCountdown <= 4 ? 'text-destructive' : sniperCountdown <= 8 ? 'text-yellow-400/80' : 'text-muted-foreground'
+              }`}>
+                {sniperCountdown <= 4 ? '⚡ AGORA!' : sniperCountdown <= 8 ? '⏰ RÁPIDO' : '🎯 APOSTE'}
+              </span>
+            </div>
+          </div>
+        )}
+        {sniperCountdown === 0 && (
+          <div className="px-4 pt-2 pb-1">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-destructive/10 border border-destructive/20">
+              <AlertTriangle className="w-3.5 h-3.5 text-destructive/60" />
+              <span className="text-[9px] font-bold text-destructive/70">TEMPO ESGOTADO — Aguardando próximo giro</span>
+            </div>
+          </div>
+        )}
+
         {/* ═══ JOGADA PRINCIPAL — Hero compacto ═══ */}
         <div className="px-4 py-3">
           <div className="flex items-center gap-4">
