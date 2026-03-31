@@ -1144,29 +1144,97 @@ Deno.serve(async (req) => {
     // ── 4. Ensemble Voting ─────────────────────────────────
     const { winner, consensus, ensembleConfidence, scored } = ensembleVote(allSignals, weights);
 
+    // ── 4.5 FUSÃO TOP 5: Convergência absoluta de TODOS os modelos ──
+    // Cada número 0-36 recebe votos ponderados de todos os sinais
+    const fusionScores: { num: number; score: number; voters: string[]; reasons: string[] }[] = [];
+    for (let n = 0; n <= 36; n++) {
+      let score = 0;
+      const voters: string[] = [];
+      const reasons: string[] = [];
+
+      for (const signal of scored) {
+        const modelWeight = weights[signal.modelId]?.weight ?? 1.0;
+        const confFactor = signal.confidence / 100;
+
+        if (signal.numbers.includes(n)) {
+          // Base vote: confidence × model weight
+          let vote = confFactor * modelWeight;
+
+          // Bonus if this is the predicted main number
+          if (signal.predictedMain === n) vote *= 2.5;
+
+          // Bonus for first 3 numbers in the signal (higher priority)
+          const idx = signal.numbers.indexOf(n);
+          if (idx >= 0 && idx < 3) vote *= 1.5;
+          else if (idx >= 0 && idx < 6) vote *= 1.2;
+
+          score += vote;
+          if (!voters.includes(signal.modelName)) {
+            voters.push(signal.modelName);
+            reasons.push(`${signal.modelName}: ${signal.label}`);
+          }
+        }
+      }
+
+      if (score > 0) {
+        fusionScores.push({ num: n, score, voters, reasons });
+      }
+    }
+
+    // Sort by fusion score and pick Top 5
+    fusionScores.sort((a, b) => b.score - a.score);
+    const top5 = fusionScores.slice(0, 5);
+    const top5Numbers = top5.map(t => t.num);
+    const top5MaxScore = top5[0]?.score ?? 0;
+
+    // Compute fusion confidence: how concentrated the scores are
+    const totalFusionScore = fusionScores.reduce((a, b) => a + b.score, 0);
+    const top5Score = top5.reduce((a, b) => a + b.score, 0);
+    const fusionConfidence = totalFusionScore > 0
+      ? Math.min(95, Math.round((top5Score / totalFusionScore) * 100 + top5[0]?.voters.length * 5))
+      : 0;
+
+    // Build fusion reasoning
+    const fusionReasoning = top5.map((t, i) => 
+      `#${i + 1} → ${t.num} (score: ${t.score.toFixed(1)}, ${t.voters.length} modelos: ${t.voters.join(', ')})`
+    ).join(' | ');
+
     // ── 5. Kelly criterion ─────────────────────────────────
     const modelWR = weights[winner.modelId];
     const winRate = modelWR && modelWR.total_predictions > 0
       ? modelWR.total_hits / modelWR.total_predictions : 0.45;
-    const payout = Math.max(1, Math.round(35 / winner.numbers.length));
+    const payout = Math.max(1, Math.round(35 / 5)); // Based on 5 numbers
     const kelly = computeKelly(winRate, payout);
 
-    // ── 6. Store predictions for all models ────────────────
-    const predInserts = scored.slice(0, 10).map(s => ({
-      model_id: s.modelId,
-      predicted_numbers: s.numbers.slice(0, 15),
-      predicted_main: s.predictedMain ?? s.numbers[0],
-      confidence: s.confidence,
-      bet_type: s.betType,
-      reasoning: s.reasoning,
-      ensemble_weight: weights[s.modelId]?.weight ?? 1.0,
-      spin_context: { temperature, consensus, totalModels: 7 },
-    }));
+    // ── 6. Store predictions ───────────────────────────────
+    // Store the fusion prediction as a special entry
+    const predInserts = [
+      {
+        model_id: 'fusion_top5',
+        predicted_numbers: top5Numbers,
+        predicted_main: top5Numbers[0],
+        confidence: fusionConfidence,
+        bet_type: 'fusion',
+        reasoning: fusionReasoning,
+        ensemble_weight: 1.0,
+        spin_context: { temperature, consensus, totalModels: 7, fusion: true, top5_details: top5 },
+      },
+      ...scored.slice(0, 7).map(s => ({
+        model_id: s.modelId,
+        predicted_numbers: s.numbers.slice(0, 15),
+        predicted_main: s.predictedMain ?? s.numbers[0],
+        confidence: s.confidence,
+        bet_type: s.betType,
+        reasoning: s.reasoning,
+        ensemble_weight: weights[s.modelId]?.weight ?? 1.0,
+        spin_context: { temperature, consensus, totalModels: 7 },
+      })),
+    ];
 
-    // Fire and forget — don't block response
+    // Fire and forget
     supabase.from('model_predictions').insert(predInserts).then(() => {});
 
-    // Recalibrate weights every ~20 calls + trigger auto-recalibrate
+    // Recalibrate periodically
     if (Math.random() < 0.08) {
       recalibrateWeights(supabase).catch(() => {});
     }
@@ -1185,25 +1253,32 @@ Deno.serve(async (req) => {
       const wr = w.total_predictions > 0 ? `${(w.win_rate * 100).toFixed(0)}%` : 'N/A';
       arbiterLog.push(`${name}: WR ${wr} | peso ${w.weight.toFixed(2)} | streak ${w.current_streak}`);
     }
-    arbiterLog.push(`🏆 Vencedor: ${winner.modelName} → ${winner.label}`);
+    arbiterLog.push(`🏆 Líder: ${winner.modelName} → ${winner.label}`);
+    arbiterLog.push(`🎯 FUSÃO TOP 5: [${top5Numbers.join(', ')}] — confiança ${fusionConfidence}%`);
     arbiterLog.push(`📊 Consenso: ${consensus}/7 modelos concordam`);
     arbiterLog.push(`💰 Kelly: ${(kelly.fraction * 100).toFixed(1)}% → Entrada ${kelly.force.toUpperCase()}`);
 
-    // ── 8. Protection numbers ──────────────────────────────
-    const protectionNums = [0, 26, 32];
-    const finalNumbers = [...new Set([...winner.numbers, ...protectionNums])].slice(0, 15);
-
     return new Response(JSON.stringify({
       mode: 'signal',
+      // === FUSÃO TOP 5 como sinal principal ===
       signal: {
-        number: winner.predictedMain ?? finalNumbers[0],
-        numbers: finalNumbers,
-        probability: ensembleConfidence,
+        number: top5Numbers[0],
+        numbers: top5Numbers,
+        probability: fusionConfidence,
       },
+      fusionTop5: top5.map(t => ({
+        number: t.num,
+        score: Math.round(t.score * 10) / 10,
+        voters: t.voters,
+        voterCount: t.voters.length,
+        reasons: t.reasons,
+      })),
+      fusionConfidence,
+      fusionReasoning,
       strategy: {
-        type: winner.betType,
-        label: winner.label,
-        numbers: finalNumbers,
+        type: 'fusion_top5',
+        label: `FUSÃO TOP 5 → [${top5Numbers.join(', ')}]`,
+        numbers: top5Numbers,
       },
       entryForce: kelly.force,
       kellyFraction: kelly.fraction,
@@ -1237,12 +1312,12 @@ Deno.serve(async (req) => {
         rl_optimizer: { weight: weights.rl_optimizer?.weight ?? 1, winRate: weights.rl_optimizer?.total_predictions > 0 ? `${(weights.rl_optimizer.win_rate * 100).toFixed(0)}%` : 'N/A', streak: weights.rl_optimizer?.current_streak ?? 0 },
       },
       aiReasoning: {
-        betType: winner.betType,
-        betDescription: winner.reasoning,
-        patternIdentified: winner.label,
-        suggestedBet: `${winner.label} — Entrada ${kelly.force.toUpperCase()} (${consensus}/7 consenso)`,
+        betType: 'fusion_top5',
+        betDescription: fusionReasoning,
+        patternIdentified: `FUSÃO: ${top5.map(t => `${t.num}(${t.voters.length}v)`).join(' ')}`,
+        suggestedBet: `TOP 5: [${top5Numbers.join(', ')}] — ${kelly.force.toUpperCase()} (${consensus}/7)`,
         consensus,
-        confidence: ensembleConfidence,
+        confidence: fusionConfidence,
       },
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
