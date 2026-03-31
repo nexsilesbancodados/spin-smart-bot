@@ -1,6 +1,6 @@
+import { memo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Zap, Target, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
-import { useState } from 'react';
 
 interface PatternPanel24hProps { sniperData: any; }
 
@@ -19,7 +19,7 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   rotacao: { label: 'ROTAÇÃO', color: 'text-neon-green' },
 };
 
-const PatternPanel24h = ({ sniperData }: PatternPanel24hProps) => {
+const PatternPanel24h = memo(({ sniperData }: PatternPanel24hProps) => {
   const tm = sniperData?.transitionMatrix;
   const [showAllFidelity, setShowAllFidelity] = useState(false);
   if (!tm) return null;
@@ -220,6 +220,7 @@ const PatternPanel24h = ({ sniperData }: PatternPanel24hProps) => {
       </div>
     </motion.div>
   );
-};
+});
 
+PatternPanel24h.displayName = 'PatternPanel24h';
 export default PatternPanel24h;
