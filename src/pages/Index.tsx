@@ -379,7 +379,7 @@ const Index = () => {
     if (!isPolling) return;
     const liveInterval = setInterval(fetchNumbers, POLL_INTERVAL_MS);
     const historyInterval = setInterval(fetchStored, HISTORY_SYNC_INTERVAL_MS);
-    // Safety: if sniperData is still null after 12s, force a retry
+    // Safety: if sniperData is still null after 6s, force a retry
     const safetyTimeout = setTimeout(() => {
       setSniperData((prev: any) => {
         if (prev === null) {
@@ -388,7 +388,7 @@ const Index = () => {
         }
         return prev;
       });
-    }, 12000);
+    }, 6000);
     return () => { clearInterval(liveInterval); clearInterval(historyInterval); clearTimeout(safetyTimeout); };
   }, [fetchNumbers, fetchStored, fetchSniper, isPolling]);
 

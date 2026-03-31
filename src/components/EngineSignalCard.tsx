@@ -55,27 +55,55 @@ const EngineSignalCard = memo(({ allNumbers }: Props) => {
   const top = signals[0] ?? null;
 
   if (!top) {
+    // Show quick frequency summary instead of eternal spinner
+    const quickFreq = useMemo(() => {
+      if (allNumbers.length < 3) return null;
+      const slice = allNumbers.slice(0, 30);
+      const freq: Record<number, number> = {};
+      slice.forEach(n => { freq[n] = (freq[n] || 0) + 1; });
+      const sorted = Object.entries(freq).sort(([,a],[,b]) => b - a).slice(0, 5);
+      const redCount = slice.filter(n => n > 0 && [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(n)).length;
+      const blackCount = slice.filter(n => n > 0 && ![1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(n) && n !== 0).length;
+      return { sorted, redCount, blackCount, total: slice.length };
+    }, [allNumbers]);
+
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-8 text-center border border-border/20 relative overflow-hidden">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-4 border border-border/20 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-neon-pink/[0.02]" />
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-        <motion.div
-          animate={{ opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-          className="relative space-y-3"
-        >
-          <div className="relative mx-auto w-16 h-16">
-            <div className="absolute inset-0 rounded-full border-2 border-primary/10" />
+        <div className="relative space-y-3">
+          <div className="flex items-center gap-2.5">
             <motion.div
-              className="absolute inset-0 rounded-full border-2 border-t-primary border-r-transparent border-b-transparent border-l-transparent"
               animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
-            />
-            <div className="absolute inset-0 flex items-center justify-center text-2xl opacity-50">🔍</div>
+              transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
+              className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/15 to-neon-pink/10 border border-primary/20 flex items-center justify-center"
+            >
+              <span className="text-sm">🔍</span>
+            </motion.div>
+            <div>
+              <p className="text-[10px] font-bold text-muted-foreground/70 font-display tracking-wider">MONITORANDO MESA</p>
+              <p className="text-[7px] text-muted-foreground/40 font-mono">
+                {allNumbers.length < 5 ? `${5 - allNumbers.length} giros para convergência` : 'Sem padrão forte detectado'}
+              </p>
+            </div>
           </div>
-          <p className="text-xs font-bold text-muted-foreground font-display tracking-wider">ANALISANDO PADRÕES</p>
-          <p className="text-[9px] text-muted-foreground/50 font-mono">Aguardando convergência para entrada segura</p>
-        </motion.div>
+          {quickFreq && (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 text-[8px]">
+                <span className="text-red-400 font-bold">🔴 {quickFreq.redCount}</span>
+                <span className="text-muted-foreground/30">|</span>
+                <span className="text-foreground/70 font-bold">⚫ {quickFreq.blackCount}</span>
+              </div>
+              <div className="flex-1" />
+              <div className="flex gap-1">
+                {quickFreq.sorted.slice(0, 4).map(([n, c]) => (
+                  <span key={n} className="text-[7px] font-mono text-muted-foreground/50 px-1.5 py-0.5 rounded glass border border-border/10">
+                    {n}×{c}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </motion.div>
     );
   }

@@ -195,36 +195,53 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
     );
   }
 
-  // Loading state — premium spinner
+  // Loading state — compact with quick stats from allNumbers
   if (!sniperData) {
+    const quickRed = allNumbers.slice(0, 20).filter(n => RED_NUMBERS.has(n)).length;
+    const quickBlack = allNumbers.slice(0, 20).filter(n => n > 0 && !RED_NUMBERS.has(n)).length;
+    const lastNum = allNumbers[0];
     return (
-      <div className="glass rounded-2xl border border-primary/15 p-10 flex items-center justify-center relative overflow-hidden">
+      <div className="glass rounded-2xl border border-primary/15 p-5 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-neon-pink/[0.02]" />
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-        <div className="text-center space-y-4 relative">
-          <div className="relative mx-auto w-16 h-16">
-            <div className="absolute inset-0 rounded-full border-2 border-primary/10" />
-            <motion.div
-              className="absolute inset-0 rounded-full border-2 border-t-primary border-r-neon-pink/50 border-b-transparent border-l-transparent"
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
-            />
-            <motion.div
-              className="absolute inset-1 rounded-full border border-t-transparent border-r-transparent border-b-neon-cyan/40 border-l-neon-cyan/40"
-              animate={{ rotate: -360 }}
-              transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
-            />
-            <Crosshair className="w-6 h-6 text-primary/50 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+        <div className="relative space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="relative w-10 h-10 shrink-0">
+              <div className="absolute inset-0 rounded-full border-2 border-primary/10" />
+              <motion.div
+                className="absolute inset-0 rounded-full border-2 border-t-primary border-r-neon-pink/50 border-b-transparent border-l-transparent"
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
+              />
+              <Crosshair className="w-4 h-4 text-primary/50 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[10px] text-foreground/60 font-display tracking-[0.12em] font-bold">INICIALIZANDO IA</p>
+              <p className="text-[7px] text-muted-foreground/30 font-mono mt-0.5">Processando modelos de predição...</p>
+            </div>
+            {autoLearnStatus && autoLearnStatus !== 'idle' && (
+              <motion.div animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }}
+                className="text-[8px] text-primary/50 font-mono px-2 py-1 rounded-lg glass border border-primary/10">
+                {autoLearnStatus === 'learning' ? '🧠 Learn' : autoLearnStatus === 'analyzing' ? '🔍 Analyze' : '📊 Test'}
+              </motion.div>
+            )}
           </div>
-          <div>
-            <p className="text-[11px] text-foreground/60 font-display tracking-[0.15em] font-bold">CARREGANDO IA</p>
-            <p className="text-[8px] text-muted-foreground/30 font-mono mt-1">Inicializando modelos de predição...</p>
-          </div>
-          {autoLearnStatus && autoLearnStatus !== 'idle' && (
-            <motion.p animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }}
-              className="text-[9px] text-primary/50 font-mono">
-              {autoLearnStatus === 'learning' ? '🧠 Aprendendo...' : autoLearnStatus === 'analyzing' ? '🔍 Analisando...' : '📊 Backtesting...'}
-            </motion.p>
+          {/* Quick stats while loading */}
+          {allNumbers.length >= 3 && (
+            <div className="grid grid-cols-3 gap-2">
+              <div className="glass rounded-lg border border-border/10 p-2 text-center">
+                <div className="text-[7px] text-muted-foreground/40 uppercase font-bold">Último</div>
+                <div className="text-[12px] font-black text-foreground font-mono">{lastNum}</div>
+              </div>
+              <div className="glass rounded-lg border border-border/10 p-2 text-center">
+                <div className="text-[7px] text-muted-foreground/40 uppercase font-bold">Verm</div>
+                <div className="text-[12px] font-black text-red-400 font-mono">{quickRed}</div>
+              </div>
+              <div className="glass rounded-lg border border-border/10 p-2 text-center">
+                <div className="text-[7px] text-muted-foreground/40 uppercase font-bold">Preto</div>
+                <div className="text-[12px] font-black text-foreground font-mono">{quickBlack}</div>
+              </div>
+            </div>
           )}
         </div>
       </div>
