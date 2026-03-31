@@ -1115,18 +1115,98 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // ── 3. Run all 7 Models in parallel ────────────────────
-    const [markovSignals, neuralSignals, gradientSignals, bayesianSignals, statsSignals, patternSignals, rlSignals] = [
-      modelMarkov(spins),
-      modelNeuralPattern(spins),
-      modelGradient(spins),
-      modelBayesian(spins),
-      modelStatistical(spins),
-      modelPatternDiscovery(spins),
-      modelRLOptimizer(spins, weights),
+    // ── 3. Run all 7 Models with BAGGING (Bootstrap Aggregation) ──
+    // Each model runs on 3 bootstrap samples + full data = 4 runs
+    // Signals are aggregated and boosted by consistency across samples
+    const BOOTSTRAP_SAMPLES = 3;
+    const bootstrapSamples: number[][] = [];
+    for (let b = 0; b < BOOTSTRAP_SAMPLES; b++) {
+      const sample: number[] = [];
+      const sampleSize = Math.min(spins.length, 200);
+      for (let i = 0; i < sampleSize; i++) {
+        sample.push(spins[Math.floor(Math.random() * spins.length)]);
+      }
+      bootstrapSamples.push(sample);
+    }
+
+    // Run models on full data
+    const fullSignals = [
+      ...modelMarkov(spins),
+      ...modelNeuralPattern(spins),
+      ...modelGradient(spins),
+      ...modelBayesian(spins),
+      ...modelStatistical(spins),
+      ...modelPatternDiscovery(spins),
+      ...modelRLOptimizer(spins, weights),
     ];
 
-    const allSignals = [...markovSignals, ...neuralSignals, ...gradientSignals, ...bayesianSignals, ...statsSignals, ...patternSignals, ...rlSignals];
+    // Run models on bootstrap samples (bagging)
+    const baggedSignalSets: ModelSignal[][] = [];
+    for (const sample of bootstrapSamples) {
+      baggedSignalSets.push([
+        ...modelMarkov(sample),
+        ...modelNeuralPattern(sample),
+        ...modelGradient(sample),
+        ...modelBayesian(sample),
+        ...modelStatistical(sample),
+        ...modelPatternDiscovery(sample),
+        ...modelRLOptimizer(sample, weights),
+      ]);
+    }
+
+    // BOOSTING: Increase confidence of signals that appear consistently across bootstraps
+    const boostedSignals: ModelSignal[] = fullSignals.map(signal => {
+      let consistencyCount = 0;
+      for (const bagSet of baggedSignalSets) {
+        const match = bagSet.find(bs => 
+          bs.modelId === signal.modelId && 
+          bs.betType === signal.betType &&
+          (bs.predictedMain === signal.predictedMain || 
+           bs.numbers.filter(n => signal.numbers.includes(n)).length >= Math.min(3, signal.numbers.length * 0.5))
+        );
+        if (match) consistencyCount++;
+      }
+      // Boost factor: signal found in N/3 bootstrap samples
+      const boostFactor = 1 + (consistencyCount / BOOTSTRAP_SAMPLES) * 0.25; // up to +25%
+      const penaltyFactor = consistencyCount === 0 ? 0.75 : 1; // -25% if never in bootstraps
+      
+      return {
+        ...signal,
+        confidence: Math.min(95, Math.round(signal.confidence * boostFactor * penaltyFactor)),
+        reasoning: `${signal.reasoning} [Bagging: ${consistencyCount}/${BOOTSTRAP_SAMPLES} amostras${consistencyCount === BOOTSTRAP_SAMPLES ? ' ✅ consistente' : consistencyCount === 0 ? ' ⚠️ instável' : ''}]`,
+      };
+    });
+
+    // Aggregate unique numbers from bagged signals to find "bag consensus" numbers
+    const bagNumberVotes: Record<number, number> = {};
+    for (const bagSet of baggedSignalSets) {
+      for (const sig of bagSet) {
+        if (sig.predictedMain !== undefined) {
+          bagNumberVotes[sig.predictedMain] = (bagNumberVotes[sig.predictedMain] || 0) + 1;
+        }
+        for (const n of sig.numbers.slice(0, 5)) {
+          bagNumberVotes[n] = (bagNumberVotes[n] || 0) + 0.3;
+        }
+      }
+    }
+
+    const allSignals = boostedSignals;
+
+    // Build per-bet-type analysis summary
+    const betTypeAnalysis: Record<string, { confidence: number; models: string[]; numbers: number[]; reasoning: string }> = {};
+    for (const sig of allSignals) {
+      const bt = sig.betType;
+      if (!betTypeAnalysis[bt]) {
+        betTypeAnalysis[bt] = { confidence: 0, models: [], numbers: [], reasoning: '' };
+      }
+      const entry = betTypeAnalysis[bt];
+      entry.confidence = Math.max(entry.confidence, sig.confidence);
+      if (!entry.models.includes(sig.modelName)) entry.models.push(sig.modelName);
+      for (const n of sig.numbers) {
+        if (!entry.numbers.includes(n)) entry.numbers.push(n);
+      }
+      entry.reasoning += (entry.reasoning ? ' | ' : '') + sig.reasoning.slice(0, 100);
+    }
 
     if (allSignals.length === 0) {
       return new Response(JSON.stringify({
