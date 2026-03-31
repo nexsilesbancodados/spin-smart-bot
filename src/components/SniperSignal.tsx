@@ -86,15 +86,78 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
 
   const reedStopped = reedCount >= 4;
 
-  const { ensTop1, finalNumbers, displayProb } = useMemo(() => {
+  const { ensTop1, finalNumbers, displayProb, analysisDetail } = useMemo(() => {
     if (!sniperData?.signal || !sniperData?.strategy) {
-      return { ensTop1: 0, finalNumbers: [], displayProb: 0 };
+      return { ensTop1: 0, finalNumbers: [], displayProb: 0, analysisDetail: null };
     }
     const top1 = sniperData.ensemble?.top1 ?? sniperData.topCandidates?.[0]?.num ?? sniperData.strategy.numbers[0];
     const nums: number[] = sniperData.strategy.numbers || [];
     const rawProb = sniperData.signal.probability || 0;
-    return { ensTop1: top1, finalNumbers: nums, displayProb: rawProb };
-  }, [sniperData]);
+
+    // Derive analysis-specific detail based on betType or strategy
+    const bt = sniperData.aiReasoning?.betType || sniperData.strategy?.type || '';
+    let detail: { type: string; label: string; visual: string; colorClass: string } | null = null;
+
+    if (bt === 'cor' || strategyFilter === 'cor') {
+      const redCount = nums.filter((n: number) => RED_NUMBERS.has(n)).length;
+      const blackCount = nums.filter((n: number) => n > 0 && !RED_NUMBERS.has(n)).length;
+      const isRed = redCount > blackCount;
+      detail = {
+        type: 'cor',
+        label: isRed ? 'VERMELHO' : 'PRETO',
+        visual: isRed ? '🔴' : '⚫',
+        colorClass: isRed ? 'bg-red-600/20 text-red-400 border-red-500/40' : 'bg-zinc-700/30 text-zinc-300 border-zinc-500/40',
+      };
+    } else if (bt === 'duzia' || strategyFilter === 'duzia') {
+      const dzCounts = [0, 0, 0, 0];
+      nums.forEach((n: number) => { if (n === 0) dzCounts[0]++; else if (n <= 12) dzCounts[1]++; else if (n <= 24) dzCounts[2]++; else dzCounts[3]++; });
+      const bestDz = dzCounts.indexOf(Math.max(dzCounts[1], dzCounts[2], dzCounts[3]), 1);
+      const dzLabels = ['', '1ª (1-12)', '2ª (13-24)', '3ª (25-36)'];
+      detail = { type: 'duzia', label: `Dúzia ${dzLabels[bestDz]}`, visual: '📊', colorClass: 'bg-blue-600/20 text-blue-400 border-blue-500/40' };
+    } else if (bt === 'coluna' || strategyFilter === 'coluna') {
+      const COL1 = [1,4,7,10,13,16,19,22,25,28,31,34];
+      const COL2 = [2,5,8,11,14,17,20,23,26,29,32,35];
+      const COL3 = [3,6,9,12,15,18,21,24,27,30,33,36];
+      const c1 = nums.filter((n: number) => COL1.includes(n)).length;
+      const c2 = nums.filter((n: number) => COL2.includes(n)).length;
+      const c3 = nums.filter((n: number) => COL3.includes(n)).length;
+      const bestCol = c1 >= c2 && c1 >= c3 ? 1 : c2 >= c3 ? 2 : 3;
+      detail = { type: 'coluna', label: `Coluna ${bestCol}`, visual: '📐', colorClass: 'bg-purple-600/20 text-purple-400 border-purple-500/40' };
+    } else if (bt === 'paridade' || strategyFilter === 'paridade') {
+      const parCount = nums.filter((n: number) => n > 0 && n % 2 === 0).length;
+      const imparCount = nums.filter((n: number) => n > 0 && n % 2 === 1).length;
+      const isPar = parCount > imparCount;
+      detail = { type: 'paridade', label: isPar ? 'PAR' : 'ÍMPAR', visual: '⚖️', colorClass: 'bg-amber-600/20 text-amber-400 border-amber-500/40' };
+    } else if (bt === 'alto_baixo' || strategyFilter === 'alto_baixo') {
+      const altoCount = nums.filter((n: number) => n >= 19).length;
+      const baixoCount = nums.filter((n: number) => n >= 1 && n <= 18).length;
+      const isAlto = altoCount > baixoCount;
+      detail = { type: 'alto_baixo', label: isAlto ? 'ALTO (19-36)' : 'BAIXO (1-18)', visual: '📏', colorClass: 'bg-teal-600/20 text-teal-400 border-teal-500/40' };
+    } else if (bt === 'terminal' || strategyFilter === 'terminal') {
+      const term = top1 % 10;
+      detail = { type: 'terminal', label: `Terminal ${term}`, visual: '🔢', colorClass: 'bg-cyan-600/20 text-cyan-400 border-cyan-500/40' };
+    } else if (bt === 'setor' || strategyFilter === 'setor') {
+      const VOISINS_SET = new Set([22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25]);
+      const TIERS_SET = new Set([27,13,36,11,30,8,23,10,5,24,16,33]);
+      const vCount = nums.filter((n: number) => VOISINS_SET.has(n)).length;
+      const tCount = nums.filter((n: number) => TIERS_SET.has(n)).length;
+      const sectorName = vCount >= tCount ? 'Voisins du Zéro' : 'Tiers du Cylindre';
+      detail = { type: 'setor', label: sectorName, visual: '🌍', colorClass: 'bg-emerald-600/20 text-emerald-400 border-emerald-500/40' };
+    } else if (bt === 'cavalos' || strategyFilter === 'cavalos') {
+      detail = { type: 'cavalos', label: 'Cavalos', visual: '🐴', colorClass: 'bg-orange-600/20 text-orange-400 border-orange-500/40' };
+    } else if (bt === 'rua' || strategyFilter === 'rua') {
+      const street = Math.ceil(top1 / 3);
+      detail = { type: 'rua', label: `Rua ${street}`, visual: '🛤️', colorClass: 'bg-indigo-600/20 text-indigo-400 border-indigo-500/40' };
+    } else if (bt === 'pleno' || strategyFilter === 'pleno') {
+      detail = { type: 'pleno', label: `Pleno ${top1}`, visual: '💎', colorClass: 'bg-yellow-600/20 text-yellow-400 border-yellow-500/40' };
+    } else if (bt === 'vizinhos' || strategyFilter === 'vizinhos' || bt === 'puxada' || strategyFilter === 'puxada') {
+      detail = { type: bt || strategyFilter, label: bt === 'puxada' || strategyFilter === 'puxada' ? 'Puxadas' : 'Vizinhos', visual: bt === 'puxada' || strategyFilter === 'puxada' ? '🧲' : '🎯', colorClass: 'bg-pink-600/20 text-pink-400 border-pink-500/40' };
+    } else if (bt === 'fusao' || strategyFilter === 'fusao') {
+      detail = { type: 'fusao', label: 'Fusão Multi-IA', visual: '🧬', colorClass: 'bg-violet-600/20 text-violet-400 border-violet-500/40' };
+    }
+
+    return { ensTop1: top1, finalNumbers: nums, displayProb: rawProb, analysisDetail: detail };
+  }, [sniperData, strategyFilter]);
 
   // Loading state
   if (!sniperData) {
@@ -281,14 +344,22 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
                 </span>
               </div>
 
-              {/* Tipo de aposta */}
-              {betTypeInfo && (
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-bold text-foreground/80">
-                    {betTypeInfo.emoji} {betTypeInfo.label}
-                  </span>
-                  {betTypeInfo.desc && (
-                    <span className="text-[9px] text-muted-foreground hidden sm:inline">— {betTypeInfo.desc}</span>
+              {/* Tipo de aposta + detalhe da análise */}
+              {(betTypeInfo || analysisDetail) && (
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  {betTypeInfo && (
+                    <span className="text-sm font-bold text-foreground/80">
+                      {betTypeInfo.emoji} {betTypeInfo.label}
+                    </span>
+                  )}
+                  {analysisDetail && (
+                    <motion.span
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-black border ${analysisDetail.colorClass}`}
+                    >
+                      {analysisDetail.visual} {analysisDetail.label}
+                    </motion.span>
                   )}
                 </div>
               )}
