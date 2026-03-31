@@ -7248,9 +7248,8 @@ METODOLOGIA DE ANÁLISE:
         // ROUND 1: 8 IAs ANALISAM INDEPENDENTEMENTE
         // Cada uma com uma "personalidade" analítica diferente
         // =====================================================
-        const LAI_KEY = Deno.env.get("LOVABLE_API_KEY");
-        const LAI_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
         const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+        const DS_URL = 'https://api.deepseek.com/chat/completions';
 
         const specialistPrompts: Record<string, string> = {
           'Estatístico': `${aiSystemPrompt}\n\nSua ESPECIALIDADE: Análise ESTATÍSTICA PURA.\n- Calcule frequências esperadas vs observadas para cada número/terminal/setor\n- Aplique Lei do Terço: dos 37 números, ~13 ficam ausentes em 37 giros. Esses ausentes são candidatos.\n- Dívida estatística: números com 0 ou 1 aparição em 200 giros têm pressão de retorno\n- Chi-quadrado mental: quais desvios são significativos vs ruído?\n- NÃO use intuição. Apenas MATEMÁTICA dos dados fornecidos.`,
