@@ -449,7 +449,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                 </div>
 
                 <div>
-                  <label className="text-[9px] text-muted-foreground mb-1.5 block font-bold tracking-wide">PROBABILIDADE MÍNIMA (%)</label>
+                  <label className="text-[9px] text-muted-foreground/60 mb-1.5 block font-bold tracking-wider">PROBABILIDADE MÍNIMA (%)</label>
                   <div className="flex gap-1.5">
                     {[70, 75, 80, 85, 90].map(v => (
                       <button key={v} onClick={() => setConfig(prev => ({ ...prev, minProbability: v }))}
