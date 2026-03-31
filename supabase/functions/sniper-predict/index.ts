@@ -646,13 +646,13 @@ Deno.serve(async (req) => {
 
   try {
     // Parse request body — accepts sampleSize and optional clientNumbers for instant reaction
-    let sampleSize = 100;
+    let sampleSize = 500;
     let clientNumbers: number[] | null = null;
     let strategyFilterParam: string | null = null;
     try {
       const body = await req.json();
       if (body?.sampleSize && typeof body.sampleSize === 'number') {
-        sampleSize = Math.max(10, Math.min(500, Math.round(body.sampleSize)));
+        sampleSize = Math.max(50, Math.min(1000, Math.round(body.sampleSize)));
       }
       // Accept client-side numbers for faster response (before DB sync)
       if (body?.numbers && Array.isArray(body.numbers)) {
