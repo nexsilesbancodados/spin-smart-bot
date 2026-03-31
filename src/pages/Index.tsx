@@ -133,7 +133,7 @@ const Index = () => {
   const prevNumbersRef = useRef<string>('');
   const [sniperData, setSniperData] = useState<any>(null);
   const [rtInsights, setRtInsights] = useState<any[]>([]);
-  const [sniperCountdown, setSniperCountdown] = useState(13);
+  const [sniperCountdown, setSniperCountdown] = useState(14);
   const sniperPrevKey = useRef<string>('');
   const sniperSameCount = useRef(0);
   const [sniperStale, setSniperStale] = useState(false);
@@ -173,6 +173,7 @@ const Index = () => {
   const lastSniperTriggerRef = useRef(0);
   const lastSpinSignatureRef = useRef('');
   const apiSnapshotRef = useRef<number[]>([]);
+  const fetchSniperRef = useRef<((retryCount?: number) => void) | null>(null);
   const lastAcceptedSpinRef = useRef<{ number: number | null; timestamp: number }>({ number: null, timestamp: 0 });
   const processedPredictionEventsRef = useRef<Record<string, number>>({});
   const spinCountSinceMicroLearnRef = useRef(0);
@@ -202,9 +203,11 @@ const Index = () => {
     lastSpinSignatureRef.current = signature;
     sniperSameCount.current = 0;
     setSniperStale(false);
-    setSniperCountdown(13);
+    setSniperCountdown(14); // ← 14 segundos exatos para apostar
     playSound('signal', soundEnabled);
     if (aiEnabled) {
+      // Dispara sniper IMEDIATAMENTE via ref (evita forward-reference)
+      fetchSniperRef.current?.();
       supabase.functions.invoke('realtime-patterns')
         .then(res => { if (res.data?.all_insights?.length > 0) setRtInsights(res.data.all_insights.slice(0, 6)); })
         .catch(() => {});
@@ -218,7 +221,7 @@ const Index = () => {
 
   const fetchSniper = useCallback(async (retryCount = 0) => {
     const now = Date.now();
-    if (now - lastSniperTriggerRef.current < 15000 && retryCount === 0) return;
+    if (now - lastSniperTriggerRef.current < 8000 && retryCount === 0) return; // ← reduzido de 15s para 8s
     if (sniperFetchingRef.current && retryCount === 0) return;
     if (!aiEnabled) return;
     sniperFetchingRef.current = true;
@@ -241,6 +244,7 @@ const Index = () => {
       if (retryCount < 2) { sniperFetchingRef.current = false; setTimeout(() => fetchSniper(retryCount + 1), 2000 * (retryCount + 1)); return; }
     } finally { sniperFetchingRef.current = false; }
   }, [sampleSize, aiEnabled, apiNumbers, strategyFilter]);
+  fetchSniperRef.current = fetchSniper;
 
   const fetchNumbers = useCallback(async () => {
     try {
