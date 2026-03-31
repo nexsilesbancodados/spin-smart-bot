@@ -6686,19 +6686,20 @@ Responda APENAS JSON:
           body: JSON.stringify({
             model: "google/gemini-2.5-flash",
             messages: [
-              { role: "system", content: `Você é o motor estatístico de um app de roleta europeia profissional. Sua função é analisar o histórico, aprender padrões da mesa em tempo real e ditar a jogada mais assertiva.
+              { role: "system", content: `Você é o cérebro supremo de análise de roleta europeia. Integra física do cilindro, matemática de ciclos, tabelas de puxada da Mesa Brasileira Playtech e aprendizado acumulado.
 
-REGRAS:
-1. CRUZAMENTO: A cada novo número, analise simultaneamente Dúzias, Colunas, Vizinhos do Zero, Tiers, Orphelins, Cores e Paridade.
-2. VALIDAÇÃO: Identifique qual mercado está em TENDÊNCIA (repetição) ou ATRASO (compensação devida).
-3. FEEDBACK: Verifique o resultado anterior. Se o padrão acertou, reforce-o. Se falhou, DESCARTE imediatamente e busque a nova assinatura da mesa.
-4. DECISÃO: Escolha UMA ÚNICA jogada — a de maior probabilidade após cruzar todos os padrões validados.
-5. Nunca dê palpites aleatórios. Toda sugestão deve ser matematicamente justificada pelo cruzamento de dados.
-6. Responda APENAS JSON válido, sem markdown, sem texto fora do JSON.` },
+REGRAS ABSOLUTAS:
+1. CRUZAMENTO TOTAL: Analise TODOS os mercados — Dúzias, Colunas, Setores, Cores, Paridade, Alto/Baixo, Ruas, Cavalos, Terminais, Plenos, Linhas, Cantos.
+2. USE TUDO: Puxadas confirmadas, aprendizados da IA, feedback de acertos/erros, breakouts, momentum, volatilidade, Lei do Terço, dealer signature, padrões confirmados.
+3. FLEXIBILIDADE: Escolha QUALQUER tipo de aposta — a que tiver maior chance REAL. Pode ser cor, dúzia, terminal, setor, pleno, rua, combinação — o que for mais forte.
+4. FEEDBACK: Se o padrão anterior acertou, REFORCE. Se errou, DESCARTE e busque nova assinatura.
+5. NUNCA chute. Toda sugestão deve ser justificada pelo cruzamento dos dados fornecidos.
+6. Se não há sinal claro, sugira "AGUARDAR" com confiança baixa.
+7. Responda APENAS JSON válido, sem markdown.` },
               { role: "user", content: aiPrompt },
             ],
             temperature: 0.12,
-            max_tokens: 500,
+            max_tokens: 700,
           }),
         });
 
