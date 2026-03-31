@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import EnsembleDashboard from '@/components/EnsembleDashboard';
 import {
   Activity, Brain, ChevronDown, Power, MonitorPlay, Crosshair
 } from 'lucide-react';
@@ -1049,6 +1050,7 @@ const Index = () => {
         {/* ── ABA: IA ─────────────────────────────────────────────────────── */}
         {activeTab === 'ia' && (
           <div className="space-y-3">
+            <EnsembleDashboard sniperData={sniperData} />
             <AIIntelligenceLog />
             <IATab sniperData={sniperData} />
           </div>

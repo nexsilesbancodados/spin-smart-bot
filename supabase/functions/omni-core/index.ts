@@ -9,6 +9,7 @@ const corsHeaders = {
 // CONSTANTES DO CILINDRO EUROPEU
 // ═══════════════════════════════════════════════════════════════════
 const WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const WL = WHEEL.length;
 const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 const VOISINS = new Set([22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25]);
 const TIERS  = new Set([27,13,36,11,30,8,23,10,5,24,16,33]);
@@ -24,7 +25,7 @@ const wheelNeighbors = (n: number, radius = 4): number[] => {
   if (pos < 0) return [];
   const result: number[] = [];
   for (let i = -radius; i <= radius; i++) {
-    result.push(WHEEL[((pos + i) % WHEEL.length + WHEEL.length) % WHEEL.length]);
+    result.push(WHEEL[((pos + i) % WL + WL) % WL]);
   }
   return result;
 };
@@ -32,38 +33,545 @@ const wheelNeighbors = (n: number, radius = 4): number[] => {
 // ═══════════════════════════════════════════════════════════════════
 // TIPOS
 // ═══════════════════════════════════════════════════════════════════
-interface AgentSignal {
-  agentId: 'statistical' | 'ballistic' | 'reversion';
-  agentName: string;
+interface ModelSignal {
+  modelId: 'markov' | 'neural_pattern' | 'gradient' | 'bayesian' | 'statistical';
+  modelName: string;
   betType: string;
   label: string;
   numbers: number[];
-  confidence: number; // 0-100
+  confidence: number;
   reasoning: string;
+  predictedMain?: number;
 }
 
-interface ArbiterDecision {
-  winner: AgentSignal;
-  weights: Record<string, number>;
+interface EnsembleResult {
+  mode: 'signal' | 'kill_switch' | 'no_signal' | 'waiting';
+  winner?: ModelSignal;
+  ensembleConfidence: number;
+  ensembleConsensus: number;
+  allModelSignals: ModelSignal[];
+  modelWeights: Record<string, number>;
+  modelPerformance: Record<string, { winRate: number; total: number; hits: number; streak: number; weight: number }>;
+  temperature: 'fria' | 'morna' | 'quente' | 'caotica';
   entryForce: 'leve' | 'padrao' | 'forte';
   kellyFraction: number;
+  arbiterLog: string[];
   killSwitch: boolean;
   killReason?: string;
-  agentSignals: AgentSignal[];
-  arbiterLog: string[];
-  temperature: 'fria' | 'morna' | 'quente' | 'caotica';
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// AGENTE 1: ESTATÍSTICO (Dúzias/Colunas/Cores — Desvio Padrão)
+// MODELO 1: MARKOV CHAIN (Ordem 1-3)
+// Prevê próximo estado baseado em sequências anteriores
 // ═══════════════════════════════════════════════════════════════════
-function agentStatistical(spins: number[]): AgentSignal[] {
-  const signals: AgentSignal[] = [];
+function modelMarkov(spins: number[]): ModelSignal[] {
+  const signals: ModelSignal[] = [];
+  if (spins.length < 20) return signals;
+
+  // Build transition matrices for orders 1, 2, 3
+  // Order 1: P(next | current)
+  const trans1: Record<string, Record<string, number>> = {};
+  for (let i = 0; i < spins.length - 1; i++) {
+    const key = `${spins[i]}`;
+    if (!trans1[key]) trans1[key] = {};
+    const next = `${spins[i + 1]}`;
+    trans1[key][next] = (trans1[key][next] || 0) + 1;
+  }
+
+  // Order 2: P(next | prev2, prev1)
+  const trans2: Record<string, Record<string, number>> = {};
+  for (let i = 0; i < spins.length - 2; i++) {
+    const key = `${spins[i + 1]},${spins[i]}`;
+    if (!trans2[key]) trans2[key] = {};
+    const next = `${spins[i + 2]}`;
+    trans2[key][next] = (trans2[key][next] || 0) + 1;
+  }
+
+  // Order 3: P(next | prev3, prev2, prev1)
+  const trans3: Record<string, Record<string, number>> = {};
+  for (let i = 0; i < spins.length - 3; i++) {
+    const key = `${spins[i + 2]},${spins[i + 1]},${spins[i]}`;
+    if (!trans3[key]) trans3[key] = {};
+    const next = `${spins[i + 3]}`;
+    trans3[key][next] = (trans3[key][next] || 0) + 1;
+  }
+
+  // Predict from current state
+  const current = spins[0];
+  const key1 = `${current}`;
+  const key2 = spins.length >= 2 ? `${spins[0]},${spins[1]}` : null;
+  const key3 = spins.length >= 3 ? `${spins[0]},${spins[1]},${spins[2]}` : null;
+
+  // Merge predictions from all orders with decreasing weight
+  const scores: Record<number, number> = {};
+  const addScores = (transitions: Record<string, number> | undefined, weight: number) => {
+    if (!transitions) return;
+    const total = Object.values(transitions).reduce((a, b) => a + b, 0);
+    for (const [num, count] of Object.entries(transitions)) {
+      const n = parseInt(num);
+      scores[n] = (scores[n] || 0) + (count / total) * weight;
+    }
+  };
+
+  addScores(trans1[key1], 0.3);
+  if (key2) addScores(trans2[key2], 0.4);
+  if (key3) addScores(trans3[key3], 0.3);
+
+  // Get top predictions
+  const sorted = Object.entries(scores).sort(([, a], [, b]) => b - a);
+  if (sorted.length >= 3) {
+    const topNums = sorted.slice(0, 8).map(([n]) => parseInt(n));
+    const topScore = sorted[0][1];
+    const conf = Math.min(88, 45 + Math.round(topScore * 60));
+
+    // Determine bet type by grouping
+    const dozenCounts = [0, 0, 0, 0];
+    topNums.forEach(n => dozenCounts[getDozen(n)]++);
+    const maxDz = dozenCounts.indexOf(Math.max(...dozenCounts.slice(1)), 1);
+
+    signals.push({
+      modelId: 'markov',
+      modelName: 'Markov Chain',
+      betType: topNums.length <= 5 ? 'vizinhos' : 'grupo',
+      label: `Cadeia Markov → [${topNums.slice(0, 5).join(',')}]`,
+      numbers: topNums,
+      confidence: conf,
+      reasoning: `Cadeia de Markov (ordens 1-3) prevê [${topNums.slice(0, 3).join(',')}] como sucessores mais prováveis de ${current}. Score: ${(topScore * 100).toFixed(0)}%`,
+      predictedMain: topNums[0],
+    });
+  }
+
+  // Color transition prediction
+  const colorTrans: Record<string, Record<string, number>> = {};
+  for (let i = 0; i < Math.min(spins.length - 1, 100); i++) {
+    const c = getColor(spins[i]);
+    const next = getColor(spins[i + 1]);
+    if (!colorTrans[c]) colorTrans[c] = {};
+    colorTrans[c][next] = (colorTrans[c][next] || 0) + 1;
+  }
+  const currentColor = getColor(current);
+  const colorNext = colorTrans[currentColor];
+  if (colorNext) {
+    const total = Object.values(colorNext).reduce((a, b) => a + b, 0);
+    for (const [color, count] of Object.entries(colorNext)) {
+      if (color === 'green') continue;
+      const prob = count / total;
+      if (prob > 0.58) {
+        const targetNums = Array.from({ length: 37 }, (_, i) => i).filter(n => getColor(n) === color);
+        signals.push({
+          modelId: 'markov',
+          modelName: 'Markov Chain',
+          betType: 'cor',
+          label: `Markov Cor → ${color === 'red' ? 'VERMELHO' : 'PRETO'}`,
+          numbers: targetNums,
+          confidence: Math.min(82, 50 + Math.round(prob * 40)),
+          reasoning: `Transição de cor Markov: após ${currentColor}, ${color} tem ${(prob * 100).toFixed(0)}% de probabilidade`,
+        });
+      }
+    }
+  }
+
+  return signals;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODELO 2: NEURAL PATTERN (Detector de padrões temporais complexos)
+// Simula aprendizado de padrões via sliding windows e auto-correlação
+// ═══════════════════════════════════════════════════════════════════
+function modelNeuralPattern(spins: number[]): ModelSignal[] {
+  const signals: ModelSignal[] = [];
+  if (spins.length < 30) return signals;
+
+  // Feature extraction: sliding windows of properties
+  const windows = [5, 10, 20, 30];
+  const features: Record<string, number[]> = {};
+
+  for (const w of windows) {
+    if (spins.length < w) continue;
+    const window = spins.slice(0, w);
+
+    // Sector distribution
+    const sectors: Record<string, number> = { voisins: 0, tiers: 0, orphelins: 0, zero: 0 };
+    window.forEach(n => sectors[getSector(n)]++);
+
+    // Dozen distribution
+    const dozens = [0, 0, 0, 0];
+    window.forEach(n => dozens[getDozen(n)]++);
+
+    // Wheel position autocorrelation
+    const positions = window.map(wheelPos).filter(p => p >= 0);
+    let autocorr = 0;
+    if (positions.length >= 2) {
+      for (let i = 0; i < positions.length - 1; i++) {
+        const diff = Math.abs(positions[i] - positions[i + 1]);
+        autocorr += Math.min(diff, WL - diff);
+      }
+      autocorr /= (positions.length - 1);
+    }
+
+    features[`w${w}`] = [
+      sectors.voisins / w, sectors.tiers / w, sectors.orphelins / w,
+      dozens[1] / w, dozens[2] / w, dozens[3] / w,
+      autocorr / WL,
+    ];
+  }
+
+  // Pattern: sector concentration (neural detects clustering)
+  const w20 = features['w20'];
+  const w5 = features['w5'];
+  if (w20 && w5) {
+    const sectorNames = ['voisins', 'tiers', 'orphelins'];
+    const sectorSets: Record<string, Set<number>> = {
+      voisins: VOISINS, tiers: TIERS, orphelins: ORPHELINS,
+    };
+
+    for (let i = 0; i < 3; i++) {
+      // If short-term trend reinforces long-term
+      if (w5[i] > 0.45 && w20[i] > 0.35) {
+        const sectorNums = Array.from(sectorSets[sectorNames[i]]);
+        const conf = Math.min(85, 55 + Math.round((w5[i] + w20[i]) * 25));
+        signals.push({
+          modelId: 'neural_pattern',
+          modelName: 'Neural Pattern',
+          betType: 'setor',
+          label: `Neural → ${sectorNames[i].charAt(0).toUpperCase() + sectorNames[i].slice(1)}`,
+          numbers: sectorNums,
+          confidence: conf,
+          reasoning: `Padrão temporal detectado: ${sectorNames[i]} concentrou ${(w5[i] * 100).toFixed(0)}% (5g) e ${(w20[i] * 100).toFixed(0)}% (20g) — tendência persistente`,
+        });
+      }
+    }
+  }
+
+  // Pattern: wheel position clustering (dealer signature via autocorrelation)
+  if (w5 && w20) {
+    const shortAutocorr = w5[6]; // normalized autocorrelation
+    const longAutocorr = w20[6];
+    if (shortAutocorr < 0.25 && longAutocorr < 0.30) {
+      // Numbers are clustering on the wheel
+      const center = spins[0];
+      const neighbors = wheelNeighbors(center, 6);
+      const conf = Math.min(82, 55 + Math.round((1 - shortAutocorr) * 40));
+      signals.push({
+        modelId: 'neural_pattern',
+        modelName: 'Neural Pattern',
+        betType: 'vizinhos',
+        label: `Neural → Cluster de ${center}`,
+        numbers: neighbors,
+        confidence: conf,
+        reasoning: `Autocorrelação baixa (${(shortAutocorr * WL).toFixed(1)} posições médias) — padrão de cluster no cilindro detectado`,
+        predictedMain: center,
+      });
+    }
+  }
+
+  // Dozen momentum detection
+  if (w5 && w20) {
+    for (let dz = 1; dz <= 3; dz++) {
+      const shortFreq = w5[dz + 2]; // dozens are indices 3,4,5
+      const longFreq = w20[dz + 2];
+      if (shortFreq > 0.45 && longFreq > 0.38) {
+        const dzNums = Array.from({ length: 12 }, (_, i) => (dz - 1) * 12 + i + 1);
+        signals.push({
+          modelId: 'neural_pattern',
+          modelName: 'Neural Pattern',
+          betType: 'duzia',
+          label: `Neural → ${dz}ª Dúzia (momentum)`,
+          numbers: dzNums,
+          confidence: Math.min(80, 50 + Math.round((shortFreq + longFreq) * 25)),
+          reasoning: `Momentum temporal: ${dz}ª Dúzia em ${(shortFreq * 100).toFixed(0)}% curto prazo, ${(longFreq * 100).toFixed(0)}% médio prazo`,
+        });
+      }
+    }
+  }
+
+  return signals;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODELO 3: GRADIENT BOOSTING (Feature-based scoring)
+// Usa features estatísticas para pontuar cada número
+// ═══════════════════════════════════════════════════════════════════
+function modelGradient(spins: number[]): ModelSignal[] {
+  const signals: ModelSignal[] = [];
+  if (spins.length < 20) return signals;
+
+  // Build feature matrix for each number 0-36
+  const numScores: { num: number; score: number; features: string[] }[] = [];
+
+  for (let n = 0; n <= 36; n++) {
+    let score = 0;
+    const feats: string[] = [];
+
+    // Feature 1: Recency (how recently did it appear)
+    const lastIdx = spins.indexOf(n);
+    const recency = lastIdx >= 0 ? lastIdx : spins.length;
+    const recencyScore = Math.min(1, recency / 50); // higher = more absent = more due
+    score += recencyScore * 25;
+    if (recency > 30) feats.push(`ausente ${recency}g`);
+
+    // Feature 2: Frequency deviation (50 spins)
+    const w50 = spins.slice(0, 50);
+    const freq50 = w50.filter(x => x === n).length;
+    const expected50 = w50.length / 37;
+    const freqDev = (freq50 - expected50) / Math.max(1, Math.sqrt(expected50));
+    if (freqDev < -1.2) {
+      score += Math.min(20, Math.abs(freqDev) * 8);
+      feats.push(`frio (${freqDev.toFixed(1)}σ)`);
+    } else if (freqDev > 1.5) {
+      score += Math.min(15, freqDev * 5); // hot number has momentum
+      feats.push(`quente (${freqDev.toFixed(1)}σ)`);
+    }
+
+    // Feature 3: Sector heat
+    const sector = getSector(n);
+    const sectorCount = spins.slice(0, 20).filter(x => getSector(x) === sector).length;
+    const sectorExpected = sector === 'voisins' ? 20 * 17 / 37 : sector === 'tiers' ? 20 * 12 / 37 : sector === 'orphelins' ? 20 * 8 / 37 : 20 / 37;
+    if (sectorCount > sectorExpected * 1.3) {
+      score += 10;
+      feats.push(`setor quente`);
+    }
+
+    // Feature 4: Neighbor heat
+    const neighbors = wheelNeighbors(n, 3);
+    const neighborHits = spins.slice(0, 10).filter(x => neighbors.includes(x)).length;
+    if (neighborHits >= 3) {
+      score += neighborHits * 5;
+      feats.push(`${neighborHits} vizinhos recentes`);
+    }
+
+    // Feature 5: Terminal pattern
+    const terminal = n % 10;
+    const termCount = spins.slice(0, 15).filter(x => x % 10 === terminal).length;
+    if (termCount >= 4) {
+      score += 8;
+      feats.push(`terminal T${terminal} quente`);
+    }
+
+    // Feature 6: Dozen coldness
+    const dz = getDozen(n);
+    if (dz > 0) {
+      let dzAbsence = 0;
+      for (const s of spins) {
+        if (s === 0) { dzAbsence++; continue; }
+        if (getDozen(s) === dz) break;
+        dzAbsence++;
+      }
+      if (dzAbsence >= 8) {
+        score += Math.min(15, (dzAbsence - 8) * 3);
+        feats.push(`dúzia ${dz} fria (${dzAbsence}g)`);
+      }
+    }
+
+    // Feature 7: Column coldness
+    const col = getColumn(n);
+    if (col > 0) {
+      let colAbsence = 0;
+      for (const s of spins) {
+        if (s === 0) { colAbsence++; continue; }
+        if (getColumn(s) === col) break;
+        colAbsence++;
+      }
+      if (colAbsence >= 8) {
+        score += Math.min(12, (colAbsence - 8) * 2.5);
+        feats.push(`coluna ${col} fria`);
+      }
+    }
+
+    numScores.push({ num: n, score, features: feats });
+  }
+
+  // Sort by score and emit top group
+  numScores.sort((a, b) => b.score - a.score);
+  const topNums = numScores.slice(0, 10);
+  const maxScore = topNums[0].score;
+
+  if (maxScore > 30) {
+    const numbers = topNums.map(t => t.num);
+    const conf = Math.min(87, 45 + Math.round(maxScore * 0.8));
+    const topFeats = topNums[0].features;
+
+    signals.push({
+      modelId: 'gradient',
+      modelName: 'Gradient Boost',
+      betType: 'grupo',
+      label: `GBM → [${numbers.slice(0, 6).join(',')}]`,
+      numbers,
+      confidence: conf,
+      reasoning: `Gradient scoring: ${topNums[0].num} lidera com score ${maxScore.toFixed(0)} (${topFeats.join(', ')})`,
+      predictedMain: topNums[0].num,
+    });
+
+    // Also emit best dozen if there's a clear winner
+    const dzScores = [0, 0, 0, 0];
+    numScores.forEach(ns => {
+      const dz = getDozen(ns.num);
+      if (dz > 0) dzScores[dz] += ns.score;
+    });
+    const bestDz = dzScores.indexOf(Math.max(...dzScores.slice(1)), 1);
+    const dzRatio = dzScores[bestDz] / (dzScores.reduce((a, b) => a + b, 0) || 1);
+    if (dzRatio > 0.4) {
+      const dzNums = Array.from({ length: 12 }, (_, i) => (bestDz - 1) * 12 + i + 1);
+      signals.push({
+        modelId: 'gradient',
+        modelName: 'Gradient Boost',
+        betType: 'duzia',
+        label: `GBM → ${bestDz}ª Dúzia`,
+        numbers: dzNums,
+        confidence: Math.min(80, 50 + Math.round(dzRatio * 50)),
+        reasoning: `${bestDz}ª Dúzia concentra ${(dzRatio * 100).toFixed(0)}% do score total do gradiente`,
+      });
+    }
+  }
+
+  return signals;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODELO 4: BAYESIANO DINÂMICO
+// Atualiza probabilidades a cada giro com priors
+// ═══════════════════════════════════════════════════════════════════
+function modelBayesian(spins: number[]): ModelSignal[] {
+  const signals: ModelSignal[] = [];
+  if (spins.length < 15) return signals;
+
+  // Prior: uniform 1/37 for each number
+  const prior = 1 / 37;
+  const posteriors: number[] = new Array(37).fill(prior);
+
+  // Update posteriors with observed frequencies (Dirichlet-like)
+  const alpha = 1; // prior strength (pseudo-counts)
+  const counts = new Array(37).fill(alpha);
+  const window = spins.slice(0, Math.min(200, spins.length));
+
+  // Weight recent spins more heavily
+  for (let i = 0; i < window.length; i++) {
+    const weight = Math.exp(-i * 0.02); // exponential decay
+    counts[window[i]] += weight;
+  }
+
+  const totalCounts = counts.reduce((a: number, b: number) => a + b, 0);
+  for (let i = 0; i <= 36; i++) {
+    posteriors[i] = counts[i] / totalCounts;
+  }
+
+  // Bias detection: compute KL divergence from uniform
+  const uniform = 1 / 37;
+  let klDiv = 0;
+  for (let i = 0; i <= 36; i++) {
+    if (posteriors[i] > 0) {
+      klDiv += posteriors[i] * Math.log(posteriors[i] / uniform);
+    }
+  }
+
+  // If significant bias detected, emit signals
+  if (klDiv > 0.05) {
+    // Top numbers by posterior
+    const ranked = posteriors.map((p, i) => ({ num: i, prob: p })).sort((a, b) => b.prob - a.prob);
+    const topNums = ranked.slice(0, 8).map(r => r.num);
+    const topProb = ranked[0].prob;
+    const conf = Math.min(85, 50 + Math.round(klDiv * 200));
+
+    signals.push({
+      modelId: 'bayesian',
+      modelName: 'Bayesiano Dinâmico',
+      betType: 'grupo',
+      label: `Bayes → [${topNums.slice(0, 5).join(',')}]`,
+      numbers: topNums,
+      confidence: conf,
+      reasoning: `Distribuição posterior com viés detectado (KL=${klDiv.toFixed(3)}). ${ranked[0].num} tem probabilidade ${(topProb * 100).toFixed(1)}% vs ${(uniform * 100).toFixed(1)}% esperado`,
+      predictedMain: ranked[0].num,
+    });
+  }
+
+  // Bayesian color prediction
+  const colorCounts = { red: alpha, black: alpha, green: alpha };
+  for (let i = 0; i < Math.min(50, spins.length); i++) {
+    const w = Math.exp(-i * 0.03);
+    const c = getColor(spins[i]);
+    colorCounts[c] += w;
+  }
+  const colorTotal = colorCounts.red + colorCounts.black + colorCounts.green;
+  const redProb = colorCounts.red / colorTotal;
+  const blackProb = colorCounts.black / colorTotal;
+
+  // Recent bias check
+  const expectedColorProb = 18 / 37;
+  if (Math.abs(redProb - expectedColorProb) > 0.08) {
+    const favoredColor = redProb > expectedColorProb ? 'red' : 'black';
+    const favoredNums = Array.from({ length: 37 }, (_, i) => i).filter(n => getColor(n) === favoredColor);
+    signals.push({
+      modelId: 'bayesian',
+      modelName: 'Bayesiano Dinâmico',
+      betType: 'cor',
+      label: `Bayes → ${favoredColor === 'red' ? 'VERMELHO' : 'PRETO'} (momentum)`,
+      numbers: favoredNums,
+      confidence: Math.min(78, 50 + Math.round(Math.abs(redProb - expectedColorProb) * 200)),
+      reasoning: `Posterior Bayesiana: ${favoredColor === 'red' ? 'vermelho' : 'preto'} com ${(Math.max(redProb, blackProb) * 100).toFixed(1)}% (esperado: ${(expectedColorProb * 100).toFixed(1)}%)`,
+    });
+  }
+
+  // Bayesian dozen prediction with cold reversal
+  for (let dz = 1; dz <= 3; dz++) {
+    let absence = 0;
+    for (const n of spins) {
+      if (n === 0) { absence++; continue; }
+      if (getDozen(n) === dz) break;
+      absence++;
+    }
+    if (absence >= 8) {
+      // Bayesian prior says it should have appeared ~every 3 spins
+      const priorProb = 12 / 37;
+      // Posterior increases with absence
+      const posteriorProb = priorProb * (1 + 0.02 * absence);
+      const dzNums = Array.from({ length: 12 }, (_, i) => (dz - 1) * 12 + i + 1);
+      signals.push({
+        modelId: 'bayesian',
+        modelName: 'Bayesiano Dinâmico',
+        betType: 'duzia',
+        label: `Bayes → ${dz}ª Dúzia (reversão)`,
+        numbers: dzNums,
+        confidence: Math.min(84, 55 + Math.round(posteriorProb * 40)),
+        reasoning: `Posterior Bayesiana: ${dz}ª Dúzia ausente ${absence}g — probabilidade condicional elevada a ${(posteriorProb * 100).toFixed(1)}%`,
+      });
+    }
+  }
+
+  return signals;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODELO 5: REGRAS ESTATÍSTICAS CLÁSSICAS
+// Desvio padrão, hot/cold, lei dos terços, streaks
+// ═══════════════════════════════════════════════════════════════════
+function modelStatistical(spins: number[]): ModelSignal[] {
+  const signals: ModelSignal[] = [];
   if (spins.length < 10) return signals;
 
   const window = spins.slice(0, 50);
 
-  // Dozen absence
+  // 1. Color streak reversal
+  const colors = spins.map(getColor);
+  let colorStreak = 1;
+  for (let i = 1; i < colors.length; i++) {
+    if (colors[i] === colors[0] && colors[0] !== 'green') colorStreak++;
+    else break;
+  }
+  if (colorStreak >= 5) {
+    const opposite = colors[0] === 'red' ? 'black' : 'red';
+    const oppositeNums = Array.from({ length: 37 }, (_, i) => i).filter(n => getColor(n) === opposite);
+    signals.push({
+      modelId: 'statistical',
+      modelName: 'Estatístico Clássico',
+      betType: 'cor',
+      label: `${opposite === 'red' ? 'VERMELHO' : 'PRETO'} (${colorStreak}x streak)`,
+      numbers: oppositeNums,
+      confidence: Math.min(92, 70 + (colorStreak - 5) * 5),
+      reasoning: `${colorStreak} ${colors[0] === 'red' ? 'vermelhos' : 'pretos'} consecutivos — probabilidade de continuação: ${(Math.pow(18 / 37, colorStreak) * 100).toFixed(1)}%`,
+    });
+  }
+
+  // 2. Dozen absence
   for (let dz = 1; dz <= 3; dz++) {
     let absence = 0;
     for (const n of window) {
@@ -73,20 +581,19 @@ function agentStatistical(spins: number[]): AgentSignal[] {
     }
     if (absence >= 7) {
       const dzNums = Array.from({ length: 12 }, (_, i) => (dz - 1) * 12 + i + 1);
-      const conf = Math.min(90, 60 + (absence - 7) * 4);
       signals.push({
-        agentId: 'statistical',
-        agentName: 'Agente Estatístico',
+        modelId: 'statistical',
+        modelName: 'Estatístico Clássico',
         betType: 'duzia',
         label: `${dz}ª Dúzia (ausente ${absence}g)`,
         numbers: dzNums,
-        confidence: conf,
-        reasoning: `${dz}ª Dúzia ausente há ${absence} giros — desvio de ${((absence / (window.length / 3)) * 100 - 100).toFixed(0)}% acima do esperado`,
+        confidence: Math.min(90, 60 + (absence - 7) * 4),
+        reasoning: `${dz}ª Dúzia ausente há ${absence} giros — desvio significativo`,
       });
     }
   }
 
-  // Column absence
+  // 3. Column absence
   for (let col = 1; col <= 3; col++) {
     let absence = 0;
     for (const n of window) {
@@ -97,187 +604,19 @@ function agentStatistical(spins: number[]): AgentSignal[] {
     if (absence >= 7) {
       const colNums: number[] = [];
       for (let i = col; i <= 36; i += 3) colNums.push(i);
-      const conf = Math.min(85, 58 + (absence - 7) * 3);
       signals.push({
-        agentId: 'statistical',
-        agentName: 'Agente Estatístico',
+        modelId: 'statistical',
+        modelName: 'Estatístico Clássico',
         betType: 'coluna',
         label: `${col}ª Coluna (ausente ${absence}g)`,
         numbers: colNums,
-        confidence: conf,
+        confidence: Math.min(85, 58 + (absence - 7) * 3),
         reasoning: `${col}ª Coluna ausente há ${absence} giros`,
       });
     }
   }
 
-  // Color absence
-  const colors = window.map(getColor);
-  const redCount = colors.filter(c => c === 'red').length;
-  const blackCount = colors.filter(c => c === 'black').length;
-  const total = redCount + blackCount;
-  if (total >= 20) {
-    const expected = total / 2;
-    const redDev = (redCount - expected) / Math.sqrt(expected);
-    const blackDev = (blackCount - expected) / Math.sqrt(expected);
-
-    if (Math.abs(redDev) > 1.8) {
-      const targetColor = redDev > 0 ? 'black' : 'red';
-      const targetNums = Array.from({ length: 37 }, (_, i) => i).filter(n => getColor(n) === targetColor);
-      signals.push({
-        agentId: 'statistical',
-        agentName: 'Agente Estatístico',
-        betType: 'cor',
-        label: targetColor === 'red' ? 'VERMELHO' : 'PRETO',
-        numbers: targetNums,
-        confidence: Math.min(85, 60 + Math.floor(Math.abs(redDev) * 8)),
-        reasoning: `Desvio padrão de cor: ${Math.abs(redDev).toFixed(1)}σ — reversão para ${targetColor === 'red' ? 'vermelho' : 'preto'}`,
-      });
-    }
-  }
-
-  return signals;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// AGENTE 2: BALÍSTICO (Zonas do Cilindro / Dealer Signature)
-// ═══════════════════════════════════════════════════════════════════
-function agentBallistic(spins: number[]): AgentSignal[] {
-  const signals: AgentSignal[] = [];
-  if (spins.length < 15) return signals;
-
-  const recent = spins.slice(0, 30);
-
-  // Sector frequency analysis
-  const sectorCounts: Record<string, number> = { voisins: 0, tiers: 0, orphelins: 0, zero: 0 };
-  recent.forEach(n => { sectorCounts[getSector(n)]++; });
-  const totalNonZero = recent.filter(n => n > 0).length || 1;
-
-  // Expected sector proportions (European wheel)
-  const expected: Record<string, number> = {
-    voisins: 17 / 37 * recent.length,
-    tiers: 12 / 37 * recent.length,
-    orphelins: 8 / 37 * recent.length,
-    zero: 1 / 37 * recent.length,
-  };
-
-  // Find hot sector (over-represented = dealer signature)
-  const sectorNames: Record<string, string> = {
-    voisins: 'Voisins du Zéro', tiers: 'Tiers du Cylindre', orphelins: 'Orphelins', zero: 'Jeu Zéro',
-  };
-  const sectorSets: Record<string, Set<number>> = {
-    voisins: VOISINS, tiers: TIERS, orphelins: ORPHELINS, zero: new Set([0, 3, 12, 15, 26, 32, 35]),
-  };
-
-  for (const [sector, count] of Object.entries(sectorCounts)) {
-    if (sector === 'zero') continue; // too small sample
-    const exp = expected[sector];
-    const ratio = count / exp;
-    if (ratio > 1.35 && count >= 5) {
-      const sectorNums = Array.from(sectorSets[sector]);
-      const conf = Math.min(88, 55 + Math.floor((ratio - 1) * 40));
-      signals.push({
-        agentId: 'ballistic',
-        agentName: 'Agente Balístico',
-        betType: 'setor',
-        label: `${sectorNames[sector]} (HOT)`,
-        numbers: sectorNums,
-        confidence: conf,
-        reasoning: `Setor ${sectorNames[sector]} com ${count}/${recent.length} hits (${(ratio * 100 - 100).toFixed(0)}% acima do esperado) — possível dealer signature`,
-      });
-    }
-  }
-
-  // Neighbor cluster: check if last 5 numbers cluster on the wheel
-  const last5Positions = spins.slice(0, 5).map(wheelPos).filter(p => p >= 0);
-  if (last5Positions.length >= 4) {
-    // Compute circular spread
-    const sorted = [...last5Positions].sort((a, b) => a - b);
-    let minArc = WHEEL.length;
-    for (let i = 0; i < sorted.length; i++) {
-      for (let j = i + 1; j < sorted.length; j++) {
-        const arc = Math.min(sorted[j] - sorted[i], WHEEL.length - (sorted[j] - sorted[i]));
-        if (arc < minArc) minArc = arc;
-      }
-    }
-    // If 4+ of last 5 fit in a 10-slot arc
-    const center = spins[0];
-    const clusterNums = wheelNeighbors(center, 5);
-    const inCluster = last5Positions.filter(p => {
-      const cp = wheelPos(center);
-      const dist = Math.min(Math.abs(p - cp), WHEEL.length - Math.abs(p - cp));
-      return dist <= 6;
-    });
-    if (inCluster.length >= 3) {
-      signals.push({
-        agentId: 'ballistic',
-        agentName: 'Agente Balístico',
-        betType: 'vizinhos',
-        label: `Vizinhos de ${center}`,
-        numbers: clusterNums,
-        confidence: Math.min(85, 55 + inCluster.length * 8),
-        reasoning: `${inCluster.length}/5 últimos giros caíram no arco de ${center} — padrão de lançamento detectado`,
-      });
-    }
-  }
-
-  return signals;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// AGENTE 3: REVERSÃO À MÉDIA (Anomalias extremas)
-// ═══════════════════════════════════════════════════════════════════
-function agentReversion(spins: number[]): AgentSignal[] {
-  const signals: AgentSignal[] = [];
-  if (spins.length < 8) return signals;
-
-  // Color streak
-  const colors = spins.map(getColor);
-  let colorStreak = 1;
-  for (let i = 1; i < colors.length; i++) {
-    if (colors[i] === colors[0] && colors[0] !== 'green') colorStreak++;
-    else break;
-  }
-  if (colorStreak >= 5) {
-    const opposite = colors[0] === 'red' ? 'black' : 'red';
-    const oppositeNums = Array.from({ length: 37 }, (_, i) => i).filter(n => getColor(n) === opposite);
-    const conf = Math.min(92, 70 + (colorStreak - 5) * 5);
-    signals.push({
-      agentId: 'reversion',
-      agentName: 'Agente Reversão',
-      betType: 'cor',
-      label: `${opposite === 'red' ? 'VERMELHO' : 'PRETO'} (quebra de ${colorStreak}x)`,
-      numbers: oppositeNums,
-      confidence: conf,
-      reasoning: `${colorStreak} ${colors[0] === 'red' ? 'vermelhos' : 'pretos'} seguidos — anomalia extrema, probabilidade cumulativa de continuação: ${(Math.pow(18/37, colorStreak) * 100).toFixed(1)}%`,
-    });
-  }
-
-  // Dozen streak
-  const dozens = spins.filter(n => n > 0).map(getDozen);
-  if (dozens.length >= 5) {
-    let dzStreak = 1;
-    for (let i = 1; i < dozens.length; i++) {
-      if (dozens[i] === dozens[0]) dzStreak++;
-      else break;
-    }
-    if (dzStreak >= 5) {
-      const missing = [1, 2, 3].filter(d => d !== dozens[0]);
-      const bestDz = missing[0];
-      const dzNums = Array.from({ length: 12 }, (_, i) => (bestDz - 1) * 12 + i + 1);
-      const conf = Math.min(90, 72 + (dzStreak - 5) * 4);
-      signals.push({
-        agentId: 'reversion',
-        agentName: 'Agente Reversão',
-        betType: 'duzia',
-        label: `${bestDz}ª Dúzia (reversão de ${dzStreak}x)`,
-        numbers: dzNums,
-        confidence: conf,
-        reasoning: `${dozens[0]}ª Dúzia saiu ${dzStreak}x seguidas — limite matemático, reversão iminente`,
-      });
-    }
-  }
-
-  // Parity streak
+  // 4. Parity streak
   const parities = spins.filter(n => n > 0).slice(0, 20).map(n => n % 2);
   if (parities.length >= 6) {
     let pStreak = 1;
@@ -289,10 +628,10 @@ function agentReversion(spins: number[]): AgentSignal[] {
       const target = parities[0] === 0 ? 'ímpar' : 'par';
       const targetNums = Array.from({ length: 36 }, (_, i) => i + 1).filter(n => (target === 'par' ? n % 2 === 0 : n % 2 === 1));
       signals.push({
-        agentId: 'reversion',
-        agentName: 'Agente Reversão',
+        modelId: 'statistical',
+        modelName: 'Estatístico Clássico',
         betType: 'paridade',
-        label: `${target.toUpperCase()} (reversão de ${pStreak}x)`,
+        label: `${target.toUpperCase()} (${pStreak}x streak)`,
         numbers: targetNums,
         confidence: Math.min(88, 65 + (pStreak - 6) * 5),
         reasoning: `${pStreak} ${parities[0] === 0 ? 'pares' : 'ímpares'} seguidos — anomalia extrema`,
@@ -300,7 +639,7 @@ function agentReversion(spins: number[]): AgentSignal[] {
     }
   }
 
-  // High/Low streak
+  // 5. High/Low streak
   const hiLo = spins.filter(n => n > 0).slice(0, 20).map(n => n >= 19 ? 'high' : 'low');
   if (hiLo.length >= 6) {
     let hlStreak = 1;
@@ -312,13 +651,41 @@ function agentReversion(spins: number[]): AgentSignal[] {
       const target = hiLo[0] === 'high' ? 'low' : 'high';
       const targetNums = target === 'low' ? Array.from({ length: 18 }, (_, i) => i + 1) : Array.from({ length: 18 }, (_, i) => i + 19);
       signals.push({
-        agentId: 'reversion',
-        agentName: 'Agente Reversão',
+        modelId: 'statistical',
+        modelName: 'Estatístico Clássico',
         betType: 'alto_baixo',
-        label: `${target === 'high' ? 'ALTO' : 'BAIXO'} (reversão de ${hlStreak}x)`,
+        label: `${target === 'high' ? 'ALTO' : 'BAIXO'} (${hlStreak}x streak)`,
         numbers: targetNums,
         confidence: Math.min(86, 63 + (hlStreak - 6) * 5),
-        reasoning: `${hlStreak} ${hiLo[0] === 'high' ? 'altos' : 'baixos'} seguidos`,
+        reasoning: `${hlStreak} ${hiLo[0] === 'high' ? 'altos' : 'baixos'} consecutivos`,
+      });
+    }
+  }
+
+  // 6. Sector analysis (Voisins, Tiers, Orphelins)
+  const recent = spins.slice(0, 30);
+  const sectorCounts: Record<string, number> = { voisins: 0, tiers: 0, orphelins: 0, zero: 0 };
+  recent.forEach(n => sectorCounts[getSector(n)]++);
+  const sectorExpected: Record<string, number> = {
+    voisins: 17 / 37 * recent.length,
+    tiers: 12 / 37 * recent.length,
+    orphelins: 8 / 37 * recent.length,
+  };
+  const sectorSets: Record<string, Set<number>> = { voisins: VOISINS, tiers: TIERS, orphelins: ORPHELINS };
+  const sectorNames: Record<string, string> = { voisins: 'Voisins du Zéro', tiers: 'Tiers du Cylindre', orphelins: 'Orphelins' };
+
+  for (const [sector, count] of Object.entries(sectorCounts)) {
+    if (sector === 'zero' || !sectorExpected[sector]) continue;
+    const ratio = count / sectorExpected[sector];
+    if (ratio > 1.35 && count >= 5) {
+      signals.push({
+        modelId: 'statistical',
+        modelName: 'Estatístico Clássico',
+        betType: 'setor',
+        label: `${sectorNames[sector]} (HOT)`,
+        numbers: Array.from(sectorSets[sector]),
+        confidence: Math.min(82, 55 + Math.round((ratio - 1) * 40)),
+        reasoning: `Setor ${sectorNames[sector]} com ${count}/${recent.length} (${(ratio * 100 - 100).toFixed(0)}% acima do esperado)`,
       });
     }
   }
@@ -327,110 +694,155 @@ function agentReversion(spins: number[]): AgentSignal[] {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MÓDULO 2: ÁRBITRO DINÂMICO (Multi-Armed Bandit)
+// ENSEMBLE VOTING: Combina todos os modelos com pesos dinâmicos
 // ═══════════════════════════════════════════════════════════════════
-interface AgentPerformance {
-  hits: number;
-  total: number;
-  recentStreak: number; // positive = consecutive hits, negative = consecutive misses
+interface ModelWeight {
+  model_id: string;
   weight: number;
+  win_rate: number;
+  total_predictions: number;
+  total_hits: number;
+  current_streak: number;
 }
 
-function computeArbiterWeights(
-  predictionHistory: Array<{ strategy_type: string; hit: boolean | null; created_at: string }>,
-): Record<string, AgentPerformance> {
-  const agentMap: Record<string, AgentPerformance> = {
-    statistical: { hits: 0, total: 0, recentStreak: 0, weight: 1.0 },
-    ballistic:   { hits: 0, total: 0, recentStreak: 0, weight: 1.0 },
-    reversion:   { hits: 0, total: 0, recentStreak: 0, weight: 1.0 },
-  };
+function ensembleVote(
+  allSignals: ModelSignal[],
+  weights: Record<string, ModelWeight>,
+): { winner: ModelSignal; consensus: number; ensembleConfidence: number; scored: Array<ModelSignal & { score: number }> } {
+  // Score each signal: confidence × model weight
+  const scored = allSignals.map(s => ({
+    ...s,
+    score: s.confidence * (weights[s.modelId]?.weight ?? 1.0),
+  }));
+  scored.sort((a, b) => b.score - a.score);
 
-  // Map strategy_type to agent — heuristic mapping
-  const typeToAgent = (st: string): string | null => {
-    if (/duzia|coluna|cor|statistical/i.test(st)) return 'statistical';
-    if (/setor|vizinho|ballistic|puxada/i.test(st)) return 'ballistic';
-    if (/revers|streak|paridade|alto_baixo/i.test(st)) return 'reversion';
-    return null;
-  };
+  const winner = scored[0];
 
-  // Last 30 resolved predictions per agent
-  const recentByAgent: Record<string, boolean[]> = { statistical: [], ballistic: [], reversion: [] };
-
-  for (const pred of predictionHistory) {
-    if (pred.hit === null) continue;
-    const agent = typeToAgent(pred.strategy_type);
-    if (!agent || !recentByAgent[agent]) continue;
-    if (recentByAgent[agent].length < 30) {
-      recentByAgent[agent].push(pred.hit);
+  // Compute consensus: how many models agree on similar bet type or numbers
+  const winnerNums = new Set(winner.numbers);
+  let consensus = 0;
+  const modelsSeen = new Set<string>();
+  for (const s of scored) {
+    if (modelsSeen.has(s.modelId)) continue;
+    modelsSeen.add(s.modelId);
+    const overlap = s.numbers.filter(n => winnerNums.has(n)).length;
+    if (overlap >= 3 || s.betType === winner.betType) {
+      consensus++;
     }
   }
 
-  for (const [agentId, results] of Object.entries(recentByAgent)) {
-    const perf = agentMap[agentId];
-    perf.total = results.length;
-    perf.hits = results.filter(Boolean).length;
+  // Ensemble confidence: weighted average of top signals
+  const topSignals = scored.slice(0, Math.min(5, scored.length));
+  const totalWeight = topSignals.reduce((a, b) => a + (weights[b.modelId]?.weight ?? 1), 0);
+  const ensembleConfidence = totalWeight > 0
+    ? Math.round(topSignals.reduce((a, b) => a + b.confidence * (weights[b.modelId]?.weight ?? 1), 0) / totalWeight)
+    : winner.confidence;
 
-    // Compute recent streak (from most recent)
-    if (results.length > 0) {
+  return { winner, consensus, ensembleConfidence, scored };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// KELLY + KILL SWITCH
+// ═══════════════════════════════════════════════════════════════════
+function computeKelly(winRate: number, odds: number): { fraction: number; force: 'leve' | 'padrao' | 'forte' } {
+  const p = Math.max(0.01, Math.min(0.99, winRate));
+  const q = 1 - p;
+  const b = Math.max(1, odds);
+  const kelly = Math.max(0, (b * p - q) / b);
+  let force: 'leve' | 'padrao' | 'forte';
+  if (kelly >= 0.12) force = 'forte';
+  else if (kelly >= 0.05) force = 'padrao';
+  else force = 'leve';
+  return { fraction: kelly, force };
+}
+
+function checkKillSwitch(weights: Record<string, ModelWeight>): { active: boolean; reason?: string } {
+  const models = Object.values(weights).filter(w => w.total_predictions >= 5);
+  if (models.length >= 3 && models.every(w => w.win_rate < 0.40)) {
+    return { active: true, reason: '⚠️ Anomalia detectada na roleta. Todos os modelos abaixo de 40% — sinais suspensos por 5 giros para proteção de banca.' };
+  }
+  return { active: false };
+}
+
+function getTemperature(weights: Record<string, ModelWeight>): 'fria' | 'morna' | 'quente' | 'caotica' {
+  const models = Object.values(weights).filter(w => w.total_predictions >= 3);
+  if (models.length === 0) return 'morna';
+  const avgRate = models.reduce((a, w) => a + w.win_rate, 0) / models.length;
+  const anyHot = models.some(w => w.current_streak >= 4);
+  if (avgRate < 0.30) return 'caotica';
+  if (avgRate < 0.40) return 'fria';
+  if (anyHot || avgRate > 0.55) return 'quente';
+  return 'morna';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RECALIBRATION: Update model weights based on recent performance
+// ═══════════════════════════════════════════════════════════════════
+async function recalibrateWeights(supabase: any) {
+  // Get recent model predictions (last 200)
+  const { data: predictions } = await supabase
+    .from('model_predictions')
+    .select('model_id, hit, created_at')
+    .not('hit', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(200);
+
+  if (!predictions || predictions.length < 5) return;
+
+  const modelStats: Record<string, { hits: number; total: number; streak: number }> = {};
+
+  for (const pred of predictions) {
+    if (!modelStats[pred.model_id]) {
+      modelStats[pred.model_id] = { hits: 0, total: 0, streak: 0 };
+    }
+    const stats = modelStats[pred.model_id];
+    stats.total++;
+    if (pred.hit) stats.hits++;
+  }
+
+  // Compute streaks (from most recent)
+  const modelRecent: Record<string, boolean[]> = {};
+  for (const pred of predictions) {
+    if (!modelRecent[pred.model_id]) modelRecent[pred.model_id] = [];
+    if (modelRecent[pred.model_id].length < 30) {
+      modelRecent[pred.model_id].push(pred.hit);
+    }
+  }
+
+  for (const [modelId, results] of Object.entries(modelRecent)) {
+    if (results.length > 0 && modelStats[modelId]) {
       let streak = results[0] ? 1 : -1;
       for (let i = 1; i < results.length; i++) {
         if (results[i] === results[0]) streak += results[0] ? 1 : -1;
         else break;
       }
-      perf.recentStreak = streak;
-    }
-
-    // Multi-Armed Bandit weight: UCB1-inspired
-    if (perf.total > 0) {
-      const winRate = perf.hits / perf.total;
-      const exploration = Math.sqrt(2 * Math.log(30) / perf.total);
-      perf.weight = winRate + exploration * 0.3;
-      // Boost for hot streak, penalize cold streak
-      if (perf.recentStreak >= 3) perf.weight *= 1.3;
-      if (perf.recentStreak <= -2) perf.weight *= 0.5;
+      modelStats[modelId].streak = streak;
     }
   }
 
-  return agentMap;
-}
+  // UCB1-inspired weight calculation
+  for (const [modelId, stats] of Object.entries(modelStats)) {
+    const winRate = stats.total > 0 ? stats.hits / stats.total : 0.5;
+    const exploration = stats.total > 0 ? Math.sqrt(2 * Math.log(200) / stats.total) : 1;
+    let weight = winRate + exploration * 0.2;
 
-// ═══════════════════════════════════════════════════════════════════
-// MÓDULO 3: GESTÃO DE RISCO (Kelly + Kill Switch)
-// ═══════════════════════════════════════════════════════════════════
-function computeKelly(winRate: number, odds: number): { fraction: number; force: 'leve' | 'padrao' | 'forte' } {
-  // Simplified Kelly: f = (bp - q) / b where b = odds, p = win probability, q = 1-p
-  const p = Math.max(0.01, Math.min(0.99, winRate));
-  const q = 1 - p;
-  const b = Math.max(1, odds);
-  const kelly = Math.max(0, (b * p - q) / b);
+    // Streak bonus/penalty
+    if (stats.streak >= 3) weight *= 1.3;
+    if (stats.streak <= -2) weight *= 0.5;
 
-  let force: 'leve' | 'padrao' | 'forte';
-  if (kelly >= 0.12) force = 'forte';
-  else if (kelly >= 0.05) force = 'padrao';
-  else force = 'leve';
+    weight = Math.max(0.1, Math.min(3.0, weight));
 
-  return { fraction: kelly, force };
-}
-
-function checkKillSwitch(agentPerf: Record<string, AgentPerformance>): { active: boolean; reason?: string } {
-  const allBelow40 = Object.values(agentPerf).every(p =>
-    p.total >= 5 && (p.hits / p.total) < 0.40
-  );
-  if (allBelow40) {
-    return { active: true, reason: '⚠️ Anomalia detectada na roleta. Sinais suspensos por 5 giros para proteção de banca.' };
+    await supabase.from('ensemble_weights').upsert({
+      model_id: modelId,
+      weight,
+      win_rate: winRate,
+      total_predictions: stats.total,
+      total_hits: stats.hits,
+      current_streak: stats.streak,
+      best_streak: Math.max(stats.streak, 0),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'model_id' });
   }
-  return { active: false };
-}
-
-function getTemperature(agentPerf: Record<string, AgentPerformance>): 'fria' | 'morna' | 'quente' | 'caotica' {
-  const rates = Object.values(agentPerf).filter(p => p.total >= 3).map(p => p.hits / p.total);
-  if (rates.length === 0) return 'morna';
-  const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
-  const anyHotStreak = Object.values(agentPerf).some(p => p.recentStreak >= 4);
-  if (avgRate < 0.30) return 'caotica';
-  if (avgRate < 0.40) return 'fria';
-  if (anyHotStreak || avgRate > 0.55) return 'quente';
-  return 'morna';
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -445,18 +857,23 @@ Deno.serve(async (req) => {
 
   try {
     let clientNumbers: number[] | undefined;
+    let recalibrate = false;
     try {
       const body = await req.json();
       clientNumbers = body?.numbers;
+      recalibrate = body?.recalibrate === true;
     } catch { /* no body */ }
 
+    // Recalibrate weights if requested
+    if (recalibrate) {
+      await recalibrateWeights(supabase);
+    }
+
     // ── 1. Fetch data in parallel ──────────────────────────
-    const [numbersRes, predRes] = await Promise.all([
+    const [numbersRes, weightsRes] = await Promise.all([
       supabase.from('roulette_numbers').select('number, fetched_at')
         .order('fetched_at', { ascending: false }).limit(500),
-      supabase.from('prediction_history').select('strategy_type, hit, created_at')
-        .not('hit', 'is', null)
-        .order('created_at', { ascending: false }).limit(100),
+      supabase.from('ensemble_weights').select('*'),
     ]);
 
     const dbNumbers = (numbersRes.data || []).map((r: any) => r.number as number);
@@ -472,90 +889,113 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // ── 2. Run all 3 Agents in parallel ────────────────────
-    const [statsSignals, ballisticSignals, reversionSignals] = [
-      agentStatistical(spins),
-      agentBallistic(spins),
-      agentReversion(spins),
-    ];
+    // Build weights map
+    const weightRows = (weightsRes.data || []) as ModelWeight[];
+    const weights: Record<string, ModelWeight> = {};
+    for (const w of weightRows) {
+      weights[w.model_id] = w;
+    }
+    // Ensure all models have defaults
+    for (const id of ['markov', 'neural_pattern', 'gradient', 'bayesian', 'statistical']) {
+      if (!weights[id]) {
+        weights[id] = { model_id: id, weight: 1.0, win_rate: 0, total_predictions: 0, total_hits: 0, current_streak: 0 };
+      }
+    }
 
-    const allSignals = [...statsSignals, ...ballisticSignals, ...reversionSignals];
+    // ── 2. Kill Switch check ───────────────────────────────
+    const killCheck = checkKillSwitch(weights);
+    const temperature = getTemperature(weights);
 
-    // ── 3. Arbiter: compute dynamic weights ────────────────
-    const predHistory = (predRes.data || []) as Array<{ strategy_type: string; hit: boolean | null; created_at: string }>;
-    const agentPerf = computeArbiterWeights(predHistory);
-
-    // ── 4. Kill Switch check ───────────────────────────────
-    const killCheck = checkKillSwitch(agentPerf);
-    const temperature = getTemperature(agentPerf);
-
-    if (killCheck.active || allSignals.length === 0) {
+    if (killCheck.active) {
       return new Response(JSON.stringify({
-        mode: killCheck.active ? 'kill_switch' : 'no_signal',
-        message: killCheck.active
-          ? killCheck.reason
-          : '🔎 Analisando a mesa em tempo real... Aguardando o padrão perfeito.',
-        killSwitch: killCheck.active,
+        mode: 'kill_switch',
+        message: killCheck.reason,
+        killSwitch: true,
         temperature,
-        agents: {
-          statistical: { weight: agentPerf.statistical.weight, winRate: agentPerf.statistical.total > 0 ? (agentPerf.statistical.hits / agentPerf.statistical.total * 100).toFixed(0) + '%' : 'N/A', streak: agentPerf.statistical.recentStreak },
-          ballistic: { weight: agentPerf.ballistic.weight, winRate: agentPerf.ballistic.total > 0 ? (agentPerf.ballistic.hits / agentPerf.ballistic.total * 100).toFixed(0) + '%' : 'N/A', streak: agentPerf.ballistic.recentStreak },
-          reversion: { weight: agentPerf.reversion.weight, winRate: agentPerf.reversion.total > 0 ? (agentPerf.reversion.hits / agentPerf.reversion.total * 100).toFixed(0) + '%' : 'N/A', streak: agentPerf.reversion.recentStreak },
-        },
+        modelPerformance: Object.fromEntries(Object.entries(weights).map(([id, w]) => [id, {
+          winRate: w.win_rate, total: w.total_predictions, hits: w.total_hits,
+          streak: w.current_streak, weight: w.weight,
+        }])),
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // ── 5. Score each signal: confidence × agent weight ────
-    const scored = allSignals.map(s => ({
-      ...s,
-      score: s.confidence * (agentPerf[s.agentId]?.weight ?? 1.0),
-    }));
-    scored.sort((a, b) => b.score - a.score);
-    const winner = scored[0];
+    // ── 3. Run all 5 Models in parallel ────────────────────
+    const [markovSignals, neuralSignals, gradientSignals, bayesianSignals, statsSignals] = [
+      modelMarkov(spins),
+      modelNeuralPattern(spins),
+      modelGradient(spins),
+      modelBayesian(spins),
+      modelStatistical(spins),
+    ];
 
-    // ── 6. Kelly criterion for entry force ─────────────────
-    const agentWR = agentPerf[winner.agentId];
-    const winRate = agentWR && agentWR.total > 0 ? agentWR.hits / agentWR.total : 0.45;
+    const allSignals = [...markovSignals, ...neuralSignals, ...gradientSignals, ...bayesianSignals, ...statsSignals];
+
+    if (allSignals.length === 0) {
+      return new Response(JSON.stringify({
+        mode: 'no_signal',
+        message: '🔎 Ensemble analisando — nenhum padrão forte detectado. Aguardando...',
+        killSwitch: false,
+        temperature,
+        modelPerformance: Object.fromEntries(Object.entries(weights).map(([id, w]) => [id, {
+          winRate: w.win_rate, total: w.total_predictions, hits: w.total_hits,
+          streak: w.current_streak, weight: w.weight,
+        }])),
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // ── 4. Ensemble Voting ─────────────────────────────────
+    const { winner, consensus, ensembleConfidence, scored } = ensembleVote(allSignals, weights);
+
+    // ── 5. Kelly criterion ─────────────────────────────────
+    const modelWR = weights[winner.modelId];
+    const winRate = modelWR && modelWR.total_predictions > 0
+      ? modelWR.total_hits / modelWR.total_predictions : 0.45;
     const payout = Math.max(1, Math.round(35 / winner.numbers.length));
     const kelly = computeKelly(winRate, payout);
+
+    // ── 6. Store predictions for all models ────────────────
+    const predInserts = scored.slice(0, 10).map(s => ({
+      model_id: s.modelId,
+      predicted_numbers: s.numbers.slice(0, 15),
+      predicted_main: s.predictedMain ?? s.numbers[0],
+      confidence: s.confidence,
+      bet_type: s.betType,
+      reasoning: s.reasoning,
+      ensemble_weight: weights[s.modelId]?.weight ?? 1.0,
+      spin_context: { temperature, consensus, totalModels: 5 },
+    }));
+
+    // Fire and forget — don't block response
+    supabase.from('model_predictions').insert(predInserts).then(() => {});
+
+    // Recalibrate weights every ~20 calls
+    if (Math.random() < 0.05) {
+      recalibrateWeights(supabase).catch(() => {});
+    }
 
     // ── 7. Build arbiter log ───────────────────────────────
     const arbiterLog: string[] = [];
     arbiterLog.push(`🌡️ Mesa ${temperature.toUpperCase()}`);
-    for (const [id, perf] of Object.entries(agentPerf)) {
-      const name = id === 'statistical' ? 'Estatístico' : id === 'ballistic' ? 'Balístico' : 'Reversão';
-      const wr = perf.total > 0 ? (perf.hits / perf.total * 100).toFixed(0) : '—';
-      const streakStr = perf.recentStreak > 0 ? `+${perf.recentStreak}` : `${perf.recentStreak}`;
-      arbiterLog.push(`${name}: ${wr}% WR | streak ${streakStr} | peso ${perf.weight.toFixed(2)}`);
+    arbiterLog.push(`🤖 5 modelos ativos — ${allSignals.length} sinais gerados`);
+    for (const [id, w] of Object.entries(weights)) {
+      const name = id === 'markov' ? 'Markov' : id === 'neural_pattern' ? 'Neural' : id === 'gradient' ? 'Gradient' : id === 'bayesian' ? 'Bayesiano' : 'Estatístico';
+      const wr = w.total_predictions > 0 ? `${(w.win_rate * 100).toFixed(0)}%` : 'N/A';
+      arbiterLog.push(`${name}: WR ${wr} | peso ${w.weight.toFixed(2)} | streak ${w.current_streak}`);
     }
-    arbiterLog.push(`🏆 Vencedor: ${winner.agentName} → ${winner.label} (${winner.confidence}% × ${(agentPerf[winner.agentId]?.weight ?? 1).toFixed(2)} = ${scored[0].score.toFixed(1)})`);
+    arbiterLog.push(`🏆 Vencedor: ${winner.modelName} → ${winner.label}`);
+    arbiterLog.push(`📊 Consenso: ${consensus}/5 modelos concordam`);
     arbiterLog.push(`💰 Kelly: ${(kelly.fraction * 100).toFixed(1)}% → Entrada ${kelly.force.toUpperCase()}`);
 
-    // ── 8. Ensure protection numbers (0, 26, 32) ──────────
+    // ── 8. Protection numbers ──────────────────────────────
     const protectionNums = [0, 26, 32];
     const finalNumbers = [...new Set([...winner.numbers, ...protectionNums])].slice(0, 15);
-
-    const decision: ArbiterDecision = {
-      winner: { ...winner, numbers: finalNumbers },
-      weights: {
-        statistical: agentPerf.statistical.weight,
-        ballistic: agentPerf.ballistic.weight,
-        reversion: agentPerf.reversion.weight,
-      },
-      entryForce: kelly.force,
-      kellyFraction: kelly.fraction,
-      killSwitch: false,
-      agentSignals: scored.slice(0, 5),
-      arbiterLog,
-      temperature,
-    };
 
     return new Response(JSON.stringify({
       mode: 'signal',
       signal: {
-        number: finalNumbers[0],
+        number: winner.predictedMain ?? finalNumbers[0],
         numbers: finalNumbers,
-        probability: winner.confidence,
+        probability: ensembleConfidence,
       },
       strategy: {
         type: winner.betType,
@@ -566,25 +1006,37 @@ Deno.serve(async (req) => {
       kellyFraction: kelly.fraction,
       temperature,
       killSwitch: false,
+      ensembleConsensus: consensus,
+      ensembleConfidence,
       arbiterLog,
-      agents: {
-        statistical: { weight: agentPerf.statistical.weight, winRate: agentPerf.statistical.total > 0 ? `${(agentPerf.statistical.hits / agentPerf.statistical.total * 100).toFixed(0)}%` : 'N/A', streak: agentPerf.statistical.recentStreak },
-        ballistic: { weight: agentPerf.ballistic.weight, winRate: agentPerf.ballistic.total > 0 ? `${(agentPerf.ballistic.hits / agentPerf.ballistic.total * 100).toFixed(0)}%` : 'N/A', streak: agentPerf.ballistic.recentStreak },
-        reversion: { weight: agentPerf.reversion.weight, winRate: agentPerf.reversion.total > 0 ? `${(agentPerf.reversion.hits / agentPerf.reversion.total * 100).toFixed(0)}%` : 'N/A', streak: agentPerf.reversion.recentStreak },
-      },
-      agentSignals: scored.slice(0, 5).map(s => ({
-        agent: s.agentName,
+      modelPerformance: Object.fromEntries(Object.entries(weights).map(([id, w]) => [id, {
+        winRate: w.win_rate,
+        total: w.total_predictions,
+        hits: w.total_hits,
+        streak: w.current_streak,
+        weight: w.weight,
+      }])),
+      modelSignals: scored.slice(0, 8).map(s => ({
+        modelId: s.modelId,
+        modelName: s.modelName,
         label: s.label,
         confidence: s.confidence,
         score: s.score,
         betType: s.betType,
+        reasoning: s.reasoning,
       })),
+      agents: {
+        statistical: { weight: weights.statistical?.weight ?? 1, winRate: weights.statistical?.total_predictions > 0 ? `${(weights.statistical.win_rate * 100).toFixed(0)}%` : 'N/A', streak: weights.statistical?.current_streak ?? 0 },
+        ballistic: { weight: weights.neural_pattern?.weight ?? 1, winRate: weights.neural_pattern?.total_predictions > 0 ? `${(weights.neural_pattern.win_rate * 100).toFixed(0)}%` : 'N/A', streak: weights.neural_pattern?.current_streak ?? 0 },
+        reversion: { weight: weights.bayesian?.weight ?? 1, winRate: weights.bayesian?.total_predictions > 0 ? `${(weights.bayesian.win_rate * 100).toFixed(0)}%` : 'N/A', streak: weights.bayesian?.current_streak ?? 0 },
+      },
       aiReasoning: {
         betType: winner.betType,
         betDescription: winner.reasoning,
         patternIdentified: winner.label,
-        suggestedBet: `${winner.label} — Entrada ${kelly.force.toUpperCase()}`,
-        consensus: scored.filter(s => s.score >= scored[0].score * 0.7).length,
+        suggestedBet: `${winner.label} — Entrada ${kelly.force.toUpperCase()} (${consensus}/5 consenso)`,
+        consensus,
+        confidence: ensembleConfidence,
       },
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 

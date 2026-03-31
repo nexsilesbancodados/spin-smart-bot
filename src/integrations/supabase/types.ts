@@ -50,6 +50,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ensemble_weights: {
+        Row: {
+          best_streak: number
+          current_streak: number
+          exact_hits: number
+          id: string
+          last_recalibrated_at: string
+          metadata: Json | null
+          model_id: string
+          total_hits: number
+          total_predictions: number
+          updated_at: string
+          weight: number
+          win_rate: number
+        }
+        Insert: {
+          best_streak?: number
+          current_streak?: number
+          exact_hits?: number
+          id?: string
+          last_recalibrated_at?: string
+          metadata?: Json | null
+          model_id: string
+          total_hits?: number
+          total_predictions?: number
+          updated_at?: string
+          weight?: number
+          win_rate?: number
+        }
+        Update: {
+          best_streak?: number
+          current_streak?: number
+          exact_hits?: number
+          id?: string
+          last_recalibrated_at?: string
+          metadata?: Json | null
+          model_id?: string
+          total_hits?: number
+          total_predictions?: number
+          updated_at?: string
+          weight?: number
+          win_rate?: number
+        }
+        Relationships: []
+      }
       historico_roleta: {
         Row: {
           color: string
@@ -71,6 +116,57 @@ export type Database = {
           id?: string
           number?: number
           table_id?: string
+        }
+        Relationships: []
+      }
+      model_predictions: {
+        Row: {
+          actual_number: number | null
+          bet_type: string
+          confidence: number
+          created_at: string
+          ensemble_weight: number | null
+          hit: boolean | null
+          hit_type: string | null
+          id: string
+          model_id: string
+          predicted_main: number | null
+          predicted_numbers: number[]
+          reasoning: string | null
+          resolved_at: string | null
+          spin_context: Json | null
+        }
+        Insert: {
+          actual_number?: number | null
+          bet_type?: string
+          confidence?: number
+          created_at?: string
+          ensemble_weight?: number | null
+          hit?: boolean | null
+          hit_type?: string | null
+          id?: string
+          model_id: string
+          predicted_main?: number | null
+          predicted_numbers?: number[]
+          reasoning?: string | null
+          resolved_at?: string | null
+          spin_context?: Json | null
+        }
+        Update: {
+          actual_number?: number | null
+          bet_type?: string
+          confidence?: number
+          created_at?: string
+          ensemble_weight?: number | null
+          hit?: boolean | null
+          hit_type?: string | null
+          id?: string
+          model_id?: string
+          predicted_main?: number | null
+          predicted_numbers?: number[]
+          reasoning?: string | null
+          resolved_at?: string | null
+          spin_context?: Json | null
         }
         Relationships: []
       }
