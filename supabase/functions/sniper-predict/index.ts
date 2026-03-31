@@ -7780,6 +7780,11 @@ Responda APENAS JSON:
       aiLearnings.push(`🔑 Assinatura terminal: T${mesaDNA.terminalSignature.join(',T')} consistentes`);
     }
 
+    const topInfluence = Object.entries(learnedBoosts)
+      .filter(([, v]) => v > 5)
+      .map(([k, v]) => ({ num: Number(k), boost: Math.round(v), source: 'learned_pattern' }))
+      .sort((a, b) => b.boost - a.boost)
+      .slice(0, 8);
     if (topInfluence.length > 0) {
       aiLearnings.unshift(`🧠 APRENDIZADO APLICADO: ${topInfluence.length} padrões aprendidos influenciaram a jogada`);
       topInfluence.forEach(ti => {
