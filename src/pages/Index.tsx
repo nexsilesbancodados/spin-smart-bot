@@ -634,39 +634,44 @@ const Index = () => {
     <div className="min-h-screen bg-background text-foreground">
 
       {/* ═══ HEADER FIXO ══════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-50 bg-background/98 backdrop-blur border-b border-border/60 shadow-sm">
+      <header className="sticky top-0 z-50 glass border-b border-border/30 shadow-lg shadow-background/50">
         <div className="max-w-2xl mx-auto px-3">
 
           {/* Linha 1: Marca + Status + Toggle */}
           <div className="flex items-center gap-2 py-2.5">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
-                <span className="font-display font-black text-sm text-primary">S</span>
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              <div className="relative">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shadow-sm shadow-primary/10">
+                  <span className="font-display font-black text-sm text-primary">S</span>
+                </div>
+                {isPolling && (
+                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary)/0.4)]" />
+                )}
               </div>
               <div className="min-w-0">
                 <div className="font-display font-black text-[11px] tracking-widest text-primary leading-none">SPIN SMART BOT</div>
-                <div className="text-[7px] text-muted-foreground font-mono leading-none mt-0.5">IA ROLETA BRASILEIRA PLAYTECH</div>
+                <div className="text-[7px] text-muted-foreground/40 font-mono leading-none mt-0.5">IA ROLETA BRASILEIRA PLAYTECH</div>
               </div>
             </div>
 
             {/* Status da IA */}
             <div className="flex items-center gap-1.5 shrink-0">
               {autoLearnStatus !== 'idle' && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 border border-primary/20">
+                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/8 border border-primary/15">
                   <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                   <span className="text-[8px] font-bold text-primary capitalize">{autoLearnStatus === 'learning' ? 'aprendendo' : autoLearnStatus === 'analyzing' ? 'analisando' : 'processando'}</span>
                 </div>
               )}
               {sniperCountdown > 0 && autoLearnStatus === 'idle' && (
-                <span className="text-[8px] font-mono text-muted-foreground">{sniperCountdown}s</span>
+                <span className="text-[8px] font-mono text-muted-foreground/50 tabular-nums">{sniperCountdown}s</span>
               )}
               <SettingsPanel config={settingsConfig} onChange={setSettingsConfig} />
               <button
                 onClick={() => setAiEnabled(v => !v)}
-                className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wide border transition-all ${
+                className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wide border transition-all backdrop-blur-sm ${
                   aiEnabled
-                    ? 'bg-primary/15 text-primary border-primary/30 hover:bg-primary/25'
-                    : 'bg-destructive/10 text-destructive border-destructive/30'
+                    ? 'bg-primary/12 text-primary border-primary/20 hover:bg-primary/20 shadow-sm shadow-primary/10'
+                    : 'bg-destructive/8 text-destructive border-destructive/20'
                 }`}
               >
                 {aiEnabled ? '⚡ ON' : '○ OFF'}
@@ -677,13 +682,15 @@ const Index = () => {
           {/* Linha 2: Últimos números + streak */}
           {allNumbers.length > 0 && (
             <div className="flex items-center gap-1.5 pb-2">
-              <span className="text-[7px] text-muted-foreground font-mono shrink-0">ÚLTIMOS:</span>
+              <span className="text-[7px] text-muted-foreground/40 font-mono shrink-0">ÚLTIMOS:</span>
               {allNumbers.slice(0, 7).map((n, i) => (
                 <button
                   key={`${n}-${i}`}
                   onClick={() => { setDnaNumber(n); setDnaOpen(true); }}
-                  className={`w-7 h-7 rounded-md text-[10px] font-black text-white flex items-center justify-center transition-all hover:scale-110 shrink-0 ${numBg(n)} ${
-                    i === 0 ? 'ring-2 ring-primary ring-offset-1 ring-offset-background w-8 h-8 text-[11px]' : ''
+                  className={`rounded-md font-black text-white flex items-center justify-center transition-all hover:scale-110 shrink-0 shadow-sm ${numBg(n)} ${
+                    i === 0
+                      ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background w-8 h-8 text-[11px]'
+                      : 'w-7 h-7 text-[10px]'
                   }`}
                 >
                   {n}
@@ -692,24 +699,24 @@ const Index = () => {
               {streakActive && (
                 <div className={`ml-1 flex items-center gap-1 px-2 py-0.5 rounded-full border text-[8px] font-black ${
                   streakLen >= 4
-                    ? 'bg-amber-500/20 border-amber-400/50 text-amber-400 animate-pulse'
-                    : 'bg-primary/10 border-primary/30 text-primary'
+                    ? 'bg-amber-500/15 border-amber-400/40 text-amber-400 animate-pulse'
+                    : 'bg-primary/8 border-primary/20 text-primary'
                 }`}>
                   🔱 {streakNum} ×{streakLen}
                 </div>
               )}
               {recentWR !== null && (
                 <div className={`ml-auto shrink-0 px-2 py-0.5 rounded-full text-[8px] font-black ${
-                  recentWR >= 50 ? 'bg-green-500/15 text-green-400' :
-                  recentWR >= 35 ? 'bg-amber-500/15 text-amber-400' :
-                  'bg-red-500/15 text-red-400'
+                  recentWR >= 50 ? 'bg-green-500/10 text-green-400' :
+                  recentWR >= 35 ? 'bg-amber-500/10 text-amber-400' :
+                  'bg-red-500/10 text-red-400'
                 }`}>WR {recentWR}%</div>
               )}
             </div>
           )}
 
           {/* Linha 3: Tabs de navegação */}
-          <div className="flex border-t border-border/30">
+          <div className="flex border-t border-border/20">
             {[
               { id: 'sinal' as const, label: '🎯 SINAL', badge: sniperData?.signal?.probability ? `${sniperData.signal.probability}%` : undefined },
               { id: 'mesa' as const, label: '📊 MESA', badge: allNumbers.length > 0 ? `${Math.min(allNumbers.length, 500)}` : undefined },
@@ -719,20 +726,20 @@ const Index = () => {
               <button
                 key={t.id}
                 onClick={() => setActiveTab(t.id)}
-                className={`flex-1 py-2 text-[8px] font-black tracking-wide transition-all relative ${
+                className={`flex-1 py-2.5 text-[8px] font-black tracking-wide transition-all relative ${
                   activeTab === t.id
                     ? 'text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
+                    : 'text-muted-foreground/60 hover:text-foreground'
                 }`}
               >
                 {t.label}
                 {t.badge && (
-                  <span className={`ml-1 text-[6px] font-mono px-1 py-0.5 rounded ${activeTab === t.id ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'}`}>
+                  <span className={`ml-1 text-[6px] font-mono px-1 py-0.5 rounded ${activeTab === t.id ? 'bg-primary/15 text-primary' : 'bg-secondary/60 text-muted-foreground'}`}>
                     {t.badge}
                   </span>
                 )}
                 {activeTab === t.id && (
-                  <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-primary rounded-t" />
+                  <motion.div layoutId="header-tab" className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-t shadow-[0_0_8px_hsl(var(--primary)/0.3)]" />
                 )}
               </button>
             ))}
