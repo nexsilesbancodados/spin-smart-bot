@@ -1,12 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { motion } from 'framer-motion';
-import { ClipboardList, Flame, Snowflake, Activity, TrendingUp, Gauge } from 'lucide-react';
+import { ClipboardList, Flame, Snowflake, Activity, TrendingUp, Gauge, Zap } from 'lucide-react';
 
 const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 
 interface Props { allNumbers: number[] }
 
-const SessionSummary = ({ allNumbers }: Props) => {
+const SessionSummary = memo(({ allNumbers }: Props) => {
   const stats = useMemo(() => {
     const s50 = allNumbers.slice(0, 50);
     if (s50.length < 10) return null;
@@ -29,6 +29,14 @@ const SessionSummary = ({ allNumbers }: Props) => {
     const zeroDelay = zeroIdx === -1 ? s50.length : zeroIdx;
 
     const distintos = new Set(s50.slice(0,15).map(n=>n%10)).size;
+
+    // Streaks
+    let maxStreak = 0;
+    let currentStreak = 1;
+    for (let i = 1; i < s50.length; i++) {
+      if (s50[i] === s50[i-1]) { currentStreak++; maxStreak = Math.max(maxStreak, currentStreak); }
+      else currentStreak = 1;
+    }
 
     let recomendacao = '';
     let recColor = 'text-muted-foreground';
@@ -61,10 +69,9 @@ const SessionSummary = ({ allNumbers }: Props) => {
       recIcon = '👁️';
     }
 
-    // Entropy score (0-100, lower = more concentrated)
     const entropy = Math.round(distintos / 10 * 100);
 
-    return { hot, cold, corDom, reds, blacks, hotTerminal, zeroDelay, distintos, total: s50.length, recomendacao, recColor, recBg, recIcon, entropy };
+    return { hot, cold, corDom, reds, blacks, hotTerminal, zeroDelay, distintos, total: s50.length, recomendacao, recColor, recBg, recIcon, entropy, maxStreak };
   }, [allNumbers[0], allNumbers.length]);
 
   if (!stats) return null;
@@ -76,6 +83,7 @@ const SessionSummary = ({ allNumbers }: Props) => {
       {/* Header */}
       <div className="relative px-4 pt-4 pb-3">
         <div className="absolute inset-0 bg-gradient-to-r from-neon-cyan/5 via-transparent to-neon-pink/4" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neon-cyan/25 to-transparent" />
         <div className="relative flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-neon-cyan/15 to-neon-pink/10 border border-neon-cyan/20 flex items-center justify-center shadow-[0_0_12px_hsl(var(--neon-cyan)/0.15)]">
             <ClipboardList className="w-4 h-4 text-[hsl(var(--neon-cyan))]" />
@@ -84,16 +92,18 @@ const SessionSummary = ({ allNumbers }: Props) => {
             <span className="font-display text-[10px] tracking-[0.15em] font-bold text-[hsl(var(--neon-cyan))] uppercase">Resumo da Sessão</span>
             <div className="text-[7px] text-muted-foreground/50 font-mono">{stats.total} rodadas analisadas</div>
           </div>
-          <div className="flex items-center gap-1 px-2 py-1 rounded-lg glass border border-border/15">
-            <Activity className="w-3 h-3 text-[hsl(var(--neon-cyan))]/60" />
-            <span className="text-[7px] font-bold text-muted-foreground/60 font-mono">LIVE</span>
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 px-2 py-1 rounded-lg glass border border-border/15">
+              <Activity className="w-3 h-3 text-[hsl(var(--neon-cyan))]/60" />
+              <span className="text-[7px] font-bold text-muted-foreground/60 font-mono">LIVE</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Stats Grid */}
       <div className="px-4 pb-3">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
           {/* Cor Dominante */}
           <div className="glass rounded-xl p-3 border border-border/15 text-center relative overflow-hidden group hover:border-border/30 transition-all">
             <div className="absolute inset-0 bg-gradient-to-br from-transparent to-primary/3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -110,7 +120,6 @@ const SessionSummary = ({ allNumbers }: Props) => {
 
           {/* Terminal Hot */}
           <div className="glass rounded-xl p-3 border border-border/15 text-center relative overflow-hidden group hover:border-[hsl(var(--neon-cyan))]/20 transition-all">
-            <div className="absolute inset-0 bg-gradient-to-br from-transparent to-[hsl(var(--neon-cyan))]/3 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="relative">
               <div className="text-[16px] font-mono font-black text-[hsl(var(--neon-cyan))] mb-0.5">T{stats.hotTerminal?.[0]}</div>
               <div className="text-[7px] text-muted-foreground/40 font-display tracking-wider uppercase">Terminal Hot</div>
@@ -149,6 +158,16 @@ const SessionSummary = ({ allNumbers }: Props) => {
               {stats.zeroDelay > 40 ? '🚨 CRÍTICO' : stats.zeroDelay > 25 ? '⚠️ PRESSÃO' : 'Normal'}
             </div>
           </div>
+
+          {/* Max Streak */}
+          <div className="glass rounded-xl p-3 border border-border/15 text-center relative overflow-hidden">
+            <div className="text-[16px] font-mono font-black mb-0.5 text-foreground">{stats.maxStreak}</div>
+            <div className="text-[7px] text-muted-foreground/40 font-display tracking-wider uppercase">Max Streak</div>
+            <div className="flex items-center justify-center gap-0.5 mt-0.5">
+              <Zap className="w-2.5 h-2.5 text-gold" />
+              <span className="text-[9px] font-bold text-gold">seguidos</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -163,10 +182,10 @@ const SessionSummary = ({ allNumbers }: Props) => {
             <span className={`text-[9px] font-mono font-bold ${
               stats.entropy <= 40 ? 'text-neon-green' : stats.entropy <= 70 ? 'text-gold' : 'text-destructive'
             }`}>
-              {stats.entropy <= 40 ? 'BAIXA' : stats.entropy <= 70 ? 'MÉDIA' : 'ALTA'}
+              {stats.entropy <= 40 ? '🎯 BAIXA' : stats.entropy <= 70 ? '⚠️ MÉDIA' : '🔥 ALTA'}
             </span>
           </div>
-          <div className="w-full h-2 bg-background/20 rounded-full overflow-hidden border border-border/10">
+          <div className="w-full h-2.5 bg-background/20 rounded-full overflow-hidden border border-border/10 relative">
             <motion.div 
               initial={{ width: 0 }}
               animate={{ width: `${stats.entropy}%` }}
@@ -177,6 +196,13 @@ const SessionSummary = ({ allNumbers }: Props) => {
                 'from-destructive to-rose-400'
               }`}
             />
+            {/* Markers */}
+            <div className="absolute top-0 left-[40%] w-px h-full bg-neon-green/20" />
+            <div className="absolute top-0 left-[70%] w-px h-full bg-gold/20" />
+          </div>
+          <div className="flex justify-between mt-1 text-[6px] text-muted-foreground/25 font-mono">
+            <span>Concentrada</span>
+            <span>Dispersa</span>
           </div>
         </div>
       </div>
@@ -195,7 +221,8 @@ const SessionSummary = ({ allNumbers }: Props) => {
                   key={n}
                   initial={{ scale: 0.6, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold border border-white/15 shadow-sm ${numBg(n)} text-white`}
+                  whileHover={{ scale: 1.15 }}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold border border-white/15 shadow-sm cursor-pointer ${numBg(n)} text-white ring-1 ring-gold/20`}
                 >
                   {n}
                 </motion.div>
@@ -224,7 +251,6 @@ const SessionSummary = ({ allNumbers }: Props) => {
           className={`mx-4 mb-4 rounded-2xl border p-4 relative overflow-hidden ${stats.recBg}`}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/[0.02] to-transparent" />
-          {/* Shimmer for green/positive */}
           {stats.recIcon === '✅' && (
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-neon-green/[0.03] to-transparent animate-shimmer bg-[length:200%_100%]" />
           )}
@@ -248,6 +274,7 @@ const SessionSummary = ({ allNumbers }: Props) => {
       )}
     </motion.div>
   );
-};
+});
 
+SessionSummary.displayName = 'SessionSummary';
 export default SessionSummary;
