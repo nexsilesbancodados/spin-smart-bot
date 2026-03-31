@@ -39,34 +39,51 @@ const NumberDNADialog = ({ number, allNumbers, open, onClose }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-md glass border-neon-cyan/20 p-0 overflow-hidden">
-        <div className="relative p-4">
-          <div className="absolute inset-0 bg-gradient-to-r from-neon-cyan/5 via-transparent to-neon-pink/3" />
+      <DialogContent className="max-w-md glass-strong border-neon-cyan/25 p-0 overflow-hidden shadow-2xl shadow-neon-cyan/10">
+        <div className="relative p-5">
+          <div className="absolute inset-0 bg-gradient-to-br from-neon-cyan/6 via-transparent to-neon-pink/4" />
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent" />
           <DialogHeader className="relative">
-            <DialogTitle className="flex items-center gap-3 text-neon-cyan">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${colorClass(number)} border-2 border-white/20 shadow-lg shadow-neon-cyan/20`}>{number}</div>
+            <DialogTitle className="flex items-center gap-3.5 text-neon-cyan">
+              <motion.div 
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black ${colorClass(number)} border-2 border-white/20 shadow-lg shadow-neon-cyan/25 ring-2 ring-neon-cyan/20`}
+              >
+                {number}
+              </motion.div>
               <div>
-                <span className="font-display text-sm tracking-[0.15em]">DNA DO NÚMERO {number}</span>
-                <p className="text-[9px] text-muted-foreground/50 font-normal mt-0.5">
-                  Setor: {getSector(number)} • Terminal: {number % 10} • {getColor(number) === 'red' ? 'Vermelho' : getColor(number) === 'black' ? 'Preto' : 'Verde'}
+                <span className="font-display text-sm tracking-[0.15em] font-bold">DNA DO NÚMERO {number}</span>
+                <p className="text-[9px] text-muted-foreground/50 font-normal mt-1 flex items-center gap-2 flex-wrap">
+                  <span className="px-1.5 py-0.5 rounded-md bg-neon-cyan/8 border border-neon-cyan/15 text-neon-cyan/70">{getSector(number)}</span>
+                  <span className="px-1.5 py-0.5 rounded-md bg-neon-pink/8 border border-neon-pink/15 text-neon-pink/70">T{number % 10}</span>
+                  <span className={`px-1.5 py-0.5 rounded-md border ${getColor(number) === 'red' ? 'bg-red-500/10 border-red-500/15 text-red-400' : getColor(number) === 'black' ? 'bg-zinc-500/10 border-zinc-500/15 text-zinc-400' : 'bg-emerald-500/10 border-emerald-500/15 text-emerald-400'}`}>
+                    {getColor(number) === 'red' ? 'Vermelho' : getColor(number) === 'black' ? 'Preto' : 'Verde'}
+                  </span>
                 </p>
               </div>
             </DialogTitle>
           </DialogHeader>
         </div>
 
-        <div className="p-4 space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+        <div className="p-5 space-y-3.5">
+          <div className="grid grid-cols-3 gap-2.5">
             {[
-              { icon: <BarChart3 className="w-4 h-4 text-neon-cyan" />, value: count, label: 'APARIÇÕES' },
-              { icon: <Magnet className="w-4 h-4 text-gold" />, value: avgDist.toFixed(1), label: 'SALTO MÉDIO' },
-              { icon: <Target className="w-4 h-4 text-neon-pink" />, value: avgDelay.toFixed(0), label: 'DELAY MÉDIO' },
+              { icon: <BarChart3 className="w-4 h-4 text-neon-cyan" />, value: count, label: 'APARIÇÕES', color: 'from-neon-cyan/8 to-transparent border-neon-cyan/15' },
+              { icon: <Magnet className="w-4 h-4 text-gold" />, value: avgDist.toFixed(1), label: 'SALTO MÉDIO', color: 'from-gold/8 to-transparent border-gold/15' },
+              { icon: <Target className="w-4 h-4 text-neon-pink" />, value: avgDelay.toFixed(0), label: 'DELAY MÉDIO', color: 'from-neon-pink/8 to-transparent border-neon-pink/15' },
             ].map(s => (
-              <div key={s.label} className="bg-background/15 rounded-lg p-2 text-center border border-border/10 backdrop-blur-sm">
-                <div className="mx-auto mb-1 flex justify-center">{s.icon}</div>
-                <span className="text-xl font-bold font-mono text-foreground/80">{s.value}</span>
-                <span className="text-[7px] text-muted-foreground/40 block">{s.label}</span>
-              </div>
+              <motion.div 
+                key={s.label} 
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`glass rounded-xl p-3 text-center border backdrop-blur-sm bg-gradient-to-b ${s.color} relative overflow-hidden hover:scale-[1.02] transition-transform`}
+              >
+                <div className="mx-auto mb-1.5 flex justify-center">{s.icon}</div>
+                <span className="text-xl font-black font-mono text-foreground/85">{s.value}</span>
+                <span className="text-[7px] text-muted-foreground/40 block font-display tracking-wider uppercase mt-0.5">{s.label}</span>
+              </motion.div>
             ))}
           </div>
 

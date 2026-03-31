@@ -42,9 +42,16 @@ const PerformanceMonitor = memo(({ betHistory, balance, allNumbers }: Props) => 
 
   if (!metrics) {
     return (
-      <div className="glass rounded-xl p-4 text-center">
-        <BarChart3 className="w-4 h-4 text-muted-foreground/20 mx-auto mb-1" />
-        <p className="text-[9px] text-muted-foreground/30">Precisa de pelo menos 2 apostas para monitoramento</p>
+      <div className="glass rounded-2xl p-6 text-center border border-border/20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-neon-green/[0.02] via-transparent to-neon-cyan/[0.01]" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neon-green/20 to-transparent" />
+        <div className="relative">
+          <div className="w-12 h-12 rounded-2xl glass border border-border/15 flex items-center justify-center mx-auto mb-2.5">
+            <BarChart3 className="w-5 h-5 text-muted-foreground/15" />
+          </div>
+          <p className="text-[9px] text-muted-foreground/40 font-display tracking-wider">AGUARDANDO DADOS</p>
+          <p className="text-[7px] text-muted-foreground/25 mt-1 font-mono">Precisa de ≥2 apostas para monitoramento</p>
+        </div>
       </div>
     );
   }
@@ -100,14 +107,18 @@ const PerformanceMonitor = memo(({ betHistory, balance, allNumbers }: Props) => 
             <div className="p-3 space-y-3">
               <div>
                 <div className="text-[8px] font-bold text-muted-foreground/40 uppercase mb-2">Curva de P&L</div>
-                <div className="h-32 w-full">
+                <div className="h-36 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={metrics.pnlSeries}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.15)" />
-                      <XAxis dataKey="x" tick={{ fontSize: 8, fill: 'hsl(var(--muted-foreground) / 0.3)' }} />
-                      <YAxis tick={{ fontSize: 8, fill: 'hsl(var(--muted-foreground) / 0.3)' }} />
-                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border) / 0.2)', borderRadius: 8, fontSize: 10 }} formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'P&L']} />
-                      <Line type="monotone" dataKey="pnl" stroke="hsl(var(--neon-cyan))" strokeWidth={2} dot={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.1)" />
+                      <XAxis dataKey="x" tick={{ fontSize: 8, fill: 'hsl(var(--muted-foreground) / 0.3)' }} axisLine={{ stroke: 'hsl(var(--border) / 0.1)' }} tickLine={false} />
+                      <YAxis tick={{ fontSize: 8, fill: 'hsl(var(--muted-foreground) / 0.3)' }} axisLine={{ stroke: 'hsl(var(--border) / 0.1)' }} tickLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border) / 0.3)', borderRadius: 12, fontSize: 10, backdropFilter: 'blur(12px)', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }} 
+                        formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'P&L']} 
+                        cursor={{ stroke: 'hsl(var(--primary) / 0.2)' }}
+                      />
+                      <Line type="monotone" dataKey="pnl" stroke="hsl(var(--neon-cyan))" strokeWidth={2.5} dot={false} strokeLinecap="round" />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
