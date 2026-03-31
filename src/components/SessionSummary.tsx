@@ -39,13 +39,13 @@ const SessionSummary = ({ allNumbers }: Props) => {
       recColor = 'text-destructive';
     } else if (distintos >= 8) {
       recomendacao = '⏸ AGUARDAR — Alta dispersão, sem padrão claro';
-      recColor = 'text-amber-400';
+      recColor = 'text-gold';
     } else if (hot.length >= 3) {
       recomendacao = '🔥 MODO QUENTE — múltiplos números repetindo';
-      recColor = 'text-amber-400';
+      recColor = 'text-gold';
     } else {
       recomendacao = '👁️ OBSERVAR — Sessão neutra';
-      recColor = 'text-primary/70';
+      recColor = 'text-neon-cyan/70';
     }
 
     return { hot, cold, corDom, reds, blacks, hotTerminal, zeroDelay, distintos, total: s50.length, recomendacao, recColor };
@@ -58,51 +58,51 @@ const SessionSummary = ({ allNumbers }: Props) => {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-xl p-3.5 card-hover">
       <div className="flex items-center gap-2.5 mb-3">
-        <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/15 flex items-center justify-center text-sm">📋</div>
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-cyan/15 to-neon-pink/10 border border-neon-cyan/20 flex items-center justify-center text-sm shadow-neon-cyan">📋</div>
         <div className="flex-1">
-          <span className="font-display text-[10px] tracking-[0.12em] font-bold text-foreground uppercase">Resumo da Sessão</span>
-          <div className="text-[7px] text-muted-foreground">{stats.total} rodadas analisadas</div>
+          <span className="font-display text-[10px] tracking-[0.12em] font-bold text-neon-cyan uppercase">Resumo da Sessão</span>
+          <div className="text-[7px] text-muted-foreground/50">{stats.total} rodadas analisadas</div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <div className="bg-secondary/30 rounded-lg p-2.5 border border-border/20 text-center">
+        <div className="bg-background/20 rounded-lg p-2.5 border border-border/15 text-center backdrop-blur-sm">
           <div className="text-lg mb-0.5">{stats.corDom}</div>
-          <div className="text-[7px] text-muted-foreground/60">Cor</div>
-          <div className="text-[8px] font-bold text-foreground/80">{stats.reds}V / {stats.blacks}P</div>
+          <div className="text-[7px] text-muted-foreground/40">Cor</div>
+          <div className="text-[8px] font-bold text-foreground/70">{stats.reds}V / {stats.blacks}P</div>
         </div>
 
-        <div className="bg-secondary/30 rounded-lg p-2.5 border border-border/20 text-center">
-          <div className="text-[14px] font-mono font-black text-primary mb-0.5">T{stats.hotTerminal?.[0]}</div>
-          <div className="text-[7px] text-muted-foreground/60">Terminal Hot</div>
-          <div className="text-[8px] font-bold text-foreground/80">{stats.hotTerminal?.[1]}× / 50</div>
+        <div className="bg-background/20 rounded-lg p-2.5 border border-border/15 text-center backdrop-blur-sm">
+          <div className="text-[14px] font-mono font-black text-neon-cyan mb-0.5">T{stats.hotTerminal?.[0]}</div>
+          <div className="text-[7px] text-muted-foreground/40">Terminal Hot</div>
+          <div className="text-[8px] font-bold text-foreground/70">{stats.hotTerminal?.[1]}× / 50</div>
         </div>
 
-        <div className={`rounded-lg p-2.5 border text-center ${
-          stats.distintos <= 4 ? 'bg-green-500/8 border-green-500/15' :
-          stats.distintos <= 6 ? 'bg-amber-500/8 border-amber-500/15' :
-          'bg-secondary/30 border-border/20'
+        <div className={`rounded-lg p-2.5 border text-center backdrop-blur-sm ${
+          stats.distintos <= 4 ? 'bg-neon-green/5 border-neon-green/15' :
+          stats.distintos <= 6 ? 'bg-gold/5 border-gold/15' :
+          'bg-background/20 border-border/15'
         }`}>
           <div className="text-[14px] font-mono font-black mb-0.5 text-foreground">{stats.distintos}</div>
-          <div className="text-[7px] text-muted-foreground/60">T distintos/15</div>
+          <div className="text-[7px] text-muted-foreground/40">T distintos/15</div>
           <div className={`text-[8px] font-bold ${
-            stats.distintos <= 4 ? 'text-neon-green' : stats.distintos <= 6 ? 'text-amber-400' : 'text-muted-foreground'
+            stats.distintos <= 4 ? 'text-neon-green' : stats.distintos <= 6 ? 'text-gold' : 'text-muted-foreground/50'
           }`}>
             {stats.distintos <= 4 ? 'ENTRAR' : stats.distintos <= 6 ? 'CAUTELA' : 'AGUARDAR'}
           </div>
         </div>
 
-        <div className={`rounded-lg p-2.5 border text-center ${
-          stats.zeroDelay > 40 ? 'bg-red-500/8 border-red-500/15' :
-          stats.zeroDelay > 25 ? 'bg-amber-500/8 border-amber-500/15' :
-          'bg-secondary/30 border-border/20'
+        <div className={`rounded-lg p-2.5 border text-center backdrop-blur-sm ${
+          stats.zeroDelay > 40 ? 'bg-destructive/5 border-destructive/15' :
+          stats.zeroDelay > 25 ? 'bg-gold/5 border-gold/15' :
+          'bg-background/20 border-border/15'
         }`}>
           <div className={`text-[14px] font-mono font-black mb-0.5 ${
-            stats.zeroDelay > 40 ? 'text-destructive' : stats.zeroDelay > 25 ? 'text-amber-400' : 'text-foreground'
+            stats.zeroDelay > 40 ? 'text-destructive' : stats.zeroDelay > 25 ? 'text-gold' : 'text-foreground'
           }`}>{stats.zeroDelay}</div>
-          <div className="text-[7px] text-muted-foreground/60">Zero ausente</div>
+          <div className="text-[7px] text-muted-foreground/40">Zero ausente</div>
           <div className={`text-[8px] font-bold ${
-            stats.zeroDelay > 40 ? 'text-destructive' : stats.zeroDelay > 25 ? 'text-amber-400' : 'text-muted-foreground'
+            stats.zeroDelay > 40 ? 'text-destructive' : stats.zeroDelay > 25 ? 'text-gold' : 'text-muted-foreground/50'
           }`}>
             {stats.zeroDelay > 40 ? '🚨 CRÍTICO' : stats.zeroDelay > 25 ? '⚠️ PRESSÃO' : 'Normal'}
           </div>
@@ -111,25 +111,25 @@ const SessionSummary = ({ allNumbers }: Props) => {
 
       <div className="grid grid-cols-2 gap-2 mt-2.5">
         <div>
-          <span className="text-[7px] font-bold text-amber-400 block mb-1.5">🔥 Hot (≥3×/50)</span>
+          <span className="text-[7px] font-bold text-gold block mb-1.5">🔥 Hot (≥3×/50)</span>
           <div className="flex gap-1 flex-wrap">
             {stats.hot.length > 0 ? stats.hot.map(n => (
               <div key={n} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold border border-white/10 shadow-sm ${numBg(n)} text-white`}>{n}</div>
-            )) : <span className="text-[7px] text-muted-foreground/50">Distribuição normal</span>}
+            )) : <span className="text-[7px] text-muted-foreground/30">Distribuição normal</span>}
           </div>
         </div>
         <div>
-          <span className="text-[7px] font-bold text-blue-400 block mb-1.5">❄️ Cold (0×/50)</span>
+          <span className="text-[7px] font-bold text-neon-cyan block mb-1.5">❄️ Cold (0×/50)</span>
           <div className="flex gap-1 flex-wrap">
             {stats.cold.slice(0,5).map(n => (
-              <div key={n} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold border border-white/5 opacity-50 ${numBg(n)} text-white`}>{n}</div>
+              <div key={n} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold border border-white/5 opacity-40 ${numBg(n)} text-white`}>{n}</div>
             ))}
           </div>
         </div>
       </div>
 
       {stats.recomendacao && (
-        <div className={`text-[9px] font-bold text-center mt-3 pt-2.5 border-t border-border/20 ${stats.recColor}`}>
+        <div className={`text-[9px] font-bold text-center mt-3 pt-2.5 border-t border-border/15 ${stats.recColor}`}>
           {stats.recomendacao}
         </div>
       )}

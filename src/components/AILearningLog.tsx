@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Zap, Search, Activity } from 'lucide-react';
+import { Brain, Activity } from 'lucide-react';
 
 interface LogEntry {
   id: number;
@@ -43,7 +43,6 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
     setLogs(prev => [...prev.slice(-19), { id: logIdRef.current, text, type, timestamp: new Date() }]);
   };
 
-  // Generate diagnostic messages when new number arrives
   useEffect(() => {
     const latest = allNumbers[0];
     if (latest === undefined || latest === prevLatestRef.current) return;
@@ -54,39 +53,26 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
 
     const timers: NodeJS.Timeout[] = [];
 
-    // Phase 1 - Scanning
-    timers.push(setTimeout(() => {
-      setScanProgress(20);
-      addLog(`Analisando ${Math.min(500, allNumbers.length)} rodadas... processando.`, 'info');
-    }, 200));
+    timers.push(setTimeout(() => { setScanProgress(20); addLog(`Analisando ${Math.min(500, allNumbers.length)} rodadas... processando.`, 'info'); }, 200));
 
-    // Phase 2 - Terminal analysis
     timers.push(setTimeout(() => {
       setScanProgress(40);
       const terminal = latest % 10;
       const termCount = allNumbers.slice(0, 50).filter(n => n % 10 === terminal).length;
-      if (termCount >= 4) {
-        addLog(`Detectada Puxada Crítica: Terminal ${terminal} → Setor ${getSector(latest)} (${Math.min(95, 60 + termCount * 4)}% precisão).`, 'alert');
-      } else {
-        addLog(`Terminal ${terminal} verificado — ${termCount} ocorrências nas últimas 50 rodadas.`, 'info');
-      }
+      if (termCount >= 4) addLog(`Detectada Puxada Crítica: Terminal ${terminal} → Setor ${getSector(latest)} (${Math.min(95, 60 + termCount * 4)}% precisão).`, 'alert');
+      else addLog(`Terminal ${terminal} verificado — ${termCount} ocorrências nas últimas 50 rodadas.`, 'info');
     }, 600));
 
-    // Phase 3 - Arc/dealer analysis
     timers.push(setTimeout(() => {
       setScanProgress(60);
       if (allNumbers.length >= 3) {
         const dist1 = wheelDist(allNumbers[0], allNumbers[1]);
         const dist2 = wheelDist(allNumbers[1], allNumbers[2]);
-        if (Math.abs(dist1 - dist2) <= 2) {
-          addLog(`Atenção: Dealer mantém arco estável (~${dist1} casas). Padrão de Força Estática.`, 'calibration');
-        } else if (Math.abs(dist1 - dist2) > 8) {
-          addLog(`Atenção: Dealer mudou o ritmo de lançamento. Recalibrando Arco...`, 'calibration');
-        }
+        if (Math.abs(dist1 - dist2) <= 2) addLog(`Atenção: Dealer mantém arco estável (~${dist1} casas). Padrão de Força Estática.`, 'calibration');
+        else if (Math.abs(dist1 - dist2) > 8) addLog(`Atenção: Dealer mudou o ritmo de lançamento. Recalibrando Arco...`, 'calibration');
       }
     }, 1000));
 
-    // Phase 4 - Sector analysis
     timers.push(setTimeout(() => {
       setScanProgress(80);
       const last12 = allNumbers.slice(0, 12);
@@ -94,20 +80,14 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
       last12.forEach(n => sectorCount[getSector(n)]++);
       const sorted = Object.entries(sectorCount).sort(([,a],[,b]) => b - a);
       const [topSec, topCnt] = sorted[0];
-      const [secSec] = sorted[1];
-      if (topCnt >= 6) {
-        addLog(`Padrão Gangorra identificado nas últimas 12 rodadas. ${topSec} dominante.`, 'pattern');
-      } else {
-        // Check alternation
+      if (topCnt >= 6) addLog(`Padrão Gangorra identificado nas últimas 12 rodadas. ${topSec} dominante.`, 'pattern');
+      else {
         const last6sectors = allNumbers.slice(0, 6).map(getSector);
         const alternating = last6sectors.every((s, i) => i === 0 || s !== last6sectors[i - 1]);
-        if (alternating) {
-          addLog(`Alternância de setores detectada: ${last6sectors.slice(0, 4).join(' → ')}`, 'pattern');
-        }
+        if (alternating) addLog(`Alternância de setores detectada: ${last6sectors.slice(0, 4).join(' → ')}`, 'pattern');
       }
     }, 1300));
 
-    // Análise de puxados em tempo real
     timers.push(setTimeout(() => {
       const PULL_UI: Record<number,number[]> = {
         0:[10,20,30,32,15],1:[11,35,16,4,18],2:[14,1,13,18,35],3:[13,27,6,11,30],
@@ -121,7 +101,6 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
       }
     }, 850));
 
-    // Análise de entropia
     timers.push(setTimeout(() => {
       if (allNumbers.length >= 15) {
         setScanProgress(prev => Math.min(prev + 8, 93));
@@ -133,22 +112,15 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
       }
     }, 1050));
 
-    // Phase 5 - Streak/entropy check
     timers.push(setTimeout(() => {
       setScanProgress(90);
       const RED = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
       const colors = allNumbers.slice(0, 10).map(n => n === 0 ? 'G' : RED.includes(n) ? 'R' : 'B');
       let streak = 1;
-      for (let i = 1; i < colors.length; i++) {
-        if (colors[i] === colors[0] && colors[0] !== 'G') streak++;
-        else break;
-      }
-      if (streak >= 4) {
-        addLog(`🔥 Quebra de Entropia: ${streak}x ${colors[0] === 'R' ? 'Vermelho' : 'Preto'} seguidos. Reversão iminente.`, 'alert');
-      }
+      for (let i = 1; i < colors.length; i++) { if (colors[i] === colors[0] && colors[0] !== 'G') streak++; else break; }
+      if (streak >= 4) addLog(`🔥 Quebra de Entropia: ${streak}x ${colors[0] === 'R' ? 'Vermelho' : 'Preto'} seguidos. Reversão iminente.`, 'alert');
     }, 1500));
 
-    // Phase 6 - Sequence mirror check
     timers.push(setTimeout(() => {
       setScanProgress(95);
       if (allNumbers.length >= 50) {
@@ -162,7 +134,6 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
       }
     }, 1700));
 
-    // Auto-repetição — o padrão mais forte desta mesa
     timers.push(setTimeout(() => {
       const last5 = allNumbers.slice(0, 5);
       const repCount: Record<number,number> = {};
@@ -175,7 +146,6 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
       }
     }, 1350));
 
-    // Score final da rodada com confirmações
     timers.push(setTimeout(() => {
       setScanProgress(100);
       const score = sniperData?.signal?.probability || 0;
@@ -191,31 +161,21 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
     return () => timers.forEach(clearTimeout);
   }, [allNumbers[0]]);
 
-  // Log padrões realtime quando detectados
   useEffect(() => {
     if (!rtInsights || rtInsights.length === 0) return;
     const top = rtInsights[0];
     if (top.confidence >= 70) {
       const typeLabels: Record<string, string> = {
-        auto_repeticao_rt: '🔁 AUTO-REPETIÇÃO',
-        streak_consecutivo: '🔥 STREAK',
-        triple_pull: '🔱 TRIPLE PULL',
-        double_pull: '🔗 DOUBLE PULL',
-        puxada_momento: '🧲 PUXADA',
-        terminal_dominante_rt: '🔢 TERMINAL',
-        zero_pressao_rt: '🟢 ZERO',
-        combo_ouro_rt: '👑 COMBO OURO',
-        matriz_momento: '🔮 MATRIZ',
-        near_miss_rt: '📍 NEAR MISS',
-        hot_momento: '🔥 HOT',
-        setor_dominante_rt: '🎯 SETOR',
+        auto_repeticao_rt: '🔁 AUTO-REPETIÇÃO', streak_consecutivo: '🔥 STREAK', triple_pull: '🔱 TRIPLE PULL',
+        double_pull: '🔗 DOUBLE PULL', puxada_momento: '🧲 PUXADA', terminal_dominante_rt: '🔢 TERMINAL',
+        zero_pressao_rt: '🟢 ZERO', combo_ouro_rt: '👑 COMBO OURO', matriz_momento: '🔮 MATRIZ',
+        near_miss_rt: '📍 NEAR MISS', hot_momento: '🔥 HOT', setor_dominante_rt: '🎯 SETOR',
       };
       const label = typeLabels[top.type] || `⚡ ${top.type}`;
       addLog(`${label}: ${top.reason.slice(0, 80)} → apostar [${top.numbers.slice(0,5).join(',')}]`, 'alert');
     }
   }, [rtInsights]);
 
-  // Log quando estratégia aprendida é escolhida
   useEffect(() => {
     if (!sniperData?.strategy?.type) return;
     const learnedTypes = ['realtime_aprendido','pull_confirmado_aprendido','heat_cluster_ia','pattern_consensus','realtime_insight'];
@@ -224,72 +184,55 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
     }
   }, [sniperData?.strategy?.type, sniperData?.signal?.number]);
 
-  // Log confirmações quando sniper atualiza
   useEffect(() => {
     if (!sniperData?.signal?.confirmations) return;
     const c = sniperData.signal.confirmations;
     const cd = sniperData.signal.confirmationDetail;
     const num = sniperData.signal.number;
     if (c >= 3) {
-      const srcs = [
-        cd?.pull && 'Puxada',
-        cd?.autoRep && `Rep${cd.recentCount}x`,
-        cd?.matriz && 'Matriz',
-        cd?.ensemble && 'Ensemble',
-        cd?.winner && 'Estrat.',
-      ].filter(Boolean).join('+');
+      const srcs = [cd?.pull && 'Puxada', cd?.autoRep && `Rep${cd.recentCount}x`, cd?.matriz && 'Matriz', cd?.ensemble && 'Ensemble', cd?.winner && 'Estrat.'].filter(Boolean).join('+');
       addLog(`💎 ${c} confirmações em #${num}: ${srcs} — CONFIANÇA MÁXIMA`, 'alert');
     }
   }, [sniperData?.signal?.number]);
 
-  // Log archetype activity from sniper
   useEffect(() => {
     if (!sniperData?.archetypes) return;
     const active = sniperData.archetypes.filter((a: any) => a.active);
-    if (active.length > 0) {
-      const top = active[0];
-      addLog(`${top.emoji} ${top.name}: ${top.detail}`, 'pattern');
-    }
+    if (active.length > 0) { const top = active[0]; addLog(`${top.emoji} ${top.name}: ${top.detail}`, 'pattern'); }
   }, [sniperData?.archetypes]);
 
-  // Auto-learn status
   useEffect(() => {
     if (autoLearnStatus === 'learning') addLog('🧠 Motor de auto-aprendizado ativado...', 'calibration');
     else if (autoLearnStatus === 'analyzing') addLog('🔍 Análise profunda de padrões em andamento...', 'info');
     else if (autoLearnStatus === 'backtesting') addLog('🎯 Backtesting de estratégias concluído.', 'info');
   }, [autoLearnStatus]);
 
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [logs]);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [logs]);
 
   const typeStyles: Record<string, string> = {
-    info: 'text-muted-foreground',
-    alert: 'text-primary font-semibold',
-    pattern: 'text-amber-400',
-    calibration: 'text-purple-400 italic',
+    info: 'text-muted-foreground/70',
+    alert: 'text-gold font-semibold',
+    pattern: 'text-neon-cyan',
+    calibration: 'text-neon-pink',
   };
 
-  const typeIcons: Record<string, string> = {
-    info: '📡',
-    alert: '⚡',
-    pattern: '🔍',
-    calibration: '⚙️',
-  };
+  const typeIcons: Record<string, string> = { info: '📡', alert: '⚡', pattern: '🔍', calibration: '⚙️' };
 
   return (
-    <div className="bg-card/95 rounded-xl border border-primary/30 p-3 shadow-lg shadow-primary/5">
-      <div className="flex items-center gap-2 mb-2">
-        <Brain className="w-4 h-4 text-primary" />
-        <span className="font-display text-[10px] tracking-[0.2em] font-bold text-primary">LOG DE APRENDIZADO IA</span>
-        {scanning && <Activity className="w-3 h-3 text-primary animate-pulse ml-auto" />}
-        {!scanning && <span className="text-[7px] text-muted-foreground ml-auto font-mono">{logs.length} entradas</span>}
+    <div className="glass rounded-xl p-3.5">
+      <div className="flex items-center gap-2 mb-2.5">
+        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-neon-pink/15 to-purple-500/10 border border-neon-pink/20 flex items-center justify-center shadow-neon-pink">
+          <Brain className="w-3.5 h-3.5 text-neon-pink" />
+        </div>
+        <span className="font-display text-[10px] tracking-[0.2em] font-bold text-neon-pink">LOG DE APRENDIZADO</span>
+        {scanning && <Activity className="w-3 h-3 text-neon-cyan animate-pulse ml-auto" />}
+        {!scanning && <span className="text-[7px] text-muted-foreground/40 ml-auto font-mono">{logs.length} entradas</span>}
       </div>
 
       {/* Scan progress bar */}
-      <div className="w-full h-1 bg-secondary rounded-full overflow-hidden mb-2">
+      <div className="w-full h-1 bg-background/30 rounded-full overflow-hidden mb-2.5 border border-border/10">
         <motion.div
-          className="h-full bg-primary rounded-full"
+          className="h-full bg-gradient-to-r from-neon-cyan to-neon-pink rounded-full"
           animate={{ width: `${scanProgress}%` }}
           transition={{ duration: 0.3 }}
         />
@@ -305,25 +248,20 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
               animate={{ opacity: 1, x: 0, height: 'auto' }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="flex items-start gap-1.5"
+              className="flex items-start gap-1.5 py-0.5"
             >
               <span className="text-[8px] shrink-0 mt-0.5">{typeIcons[log.type]}</span>
-              <span className="text-[7px] font-mono text-muted-foreground/60 shrink-0 mt-0.5">
+              <span className="text-[7px] font-mono text-muted-foreground/30 shrink-0 mt-0.5">
                 {log.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
-              <span className={`text-[9px] leading-tight ${
-                log.type === 'alert' ? 'text-yellow-300 font-semibold' :
-                log.type === 'pattern' ? 'text-cyan-400' :
-                log.type === 'calibration' ? 'text-purple-400' :
-                'text-muted-foreground'
-              }`}>
+              <span className={`text-[9px] leading-tight ${typeStyles[log.type]}`}>
                 "{log.text}"
               </span>
             </motion.div>
           ))}
         </AnimatePresence>
         {logs.length === 0 && (
-          <div className="text-[9px] text-muted-foreground italic py-2 text-center">Aguardando próximo giro...</div>
+          <div className="text-[9px] text-muted-foreground/30 italic py-2 text-center">Aguardando próximo giro...</div>
         )}
       </div>
     </div>
