@@ -86,13 +86,14 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
 
   const reedStopped = reedCount >= 4;
 
-  const { ensTop1, finalNumbers, displayProb, analysisDetail, streakInfo, recentWR } = useMemo(() => {
+  const { ensTop1, finalNumbers, displayProb, analysisDetail, streakInfo, recentWR, fusionTop5 } = useMemo(() => {
     if (!sniperData?.signal || !sniperData?.strategy) {
-      return { ensTop1: 0, finalNumbers: [], displayProb: 0, analysisDetail: null };
+      return { ensTop1: 0, finalNumbers: [], displayProb: 0, analysisDetail: null, fusionTop5: [] };
     }
-    const top1 = sniperData.ensemble?.top1 ?? sniperData.topCandidates?.[0]?.num ?? sniperData.strategy.numbers[0];
-    const nums: number[] = sniperData.strategy.numbers || [];
-    const rawProb = sniperData.signal.probability || 0;
+    const top1 = sniperData.fusionTop5?.[0]?.number ?? sniperData.ensemble?.top1 ?? sniperData.topCandidates?.[0]?.num ?? sniperData.strategy.numbers[0];
+    const nums: number[] = sniperData.fusionTop5 ? sniperData.fusionTop5.map((t: any) => t.number) : (sniperData.strategy.numbers || []);
+    const rawProb = sniperData.fusionConfidence ?? sniperData.signal.probability ?? 0;
+    const ft5 = sniperData.fusionTop5 || [];
 
     const bt = sniperData.aiReasoning?.betType || sniperData.strategy?.type || '';
     let detail: { type: string; label: string; visual: string; colorClass: string } | null = null;
