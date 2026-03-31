@@ -107,14 +107,18 @@ const PerformanceMonitor = memo(({ betHistory, balance, allNumbers }: Props) => 
             <div className="p-3 space-y-3">
               <div>
                 <div className="text-[8px] font-bold text-muted-foreground/40 uppercase mb-2">Curva de P&L</div>
-                <div className="h-32 w-full">
+                <div className="h-36 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={metrics.pnlSeries}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.15)" />
-                      <XAxis dataKey="x" tick={{ fontSize: 8, fill: 'hsl(var(--muted-foreground) / 0.3)' }} />
-                      <YAxis tick={{ fontSize: 8, fill: 'hsl(var(--muted-foreground) / 0.3)' }} />
-                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border) / 0.2)', borderRadius: 8, fontSize: 10 }} formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'P&L']} />
-                      <Line type="monotone" dataKey="pnl" stroke="hsl(var(--neon-cyan))" strokeWidth={2} dot={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.1)" />
+                      <XAxis dataKey="x" tick={{ fontSize: 8, fill: 'hsl(var(--muted-foreground) / 0.3)' }} axisLine={{ stroke: 'hsl(var(--border) / 0.1)' }} tickLine={false} />
+                      <YAxis tick={{ fontSize: 8, fill: 'hsl(var(--muted-foreground) / 0.3)' }} axisLine={{ stroke: 'hsl(var(--border) / 0.1)' }} tickLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border) / 0.3)', borderRadius: 12, fontSize: 10, backdropFilter: 'blur(12px)', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }} 
+                        formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'P&L']} 
+                        cursor={{ stroke: 'hsl(var(--primary) / 0.2)' }}
+                      />
+                      <Line type="monotone" dataKey="pnl" stroke="hsl(var(--neon-cyan))" strokeWidth={2.5} dot={false} strokeLinecap="round" />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
