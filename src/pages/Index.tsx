@@ -839,6 +839,25 @@ const Index = () => {
               {/* ── ENGINE ANALYSIS (Streaks, Cold Zones) ────── */}
               <EngineSignalCard allNumbers={allNumbers} />
               </>
+              
+              {/* ── STRATEGY SELECTOR ────── */}
+              <StrategySelector
+                allNumbers={allNumbers}
+                betHistory={betHistoryForMonitor}
+                balance={1000}
+                baseBet={1}
+                activeStrategy={activeStrategyId}
+                onSelectStrategy={setActiveStrategyId}
+              />
+              
+              {/* ── PERFORMANCE MONITOR ────── */}
+              {betHistoryForMonitor.length >= 2 && (
+                <PerformanceMonitor
+                  betHistory={betHistoryForMonitor}
+                  balance={1000}
+                  allNumbers={allNumbers}
+                />
+              )}
             ) : (
               <div className="bg-card rounded-2xl border border-border p-12 text-center">
                 <div className="text-5xl mb-4 opacity-30">○</div>
