@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Edit3, X, Check, Keyboard, Trash2, Hash } from 'lucide-react';
 
