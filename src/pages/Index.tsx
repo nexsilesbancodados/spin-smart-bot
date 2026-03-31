@@ -260,7 +260,13 @@ const Index = () => {
 
   const triggerMicroLearn = useCallback(async () => {
     if (!aiEnabled) return;
-    try { await Promise.allSettled([supabase.functions.invoke('auto-analyze-patterns'), supabase.functions.invoke('realtime-patterns')]); } catch { /* */ }
+    try {
+      await Promise.allSettled([
+        supabase.functions.invoke('auto-analyze-patterns'),
+        supabase.functions.invoke('realtime-patterns'),
+        supabase.functions.invoke('auto-recalibrate'),
+      ]);
+    } catch { /* */ }
   }, [aiEnabled]);
 
   const fetchSniper = useCallback(async (retryCount = 0, force = false) => {

@@ -34,7 +34,7 @@ const wheelNeighbors = (n: number, radius = 4): number[] => {
 // TIPOS
 // ═══════════════════════════════════════════════════════════════════
 interface ModelSignal {
-  modelId: 'markov' | 'neural_pattern' | 'gradient' | 'bayesian' | 'statistical';
+  modelId: 'markov' | 'neural_pattern' | 'gradient' | 'bayesian' | 'statistical' | 'pattern_discovery' | 'rl_optimizer';
   modelName: string;
   betType: string;
   label: string;
@@ -61,82 +61,67 @@ interface EnsembleResult {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MODELO 1: MARKOV CHAIN (Ordem 1-3)
+// MODELO 1: MARKOV CHAIN (Ordem 1-5)
 // Prevê próximo estado baseado em sequências anteriores
 // ═══════════════════════════════════════════════════════════════════
 function modelMarkov(spins: number[]): ModelSignal[] {
   const signals: ModelSignal[] = [];
   if (spins.length < 20) return signals;
 
-  // Build transition matrices for orders 1, 2, 3
-  // Order 1: P(next | current)
-  const trans1: Record<string, Record<string, number>> = {};
-  for (let i = 0; i < spins.length - 1; i++) {
-    const key = `${spins[i]}`;
-    if (!trans1[key]) trans1[key] = {};
-    const next = `${spins[i + 1]}`;
-    trans1[key][next] = (trans1[key][next] || 0) + 1;
+  // Build transition matrices for orders 1 through 5
+  const transitions: Record<string, Record<string, number>>[] = [{}, {}, {}, {}, {}];
+
+  for (let order = 1; order <= 5; order++) {
+    const trans = transitions[order - 1];
+    for (let i = 0; i < spins.length - order; i++) {
+      const key = spins.slice(i, i + order).reverse().join(',');
+      if (!trans[key]) trans[key] = {};
+      const next = `${spins[i + order]}`;
+      trans[key][next] = (trans[key][next] || 0) + 1;
+    }
   }
 
-  // Order 2: P(next | prev2, prev1)
-  const trans2: Record<string, Record<string, number>> = {};
-  for (let i = 0; i < spins.length - 2; i++) {
-    const key = `${spins[i + 1]},${spins[i]}`;
-    if (!trans2[key]) trans2[key] = {};
-    const next = `${spins[i + 2]}`;
-    trans2[key][next] = (trans2[key][next] || 0) + 1;
+  // Current state keys for each order
+  const keys: (string | null)[] = [];
+  for (let order = 1; order <= 5; order++) {
+    keys.push(spins.length >= order ? spins.slice(0, order).reverse().join(',') : null);
   }
 
-  // Order 3: P(next | prev3, prev2, prev1)
-  const trans3: Record<string, Record<string, number>> = {};
-  for (let i = 0; i < spins.length - 3; i++) {
-    const key = `${spins[i + 2]},${spins[i + 1]},${spins[i]}`;
-    if (!trans3[key]) trans3[key] = {};
-    const next = `${spins[i + 3]}`;
-    trans3[key][next] = (trans3[key][next] || 0) + 1;
-  }
-
-  // Predict from current state
-  const current = spins[0];
-  const key1 = `${current}`;
-  const key2 = spins.length >= 2 ? `${spins[0]},${spins[1]}` : null;
-  const key3 = spins.length >= 3 ? `${spins[0]},${spins[1]},${spins[2]}` : null;
-
-  // Merge predictions from all orders with decreasing weight
+  // Merge predictions: higher orders get more weight (they're more specific)
+  const orderWeights = [0.10, 0.20, 0.25, 0.25, 0.20];
   const scores: Record<number, number> = {};
-  const addScores = (transitions: Record<string, number> | undefined, weight: number) => {
-    if (!transitions) return;
-    const total = Object.values(transitions).reduce((a, b) => a + b, 0);
-    for (const [num, count] of Object.entries(transitions)) {
+
+  const addScores = (trans: Record<string, number> | undefined, weight: number) => {
+    if (!trans) return;
+    const total = Object.values(trans).reduce((a, b) => a + b, 0);
+    for (const [num, count] of Object.entries(trans)) {
       const n = parseInt(num);
       scores[n] = (scores[n] || 0) + (count / total) * weight;
     }
   };
 
-  addScores(trans1[key1], 0.3);
-  if (key2) addScores(trans2[key2], 0.4);
-  if (key3) addScores(trans3[key3], 0.3);
+  for (let order = 0; order < 5; order++) {
+    if (keys[order]) addScores(transitions[order][keys[order]!], orderWeights[order]);
+  }
 
   // Get top predictions
   const sorted = Object.entries(scores).sort(([, a], [, b]) => b - a);
   if (sorted.length >= 3) {
     const topNums = sorted.slice(0, 8).map(([n]) => parseInt(n));
     const topScore = sorted[0][1];
-    const conf = Math.min(88, 45 + Math.round(topScore * 60));
+    const conf = Math.min(90, 45 + Math.round(topScore * 65));
 
-    // Determine bet type by grouping
-    const dozenCounts = [0, 0, 0, 0];
-    topNums.forEach(n => dozenCounts[getDozen(n)]++);
-    const maxDz = dozenCounts.indexOf(Math.max(...dozenCounts.slice(1)), 1);
+    // Find which orders contributed most
+    const activeOrders = keys.map((k, i) => k && transitions[i][k] ? i + 1 : 0).filter(o => o > 0);
 
     signals.push({
       modelId: 'markov',
       modelName: 'Markov Chain',
       betType: topNums.length <= 5 ? 'vizinhos' : 'grupo',
-      label: `Cadeia Markov → [${topNums.slice(0, 5).join(',')}]`,
+      label: `Markov (O${activeOrders.join('+')}${activeOrders.length}) → [${topNums.slice(0, 5).join(',')}]`,
       numbers: topNums,
       confidence: conf,
-      reasoning: `Cadeia de Markov (ordens 1-3) prevê [${topNums.slice(0, 3).join(',')}] como sucessores mais prováveis de ${current}. Score: ${(topScore * 100).toFixed(0)}%`,
+      reasoning: `Cadeia de Markov (ordens ${activeOrders.join(',')}) prevê [${topNums.slice(0, 3).join(',')}] como mais prováveis após ${spins[0]}. Score: ${(topScore * 100).toFixed(0)}%`,
       predictedMain: topNums[0],
     });
   }
@@ -149,6 +134,7 @@ function modelMarkov(spins: number[]): ModelSignal[] {
     if (!colorTrans[c]) colorTrans[c] = {};
     colorTrans[c][next] = (colorTrans[c][next] || 0) + 1;
   }
+  const current = spins[0];
   const currentColor = getColor(current);
   const colorNext = colorTrans[currentColor];
   if (colorNext) {
@@ -694,6 +680,216 @@ function modelStatistical(spins: number[]): ModelSignal[] {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// MODELO 6: PATTERN DISCOVERY (Association Rules / FP-Growth inspired)
+// Mineração de regras de associação em sequências
+// ═══════════════════════════════════════════════════════════════════
+function modelPatternDiscovery(spins: number[]): ModelSignal[] {
+  const signals: ModelSignal[] = [];
+  if (spins.length < 50) return signals;
+
+  // Mine frequent sequential patterns of length 2-3
+  const pairs: Record<string, number> = {};
+  const triples: Record<string, number> = {};
+
+  for (let i = 0; i < spins.length - 2; i++) {
+    const p = `${spins[i + 1]},${spins[i]}`;
+    pairs[p] = (pairs[p] || 0) + 1;
+    if (i < spins.length - 3) {
+      const t = `${spins[i + 2]},${spins[i + 1]},${spins[i]}`;
+      triples[t] = (triples[t] || 0) + 1;
+    }
+  }
+
+  // Check if current sequence matches any frequent pattern
+  const currentPair = `${spins[0]},${spins[1]}`;
+  const currentTriple = spins.length >= 3 ? `${spins[0]},${spins[1]},${spins[2]}` : null;
+
+  // Find what follows current pair
+  const followers: Record<number, number> = {};
+  for (let i = 0; i < spins.length - 2; i++) {
+    const p = `${spins[i + 1]},${spins[i]}`;
+    if (p === currentPair) {
+      if (i > 0) {
+        followers[spins[i - 1]] = (followers[spins[i - 1]] || 0) + 1;
+      }
+    }
+  }
+
+  const totalFollowers = Object.values(followers).reduce((a, b) => a + b, 0);
+  if (totalFollowers >= 3) {
+    const sortedFollowers = Object.entries(followers).sort(([, a], [, b]) => b - a);
+    const topNums = sortedFollowers.slice(0, 6).map(([n]) => parseInt(n));
+    const topProb = sortedFollowers[0][1] / totalFollowers;
+
+    if (topProb > 0.15) {
+      signals.push({
+        modelId: 'pattern_discovery',
+        modelName: 'Pattern Discovery',
+        betType: 'grupo',
+        label: `Padrão ${spins[1]}→${spins[0]}→? → [${topNums.slice(0, 4).join(',')}]`,
+        numbers: topNums,
+        confidence: Math.min(85, 45 + Math.round(topProb * 100) + Math.min(20, totalFollowers * 2)),
+        reasoning: `Regra de associação: após sequência [${spins[1]},${spins[0]}], os números [${topNums.slice(0, 3).join(',')}] apareceram ${sortedFollowers[0][1]}/${totalFollowers} vezes (${(topProb * 100).toFixed(0)}%)`,
+        predictedMain: topNums[0],
+      });
+    }
+  }
+
+  // Color pattern rules: "after N reds, what happens?"
+  const colorSeqs: Record<string, Record<string, number>> = {};
+  for (let w = 3; w <= 5; w++) {
+    for (let i = 0; i < spins.length - w; i++) {
+      const seq = spins.slice(i, i + w).map(n => getColor(n)).join('');
+      if (!colorSeqs[seq]) colorSeqs[seq] = {};
+      const next = getColor(spins[i + w]);
+      colorSeqs[seq][next] = (colorSeqs[seq][next] || 0) + 1;
+    }
+  }
+
+  // Check current color sequence
+  for (let w = 3; w <= 5; w++) {
+    if (spins.length < w) continue;
+    const currentSeq = spins.slice(0, w).map(n => getColor(n)).join('');
+    const nextColors = colorSeqs[currentSeq];
+    if (nextColors) {
+      const total = Object.values(nextColors).reduce((a, b) => a + b, 0);
+      if (total >= 5) {
+        for (const [color, count] of Object.entries(nextColors)) {
+          if (color === 'green') continue;
+          const prob = count / total;
+          if (prob > 0.65) {
+            const nums = Array.from({ length: 37 }, (_, i) => i).filter(n => getColor(n) === color);
+            signals.push({
+              modelId: 'pattern_discovery',
+              modelName: 'Pattern Discovery',
+              betType: 'cor',
+              label: `Regra: ${currentSeq}→${color === 'red' ? 'VERM' : 'PRETO'} (${(prob * 100).toFixed(0)}%)`,
+              numbers: nums,
+              confidence: Math.min(82, 50 + Math.round(prob * 40)),
+              reasoning: `Regra de associação: após padrão ${currentSeq}, ${color} apareceu ${count}/${total} vezes`,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return signals;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODELO 7: RL OPTIMIZER (Reinforcement Learning inspired)
+// Simula aprendizado por reforço para otimizar apostas
+// ═══════════════════════════════════════════════════════════════════
+function modelRLOptimizer(spins: number[], modelWeights: Record<string, ModelWeight>): ModelSignal[] {
+  const signals: ModelSignal[] = [];
+  if (spins.length < 30) return signals;
+
+  // State: recent pattern features
+  // Action: which bet type to recommend
+  // Reward: based on historical model performance
+
+  // Compute "value function" for each bet type by simulating past performance
+  const betTypes = ['duzia', 'cor', 'setor', 'vizinhos', 'coluna'];
+  const betScores: Record<string, { wins: number; total: number; ev: number }> = {};
+
+  for (const bet of betTypes) {
+    betScores[bet] = { wins: 0, total: 0, ev: 0 };
+  }
+
+  // Simulate: for each historical window, what bet would have been optimal?
+  const simWindow = 20;
+  for (let i = 0; i < Math.min(spins.length - simWindow - 1, 100); i++) {
+    const window = spins.slice(i + 1, i + 1 + simWindow);
+    const actual = spins[i];
+
+    // Dozen bet
+    for (let dz = 1; dz <= 3; dz++) {
+      const dzCount = window.filter(n => getDozen(n) === dz).length;
+      if (dzCount / simWindow > 0.38) {
+        betScores.duzia.total++;
+        if (getDozen(actual) === dz) { betScores.duzia.wins++; betScores.duzia.ev += 2; }
+        else betScores.duzia.ev -= 1;
+      }
+    }
+
+    // Color bet
+    const reds = window.filter(n => getColor(n) === 'red').length;
+    const nonZero = window.filter(n => n > 0).length;
+    if (nonZero > 0 && (reds / nonZero > 0.58 || reds / nonZero < 0.42)) {
+      betScores.cor.total++;
+      const predicted = reds / nonZero > 0.58 ? 'red' : 'black';
+      if (getColor(actual) === predicted) { betScores.cor.wins++; betScores.cor.ev += 1; }
+      else betScores.cor.ev -= 1;
+    }
+
+    // Sector bet
+    const sectors: Record<string, number> = { voisins: 0, tiers: 0, orphelins: 0 };
+    window.forEach(n => { const s = getSector(n); if (s !== 'zero') sectors[s]++; });
+    const hotSector = Object.entries(sectors).sort(([, a], [, b]) => b - a)[0];
+    if (hotSector && hotSector[1] / simWindow > 0.40) {
+      betScores.setor.total++;
+      if (getSector(actual) === hotSector[0]) { betScores.setor.wins++; betScores.setor.ev += 1.5; }
+      else betScores.setor.ev -= 1;
+    }
+  }
+
+  // Find optimal bet type by expected value
+  const bestBet = Object.entries(betScores)
+    .filter(([, s]) => s.total >= 10)
+    .sort(([, a], [, b]) => (b.ev / b.total) - (a.ev / a.total))[0];
+
+  if (bestBet) {
+    const [betType, stats] = bestBet;
+    const winRate = stats.wins / stats.total;
+    const avgEV = stats.ev / stats.total;
+
+    if (winRate > 0.30 && avgEV > 0) {
+      // Generate specific numbers based on best bet type
+      let nums: number[] = [];
+      let label = '';
+      const recent = spins.slice(0, 20);
+
+      if (betType === 'duzia') {
+        const dzCounts = [0, 0, 0, 0];
+        recent.forEach(n => dzCounts[getDozen(n)]++);
+        const bestDz = dzCounts.indexOf(Math.max(...dzCounts.slice(1)), 1);
+        nums = Array.from({ length: 12 }, (_, i) => (bestDz - 1) * 12 + i + 1);
+        label = `RL → D${bestDz} (EV+${avgEV.toFixed(2)})`;
+      } else if (betType === 'cor') {
+        const reds = recent.filter(n => getColor(n) === 'red').length;
+        const isRedHot = reds / recent.filter(n => n > 0).length > 0.55;
+        nums = Array.from({ length: 37 }, (_, i) => i).filter(n => getColor(n) === (isRedHot ? 'red' : 'black'));
+        label = `RL → ${isRedHot ? 'VERM' : 'PRETO'} (EV+${avgEV.toFixed(2)})`;
+      } else if (betType === 'setor') {
+        const VOISINS_S = new Set([22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25]);
+        const TIERS_S = new Set([27,13,36,11,30,8,23,10,5,24,16,33]);
+        const sc: Record<string, number> = { voisins: 0, tiers: 0, orphelins: 0 };
+        recent.forEach(n => { if (VOISINS_S.has(n)) sc.voisins++; else if (TIERS_S.has(n)) sc.tiers++; else sc.orphelins++; });
+        const hotS = Object.entries(sc).sort(([, a], [, b]) => b - a)[0][0];
+        nums = Array.from(hotS === 'voisins' ? VOISINS_S : hotS === 'tiers' ? TIERS_S : ORPHELINS);
+        label = `RL → ${hotS} (EV+${avgEV.toFixed(2)})`;
+      }
+
+      if (nums.length > 0) {
+        signals.push({
+          modelId: 'rl_optimizer',
+          modelName: 'RL Optimizer',
+          betType,
+          label,
+          numbers: nums,
+          confidence: Math.min(84, 45 + Math.round(winRate * 50) + Math.round(avgEV * 10)),
+          reasoning: `RL simulado: ${betType} teve WR ${(winRate * 100).toFixed(0)}% e EV +${avgEV.toFixed(2)} em ${stats.total} simulações recentes`,
+          predictedMain: nums[0],
+        });
+      }
+    }
+  }
+
+  return signals;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // ENSEMBLE VOTING: Combina todos os modelos com pesos dinâmicos
 // ═══════════════════════════════════════════════════════════════════
 interface ModelWeight {
@@ -896,7 +1092,7 @@ Deno.serve(async (req) => {
       weights[w.model_id] = w;
     }
     // Ensure all models have defaults
-    for (const id of ['markov', 'neural_pattern', 'gradient', 'bayesian', 'statistical']) {
+    for (const id of ['markov', 'neural_pattern', 'gradient', 'bayesian', 'statistical', 'pattern_discovery', 'rl_optimizer']) {
       if (!weights[id]) {
         weights[id] = { model_id: id, weight: 1.0, win_rate: 0, total_predictions: 0, total_hits: 0, current_streak: 0 };
       }
@@ -919,16 +1115,18 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // ── 3. Run all 5 Models in parallel ────────────────────
-    const [markovSignals, neuralSignals, gradientSignals, bayesianSignals, statsSignals] = [
+    // ── 3. Run all 7 Models in parallel ────────────────────
+    const [markovSignals, neuralSignals, gradientSignals, bayesianSignals, statsSignals, patternSignals, rlSignals] = [
       modelMarkov(spins),
       modelNeuralPattern(spins),
       modelGradient(spins),
       modelBayesian(spins),
       modelStatistical(spins),
+      modelPatternDiscovery(spins),
+      modelRLOptimizer(spins, weights),
     ];
 
-    const allSignals = [...markovSignals, ...neuralSignals, ...gradientSignals, ...bayesianSignals, ...statsSignals];
+    const allSignals = [...markovSignals, ...neuralSignals, ...gradientSignals, ...bayesianSignals, ...statsSignals, ...patternSignals, ...rlSignals];
 
     if (allSignals.length === 0) {
       return new Response(JSON.stringify({
@@ -962,28 +1160,33 @@ Deno.serve(async (req) => {
       bet_type: s.betType,
       reasoning: s.reasoning,
       ensemble_weight: weights[s.modelId]?.weight ?? 1.0,
-      spin_context: { temperature, consensus, totalModels: 5 },
+      spin_context: { temperature, consensus, totalModels: 7 },
     }));
 
     // Fire and forget — don't block response
     supabase.from('model_predictions').insert(predInserts).then(() => {});
 
-    // Recalibrate weights every ~20 calls
-    if (Math.random() < 0.05) {
+    // Recalibrate weights every ~20 calls + trigger auto-recalibrate
+    if (Math.random() < 0.08) {
       recalibrateWeights(supabase).catch(() => {});
     }
 
     // ── 7. Build arbiter log ───────────────────────────────
+    const modelNames: Record<string, string> = {
+      markov: 'Markov', neural_pattern: 'Neural', gradient: 'Gradient',
+      bayesian: 'Bayesiano', statistical: 'Estatístico',
+      pattern_discovery: 'PatternDisc', rl_optimizer: 'RL-Opt',
+    };
     const arbiterLog: string[] = [];
     arbiterLog.push(`🌡️ Mesa ${temperature.toUpperCase()}`);
-    arbiterLog.push(`🤖 5 modelos ativos — ${allSignals.length} sinais gerados`);
+    arbiterLog.push(`🤖 7 modelos ativos — ${allSignals.length} sinais gerados`);
     for (const [id, w] of Object.entries(weights)) {
-      const name = id === 'markov' ? 'Markov' : id === 'neural_pattern' ? 'Neural' : id === 'gradient' ? 'Gradient' : id === 'bayesian' ? 'Bayesiano' : 'Estatístico';
+      const name = modelNames[id] || id;
       const wr = w.total_predictions > 0 ? `${(w.win_rate * 100).toFixed(0)}%` : 'N/A';
       arbiterLog.push(`${name}: WR ${wr} | peso ${w.weight.toFixed(2)} | streak ${w.current_streak}`);
     }
     arbiterLog.push(`🏆 Vencedor: ${winner.modelName} → ${winner.label}`);
-    arbiterLog.push(`📊 Consenso: ${consensus}/5 modelos concordam`);
+    arbiterLog.push(`📊 Consenso: ${consensus}/7 modelos concordam`);
     arbiterLog.push(`💰 Kelly: ${(kelly.fraction * 100).toFixed(1)}% → Entrada ${kelly.force.toUpperCase()}`);
 
     // ── 8. Protection numbers ──────────────────────────────
@@ -1008,6 +1211,7 @@ Deno.serve(async (req) => {
       killSwitch: false,
       ensembleConsensus: consensus,
       ensembleConfidence,
+      totalModels: 7,
       arbiterLog,
       modelPerformance: Object.fromEntries(Object.entries(weights).map(([id, w]) => [id, {
         winRate: w.win_rate,
@@ -1016,7 +1220,7 @@ Deno.serve(async (req) => {
         streak: w.current_streak,
         weight: w.weight,
       }])),
-      modelSignals: scored.slice(0, 8).map(s => ({
+      modelSignals: scored.slice(0, 10).map(s => ({
         modelId: s.modelId,
         modelName: s.modelName,
         label: s.label,
@@ -1029,12 +1233,14 @@ Deno.serve(async (req) => {
         statistical: { weight: weights.statistical?.weight ?? 1, winRate: weights.statistical?.total_predictions > 0 ? `${(weights.statistical.win_rate * 100).toFixed(0)}%` : 'N/A', streak: weights.statistical?.current_streak ?? 0 },
         ballistic: { weight: weights.neural_pattern?.weight ?? 1, winRate: weights.neural_pattern?.total_predictions > 0 ? `${(weights.neural_pattern.win_rate * 100).toFixed(0)}%` : 'N/A', streak: weights.neural_pattern?.current_streak ?? 0 },
         reversion: { weight: weights.bayesian?.weight ?? 1, winRate: weights.bayesian?.total_predictions > 0 ? `${(weights.bayesian.win_rate * 100).toFixed(0)}%` : 'N/A', streak: weights.bayesian?.current_streak ?? 0 },
+        pattern_discovery: { weight: weights.pattern_discovery?.weight ?? 1, winRate: weights.pattern_discovery?.total_predictions > 0 ? `${(weights.pattern_discovery.win_rate * 100).toFixed(0)}%` : 'N/A', streak: weights.pattern_discovery?.current_streak ?? 0 },
+        rl_optimizer: { weight: weights.rl_optimizer?.weight ?? 1, winRate: weights.rl_optimizer?.total_predictions > 0 ? `${(weights.rl_optimizer.win_rate * 100).toFixed(0)}%` : 'N/A', streak: weights.rl_optimizer?.current_streak ?? 0 },
       },
       aiReasoning: {
         betType: winner.betType,
         betDescription: winner.reasoning,
         patternIdentified: winner.label,
-        suggestedBet: `${winner.label} — Entrada ${kelly.force.toUpperCase()} (${consensus}/5 consenso)`,
+        suggestedBet: `${winner.label} — Entrada ${kelly.force.toUpperCase()} (${consensus}/7 consenso)`,
         consensus,
         confidence: ensembleConfidence,
       },
