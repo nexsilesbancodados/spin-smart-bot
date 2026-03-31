@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Magnet, MapPin } from 'lucide-react';
+import { Magnet, MapPin, Crosshair } from 'lucide-react';
 
 const WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 const RED_NUMBERS = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
@@ -23,14 +23,19 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
   if (!activePull) return null;
 
   const targetNums = new Set(activePull.targets.map(t => t.num));
+  const maxCount = Math.max(...activePull.targets.map(t => t.count), 1);
 
   return (
-    <div className="glass rounded-2xl overflow-hidden border border-primary/20 card-hover">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass rounded-2xl overflow-hidden border border-primary/20"
+    >
       {/* Header */}
       <div className="relative px-4 pt-4 pb-3">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/4 via-transparent to-neon-pink/3" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-neon-pink/4" />
         <div className="relative flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/15 to-neon-pink/10 border border-primary/20 flex items-center justify-center shadow-neon-cyan">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/15 to-neon-pink/10 border border-primary/20 flex items-center justify-center shadow-[0_0_12px_hsl(var(--primary)/0.15)]">
             <Magnet className="w-4 h-4 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
@@ -45,7 +50,7 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
 
       {/* Mini cylinder */}
       <div className="px-3 pb-3">
-        <div className="flex flex-wrap gap-[3px] justify-center py-2 glass rounded-xl p-3 border border-border/10">
+        <div className="flex flex-wrap gap-[3px] justify-center py-2.5 glass rounded-xl p-3 border border-border/10">
           {WHEEL.map((n, i) => {
             const isSource = n === latestNumber;
             const isTarget = targetNums.has(n);
@@ -58,19 +63,20 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
                 initial={{ scale: 0.8 }}
                 animate={{
                   scale: isSource ? 1.35 : isTarget ? 1.15 : 0.85,
-                  opacity: isSource || isTarget ? 1 : 0.2,
+                  opacity: isSource || isTarget ? 1 : 0.15,
                 }}
+                transition={{ duration: 0.3, delay: isTarget ? i * 0.01 : 0 }}
                 className={`relative w-[22px] h-[22px] rounded-full flex items-center justify-center text-[7px] font-bold border transition-all ${
                   isSource
-                    ? 'bg-primary text-primary-foreground border-primary ring-2 ring-primary/40 shadow-lg shadow-primary/25 z-10'
+                    ? 'bg-primary text-primary-foreground border-primary ring-2 ring-primary/40 shadow-[0_0_12px_hsl(var(--primary)/0.3)] z-10'
                     : isTarget
-                    ? `${c === 'red' ? 'bg-red-600' : c === 'black' ? 'bg-zinc-800' : 'bg-emerald-600'} text-white border-gold/50 shadow-sm shadow-gold/15`
+                    ? `${c === 'red' ? 'bg-red-600' : c === 'black' ? 'bg-zinc-800' : 'bg-emerald-600'} text-white border-[hsl(var(--gold))]/50 shadow-[0_0_6px_hsl(var(--gold)/0.2)]`
                     : `${c === 'red' ? 'bg-red-600' : c === 'black' ? 'bg-zinc-800' : 'bg-emerald-600'} text-white/30 border-white/5`
                 }`}
               >
                 {n}
                 {isTarget && targetInfo && (
-                  <span className="absolute -top-2.5 -right-1.5 text-[5px] font-bold text-gold bg-card/95 rounded-full px-1 py-px border border-gold/20">
+                  <span className="absolute -top-2.5 -right-1.5 text-[5px] font-bold text-[hsl(var(--gold))] bg-card/95 rounded-full px-1 py-px border border-[hsl(var(--gold))]/20">
                     {targetInfo.count}×
                   </span>
                 )}
@@ -80,20 +86,40 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
         </div>
       </div>
 
-      {/* Pull targets */}
-      <div className="px-4 pb-3">
-        <div className="flex flex-wrap gap-1.5">
-          {activePull.targets.slice(0, 5).map((t, i) => (
-            <div key={t.num} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[8px] border backdrop-blur-sm ${
-              i === 0 ? 'glass border-primary/20 text-primary font-bold' : 'glass border-border/15 text-muted-foreground'
-            }`}>
-              <span className="font-mono font-bold">{t.num}</span>
-              <span className="text-muted-foreground/40">→</span>
-              <span className="font-bold">{t.count}×</span>
-              <span className="text-muted-foreground/30">({t.sector.slice(0, 4)})</span>
-            </div>
-          ))}
+      {/* Pull targets with bars */}
+      <div className="px-4 pb-3 space-y-1.5">
+        <div className="flex items-center gap-1.5 mb-1">
+          <Crosshair className="w-3 h-3 text-primary/50" />
+          <span className="text-[8px] font-bold text-muted-foreground/60 font-display tracking-wider uppercase">Alvos Prioritários</span>
         </div>
+        {activePull.targets.slice(0, 5).map((t, i) => {
+          const c = getColor(t.num);
+          const pct = (t.count / maxCount) * 100;
+          return (
+            <div key={t.num} className="flex items-center gap-2">
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${
+                c === 'red' ? 'bg-red-600' : c === 'green' ? 'bg-emerald-600' : 'bg-zinc-800'
+              } ${i === 0 ? 'ring-1 ring-primary/40 shadow-[0_0_6px_hsl(var(--primary)/0.15)]' : ''}`}>
+                {t.num}
+              </div>
+              <div className="flex-1">
+                <div className="h-1.5 bg-background/20 rounded-full overflow-hidden border border-border/10">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${pct}%` }}
+                    transition={{ duration: 0.6, delay: i * 0.1 }}
+                    className={`h-full rounded-full ${
+                      i === 0 ? 'bg-gradient-to-r from-primary to-neon-pink' :
+                      i <= 2 ? 'bg-primary/60' : 'bg-muted-foreground/30'
+                    }`}
+                  />
+                </div>
+              </div>
+              <span className="text-[8px] font-mono font-bold text-foreground/70 w-6 text-right">{t.count}×</span>
+              <span className="text-[7px] text-muted-foreground/30 w-10 text-right">{t.sector.slice(0, 5)}</span>
+            </div>
+          );
+        })}
       </div>
 
       {/* Footer */}
@@ -106,7 +132,7 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
           <span>Setor: <b className="text-primary/60">{activePull.dominantSector}</b></span>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
