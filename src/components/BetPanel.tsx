@@ -437,10 +437,10 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                   <div className="flex gap-1.5">
                     {[0.5, 1, 2, 5, 10, 25].map(v => (
                       <button key={v} onClick={() => setConfig(prev => ({ ...prev, betValue: v }))}
-                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all ${
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all border backdrop-blur-sm ${
                           config.betValue === v
-                            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
-                            : 'bg-secondary text-muted-foreground hover:bg-muted'
+                            ? 'bg-primary/15 text-primary border-primary/25 shadow-neon-cyan'
+                            : 'bg-background/15 text-muted-foreground/50 border-border/10 hover:text-foreground'
                         }`}>
                         {v}
                       </button>
