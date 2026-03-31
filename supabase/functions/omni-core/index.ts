@@ -61,82 +61,67 @@ interface EnsembleResult {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MODELO 1: MARKOV CHAIN (Ordem 1-3)
+// MODELO 1: MARKOV CHAIN (Ordem 1-5)
 // Prevê próximo estado baseado em sequências anteriores
 // ═══════════════════════════════════════════════════════════════════
 function modelMarkov(spins: number[]): ModelSignal[] {
   const signals: ModelSignal[] = [];
   if (spins.length < 20) return signals;
 
-  // Build transition matrices for orders 1, 2, 3
-  // Order 1: P(next | current)
-  const trans1: Record<string, Record<string, number>> = {};
-  for (let i = 0; i < spins.length - 1; i++) {
-    const key = `${spins[i]}`;
-    if (!trans1[key]) trans1[key] = {};
-    const next = `${spins[i + 1]}`;
-    trans1[key][next] = (trans1[key][next] || 0) + 1;
+  // Build transition matrices for orders 1 through 5
+  const transitions: Record<string, Record<string, number>>[] = [{}, {}, {}, {}, {}];
+
+  for (let order = 1; order <= 5; order++) {
+    const trans = transitions[order - 1];
+    for (let i = 0; i < spins.length - order; i++) {
+      const key = spins.slice(i, i + order).reverse().join(',');
+      if (!trans[key]) trans[key] = {};
+      const next = `${spins[i + order]}`;
+      trans[key][next] = (trans[key][next] || 0) + 1;
+    }
   }
 
-  // Order 2: P(next | prev2, prev1)
-  const trans2: Record<string, Record<string, number>> = {};
-  for (let i = 0; i < spins.length - 2; i++) {
-    const key = `${spins[i + 1]},${spins[i]}`;
-    if (!trans2[key]) trans2[key] = {};
-    const next = `${spins[i + 2]}`;
-    trans2[key][next] = (trans2[key][next] || 0) + 1;
+  // Current state keys for each order
+  const keys: (string | null)[] = [];
+  for (let order = 1; order <= 5; order++) {
+    keys.push(spins.length >= order ? spins.slice(0, order).reverse().join(',') : null);
   }
 
-  // Order 3: P(next | prev3, prev2, prev1)
-  const trans3: Record<string, Record<string, number>> = {};
-  for (let i = 0; i < spins.length - 3; i++) {
-    const key = `${spins[i + 2]},${spins[i + 1]},${spins[i]}`;
-    if (!trans3[key]) trans3[key] = {};
-    const next = `${spins[i + 3]}`;
-    trans3[key][next] = (trans3[key][next] || 0) + 1;
-  }
-
-  // Predict from current state
-  const current = spins[0];
-  const key1 = `${current}`;
-  const key2 = spins.length >= 2 ? `${spins[0]},${spins[1]}` : null;
-  const key3 = spins.length >= 3 ? `${spins[0]},${spins[1]},${spins[2]}` : null;
-
-  // Merge predictions from all orders with decreasing weight
+  // Merge predictions: higher orders get more weight (they're more specific)
+  const orderWeights = [0.10, 0.20, 0.25, 0.25, 0.20];
   const scores: Record<number, number> = {};
-  const addScores = (transitions: Record<string, number> | undefined, weight: number) => {
-    if (!transitions) return;
-    const total = Object.values(transitions).reduce((a, b) => a + b, 0);
-    for (const [num, count] of Object.entries(transitions)) {
+
+  const addScores = (trans: Record<string, number> | undefined, weight: number) => {
+    if (!trans) return;
+    const total = Object.values(trans).reduce((a, b) => a + b, 0);
+    for (const [num, count] of Object.entries(trans)) {
       const n = parseInt(num);
       scores[n] = (scores[n] || 0) + (count / total) * weight;
     }
   };
 
-  addScores(trans1[key1], 0.3);
-  if (key2) addScores(trans2[key2], 0.4);
-  if (key3) addScores(trans3[key3], 0.3);
+  for (let order = 0; order < 5; order++) {
+    if (keys[order]) addScores(transitions[order][keys[order]!], orderWeights[order]);
+  }
 
   // Get top predictions
   const sorted = Object.entries(scores).sort(([, a], [, b]) => b - a);
   if (sorted.length >= 3) {
     const topNums = sorted.slice(0, 8).map(([n]) => parseInt(n));
     const topScore = sorted[0][1];
-    const conf = Math.min(88, 45 + Math.round(topScore * 60));
+    const conf = Math.min(90, 45 + Math.round(topScore * 65));
 
-    // Determine bet type by grouping
-    const dozenCounts = [0, 0, 0, 0];
-    topNums.forEach(n => dozenCounts[getDozen(n)]++);
-    const maxDz = dozenCounts.indexOf(Math.max(...dozenCounts.slice(1)), 1);
+    // Find which orders contributed most
+    const activeOrders = keys.map((k, i) => k && transitions[i][k] ? i + 1 : 0).filter(o => o > 0);
 
     signals.push({
       modelId: 'markov',
       modelName: 'Markov Chain',
       betType: topNums.length <= 5 ? 'vizinhos' : 'grupo',
-      label: `Cadeia Markov → [${topNums.slice(0, 5).join(',')}]`,
+      label: `Markov (O${activeOrders.join('+')}${activeOrders.length}) → [${topNums.slice(0, 5).join(',')}]`,
       numbers: topNums,
       confidence: conf,
-      reasoning: `Cadeia de Markov (ordens 1-3) prevê [${topNums.slice(0, 3).join(',')}] como sucessores mais prováveis de ${current}. Score: ${(topScore * 100).toFixed(0)}%`,
+      reasoning: `Cadeia de Markov (ordens ${activeOrders.join(',')}) prevê [${topNums.slice(0, 3).join(',')}] como mais prováveis após ${spins[0]}. Score: ${(topScore * 100).toFixed(0)}%`,
       predictedMain: topNums[0],
     });
   }
@@ -149,6 +134,7 @@ function modelMarkov(spins: number[]): ModelSignal[] {
     if (!colorTrans[c]) colorTrans[c] = {};
     colorTrans[c][next] = (colorTrans[c][next] || 0) + 1;
   }
+  const current = spins[0];
   const currentColor = getColor(current);
   const colorNext = colorTrans[currentColor];
   if (colorNext) {
