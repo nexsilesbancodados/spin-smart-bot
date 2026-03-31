@@ -482,6 +482,28 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
           )}
         </div>
 
+        {/* ═══ MULTI-AI VEREDITO ═══ */}
+        {ai?.suggestedBet && (
+          <div className="px-4 pb-2">
+            <div className="bg-purple-500/8 rounded-lg border border-purple-500/20 px-3 py-2">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Brain className="w-3 h-3 text-purple-400" />
+                <span className="text-[8px] font-black text-purple-400 uppercase tracking-wider">
+                  {ai.confidence ? `IA Multi-Especialista ${ai.confidence}%` : 'IA Multi-Especialista'}
+                </span>
+                {ai.consensus > 0 && (
+                  <span className="ml-auto text-[7px] text-purple-300/70">
+                    {ai.consensus} consensos
+                  </span>
+                )}
+              </div>
+              <p className="text-[9px] text-foreground/70 leading-relaxed line-clamp-2">
+                ⚖️ {ai.suggestedBet?.slice(0, 150)}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ═══ INSIGHT DA IA (se houver) ═══ */}
         {(ai?.betDescription || ai?.patternIdentified) && (
           <div className="px-4 pb-3">
