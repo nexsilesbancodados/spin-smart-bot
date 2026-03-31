@@ -153,31 +153,41 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
   // ── KILL SWITCH from Omni-Core ───
   if (sniperData?.killSwitch) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-        <div className="glass rounded-2xl p-6 text-center border-2 border-destructive/30">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-3">
+        <div className="glass rounded-2xl p-6 text-center border-2 border-destructive/25 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-destructive/[0.03] to-transparent" />
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-destructive/40 to-transparent" />
           <motion.div
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ repeat: Infinity, duration: 2 }}
-            className="text-4xl mb-3"
+            animate={{ scale: [1, 1.15, 1], rotate: [0, 5, -5, 0] }}
+            transition={{ repeat: Infinity, duration: 3 }}
+            className="text-5xl mb-3 relative inline-block"
           >🛡️</motion.div>
-          <p className="text-sm font-black text-destructive font-display tracking-wider mb-2">PROTEÇÃO DE BANCA</p>
-          <p className="text-xs text-muted-foreground">{sniperData.killReason || 'Anomalia detectada — sinais suspensos'}</p>
+          <p className="text-sm font-black text-destructive font-display tracking-[0.15em] mb-2">PROTEÇÃO DE BANCA</p>
+          <p className="text-[10px] text-muted-foreground/60 leading-relaxed max-w-xs mx-auto">{sniperData.killReason || 'Anomalia detectada — sinais suspensos temporariamente'}</p>
           {sniperData.temperature && (
-            <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full glass border border-border text-[10px] font-bold text-muted-foreground">
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl glass border border-destructive/15 text-[10px] font-bold text-muted-foreground/60 font-mono"
+            >
               🌡️ Mesa {sniperData.temperature.toUpperCase()}
-            </div>
+            </motion.div>
           )}
         </div>
         {sniperData.agents && (
           <div className="grid grid-cols-3 gap-2">
-            {Object.entries(sniperData.agents as Record<string, any>).map(([id, agent]: [string, any]) => (
-              <div key={id} className="glass rounded-xl border border-border/40 p-2.5 text-center">
-                <div className="text-[8px] font-black text-muted-foreground uppercase tracking-wider mb-1">
-                  {id === 'statistical' ? '📊 Estat' : id === 'ballistic' ? '🎯 Balíst' : '🔄 Revers'}
+            {Object.entries(sniperData.agents as Record<string, any>).map(([id, agent]: [string, any], i) => (
+              <motion.div key={id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
+                className="glass rounded-xl border border-border/20 p-3 text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-destructive/[0.02] to-transparent" />
+                <div className="relative">
+                  <div className="text-[8px] font-black text-muted-foreground/50 uppercase tracking-wider mb-1 font-display">
+                    {id === 'statistical' ? '📊 Estat' : id === 'ballistic' ? '🎯 Balíst' : '🔄 Revers'}
+                  </div>
+                  <div className="text-[12px] font-black text-destructive font-mono">{agent.winRate}</div>
+                  <div className="text-[7px] text-muted-foreground/30 font-mono mt-0.5">streak: {agent.streak > 0 ? `+${agent.streak}` : agent.streak}</div>
                 </div>
-                <div className="text-[11px] font-black text-destructive font-mono">{agent.winRate}</div>
-                <div className="text-[7px] text-muted-foreground">streak: {agent.streak > 0 ? `+${agent.streak}` : agent.streak}</div>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}
@@ -185,44 +195,57 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
     );
   }
 
-  // Loading state
+  // Loading state — premium spinner
   if (!sniperData) {
     return (
-      <div className="glass rounded-2xl border border-primary/20 p-10 flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="relative mx-auto w-14 h-14">
-            <div className="absolute inset-0 rounded-full border-2 border-primary/20" />
+      <div className="glass rounded-2xl border border-primary/15 p-10 flex items-center justify-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-neon-pink/[0.02]" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+        <div className="text-center space-y-4 relative">
+          <div className="relative mx-auto w-16 h-16">
+            <div className="absolute inset-0 rounded-full border-2 border-primary/10" />
             <motion.div
-              className="absolute inset-0 rounded-full border-2 border-t-primary border-r-transparent border-b-transparent border-l-transparent"
+              className="absolute inset-0 rounded-full border-2 border-t-primary border-r-neon-pink/50 border-b-transparent border-l-transparent"
               animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+              transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
             />
-            <Crosshair className="w-6 h-6 text-primary/60 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+            <motion.div
+              className="absolute inset-1 rounded-full border border-t-transparent border-r-transparent border-b-neon-cyan/40 border-l-neon-cyan/40"
+              animate={{ rotate: -360 }}
+              transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+            />
+            <Crosshair className="w-6 h-6 text-primary/50 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
           </div>
-          <p className="text-sm text-muted-foreground font-display tracking-wider">CARREGANDO IA</p>
+          <div>
+            <p className="text-[11px] text-foreground/60 font-display tracking-[0.15em] font-bold">CARREGANDO IA</p>
+            <p className="text-[8px] text-muted-foreground/30 font-mono mt-1">Inicializando modelos de predição...</p>
+          </div>
           {autoLearnStatus && autoLearnStatus !== 'idle' && (
-            <p className="text-[10px] text-primary/60 animate-pulse font-mono">
+            <motion.p animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }}
+              className="text-[9px] text-primary/50 font-mono">
               {autoLearnStatus === 'learning' ? '🧠 Aprendendo...' : autoLearnStatus === 'analyzing' ? '🔍 Analisando...' : '📊 Backtesting...'}
-            </p>
+            </motion.p>
           )}
         </div>
       </div>
     );
   }
 
-  // Stale — show last result
+  // Stale — show last result with premium card
   if (sniperStale && lastPredResult && !sniperData?.signal) {
     const isHit = lastPredResult.hit;
     return (
       <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
-        className={`glass rounded-2xl border-2 overflow-hidden ${isHit ? 'border-neon-green/30' : 'border-destructive/30'}`}>
-        <div className="p-5 flex items-center gap-4">
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}
-            className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isHit ? 'bg-neon-green/15 ring-2 ring-neon-green/30' : 'bg-destructive/15 ring-2 ring-destructive/30'}`}>
+        className={`glass rounded-2xl border-2 overflow-hidden relative ${isHit ? 'border-neon-green/25' : 'border-destructive/25'}`}>
+        <div className={`absolute inset-0 bg-gradient-to-br ${isHit ? 'from-neon-green/[0.03]' : 'from-destructive/[0.03]'} to-transparent`} />
+        <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${isHit ? 'via-neon-green/40' : 'via-destructive/40'} to-transparent`} />
+        <div className="relative p-5 flex items-center gap-4">
+          <motion.div initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 200 }}
+            className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isHit ? 'bg-neon-green/10 ring-2 ring-neon-green/25 shadow-[0_0_15px_hsl(var(--neon-green)/0.15)]' : 'bg-destructive/10 ring-2 ring-destructive/25 shadow-[0_0_15px_hsl(var(--destructive)/0.15)]'}`}>
             {isHit ? <ShieldCheck className="w-7 h-7 text-neon-green" /> : <AlertTriangle className="w-7 h-7 text-destructive" />}
           </motion.div>
           <div className="flex-1">
-            <span className={`text-lg font-black font-display tracking-wider ${isHit ? 'text-neon-green' : 'text-destructive'}`}>
+            <span className={`text-lg font-black font-display tracking-[0.12em] ${isHit ? 'text-neon-green' : 'text-destructive'}`}>
               {isHit ? (lastPredResult.hitType === 'exact' ? '🎯 EXATO!' : '✅ ACERTO!') : '❌ ERRO'}
             </span>
             <div className="flex gap-4 text-xs text-muted-foreground mt-1 font-mono">
@@ -231,25 +254,43 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
             </div>
           </div>
         </div>
-        <div className="border-t border-border/20 px-5 py-2 bg-secondary/10">
-          <p className="text-[10px] text-muted-foreground/60 text-center font-mono">⏳ Analisando próximo giro...</p>
+        <div className="relative border-t border-border/15 px-5 py-2.5 bg-secondary/5">
+          <div className="flex items-center justify-center gap-2">
+            <motion.div animate={{ opacity: [0.3, 0.8, 0.3] }} transition={{ repeat: Infinity, duration: 2 }}
+              className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+            <p className="text-[10px] text-muted-foreground/50 font-mono">Analisando próximo giro...</p>
+          </div>
         </div>
       </motion.div>
     );
   }
 
-  // No signal
+  // No signal — premium waiting state
   if (!sniperData?.signal || !sniperData?.strategy) {
     const waitingMessage = sniperCountdown === 0
       ? '🔎 Analisando... aguardando próxima rodada'
       : sniperData?.message || 'Aguardando dados...';
 
     return (
-      <div className="glass rounded-2xl border border-border/40 p-8 text-center">
-        <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 2.5 }}>
-          <Clock className="w-7 h-7 text-muted-foreground/40 mx-auto mb-2" />
-        </motion.div>
-        <p className="text-sm text-muted-foreground font-mono">{waitingMessage}</p>
+      <div className="glass rounded-2xl border border-border/20 p-8 text-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border/30 to-transparent" />
+        <div className="relative">
+          <motion.div animate={{ opacity: [0.3, 0.8, 0.3], y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 3 }}>
+            <Clock className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+          </motion.div>
+          <p className="text-[11px] text-muted-foreground/50 font-display tracking-wider font-bold">{waitingMessage}</p>
+          <div className="mt-3 flex justify-center gap-1">
+            {[0, 1, 2].map(i => (
+              <motion.div
+                key={i}
+                animate={{ opacity: [0.2, 0.8, 0.2] }}
+                transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.3 }}
+                className="w-1.5 h-1.5 rounded-full bg-primary/40"
+              />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
