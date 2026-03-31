@@ -147,8 +147,8 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
       detail = { type: 'pleno', label: `Pleno ${top1}`, visual: '💎', colorClass: 'bg-yellow-600/20 text-yellow-400 border-yellow-500/40' };
     } else if (bt === 'vizinhos' || strategyFilter === 'vizinhos' || bt === 'puxada' || strategyFilter === 'puxada') {
       detail = { type: bt || strategyFilter, label: bt === 'puxada' || strategyFilter === 'puxada' ? 'Puxadas' : 'Vizinhos', visual: bt === 'puxada' || strategyFilter === 'puxada' ? '🧲' : '🎯', colorClass: 'bg-pink-600/20 text-pink-400 border-pink-500/40' };
-    } else if (bt === 'fusao' || strategyFilter === 'fusao') {
-      detail = { type: 'fusao', label: 'Fusão Multi-IA', visual: '🧬', colorClass: 'bg-violet-600/20 text-violet-400 border-violet-500/40' };
+    } else if (bt === 'fusao' || bt === 'fusion_top5' || strategyFilter === 'fusao') {
+      detail = { type: 'fusao', label: 'Fusão Top 5 — 7 Modelos', visual: '🎯', colorClass: 'bg-violet-600/20 text-violet-400 border-violet-500/40' };
     }
 
     const streakInfo = (() => {
