@@ -7249,16 +7249,22 @@ REGRAS ABSOLUTAS:
                 numTop1 = bestParsed.adjustTop1;
               }
 
-              // Multi-AI consensus logging
-              const aiSources = aiResults.map(r => r.source).join(' + ');
-              aiLearnings.unshift(`🧠 MULTI-IA [${aiSources}]: ${aiReasoning || 'Padrão confirmado'} (${aiConfidence || '?'}% confiança)`);
+              const aiSources = aiResults.map(r => r.source);
+              const topSources = aiSources.length > 8 ? aiSources.slice(0, 8).join('+') + `+${aiSources.length - 8}more` : aiSources.join('+');
+              aiLearnings.unshift(`🧠 MEGA-IA [${aiResults.length}/${aiCalls.length} modelos]: ${aiReasoning || 'Padrão confirmado'} (${aiConfidence || '?'}% confiança)`);
 
               if (consensusNums.length >= 2) {
-                const consensusDetail = votedNumbers
-                  .filter(v => v.count >= 2)
-                  .map(v => `${v.num}(${v.sources.join('+')})`)
+                const top10Votes = votedNumbers.slice(0, 10);
+                const consensusDetail = top10Votes
+                  .filter(v => v.count >= minVotes)
+                  .map(v => `nº${v.num}(${v.count}votos)`)
                   .join(', ');
-                aiLearnings.push(`🤝 CONSENSO ${aiResults.length} IAs: ${consensusDetail}`);
+                aiLearnings.push(`🤝 CONSENSO ${aiResults.length} IAs (min ${minVotes} votos): ${consensusDetail}`);
+                
+                // Top voted number — mega signal
+                if (votedNumbers[0] && votedNumbers[0].count >= 5) {
+                  aiLearnings.push(`🏆 MEGA-SINAL: nº${votedNumbers[0].num} votado por ${votedNumbers[0].count} IAs! [${votedNumbers[0].sources.slice(0,5).join(',')}...]`);
+                }
               }
 
               if (consensus.length >= 3) {
