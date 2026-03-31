@@ -344,14 +344,22 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
                 </span>
               </div>
 
-              {/* Tipo de aposta */}
-              {betTypeInfo && (
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-bold text-foreground/80">
-                    {betTypeInfo.emoji} {betTypeInfo.label}
-                  </span>
-                  {betTypeInfo.desc && (
-                    <span className="text-[9px] text-muted-foreground hidden sm:inline">— {betTypeInfo.desc}</span>
+              {/* Tipo de aposta + detalhe da análise */}
+              {(betTypeInfo || analysisDetail) && (
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  {betTypeInfo && (
+                    <span className="text-sm font-bold text-foreground/80">
+                      {betTypeInfo.emoji} {betTypeInfo.label}
+                    </span>
+                  )}
+                  {analysisDetail && (
+                    <motion.span
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-black border ${analysisDetail.colorClass}`}
+                    >
+                      {analysisDetail.visual} {analysisDetail.label}
+                    </motion.span>
                   )}
                 </div>
               )}
