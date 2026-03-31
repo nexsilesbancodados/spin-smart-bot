@@ -354,7 +354,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
   };
 
   const winRate = stats.totalBets > 0 ? ((stats.wins / stats.totalBets) * 100).toFixed(1) : '0.0';
-  const hasSignal = sniperData?.signal && sniperData?.strategy?.numbers?.length > 0;
+  const hasSignal = manualBetType !== 'auto' ? getBetNumbers().length > 0 : (sniperData?.signal && sniperData?.strategy?.numbers?.length > 0);
   const canBet = hasSignal && !stats.waitingResult && !stats.stopped;
 
   return (
