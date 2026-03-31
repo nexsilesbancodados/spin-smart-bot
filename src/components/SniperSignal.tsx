@@ -481,7 +481,6 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
             </div>
           )}
         </div>
-        </div>
 
         {/* ═══ INSIGHT DA IA (se houver) ═══ */}
         {(ai?.betDescription || ai?.patternIdentified) && (
