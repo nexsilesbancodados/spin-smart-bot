@@ -23,6 +23,7 @@ const PatternPanel24h = lazy(() => import('@/components/PatternPanel24h'));
 import EngineSignalCard from '@/components/EngineSignalCard';
 import NumberTicker from '@/components/NumberTicker';
 const AIIntelligenceLog = lazy(() => import('@/components/AIIntelligenceLog'));
+const AIDebatePanel = lazy(() => import('@/components/AIDebatePanel'));
 import { motion, AnimatePresence } from 'framer-motion';
 import LiveStatsBar from '@/components/LiveStatsBar';
 const UnifiedAnalysis = lazy(() => import('@/components/UnifiedAnalysis'));
@@ -1059,24 +1060,18 @@ const IATab = memo(({ sniperData }: { sniperData: any }) => {
   const agents = sniperData.agents || [];
   return (
     <div className="space-y-3">
-      {agents.length > 0 && (
-        <div className="bg-card rounded-2xl border border-border/30 p-4">
-          <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-3">Modelos de IA ({agents.length})</h3>
-          <div className="space-y-2">
-            {agents.map((a: any, i: number) => (
-              <div key={i} className={`flex items-start gap-2.5 p-2.5 rounded-xl border ${a.signal ? 'bg-primary/5 border-primary/20' : 'bg-secondary/20 border-border/20'}`}>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0 ${a.signal ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground/40'}`}>{a.signal ? '●' : '○'}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[9px] font-black text-foreground/80">{a.modelName}</div>
-                  {a.signal && a.label && <div className="text-[8px] text-primary/70 truncate">{a.label}</div>}
-                  {a.reasoning && <p className="text-[7px] text-muted-foreground/40 mt-0.5 line-clamp-2">{a.reasoning}</p>}
-                </div>
-                {a.confidence > 0 && <span className={`text-[8px] font-black shrink-0 ${a.confidence >= 70 ? 'text-green-400' : 'text-muted-foreground/40'}`}>{a.confidence}%</span>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <Suspense fallback={<div className="text-xs text-muted-foreground text-center py-4">Carregando debate...</div>}>
+        <AIDebatePanel
+          agents={agents}
+          consensusMap={sniperData.consensusMap}
+          ensembleConsensus={sniperData.ensembleConsensus}
+          fusionTop5={sniperData.fusionTop5}
+          fusionConfidence={sniperData.fusionConfidence}
+          entryAction={sniperData.entryAction}
+          totalModels={sniperData.totalModels || 9}
+          modelPerformance={sniperData.modelPerformance}
+        />
+      </Suspense>
 
       {ai.suggestedBet && (
         <div className="bg-violet-950/30 rounded-2xl border border-violet-500/25 p-4">
