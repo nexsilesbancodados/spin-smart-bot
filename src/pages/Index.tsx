@@ -644,6 +644,24 @@ const Index = () => {
             {/* Input manual */}
             <ManualInput onAddNumbers={handleManualNumbers} />
 
+            {/* Status de conexão */}
+            {realtimeStatus === 'disconnected' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="px-4 py-2.5 rounded-xl bg-destructive/10 border border-destructive/30 flex items-center gap-2"
+              >
+                <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+                <span className="text-[10px] font-bold text-destructive">🔌 Reconectando ao servidor...</span>
+              </motion.div>
+            )}
+            {realtimeStatus === 'connecting' && (
+              <div className="px-4 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+                <span className="text-[10px] font-bold text-yellow-400">Conectando ao Realtime...</span>
+              </div>
+            )}
+
             {/* Erro */}
             {error && (
               <div className="px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-[10px] text-destructive font-semibold">
