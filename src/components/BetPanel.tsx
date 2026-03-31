@@ -554,14 +554,14 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                   ))}
                   <button
                     onClick={() => { setManualBetType('custom'); setShowBetTypes(false); }}
-                    className={`py-2 px-1.5 rounded-lg text-[8px] font-bold transition-all text-center ${
+                    className={`py-2 px-1.5 rounded-lg text-[8px] font-bold transition-all text-center border backdrop-blur-sm ${
                       manualBetType === 'custom'
-                        ? 'bg-primary/20 text-primary border border-primary/30'
-                        : 'bg-secondary/60 text-muted-foreground border border-border/20 hover:text-foreground'
+                        ? 'bg-primary/10 text-primary border-primary/25'
+                        : 'bg-background/10 text-muted-foreground/60 border-border/10 hover:text-foreground'
                     }`}
                   >
                     ✏️ Personalizar
-                    <div className="text-[6px] opacity-60">Seus números</div>
+                    <div className="text-[6px] opacity-50">Seus números</div>
                   </button>
                 </div>
               </motion.div>
