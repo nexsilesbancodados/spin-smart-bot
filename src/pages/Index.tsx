@@ -634,41 +634,45 @@ const Index = () => {
     <div className="min-h-screen bg-background text-foreground">
 
       {/* ═══ HEADER FIXO ══════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-50 glass border-b border-border/30 shadow-lg shadow-background/50">
+      <header className="sticky top-0 z-50 glass-strong border-b border-border/20 shadow-lg shadow-background/60">
         <div className="max-w-2xl mx-auto px-3">
 
           {/* Linha 1: Marca + Status + Toggle */}
           <div className="flex items-center gap-2 py-2.5">
             <div className="flex items-center gap-2.5 flex-1 min-w-0">
               <div className="relative">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shadow-sm shadow-primary/10">
-                  <span className="font-display font-black text-sm text-primary">S</span>
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-neon-pink/10 border border-primary/20 flex items-center justify-center shadow-sm shadow-primary/10">
+                  <span className="font-display font-black text-sm text-primary text-glow-cyan">S</span>
                 </div>
                 {isPolling && (
-                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary)/0.4)]" />
+                  <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-neon-green shadow-[0_0_8px_hsl(var(--neon-green)/0.5)]">
+                    <div className="absolute inset-0 rounded-full bg-neon-green animate-ping opacity-30" />
+                  </div>
                 )}
               </div>
               <div className="min-w-0">
-                <div className="font-display font-black text-[11px] tracking-widest text-primary leading-none">SPIN SMART BOT</div>
-                <div className="text-[7px] text-muted-foreground/40 font-mono leading-none mt-0.5">IA ROLETA BRASILEIRA PLAYTECH</div>
+                <div className="font-display font-black text-[11px] tracking-[0.2em] leading-none">
+                  <span className="text-primary text-glow-cyan">SPIN</span> <span className="text-neon-pink text-glow-pink">SMART</span>
+                </div>
+                <div className="text-[7px] text-muted-foreground/40 font-mono leading-none mt-0.5 tracking-wider">IA ROLETA BRASILEIRA</div>
               </div>
             </div>
 
             {/* Status da IA */}
             <div className="flex items-center gap-1.5 shrink-0">
               {autoLearnStatus !== 'idle' && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/8 border border-primary/15">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                  <span className="text-[8px] font-bold text-primary capitalize">{autoLearnStatus === 'learning' ? 'aprendendo' : autoLearnStatus === 'analyzing' ? 'analisando' : 'processando'}</span>
+                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-neon-purple/8 border border-neon-purple/15">
+                  <div className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
+                  <span className="text-[8px] font-bold text-neon-purple font-mono">{autoLearnStatus === 'learning' ? 'LEARN' : autoLearnStatus === 'analyzing' ? 'ANALYZE' : 'TEST'}</span>
                 </div>
               )}
               {sniperCountdown > 0 && autoLearnStatus === 'idle' && (
-                <span className="text-[8px] font-mono text-muted-foreground/50 tabular-nums">{sniperCountdown}s</span>
+                <span className="text-[9px] font-mono text-primary/50 tabular-nums font-bold">{sniperCountdown}s</span>
               )}
               <SettingsPanel config={settingsConfig} onChange={setSettingsConfig} />
               <button
                 onClick={() => setAiEnabled(v => !v)}
-                className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wide border transition-all backdrop-blur-sm ${
+                className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wide border transition-all backdrop-blur-sm font-display ${
                   aiEnabled
                     ? 'bg-primary/12 text-primary border-primary/20 hover:bg-primary/20 shadow-sm shadow-primary/10'
                     : 'bg-destructive/8 text-destructive border-destructive/20'
@@ -687,10 +691,12 @@ const Index = () => {
                 <button
                   key={`${n}-${i}`}
                   onClick={() => { setDnaNumber(n); setDnaOpen(true); }}
-                  className={`rounded-md font-black text-white flex items-center justify-center transition-all hover:scale-110 shrink-0 shadow-sm ${numBg(n)} ${
+                  className={`rounded-lg font-black text-white flex items-center justify-center transition-all hover:scale-110 shrink-0 ${numBg(n)} ${
                     i === 0
-                      ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background w-8 h-8 text-[11px]'
-                      : 'w-7 h-7 text-[10px]'
+                      ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background w-8 h-8 text-[11px] shadow-md shadow-primary/20'
+                      : i <= 2
+                      ? 'w-7 h-7 text-[10px] opacity-90'
+                      : 'w-6 h-6 text-[9px] opacity-60'
                   }`}
                 >
                   {n}
@@ -699,24 +705,24 @@ const Index = () => {
               {streakActive && (
                 <div className={`ml-1 flex items-center gap-1 px-2 py-0.5 rounded-full border text-[8px] font-black ${
                   streakLen >= 4
-                    ? 'bg-amber-500/15 border-amber-400/40 text-amber-400 animate-pulse'
+                    ? 'bg-gold/15 border-gold/40 text-gold animate-pulse'
                     : 'bg-primary/8 border-primary/20 text-primary'
                 }`}>
                   🔱 {streakNum} ×{streakLen}
                 </div>
               )}
               {recentWR !== null && (
-                <div className={`ml-auto shrink-0 px-2 py-0.5 rounded-full text-[8px] font-black ${
-                  recentWR >= 50 ? 'bg-green-500/10 text-green-400' :
-                  recentWR >= 35 ? 'bg-amber-500/10 text-amber-400' :
-                  'bg-red-500/10 text-red-400'
+                <div className={`ml-auto shrink-0 px-2 py-0.5 rounded-full text-[8px] font-black font-mono ${
+                  recentWR >= 50 ? 'bg-neon-green/10 text-neon-green' :
+                  recentWR >= 35 ? 'bg-gold/10 text-gold' :
+                  'bg-destructive/10 text-destructive'
                 }`}>WR {recentWR}%</div>
               )}
             </div>
           )}
 
           {/* Linha 3: Tabs de navegação */}
-          <div className="flex border-t border-border/20">
+          <div className="flex border-t border-border/15">
             {[
               { id: 'sinal' as const, label: '🎯 SINAL', badge: sniperData?.signal?.probability ? `${sniperData.signal.probability}%` : undefined },
               { id: 'mesa' as const, label: '📊 MESA', badge: allNumbers.length > 0 ? `${Math.min(allNumbers.length, 500)}` : undefined },
@@ -726,20 +732,20 @@ const Index = () => {
               <button
                 key={t.id}
                 onClick={() => setActiveTab(t.id)}
-                className={`flex-1 py-2.5 text-[8px] font-black tracking-wide transition-all relative ${
+                className={`flex-1 py-2.5 text-[8px] font-black tracking-wider transition-all relative font-display ${
                   activeTab === t.id
                     ? 'text-primary'
-                    : 'text-muted-foreground/60 hover:text-foreground'
+                    : 'text-muted-foreground/50 hover:text-foreground/70'
                 }`}
               >
                 {t.label}
                 {t.badge && (
-                  <span className={`ml-1 text-[6px] font-mono px-1 py-0.5 rounded ${activeTab === t.id ? 'bg-primary/15 text-primary' : 'bg-secondary/60 text-muted-foreground'}`}>
+                  <span className={`ml-1 text-[6px] font-mono px-1 py-0.5 rounded ${activeTab === t.id ? 'bg-primary/15 text-primary' : 'bg-secondary/40 text-muted-foreground/50'}`}>
                     {t.badge}
                   </span>
                 )}
                 {activeTab === t.id && (
-                  <motion.div layoutId="header-tab" className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-t shadow-[0_0_8px_hsl(var(--primary)/0.3)]" />
+                  <motion.div layoutId="header-tab" className="absolute bottom-0 left-2 right-2 h-[2px] bg-gradient-to-r from-primary to-neon-pink rounded-t shadow-[0_0_8px_hsl(var(--primary)/0.4)]" />
                 )}
               </button>
             ))}
