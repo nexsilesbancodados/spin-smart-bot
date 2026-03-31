@@ -444,6 +444,9 @@ const Index = () => {
         } else if (phase === 3 || phase === 7) {
           setAutoLearnStatus('analyzing');
           await Promise.allSettled([supabase.functions.invoke('realtime-patterns'), phase === 7 ? supabase.functions.invoke('calibrate-constants') : Promise.resolve()]);
+        } else if (phase === 8) {
+          setAutoLearnStatus('analyzing');
+          await supabase.functions.invoke('markov-engine');
         } else {
           setAutoLearnStatus('backtesting');
           await supabase.functions.invoke('sniper-predict', { body: { sampleSize: phase === 2 || phase === 6 ? 200 : 50 } });
