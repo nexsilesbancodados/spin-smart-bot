@@ -621,14 +621,14 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
         {/* Waiting result */}
         {stats.waitingResult && stats.lastBetNumbers.length > 0 && (
-          <div className="bg-yellow-500/8 border border-yellow-500/25 rounded-xl p-3">
-            <span className="text-[9px] text-yellow-400 font-bold block mb-1.5">⏳ APOSTA ATIVA — Aguardando resultado...</span>
+          <div className="bg-gold/5 border border-gold/15 rounded-xl p-3 backdrop-blur-sm">
+            <span className="text-[9px] text-gold font-bold block mb-1.5">⏳ APOSTA ATIVA — Aguardando resultado...</span>
             <div className="flex flex-wrap gap-1.5">
               {stats.lastBetNumbers.map((n, i) => (
                 <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold ring-1 ${
-                  getColor(n) === 'red' ? 'bg-red-600 text-white ring-red-400/30' :
-                  getColor(n) === 'black' ? 'bg-zinc-800 text-white ring-zinc-500/30' :
-                  'bg-green-600 text-white ring-green-400/30'
+                  getColor(n) === 'red' ? 'bg-red-600 text-white ring-red-400/25' :
+                  getColor(n) === 'black' ? 'bg-zinc-800 text-white ring-zinc-500/25' :
+                  'bg-emerald-600 text-white ring-emerald-400/25'
                 }`}>{n}</div>
               ))}
             </div>
