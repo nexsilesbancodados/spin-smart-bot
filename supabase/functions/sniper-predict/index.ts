@@ -725,6 +725,7 @@ serve(async (req) => {
     const resolvedHistory = resolvedRes.data || [];
     const patternInsights = insightsRes.data || [];
 
+    const aiLearnings: string[] = [];
     // ========================================================
     // AI SELF-LEARNING ENGINE — learns from each new number
     // ========================================================
@@ -1109,7 +1110,7 @@ serve(async (req) => {
       return json({ signal: null, mode: 'waiting', message: 'Aguardando dados...', layerResults: null, memoryWindows: null, aiLearnings: [] });
     }
 
-    const aiLearnings: string[] = [];
+    // aiLearnings already declared above
 
     // ========================================================
     // 100 ESTRATÉGIAS — Detecção de Padrões
