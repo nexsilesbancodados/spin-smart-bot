@@ -1110,7 +1110,7 @@ serve(async (req) => {
       return json({ signal: null, mode: 'waiting', message: 'Aguardando dados...', layerResults: null, memoryWindows: null, aiLearnings: [] });
     }
 
-    const aiLearnings: string[] = [];
+    // aiLearnings already declared above
 
     // ========================================================
     // 100 ESTRATÉGIAS — Detecção de Padrões
