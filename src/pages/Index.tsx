@@ -639,745 +639,477 @@ const Index = () => {
   const numBg = (n: number) => n === 0 ? 'bg-emerald-600' : RED.has(n) ? 'bg-red-600' : 'bg-zinc-700';
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
 
-      {/* ═══ HEADER FIXO ══════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-50 glass-strong border-b border-border/10 shadow-2xl shadow-background/80 overflow-hidden">
-        {/* Top accent gradient */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-neon-cyan/50 via-neon-pink/40 to-neon-cyan/50" />
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.02] to-transparent pointer-events-none" />
-        
-        <div className="max-w-2xl mx-auto px-3 relative">
-
-          {/* Linha 1: Marca + Status + Toggle */}
-          <div className="flex items-center gap-2 py-2.5">
-            <div className="flex items-center gap-2.5 flex-1 min-w-0">
-              <div className="relative">
-                <motion.div 
-                  whileHover={{ scale: 1.05 }}
-                  className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/25 to-neon-pink/15 border border-primary/25 flex items-center justify-center shadow-[0_0_20px_hsl(var(--primary)/0.2)]"
-                >
-                  <span className="font-display font-black text-sm text-primary text-glow-cyan">S</span>
-                </motion.div>
-                {isPolling && (
-                  <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-neon-green shadow-[0_0_10px_hsl(var(--neon-green)/0.6)]">
-                    <div className="absolute inset-0 rounded-full bg-neon-green animate-ping opacity-30" />
-                  </div>
-                )}
+      <header className="sticky top-0 z-50 bg-background/98 backdrop-blur-xl border-b border-border/40">
+        <div className="max-w-lg mx-auto px-3">
+          <div className="flex items-center gap-2 h-11">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
+                <span className="text-primary font-black text-[11px] font-display">S</span>
               </div>
-              <div className="min-w-0">
-                <div className="font-display font-black text-[12px] tracking-[0.2em] leading-none">
-                  <span className="text-primary text-glow-cyan">SPIN</span>{' '}
-                  <span className="bg-gradient-to-r from-neon-pink to-neon-purple bg-clip-text text-transparent">SMART</span>
-                </div>
-                <div className="text-[7px] text-muted-foreground/30 font-mono leading-none mt-0.5 tracking-wider">IA ROLETA BRASILEIRA · v5.0</div>
-              </div>
+              <span className="font-display font-black text-[10px] tracking-widest text-primary">SPIN SMART BOT</span>
             </div>
-
-            {/* Status da IA */}
             <div className="flex items-center gap-1.5 shrink-0">
-              {autoLearnStatus !== 'idle' && (
-                <motion.div 
-                  animate={{ opacity: [0.7, 1, 0.7] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-neon-purple/10 border border-neon-purple/20 backdrop-blur-sm"
-                >
-                  <div className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
-                  <span className="text-[8px] font-bold text-neon-purple font-mono">{autoLearnStatus === 'learning' ? 'LEARN' : autoLearnStatus === 'analyzing' ? 'ANALYZE' : 'TEST'}</span>
+              {autoLearnStatus !== 'idle' ? (
+                <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/12 border border-primary/25">
+                  <motion.div animate={{ scale: [1, 1.4, 1] }} transition={{ repeat: Infinity, duration: 1 }}
+                    className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  <span className="text-[7px] font-bold text-primary uppercase">
+                    {autoLearnStatus === 'learning' ? 'aprendendo' : autoLearnStatus === 'analyzing' ? 'analisando' : 'processando'}
+                  </span>
                 </motion.div>
+              ) : sniperCountdown > 0 ? (
+                <span className="text-[8px] font-mono text-muted-foreground/60 tabular-nums">{sniperCountdown}s</span>
+              ) : null}
+              {sniperData?.killSwitch && (
+                <div className="px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-[7px] font-black text-red-400">🛑 STOP</div>
               )}
-              {sniperCountdown > 0 && autoLearnStatus === 'idle' && (
-                <span className="text-[9px] font-mono text-primary/60 tabular-nums font-bold px-2 py-0.5 rounded-lg glass border border-primary/10">{sniperCountdown}s</span>
-              )}
-              <SettingsPanel config={settingsConfig} onChange={setSettingsConfig} />
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setAiEnabled(v => !v)}
-                className={`px-3 py-1.5 rounded-xl text-[9px] font-black tracking-wide border transition-all backdrop-blur-sm font-display ${
-                  aiEnabled
-                    ? 'bg-primary/12 text-primary border-primary/25 hover:bg-primary/20 shadow-[0_0_12px_hsl(var(--primary)/0.15)]'
-                    : 'bg-destructive/8 text-destructive border-destructive/20'
-                }`}
-              >
+              <button onClick={() => setAiEnabled((v: boolean) => !v)}
+                className={`px-2.5 py-1 rounded-lg text-[9px] font-black tracking-wide border transition-all active:scale-95 ${
+                  aiEnabled ? 'bg-primary/12 text-primary border-primary/30 hover:bg-primary/20' : 'bg-muted/30 text-muted-foreground border-border'
+                }`}>
                 {aiEnabled ? '⚡ ON' : '○ OFF'}
-              </motion.button>
+              </button>
             </div>
           </div>
 
-          {/* Linha 2: Últimos números + streak */}
           {allNumbers.length > 0 && (
-            <div className="flex items-center gap-1.5 pb-2.5">
-              <span className="text-[7px] text-muted-foreground/30 font-mono shrink-0 uppercase tracking-wider">Últimos</span>
-              {allNumbers.slice(0, 7).map((n, i) => (
-                <motion.button
-                  key={`${n}-${i}`}
-                  initial={i === 0 ? { scale: 0, rotate: -180 } : {}}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={i === 0 ? { type: 'spring', stiffness: 300, damping: 15 } : {}}
-                  onClick={() => { setDnaNumber(n); setDnaOpen(true); }}
-                  className={`rounded-xl font-black text-white flex items-center justify-center transition-all hover:scale-110 shrink-0 ${numBg(n)} ${
-                    i === 0
-                      ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background w-9 h-9 text-[12px] shadow-lg shadow-primary/25'
-                      : i <= 2
-                      ? 'w-7 h-7 text-[10px] opacity-85'
-                      : 'w-6 h-6 text-[9px] opacity-50'
-                  }`}
-                >
-                  {n}
-                </motion.button>
+            <div className="flex items-center gap-1 pb-2 overflow-x-auto">
+              <span className="text-[7px] text-muted-foreground/40 font-mono shrink-0">↓</span>
+              {allNumbers.slice(0, 8).map((n: number, i: number) => (
+                <button key={`h${i}`} onClick={() => { setDnaNumber(n); setDnaOpen(true); }}
+                  className={`shrink-0 font-black text-white transition-all active:scale-90 flex items-center justify-center ${numBg(n)} ${
+                    i === 0 ? 'w-9 h-9 rounded-xl text-[13px] ring-2 ring-primary ring-offset-1 ring-offset-background' : 'w-7 h-7 rounded-lg text-[10px] opacity-80'
+                  }`}>{n}</button>
               ))}
               {streakActive && (
-                <motion.div 
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className={`ml-1 flex items-center gap-1 px-2.5 py-1 rounded-xl border text-[8px] font-black backdrop-blur-sm ${
-                  streakLen >= 4
-                    ? 'bg-gold/15 border-gold/30 text-gold animate-pulse shadow-[0_0_10px_hsl(var(--gold)/0.2)]'
-                    : 'bg-primary/8 border-primary/20 text-primary'
-                }`}>
-                  🔱 {streakNum} ×{streakLen}
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                  className={`shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full border text-[8px] font-black ml-0.5 ${
+                    streakLen >= 4 ? 'bg-amber-500/20 border-amber-400/50 text-amber-400' : 'bg-primary/10 border-primary/30 text-primary'
+                  }`}>
+                  🔱 {streakNum}×{streakLen}
                 </motion.div>
               )}
               {recentWR !== null && (
-                <div className={`ml-auto shrink-0 px-2.5 py-1 rounded-xl text-[8px] font-black font-mono border backdrop-blur-sm ${
-                  recentWR >= 50 ? 'bg-neon-green/8 text-neon-green border-neon-green/20 shadow-[0_0_8px_hsl(var(--neon-green)/0.15)]' :
-                  recentWR >= 35 ? 'bg-gold/8 text-gold border-gold/15' :
-                  'bg-destructive/8 text-destructive border-destructive/15'
-                }`}>WR {recentWR}%</div>
+                <div className={`shrink-0 ml-auto px-2 py-0.5 rounded-full text-[7px] font-black ${
+                  recentWR >= 50 ? 'bg-green-500/12 text-green-400' : recentWR >= 35 ? 'bg-amber-500/12 text-amber-400' : 'bg-red-500/12 text-red-400'
+                }`}>{recentWR}%</div>
               )}
             </div>
           )}
 
-          {/* Linha 3: Tabs de navegação — premium style */}
-          <div className="flex border-t border-border/10">
+          <div className="flex border-t border-border/20 -mx-3 px-3">
             {[
-              { id: 'sinal' as const, label: 'SINAL', icon: '🎯', badge: sniperData?.signal?.probability ? `${sniperData.signal.probability}%` : undefined },
-              { id: 'mesa' as const, label: 'MESA', icon: '📊', badge: allNumbers.length > 0 ? `${Math.min(allNumbers.length, 500)}` : undefined },
-              { id: 'padroes' as const, label: 'ANÁLISE', icon: '🔍' },
-              { id: 'ia' as const, label: 'IA', icon: '🧠' },
-            ].map(t => (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id)}
-                className={`flex-1 py-3 text-[8px] font-black tracking-[0.12em] transition-all relative font-display ${
-                  activeTab === t.id
-                    ? 'text-primary'
-                    : 'text-muted-foreground/35 hover:text-foreground/60'
-                }`}
-              >
-                <span className="text-[10px] mr-0.5">{t.icon}</span>
-                {t.label}
+              { id: 'sinal', emoji: '🎯', label: 'SINAL', badge: sniperData?.signal?.probability ? `${sniperData.signal.probability}%` : undefined },
+              { id: 'mesa', emoji: '📊', label: 'MESA', badge: allNumbers.length > 0 ? String(Math.min(allNumbers.length, 500)) : undefined },
+              { id: 'padroes', emoji: '🔍', label: 'ANÁLISE' },
+              { id: 'ia', emoji: '🧠', label: 'IA' },
+            ].map((t: any) => (
+              <button key={t.id} onClick={() => setActiveTab(t.id as any)}
+                className={`flex-1 flex items-center justify-center gap-1 py-2 text-[8px] font-black tracking-wide transition-colors relative ${
+                  activeTab === t.id ? 'text-primary' : 'text-muted-foreground/60 hover:text-muted-foreground'
+                }`}>
+                <span className="text-[10px]">{t.emoji}</span>
+                <span>{t.label}</span>
                 {t.badge && (
-                  <span className={`ml-1 text-[6px] font-mono px-1.5 py-0.5 rounded-lg ${
-                    activeTab === t.id 
-                      ? 'bg-primary/15 text-primary border border-primary/20' 
-                      : 'bg-secondary/30 text-muted-foreground/30 border border-border/10'
-                  }`}>
-                    {t.badge}
-                  </span>
+                  <span className={`text-[6px] px-1 py-0.5 rounded font-mono ${activeTab === t.id ? 'bg-primary/15 text-primary' : 'bg-secondary text-muted-foreground/50'}`}>{t.badge}</span>
                 )}
-                {activeTab === t.id && (
-                  <motion.div 
-                    layoutId="header-tab" 
-                    className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t" 
-                    style={{ background: 'linear-gradient(90deg, hsl(var(--neon-cyan)), hsl(var(--neon-pink)), hsl(var(--neon-cyan)))' }}
-                  />
-                )}
+                {activeTab === t.id && <div className="absolute bottom-0 left-4 right-4 h-0.5 bg-primary rounded-full" />}
               </button>
             ))}
           </div>
         </div>
       </header>
 
-      {/* ═══ CONTEÚDO PRINCIPAL ═══════════════════════════════════════════════ */}
-      <main className="max-w-2xl mx-auto px-3 py-4">
+      <main className="flex-1 max-w-lg mx-auto w-full px-3 py-4">
+        <AnimatePresence mode="wait">
+          {activeTab === 'sinal' && (
+            <motion.div key="sinal" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="space-y-3">
+              <ManualInput onAddNumbers={handleManualNumbers} />
 
-        {/* ── ABA: SINAL ─────────────────────────────────────────────────── */}
-        {activeTab === 'sinal' && (
-          <div className="space-y-3">
-
-            {/* Input manual */}
-            <ManualInput onAddNumbers={handleManualNumbers} />
-
-            {/* Status de conexão */}
-            {realtimeStatus === 'disconnected' && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="px-4 py-2.5 rounded-xl bg-destructive/10 border border-destructive/30 flex items-center gap-2 justify-between"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-                  <span className="text-[10px] font-bold text-destructive">
-                    🔌 Reconectando... (tentativa {Math.min(rtRetryRef.current, 9)})
-                  </span>
+              {sniperData?.killSwitch && (
+                <div className="p-4 rounded-2xl bg-red-950/30 border border-red-500/40 text-center space-y-1">
+                  <div className="text-2xl">🛑</div>
+                  <div className="text-[11px] font-black text-red-400">MESA DESFAVORÁVEL</div>
+                  <div className="text-[9px] text-muted-foreground">{sniperData.killReason}</div>
                 </div>
-                <span className="text-[8px] text-muted-foreground">Polling ativo como backup</span>
-              </motion.div>
-            )}
-            {realtimeStatus === 'connecting' && (
-              <div className="px-4 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-                <span className="text-[10px] font-bold text-yellow-400">Conectando ao Realtime...</span>
-              </div>
-            )}
-
-            {/* Erro */}
-            {error && (
-              <div className="px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-[10px] text-destructive font-semibold">
-                ⚠️ {error}
-              </div>
-            )}
-
-            {/* SNIPER SIGNAL — painel principal */}
-            {aiEnabled ? (
-              <>
-              {allNumbers.length > 0 && (
-                <motion.div
-                  key={allNumbers[0]}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary/10 to-transparent border border-primary/25"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-black text-primary uppercase tracking-wider">Saiu:</span>
-                    <motion.div
-                      initial={{ scale: 0, rotate: -180 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-                      className={`w-10 h-10 rounded-xl text-base font-black text-white flex items-center justify-center shadow-lg ${numBg(allNumbers[0])} ring-2 ring-primary/50`}
-                    >
-                      {allNumbers[0]}
-                    </motion.div>
-                  </div>
-                  <div className="flex-1">
-                    {sniperCountdown > 0 ? (
-                      <>
-                        <span className="text-[10px] text-foreground font-bold">→ Jogada para o <span className="text-primary">próximo giro</span></span>
-                        {lastSpinAt && (
-                          <div className="text-[8px] text-muted-foreground mt-0.5">
-                            Detectado há {Math.max(0, Math.round((Date.now() - lastSpinAt) / 1000))}s
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-[10px] text-muted-foreground font-bold">🔎 Analisando... aguardando próxima rodada</span>
-                    )}
-                  </div>
-                  <div className="shrink-0">
-                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" title="Sinal ativo" />
-                  </div>
-                </motion.div>
               )}
-              <div className={`transition-all duration-500 rounded-2xl ${
-                sniperCountdown > 0 && sniperData?.signal ? 'shadow-neon-green ring-1 ring-neon-green/30' : ''
-              }`}>
+
+              <AnimatePresence mode="wait">
+                {lastPredResult && lastPredResult.hit !== null && (
+                  <motion.div key={`res${lastPredResult.actual}`}
+                    initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                    className={`flex items-center gap-3 p-3 rounded-2xl border ${lastPredResult.hit ? 'bg-green-950/40 border-green-500/30' : 'bg-red-950/20 border-red-500/20'}`}>
+                    <div className="text-2xl">{lastPredResult.hit ? '✅' : '❌'}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-[11px] font-black ${lastPredResult.hit ? 'text-green-400' : 'text-red-400'}`}>
+                        {lastPredResult.hit ? 'ACERTOU!' : 'ERROU'}
+                      </div>
+                      <div className="text-[8px] text-muted-foreground mt-0.5">
+                        Saiu: <b className="text-foreground">{lastPredResult.actual}</b>{' · '}Previsto: #{lastPredResult.predicted}
+                      </div>
+                    </div>
+                    <div className={`w-10 h-10 rounded-xl text-[13px] font-black text-white flex items-center justify-center shrink-0 ${numBg(lastPredResult.actual ?? 0)}`}>{lastPredResult.actual}</div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {aiEnabled ? (
                 <SniperSignal
-                  sniperData={sniperData}
-                  sniperCountdown={sniperCountdown}
-                  sniperStale={sniperStale}
-                  lastPredResult={lastPredResult}
-                  confidenceFilter={confidenceFilter}
-                  rtInsights={rtInsights}
-                  allNumbers={allNumbers}
-                  autoLearnStatus={autoLearnStatus}
-                  strategyFilter={strategyFilter}
-                  setStrategyFilter={setStrategyFilter}
+                  sniperData={sniperData} sniperCountdown={sniperCountdown} sniperStale={sniperStale}
+                  lastPredResult={lastPredResult} confidenceFilter={confidenceFilter}
+                  rtInsights={rtInsights} allNumbers={allNumbers} autoLearnStatus={autoLearnStatus}
+                  strategyFilter={strategyFilter} setStrategyFilter={setStrategyFilter}
                 />
-              </div>
-              {/* ── ENGINE ANALYSIS (Streaks, Cold Zones) ────── */}
-              <EngineSignalCard allNumbers={allNumbers} />
-
-              {/* ── STRATEGY SELECTOR ────── */}
-              <StrategySelector
-                allNumbers={allNumbers}
-                betHistory={betHistoryForMonitor}
-                balance={1000}
-                baseBet={1}
-                activeStrategy={activeStrategyId}
-                onSelectStrategy={setActiveStrategyId}
-              />
-              
-              {/* ── PERFORMANCE MONITOR ────── */}
-              {betHistoryForMonitor.length >= 2 && (
-                <PerformanceMonitor
-                  betHistory={betHistoryForMonitor}
-                  balance={1000}
-                  allNumbers={allNumbers}
-                />
-              )}
-              </>
-            ) : (
-              <div className="bg-card rounded-2xl border border-border p-12 text-center">
-                <div className="text-5xl mb-4 opacity-30">○</div>
-                <p className="text-sm font-bold text-muted-foreground">IA DESLIGADA</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Clique "⚡ ON" para ativar</p>
-              </div>
-            )}
-
-            {/* ── LIVE STATS BAR ──────────────────────────── */}
-            {allNumbers.length >= 10 && (
-              <LiveStatsBar allNumbers={allNumbers} />
-            )}
-
-            {/* ── ÚLTIMO GIRO ──────────────────────────────── */}
-            <AnimatePresence mode="wait">
-              {lastPredResult && lastPredResult.hit !== null && (
-                <motion.div
-                  key={lastPredResult.actual}
-                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 ${
-                    lastPredResult.hit ? 'border-green-500/30 bg-green-500/5' : 'border-border/60 bg-card/80'
-                  }`}
-                >
-                  <span className="text-2xl shrink-0">{lastPredResult.hit ? '✅' : '❌'}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">Último giro</div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">
-                      Saiu <b className="text-foreground">{lastPredResult.actual}</b>
-                      {' · '}Sua jogada anterior {lastPredResult.hit ? <span className="text-green-400 font-bold">bateu</span> : <span className="text-destructive font-bold">não bateu</span>}
-                    </div>
-                  </div>
-                  <motion.div
-                    initial={{ scale: 0, rotate: -90 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: 'spring', stiffness: 250 }}
-                    className={`w-12 h-12 rounded-xl text-base font-black text-white flex items-center justify-center shadow-lg ${numBg(lastPredResult.actual ?? 0)}`}
-                  >
-                    {lastPredResult.actual}
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* ── CARDS DE CONTEXTO — Premium ──────────────────────────── */}
-            {allNumbers.length >= 5 && (
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  {
-                    label: 'Puxados', delay: 0,
-                    value: (PULL[allNumbers[0]] || []).slice(0,3).join(' '),
-                    sub: `do ${allNumbers[0]}`,
-                    borderColor: 'border-primary/15 hover:border-primary/30',
-                    textColor: 'text-primary',
-                    glowColor: 'shadow-[0_0_10px_hsl(var(--primary)/0.08)]',
-                  },
-                  {
-                    label: 'Terminal', delay: 0.05,
-                    value: `T${hotTerm?.[0]}`,
-                    sub: `${hotTerm?.[1]}× em 20`,
-                    borderColor: 'border-gold/15 hover:border-gold/30',
-                    textColor: 'text-[hsl(var(--gold))]',
-                    glowColor: 'shadow-[0_0_10px_hsl(var(--gold)/0.08)]',
-                  },
-                  {
-                    label: 'Zero', delay: 0.1,
-                    value: `${zeroPressure}g`,
-                    sub: zeroPressure > 40 ? '⚡ pressão' : zeroPressure > 25 ? 'atenção' : 'ok',
-                    borderColor: zeroPressure > 40 ? 'border-neon-green/25 bg-neon-green/3' : zeroPressure > 25 ? 'border-gold/15' : 'border-border/15',
-                    textColor: zeroPressure > 40 ? 'text-neon-green' : zeroPressure > 25 ? 'text-[hsl(var(--gold))]' : 'text-muted-foreground',
-                    glowColor: zeroPressure > 40 ? 'shadow-[0_0_10px_hsl(var(--neon-green)/0.1)]' : '',
-                  },
-                  {
-                    label: 'Hits', delay: 0.15,
-                    value: `${predStats.hits}/${predStats.total || 1}`,
-                    sub: predStats.total > 0 ? `${Math.round(predStats.hits/predStats.total*100)}%` : '—',
-                    borderColor: 'border-border/15 hover:border-neon-cyan/20',
-                    textColor: 'text-foreground',
-                    glowColor: '',
-                  },
-                ].map((card, idx) => (
-                  <motion.div
-                    key={card.label}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: card.delay }}
-                    className={`glass rounded-xl border p-3 text-center space-y-1 transition-all group relative overflow-hidden ${card.borderColor} ${card.glowColor}`}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-transparent to-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div className="relative">
-                      <div className="text-[8px] text-muted-foreground/40 uppercase font-bold tracking-wider font-display">{card.label}</div>
-                      <div className={`text-[12px] font-black font-mono leading-tight group-hover:scale-105 transition-transform ${card.textColor}`}>
-                        {card.value}
-                      </div>
-                      <div className="text-[7px] text-muted-foreground/25 font-mono">{card.sub}</div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-
-            {/* Botão de forçar análise */}
-            <motion.button
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={triggerLearn}
-              disabled={isAnalyzing}
-              className="w-full py-3 rounded-xl border border-primary/10 glass text-[9px] font-bold text-muted-foreground/60 hover:text-primary hover:border-primary/25 hover:bg-primary/3 transition-all disabled:opacity-30 font-display tracking-wider"
-            >
-              {isAnalyzing ? '🔄 Analisando...' : '⚡ Forçar análise da IA agora'}
-            </motion.button>
-          </div>
-        )}
-
-        {/* ── ABA: MESA ──────────────────────────────────────────────────── */}
-        {activeTab === 'mesa' && (
-          <div className="space-y-4">
-
-            {/* Terminal Bias */}
-            <div className="glass rounded-xl border border-border/20 p-4">
-              <div className="flex items-center gap-2.5 mb-3">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gold/15 to-amber-500/10 border border-gold/20 flex items-center justify-center shadow-[0_0_8px_hsl(var(--gold)/0.15)]">
-                  <span className="text-sm">🔢</span>
-                </div>
-                <h3 className="text-[10px] font-black text-gold uppercase tracking-[0.15em]">
-                  Terminal Bias <span className="text-muted-foreground/40 font-normal">(200)</span>
-                </h3>
-              </div>
-              <div className="flex items-end gap-1.5" style={{ height: 80 }}>
-                {Array.from({ length: 10 }, (_, t) => {
-                  const cnt = allNumbers.slice(0,200).filter(n => n%10===t).length;
-                  const exp = allNumbers.slice(0,200).length / 10;
-                  const bias = exp > 0 ? ((cnt-exp)/exp*100) : 0;
-                  const maxCnt = Math.max(...Array.from({length:10},(_,i)=>allNumbers.slice(0,200).filter(n=>n%10===i).length),1);
-                  const pct = cnt/maxCnt*100;
-                  return (
-                    <div key={t} className="flex-1 flex flex-col items-center gap-0.5">
-                      {Math.abs(bias) > 20 && (
-                        <div className={`text-[6px] font-mono font-bold ${bias>0?'text-gold':'text-neon-cyan'}`}>
-                          {bias>0?'+':''}{bias.toFixed(0)}%
-                        </div>
-                      )}
-                      <div className="w-full flex items-end" style={{ flex: 1 }}>
-                        <div
-                          className={`w-full rounded-t transition-all ${
-                            bias > 50 ? 'bg-gradient-to-t from-gold to-amber-400 shadow-[0_0_6px_hsl(var(--gold)/0.3)]' : bias > 20 ? 'bg-primary/70' : bias < -30 ? 'bg-neon-cyan/40' : 'bg-muted-foreground/20'
-                          }`}
-                          style={{ height: `${Math.max(4, pct)}%`, minHeight: 4 }}
-                        />
-                      </div>
-                      <div className="text-[7px] font-mono font-bold text-foreground/80">T{t}</div>
-                      <div className="text-[6px] text-muted-foreground/40">{cnt}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Frequência numérica — grid 37 números */}
-            <div className="glass rounded-xl border border-border/20 p-4">
-              <div className="flex items-center gap-2.5 mb-3">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-neon-cyan/15 to-neon-pink/10 border border-neon-cyan/20 flex items-center justify-center shadow-neon-cyan">
-                  <span className="text-sm">📊</span>
-                </div>
-                <h3 className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.15em]">Frequência <span className="text-muted-foreground/40 font-normal">(500)</span></h3>
-                <div className="flex items-center gap-2 ml-auto text-[7px] text-muted-foreground/50">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gold inline-block shadow-[0_0_4px_hsl(var(--gold)/0.4)]"/>quente</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-neon-cyan inline-block shadow-neon-cyan"/>frio</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-9 gap-1">
-                {Array.from({ length: 37 }, (_, n) => {
-                  const cnt = allNumbers.filter(x => x === n).length;
-                  const exp = allNumbers.length / 37;
-                  const hot = cnt > exp * 1.5;
-                  const cold = cnt < exp * 0.5;
-                  const op = allNumbers.length > 0 ? Math.max(0.2, Math.min(1, cnt / (exp * 2))) : 0.5;
-                  return (
-                    <button
-                      key={n}
-                      onClick={() => { setDnaNumber(n); setDnaOpen(true); }}
-                      title={`${n}: ${cnt}×`}
-                      className={`h-8 rounded-md text-[9px] font-black text-white transition-all hover:scale-110 relative ${numBg(n)} ${
-                        hot ? 'ring-1 ring-gold shadow-[0_0_6px_hsl(var(--gold)/0.3)]' : cold ? 'ring-1 ring-neon-cyan/60 shadow-neon-cyan' : ''
-                      }`}
-                      style={{ opacity: op }}
-                    >
-                      {n}
-                      {(hot || cnt === 0) && (
-                        <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${hot ? 'bg-gold shadow-[0_0_4px_hsl(var(--gold)/0.5)]' : 'bg-neon-cyan shadow-neon-cyan'}`} />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-2.5 text-[7px] text-muted-foreground/30 text-center font-mono">Toque em qualquer número para DNA completo</div>
-            </div>
-
-            {/* Histórico sequencial */}
-            <div className="glass rounded-xl border border-border/20 p-4">
-              <div className="flex items-center gap-2.5 mb-3">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-neon-pink/15 to-purple-500/10 border border-neon-pink/20 flex items-center justify-center shadow-neon-pink">
-                  <span className="text-sm">📜</span>
-                </div>
-                <h3 className="text-[10px] font-black text-neon-pink uppercase tracking-[0.15em]">Histórico</h3>
-                <div className="flex gap-1 ml-auto">
-                  {[50, 100, 200, 500].map(lim => (
-                    <button key={lim}
-                      onClick={() => startTransition(() => { setHistoryLimit(lim); setSelectedNum(null); })}
-                      className={`px-2 py-0.5 rounded text-[7px] font-bold transition-all border ${
-                        historyLimit === lim ? 'bg-neon-pink/15 text-neon-pink border-neon-pink/25' : 'bg-background/20 text-muted-foreground/50 border-border/10 hover:text-foreground'
-                      }`}>
-                      {lim}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {selectedNum !== null && (
-                <div className="mb-2.5 flex items-center gap-2 px-2.5 py-1.5 rounded-lg glass border border-primary/15">
-                  <div className={`w-6 h-6 rounded text-[9px] font-black text-white flex items-center justify-center ${numBg(selectedNum)}`}>{selectedNum}</div>
-                  <span className="text-[8px] text-muted-foreground/60">
-                    apareceu <b className="text-foreground">{allNumbers.slice(0, historyLimit).filter(n => n === selectedNum).length}×</b> em {historyLimit} giros
-                  </span>
-                  <button onClick={() => setSelectedNum(null)} className="ml-auto text-[8px] text-muted-foreground/40 hover:text-foreground">✕</button>
-                </div>
-              )}
-
-              {historySlice.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground/40 text-xs">Aguardando dados...</div>
               ) : (
-                <div className="flex flex-wrap gap-1">
-                  {historySlice.map((n, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setSelectedNum(selectedNum === n ? null : n)}
-                      className={`w-7 h-7 rounded text-[9px] font-bold text-white flex items-center justify-center transition-all ${numBg(n)} ${
-                        i === 0 ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background shadow-neon-cyan' : ''
-                      } ${selectedNum === n ? 'ring-2 ring-gold ring-offset-1 ring-offset-background scale-110 z-10 shadow-[0_0_8px_hsl(var(--gold)/0.3)]' : ''}
-                      ${selectedNum !== null && selectedNum !== n ? 'opacity-20' : ''}`}
-                    >{n}</button>
-                  ))}
+                <div className="bg-card rounded-2xl border border-border/30 p-14 text-center">
+                  <div className="text-5xl mb-3 opacity-20">○</div>
+                  <p className="text-sm font-bold text-muted-foreground">IA DESLIGADA</p>
+                  <p className="text-[10px] text-muted-foreground/50 mt-1">Toque em ⚡ ON para ativar</p>
                 </div>
               )}
-            </div>
-          </div>
-        )}
 
-        {/* ── ABA: ANÁLISE / PADRÕES ─────────────────────────────────────── */}
-        {activeTab === 'padroes' && (
-          <Suspense fallback={<LazyFallback />}>
-            <div className="space-y-3">
-              <UnifiedAnalysis sniperData={sniperData} allNumbers={allNumbers} />
-              <PatternsTab allNumbers={allNumbers} sniperData={sniperData} streakNum={streakNum} streakLen={streakLen} streakActive={streakActive} zeroPressure={zeroPressure} hotTerm={hotTerm} pull={PULL} />
-            </div>
-          </Suspense>
-        )}
+              {allNumbers.length >= 3 && (
+                <div className="grid grid-cols-4 gap-2">
+                  <QuickCard label="Puxados" value={(PULL[allNumbers[0]] || []).slice(0,3).join(' ')} sub={`do ${allNumbers[0]}`} color="text-primary" />
+                  <QuickCard label="Terminal" value={`T${hotTerm?.[0] ?? '?'}`} sub={`${hotTerm?.[1] ?? 0}× / 20`} color="text-amber-400" />
+                  <QuickCard label="Zero" value={`${zeroPressure}g`} sub={zeroPressure > 40 ? '⚡ alto' : zeroPressure > 25 ? 'med' : 'ok'} color={zeroPressure > 40 ? 'text-green-400' : zeroPressure > 25 ? 'text-amber-400' : 'text-muted-foreground'} />
+                  <QuickCard label="Hits" value={`${predStats.hits}/${predStats.total || 0}`} sub={predStats.total > 0 ? `${Math.round(predStats.hits / predStats.total * 100)}%` : '—'} color={predStats.total > 0 && predStats.hits / predStats.total >= 0.45 ? 'text-green-400' : 'text-foreground'} />
+                </div>
+              )}
 
-        {/* ── ABA: IA ─────────────────────────────────────────────────────── */}
-        {activeTab === 'ia' && (
-          <Suspense fallback={<LazyFallback />}>
-            <div className="space-y-3">
-              <EnsembleDashboard sniperData={sniperData} />
-              <AIIntelligenceLog />
+              <button onClick={triggerLearn} disabled={isAnalyzing}
+                className="w-full py-2.5 rounded-xl border border-border/30 bg-card/60 text-[9px] font-bold text-muted-foreground hover:text-foreground hover:bg-card transition-all disabled:opacity-40">
+                {isAnalyzing ? '🔄 Analisando...' : '⚡ Forçar análise agora'}
+              </button>
+            </motion.div>
+          )}
+
+          {activeTab === 'mesa' && (
+            <motion.div key="mesa" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="space-y-4">
+              <div className="bg-card rounded-2xl border border-border/30 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Terminal Bias</h3>
+                  <span className="text-[7px] text-muted-foreground/40">últimos 200</span>
+                </div>
+                <TerminalBars allNumbers={allNumbers} />
+              </div>
+
+              <div className="bg-card rounded-2xl border border-border/30 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Frequência</h3>
+                  <div className="flex items-center gap-2 text-[7px] text-muted-foreground/40">
+                    <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"/>quente</span>
+                    <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block"/>dívida</span>
+                  </div>
+                </div>
+                <NumberFreqGrid allNumbers={allNumbers} onSelect={(n: number) => { setDnaNumber(n); setDnaOpen(true); }} />
+                <p className="text-[7px] text-muted-foreground/30 text-center mt-2">Toque para análise DNA completa</p>
+              </div>
+
+              <div className="bg-card rounded-2xl border border-border/30 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Histórico</h3>
+                  <div className="flex gap-1 ml-auto">
+                    {[50, 100, 200].map((lim: number) => (
+                      <button key={lim} onClick={() => startTransition(() => { setHistoryLimit(lim); setSelectedNum(null); })}
+                        className={`px-2 py-0.5 rounded-md text-[7px] font-bold transition-all ${historyLimit === lim ? 'bg-primary/15 text-primary' : 'bg-secondary/50 text-muted-foreground/50'}`}>{lim}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedNum !== null && (
+                  <div className="mb-2.5 flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-secondary/30 border border-border/20">
+                    <div className={`w-7 h-7 rounded-lg text-[10px] font-black text-white flex items-center justify-center ${numBg(selectedNum)}`}>{selectedNum}</div>
+                    <span className="text-[8px] text-muted-foreground flex-1">
+                      <b className="text-foreground">{historySlice.filter((n: number) => n === selectedNum).length}×</b> em {historyLimit} · puxados: [{(PULL[selectedNum] || []).slice(0,4).join(', ')}]
+                    </span>
+                    <button onClick={() => setSelectedNum(null)} className="text-[9px] text-muted-foreground/40 hover:text-muted-foreground px-1">✕</button>
+                  </div>
+                )}
+
+                {historySlice.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground/30 text-xs">Aguardando dados...</div>
+                ) : (
+                  <div className="flex flex-wrap gap-1">
+                    {historySlice.map((n: number, i: number) => (
+                      <button key={i} onClick={() => setSelectedNum(selectedNum === n ? null : n)}
+                        className={`font-bold text-white transition-all flex items-center justify-center ${numBg(n)} ${
+                          i === 0 ? 'w-8 h-8 rounded-xl text-[11px] ring-2 ring-primary ring-offset-1 ring-offset-background' : 'w-7 h-7 rounded-lg text-[9px]'
+                        } ${selectedNum === n ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-background scale-110 z-10' : ''}
+                        ${selectedNum !== null && selectedNum !== n ? 'opacity-20' : ''}`}>{n}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'padroes' && (
+            <motion.div key="padroes" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
+              <PatternsTab allNumbers={allNumbers} sniperData={sniperData}
+                streakNum={streakNum} streakLen={streakLen} streakActive={streakActive}
+                zeroPressure={zeroPressure} hotTerm={hotTerm} pull={PULL} numBg={numBg} />
+            </motion.div>
+          )}
+
+          {activeTab === 'ia' && (
+            <motion.div key="ia" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
               <IATab sniperData={sniperData} />
-            </div>
-          </Suspense>
-        )}
-
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
-
-      {/* ── TICKER FIXO NO RODAPÉ ──────────────────────── */}
-      <NumberTicker numbers={allNumbers} />
-
-      {/* Padding para não esconder conteúdo atrás do ticker */}
-      <div className="h-14" />
 
       <NumberDNADialog number={dnaNumber} allNumbers={allNumbers} open={dnaOpen} onClose={() => setDnaOpen(false)} />
     </div>
   );
 };
 
-// ═══ COMPONENTE: PADRÕES ══════════════════════════════════════════════════════
-const PatternsTab = memo(({ allNumbers, sniperData, streakNum, streakLen, streakActive, zeroPressure, hotTerm, pull }: {
-  allNumbers: number[]; sniperData: any; streakNum: number; streakLen: number;
-  streakActive: boolean; zeroPressure: number; hotTerm: [string,number]|undefined;
-  pull: Record<number,number[]>;
-}) => {
-  const RED_N = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
-  const VOISINS_N = new Set([22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25]);
-  const TIERS_N = new Set([27,13,36,11,30,8,23,10,5,24,16,33]);
-  const ORPHELINS_N = new Set([1,20,14,31,9,17,34,6]);
-  const getSector = (n: number) => VOISINS_N.has(n) ? 'Voisins' : TIERS_N.has(n) ? 'Tiers' : ORPHELINS_N.has(n) ? 'Orphelins' : 'Zero';
 
-  const patterns = useMemo(() => {
-    const result: { emoji: string; title: string; detail: string; conf: number; type: 'hot'|'cold'|'info' }[] = [];
-    if (allNumbers.length < 5) return result;
+// ═══════════════════════════════
+// COMPONENTES AUXILIARES
+// ═══════════════════════════════
 
-    if (streakActive) {
-      const prob = Math.min(95, 50 + streakLen * 12);
-      result.push({ emoji: '🔱', title: `STREAK ${streakNum} × ${streakLen} consecutivas`, detail: `${streakNum} repetiu ${streakLen}x seguidas! Probabilidade de repetir: ${prob}%. Apostar no ${streakNum} e vizinhos.`, conf: prob, type: 'hot' });
-    }
+const QuickCard = memo(({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) => (
+  <div className="bg-card rounded-xl border border-border/30 p-2.5 text-center">
+    <div className="text-[7px] text-muted-foreground/50 uppercase font-bold mb-1">{label}</div>
+    <div className={`text-[12px] font-black font-mono leading-none ${color}`}>{value}</div>
+    <div className="text-[7px] text-muted-foreground/40 mt-0.5">{sub}</div>
+  </div>
+));
+QuickCard.displayName = 'QuickCard';
 
-    if (hotTerm) {
-      const [t, c] = hotTerm;
-      const exp20 = allNumbers.slice(0,20).length / 10;
-      const bias = exp20 > 0 ? ((c - exp20) / exp20 * 100) : 0;
-      if (Math.abs(bias) > 30) result.push({ emoji: bias > 0 ? '🔥' : '❄️', title: `Terminal T${t} ${bias > 0 ? 'dominante' : 'frio'}`, detail: `T${t} apareceu ${c}× em 20 giros (${bias > 0 ? '+' : ''}${bias.toFixed(0)}% vs esperado). ${bias > 0 ? `Números: ${(allNumbers.slice(0,50).filter(n=>n%10===Number(t)).slice(0,5)).join(', ')}` : 'Pode reverter em breve.'}`, conf: Math.abs(bias) > 60 ? 85 : 65, type: bias > 0 ? 'hot' : 'cold' });
-    }
-
-    if (zeroPressure >= 25) {
-      result.push({ emoji: '🟢', title: `Pressão Zero — ${zeroPressure} giros`, detail: `Zero ausente há ${zeroPressure} giros. Média: 37. ${zeroPressure > 50 ? 'CRÍTICO — zona de apostas elevada!' : zeroPressure > 35 ? 'Atenção — acima da média.' : 'Ligeiramente acima da média.'} Apostar Jeu Zéro.`, conf: Math.min(88, 40 + zeroPressure), type: 'info' });
-    }
-
-    if (allNumbers.length > 0) {
-      const puxados = pull[allNumbers[0]] || [];
-      if (puxados.length > 0) {
-        result.push({ emoji: '🧲', title: `Puxados do ${allNumbers[0]}`, detail: `Após o ${allNumbers[0]} sair, os mais frequentes são: [${puxados.slice(0,6).join(', ')}]. Esta mesa tem taxas de pull confirmadas acima de 70%.`, conf: 68, type: 'info' });
-      }
-    }
-
-    // Setor dominante
-    const sectorCnt: Record<string,number> = { Voisins: 0, Tiers: 0, Orphelins: 0, Zero: 0 };
-    allNumbers.slice(0,15).forEach(n => { sectorCnt[getSector(n)]++; });
-    const topSector = Object.entries(sectorCnt).sort(([,a],[,b])=>b-a)[0];
-    if (topSector && topSector[1] >= 5) {
-      result.push({ emoji: '🌍', title: `Setor ${topSector[0]} dominante`, detail: `${topSector[0]} concentrou ${topSector[1]} de 15 giros recentes. Momentum ativo.`, conf: 60, type: 'info' });
-    }
-
-    // Padrões do sniper
-    const detected = sniperData?.detectedPatterns || [];
-    detected.slice(0, 5).forEach((p: any) => {
-      if (result.length >= 8) return;
-      result.push({ emoji: p.emoji || '📊', title: p.name, detail: p.description + (p.action ? ` Ação: ${p.action}` : ''), conf: p.confidence, type: p.confidence >= 80 ? 'hot' : 'info' });
-    });
-
-    // Breakouts
-    const breakouts = sniperData?.advancedAnalysis?.breakouts || [];
-    breakouts.forEach((b: any) => {
-      if (!b.active || result.length >= 10) return;
-      result.push({ emoji: '🔀', title: 'Breakout detectado', detail: b.description, conf: b.confidence, type: 'info' });
-    });
-
-    return result.slice(0, 10);
-  }, [allNumbers.slice(0,20).join(','), sniperData?.detectedPatterns?.length, streakActive, zeroPressure]);
-
-  if (patterns.length === 0) return (
-    <div className="bg-card rounded-xl border border-border p-8 text-center">
-      <div className="text-3xl mb-3 opacity-40">🔍</div>
-      <p className="text-sm text-muted-foreground">Aguardando dados para análise de padrões...</p>
-      <p className="text-xs text-muted-foreground/50 mt-1">Mínimo 5 giros necessários</p>
+const TerminalBars = memo(({ allNumbers }: { allNumbers: number[] }) => {
+  const data = useMemo(() => {
+    const freq = Array(10).fill(0);
+    allNumbers.slice(0, 200).forEach((n: number) => { freq[n % 10]++; });
+    const total = allNumbers.slice(0, 200).length;
+    const exp = total / 10;
+    const maxF = Math.max(...freq, 1);
+    return freq.map((c, t) => ({ t, c, bias: exp > 0 ? Math.round((c - exp) / exp * 100) : 0, pct: Math.max(4, Math.round(c / maxF * 100)) }));
+  }, [allNumbers.slice(0, 200).join(',')]);
+  return (
+    <div className="flex items-end gap-1" style={{ height: 72 }}>
+      {data.map(({ t, c, bias, pct }) => (
+        <div key={t} className="flex-1 flex flex-col items-center">
+          {Math.abs(bias) > 20 && <div className={`text-[6px] font-mono font-bold leading-none mb-0.5 ${bias > 0 ? 'text-amber-400' : 'text-blue-400'}`}>{bias > 0 ? '+' : ''}{bias}%</div>}
+          <div className="w-full flex-1 flex items-end">
+            <div className={`w-full rounded-t ${bias >= 60 ? 'bg-amber-500' : bias >= 25 ? 'bg-primary/80' : bias <= -40 ? 'bg-blue-500/50' : 'bg-muted-foreground/25'}`} style={{ height: `${pct}%`, minHeight: 3 }} />
+          </div>
+          <div className="text-[7px] font-mono font-bold text-foreground/70 mt-0.5">T{t}</div>
+          <div className="text-[6px] text-muted-foreground/40">{c}</div>
+        </div>
+      ))}
     </div>
   );
+});
+TerminalBars.displayName = 'TerminalBars';
 
+const RED_FREQ = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const NumberFreqGrid = memo(({ allNumbers, onSelect }: { allNumbers: number[]; onSelect: (n: number) => void }) => {
+  const { freq, exp } = useMemo(() => {
+    const f = Array(37).fill(0);
+    allNumbers.forEach((n: number) => { if (n >= 0 && n <= 36) f[n]++; });
+    return { freq: f, exp: allNumbers.length / 37 };
+  }, [allNumbers.length, allNumbers[0]]);
+  const maxF = Math.max(...freq, 1);
   return (
-    <>
-      {patterns.map((p, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, x: -8 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.04 }}
-          className={`glass flex items-start gap-3 p-3.5 rounded-xl border backdrop-blur-sm ${
-            p.type === 'hot' ? 'bg-gold/5 border-gold/20 shadow-[0_0_8px_hsl(var(--gold)/0.08)]' :
-            p.type === 'cold' ? 'bg-neon-cyan/5 border-neon-cyan/20 shadow-neon-cyan' :
-            'border-border/15'
-          }`}
-        >
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 border backdrop-blur-sm ${
-            p.type === 'hot' ? 'bg-gold/10 border-gold/20' :
-            p.type === 'cold' ? 'bg-neon-cyan/10 border-neon-cyan/20' :
-            'bg-background/20 border-border/15'
-          }`}>{p.emoji}</div>
+    <div className="grid grid-cols-9 gap-0.5">
+      {Array.from({ length: 37 }, (_, n) => {
+        const c = freq[n]; const hot = c > exp * 1.5; const cold = c < exp * 0.4;
+        const op = allNumbers.length > 0 ? Math.max(0.18, Math.min(1, c / (exp * 1.8))) : 0.4;
+        const bg = n === 0 ? 'bg-emerald-600' : RED_FREQ.has(n) ? 'bg-red-600' : 'bg-zinc-700';
+        return (
+          <button key={n} onClick={() => onSelect(n)} title={`${n}: ${c}×`}
+            className={`relative h-8 rounded text-[9px] font-black text-white transition-all hover:scale-110 hover:z-10 ${bg} ${hot ? 'ring-1 ring-amber-400/80' : cold && c === 0 ? 'ring-1 ring-blue-400/60' : ''}`}
+            style={{ opacity: op }}>
+            {n}
+            {hot && <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400" />}
+            {cold && c === 0 && <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-blue-400" />}
+          </button>
+        );
+      })}
+    </div>
+  );
+});
+NumberFreqGrid.displayName = 'NumberFreqGrid';
+
+const VOISINS_PT = new Set([22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25]);
+const TIERS_PT = new Set([27,13,36,11,30,8,23,10,5,24,16,33]);
+const ORPHELINS_PT = new Set([1,20,14,31,9,17,34,6]);
+const getSectorPT = (n: number) => VOISINS_PT.has(n) ? 'Voisins' : TIERS_PT.has(n) ? 'Tiers' : ORPHELINS_PT.has(n) ? 'Orphelins' : 'Zero';
+
+const PatternsTab = memo(({ allNumbers, sniperData, streakNum, streakLen, streakActive, zeroPressure, hotTerm, pull, numBg }: {
+  allNumbers: number[]; sniperData: any; streakNum: number; streakLen: number;
+  streakActive: boolean; zeroPressure: number; hotTerm: [string,number]|undefined;
+  pull: Record<number,number[]>; numBg: (n: number) => string;
+}) => {
+  const patterns = useMemo(() => {
+    const list: any[] = [];
+    if (allNumbers.length < 3) return list;
+    if (streakActive) {
+      const prob = Math.min(95, 50 + streakLen * 12);
+      const pux = (pull[streakNum] || []).slice(0, 4);
+      list.push({ id: 'streak', emoji: '🔱', title: `STREAK ${streakNum} × ${streakLen} consecutivas`,
+        detail: `${streakNum} repetiu ${streakLen}× seguidas! Prob de repetir: ${prob}%. Cobrir: [${pux.join(', ')}]`,
+        conf: prob, type: streakLen >= 4 ? 'high' : 'mid', numbers: [streakNum, ...pux].slice(0, 5) });
+    }
+    if (hotTerm) {
+      const [tStr, c] = hotTerm; const t = Number(tStr);
+      const exp20 = allNumbers.slice(0, 20).length / 10;
+      const bias = exp20 > 0 ? (c - exp20) / exp20 * 100 : 0;
+      if (Math.abs(bias) > 25) {
+        const tNums = Array.from({length: 4}, (_, i) => i * 10 + t).filter(n => n >= 0 && n <= 36);
+        list.push({ id: 'term', emoji: bias > 0 ? '🔥' : '❄️',
+          title: `Terminal T${t} ${bias > 0 ? 'QUENTE' : 'FRIO'} (${bias > 0 ? '+' : ''}${bias.toFixed(0)}%)`,
+          detail: `T${t} ${bias > 0 ? `${bias.toFixed(0)}% acima do esperado` : `${Math.abs(bias).toFixed(0)}% abaixo — reversão provável`}. Números: ${tNums.join(', ')}`,
+          conf: Math.min(88, Math.abs(bias) > 60 ? 85 : 65), type: bias > 60 ? 'high' : bias > 25 ? 'mid' : 'cold', numbers: tNums });
+      }
+    }
+    if (zeroPressure >= 22) {
+      list.push({ id: 'zero', emoji: '🟢', title: `Pressão Zero — ${zeroPressure} giros`,
+        detail: `Zero ausente há ${zeroPressure} giros (média 37). ${zeroPressure > 55 ? 'CRÍTICO!' : zeroPressure > 37 ? 'Acima da média.' : 'Atenção.'} Apostar Jeu Zéro.`,
+        conf: Math.min(88, 35 + zeroPressure * 0.8), type: zeroPressure > 50 ? 'high' : 'mid',
+        numbers: [0, 32, 15, 26, 3, 35, 12] });
+    }
+    if (allNumbers.length > 0) {
+      const pux = pull[allNumbers[0]] || [];
+      if (pux.length > 0) list.push({ id: 'pull', emoji: '🧲', title: `Puxados do ${allNumbers[0]}`,
+        detail: `Após o ${allNumbers[0]}, mais frequentes: [${pux.slice(0,6).join(', ')}]. Pull desta mesa: 70-86%.`,
+        conf: 68, type: 'mid', numbers: pux.slice(0, 6) });
+    }
+    const sc: Record<string,number> = {};
+    allNumbers.slice(0,15).forEach((n: number) => { const s = getSectorPT(n); sc[s]=(sc[s]||0)+1; });
+    const topS = Object.entries(sc).sort(([,a],[,b])=>b-a)[0];
+    if (topS && topS[1] >= 5) list.push({ id: 'sector', emoji: '🌍', title: `Setor ${topS[0]} dominante (${topS[1]}/15)`,
+      detail: `${topS[0]} concentrou ${topS[1]} dos últimos 15 giros.`, conf: 60, type: 'info' });
+    (sniperData?.detectedPatterns || []).filter((p: any) => p.confidence >= 68).slice(0, 4).forEach((p: any) => {
+      if (list.length >= 9) return;
+      list.push({ id: `det_${p.name}`, emoji: p.emoji || '📊', title: p.name,
+        detail: p.description + (p.action ? ` → ${p.action}` : ''), conf: p.confidence, type: p.confidence >= 80 ? 'mid' : 'info' });
+    });
+    (sniperData?.agents || []).slice(0, 2).forEach((a: any) => {
+      if (!a.signal || !a.numbers?.length || list.length >= 10) return;
+      list.push({ id: `agent_${a.modelId}`, emoji: '🤖', title: `${a.modelName}: ${a.label}`,
+        detail: a.reasoning?.slice(0, 120) || '', conf: a.confidence, type: a.confidence >= 72 ? 'mid' : 'info', numbers: a.numbers?.slice(0, 5) });
+    });
+    return list.slice(0, 10);
+  }, [allNumbers.slice(0, 20).join(','), sniperData?.detectedPatterns?.length, sniperData?.agents?.length, streakActive, zeroPressure]);
+
+  if (patterns.length === 0) return (
+    <div className="bg-card rounded-2xl border border-border/30 p-12 text-center">
+      <div className="text-4xl mb-3 opacity-20">🔍</div>
+      <p className="text-sm text-muted-foreground">Aguardando dados para análise...</p>
+    </div>
+  );
+  return (
+    <div className="space-y-2.5">
+      {patterns.map((p: any, i: number) => (
+        <motion.div key={p.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
+          className={`p-3.5 rounded-2xl border flex items-start gap-3 ${
+            p.type === 'high' ? 'bg-amber-950/30 border-amber-500/30' : p.type === 'mid' ? 'bg-primary/5 border-primary/20' :
+            p.type === 'cold' ? 'bg-blue-950/20 border-blue-500/20' : 'bg-card border-border/25'
+          }`}>
+          <span className="text-2xl shrink-0">{p.emoji}</span>
           <div className="flex-1 min-w-0">
-            <div className={`text-[10px] font-black leading-snug ${
-              p.type === 'hot' ? 'text-gold' : p.type === 'cold' ? 'text-neon-cyan' : 'text-foreground/80'
+            <div className={`text-[10px] font-black leading-tight ${
+              p.type === 'high' ? 'text-amber-400' : p.type === 'mid' ? 'text-primary' : p.type === 'cold' ? 'text-blue-400' : 'text-foreground'
             }`}>{p.title}</div>
-            <p className="text-[8px] text-muted-foreground/50 mt-1 leading-relaxed">{p.detail}</p>
+            <p className="text-[8px] text-muted-foreground/70 mt-1 leading-relaxed">{p.detail}</p>
+            {p.numbers?.length > 0 && (
+              <div className="flex items-center gap-1 mt-2 flex-wrap">
+                <span className="text-[7px] text-muted-foreground/40 mr-0.5">Apostar:</span>
+                {p.numbers.slice(0, 6).map((n: number) => (
+                  <div key={n} className={`w-6 h-6 rounded text-[9px] font-black text-white flex items-center justify-center ${numBg(n)}`}>{n}</div>
+                ))}
+              </div>
+            )}
           </div>
-          <div className={`shrink-0 text-[9px] font-black px-2 py-0.5 rounded-full border backdrop-blur-sm ${
-            p.conf >= 80 ? 'bg-neon-green/10 text-neon-green border-neon-green/20' :
-            p.conf >= 60 ? 'bg-gold/10 text-gold border-gold/20' :
-            'bg-background/15 text-muted-foreground/50 border-border/15'
+          <div className={`shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[36px] text-center ${
+            p.conf >= 80 ? 'bg-green-500/15 text-green-400' : p.conf >= 60 ? 'bg-amber-500/15 text-amber-400' : 'bg-secondary text-muted-foreground/50'
           }`}>{p.conf}%</div>
         </motion.div>
       ))}
-    </>
+    </div>
   );
 });
 PatternsTab.displayName = 'PatternsTab';
 
-// ═══ COMPONENTE: IA ═══════════════════════════════════════════════════════════
+const RED_IA = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 const IATab = memo(({ sniperData }: { sniperData: any }) => {
+  const numBgI = (n: number) => n === 0 ? 'bg-emerald-600' : RED_IA.has(n) ? 'bg-red-600' : 'bg-zinc-700';
   if (!sniperData) return (
-    <div className="bg-card rounded-xl border border-border p-8 text-center">
-      <div className="text-3xl mb-3 opacity-40">🧠</div>
-      <p className="text-sm text-muted-foreground">Aguardando primeira análise das IAs...</p>
+    <div className="bg-card rounded-2xl border border-border/30 p-12 text-center">
+      <div className="text-4xl mb-3 opacity-20">🧠</div>
+      <p className="text-sm text-muted-foreground">Aguardando análise das IAs...</p>
     </div>
   );
-
   const ai = sniperData.aiReasoning || {};
   const learnings = sniperData.aiLearnings || [];
   const layers = sniperData.layerResults || {};
   const topCands = sniperData.topCandidates || [];
   const patterns = sniperData.patternsFidelity || [];
-  const RED_N = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
-  const numBg = (n: number) => n === 0 ? 'bg-emerald-600' : RED_N.has(n) ? 'bg-red-600' : 'bg-zinc-700';
-
+  const agents = sniperData.agents || [];
   return (
     <div className="space-y-3">
-
-      {/* Veredito do Juiz Supremo */}
-      {ai.suggestedBet && (
-        <div className="glass rounded-xl border border-neon-purple/20 p-4 shadow-[0_0_12px_rgba(168,85,247,0.08)]">
-          <div className="flex items-center gap-2 mb-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-purple/20 to-neon-pink/10 border border-neon-purple/25 flex items-center justify-center shadow-[0_0_8px_rgba(168,85,247,0.2)]">
-              <span className="text-sm">⚖️</span>
-            </div>
-            <div className="flex-1">
-              <div className="text-[10px] font-black text-neon-purple uppercase tracking-[0.15em]">Juiz Supremo</div>
-              <div className="text-[7px] text-neon-purple/50 font-mono">{ai.confidence}% confiança</div>
-            </div>
-            {ai.consensus > 0 && (
-              <span className="text-[8px] px-2 py-0.5 rounded-full bg-neon-purple/10 text-neon-purple font-bold border border-neon-purple/20">
-                {ai.consensus} consensos
-              </span>
-            )}
+      {agents.length > 0 && (
+        <div className="bg-card rounded-2xl border border-border/30 p-4">
+          <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-3">Modelos de IA ({agents.length})</h3>
+          <div className="space-y-2">
+            {agents.map((a: any, i: number) => (
+              <div key={i} className={`flex items-start gap-2.5 p-2.5 rounded-xl border ${a.signal ? 'bg-primary/5 border-primary/20' : 'bg-secondary/20 border-border/20'}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0 ${a.signal ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground/40'}`}>{a.signal ? '●' : '○'}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[9px] font-black text-foreground/80">{a.modelName}</div>
+                  {a.signal && a.label && <div className="text-[8px] text-primary/70 truncate">{a.label}</div>}
+                  {a.reasoning && <p className="text-[7px] text-muted-foreground/40 mt-0.5 line-clamp-2">{a.reasoning}</p>}
+                </div>
+                {a.confidence > 0 && <span className={`text-[8px] font-black shrink-0 ${a.confidence >= 70 ? 'text-green-400' : 'text-muted-foreground/40'}`}>{a.confidence}%</span>}
+              </div>
+            ))}
           </div>
-          <p className="text-[8px] text-foreground/70 leading-relaxed">{ai.suggestedBet?.slice(0, 300)}</p>
-          {ai.patternIdentified && (
-            <div className="mt-2 px-2.5 py-1.5 rounded-lg glass border border-border/15">
-              <p className="text-[7px] text-muted-foreground/60">🔍 {ai.patternIdentified?.slice(0, 120)}</p>
+        </div>
+      )}
+
+      {ai.suggestedBet && (
+        <div className="bg-violet-950/30 rounded-2xl border border-violet-500/25 p-4">
+          <div className="flex items-center gap-2 mb-2.5">
+            <div className="w-8 h-8 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-base shrink-0">⚖️</div>
+            <div className="flex-1">
+              <div className="text-[9px] font-black text-violet-400 uppercase tracking-wider">Juiz Supremo</div>
+              <div className="text-[7px] text-violet-400/50">{ai.confidence}% confiança · {ai.consensus || 0} consensos</div>
             </div>
-          )}
+          </div>
+          <p className="text-[8px] text-foreground/75 leading-relaxed">{ai.suggestedBet?.slice(0, 280)}</p>
+          {ai.patternIdentified && <div className="mt-2 px-2.5 py-1.5 rounded-xl bg-secondary/30 border border-border/20"><p className="text-[7px] text-muted-foreground/60">🔍 {ai.patternIdentified?.slice(0, 110)}</p></div>}
           {ai.marketAnalysis?.bestMarket && (
-            <div className="mt-2 flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-neon-green/5 border border-neon-green/15">
-              <span className="text-[9px] font-bold text-neon-green">📈 Melhor mercado: {ai.marketAnalysis.bestMarket}</span>
-              <span className="text-[7px] text-muted-foreground/40 ml-auto font-mono">{ai.marketAnalysis.marketConfidence}%</span>
+            <div className="mt-2 flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-emerald-950/30 border border-emerald-500/20">
+              <span className="text-[9px] font-bold text-emerald-400">📈 {ai.marketAnalysis.bestMarket}</span>
+              <span className="text-[7px] text-muted-foreground/40 ml-auto">{ai.marketAnalysis.marketConfidence}%</span>
             </div>
           )}
         </div>
       )}
 
-      {/* Top candidatos */}
       {topCands.length > 0 && (
-        <div className="glass rounded-xl border border-border/20 p-4">
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary/15 to-neon-pink/10 border border-primary/20 flex items-center justify-center shadow-neon-cyan">
-              <span className="text-sm">🏆</span>
-            </div>
-            <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.15em]">Top Candidatos</h3>
-          </div>
+        <div className="bg-card rounded-2xl border border-border/30 p-4">
+          <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-3">Top Candidatos</h3>
           <div className="space-y-2">
             {topCands.slice(0, 7).map((c: any, i: number) => {
               const max = topCands[0]?.score || 1;
               return (
                 <div key={c.num} className="flex items-center gap-2.5">
-                  <div className={`w-8 h-8 rounded-lg text-[11px] font-black text-white flex items-center justify-center shrink-0 ${numBg(c.num)} ${i === 0 ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background shadow-neon-cyan' : ''}`}>
-                    {c.num}
-                  </div>
-                  <div className="flex-1">
-                    <div className="h-1.5 bg-background/20 rounded-full overflow-hidden border border-border/10">
-                      <div className={`h-full rounded-full transition-all ${i === 0 ? 'bg-gradient-to-r from-primary to-neon-pink shadow-neon-cyan' : i <= 2 ? 'bg-primary/60' : 'bg-muted-foreground/30'}`}
-                        style={{ width: `${(c.score/max)*100}%` }} />
+                  <div className={`w-8 h-8 rounded-lg text-[11px] font-black text-white flex items-center justify-center shrink-0 ${numBgI(c.num)} ${i === 0 ? 'ring-2 ring-primary/70 ring-offset-1 ring-offset-background' : ''}`}>{c.num}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="h-1.5 bg-secondary/50 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${i === 0 ? 'bg-primary' : i <= 2 ? 'bg-primary/60' : 'bg-muted-foreground/30'}`} style={{ width: `${Math.round(c.score/max*100)}%` }} />
                     </div>
-                    {c.reasons && (
-                      <p className="text-[6px] text-muted-foreground/40 mt-0.5 truncate">{c.reasons.slice(0,4).join(' · ')}</p>
-                    )}
+                    {c.reasons?.length > 0 && <p className="text-[6px] text-muted-foreground/40 truncate mt-0.5">{c.reasons.slice(0,3).join(' · ')}</p>}
                   </div>
-                  <span className="text-[8px] font-mono text-muted-foreground/50 shrink-0 w-10 text-right">{c.score?.toFixed(0)}</span>
+                  <span className="text-[7px] font-mono text-muted-foreground/40 shrink-0 w-8 text-right">{c.score?.toFixed(0)}</span>
                 </div>
               );
             })}
@@ -1385,75 +1117,52 @@ const IATab = memo(({ sniperData }: { sniperData: any }) => {
         </div>
       )}
 
-      {/* Layer scores */}
       {layers.total !== undefined && (
-        <div className="glass rounded-xl border border-border/20 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.15em]">Score Total</h3>
+        <div className="bg-card rounded-2xl border border-border/30 p-4">
+          <div className="flex items-center justify-between mb-2.5">
+            <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Score Total</h3>
             <span className="text-[11px] font-black font-mono text-primary">{layers.total} / {layers.max}</span>
           </div>
-          <div className="h-2 bg-background/20 rounded-full overflow-hidden mb-3 border border-border/10">
-            <div className="h-full bg-gradient-to-r from-primary via-neon-pink to-neon-purple rounded-full shadow-neon-cyan"
-              style={{ width: `${(layers.total/layers.max)*100}%` }} />
+          <div className="h-1.5 bg-secondary/40 rounded-full overflow-hidden mb-3">
+            <div className="h-full bg-gradient-to-r from-primary to-accent rounded-full" style={{ width: `${Math.round(layers.total / layers.max * 100)}%` }} />
           </div>
           <div className="grid grid-cols-2 gap-1.5">
-            {Object.entries(layers)
-              .filter(([k, v]) => k.startsWith('bloco') && typeof v === 'object' && (v as any).label)
-              .map(([k, v]: [string, any]) => (
-                <div key={k} className="flex items-center gap-1.5">
-                  <div className="w-1 h-5 rounded-full shrink-0 overflow-hidden bg-background/20">
-                    <div className={`w-full rounded-full ${v.score/v.max > 0.7 ? 'bg-neon-green' : v.score/v.max > 0.4 ? 'bg-gold' : 'bg-destructive/50'}`}
-                      style={{ height: `${(v.score/(v.max||1))*100}%` }} />
-                  </div>
-                  <span className="text-[7px] text-muted-foreground/50 truncate flex-1">{v.label}</span>
-                  <span className="text-[7px] font-mono text-muted-foreground/40 shrink-0">{v.score}</span>
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* Fidelidade de padrões */}
-      {patterns.length > 0 && (
-        <div className="glass rounded-xl border border-border/20 p-4">
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gold/15 to-amber-500/10 border border-gold/20 flex items-center justify-center">
-              <span className="text-sm">🎯</span>
-            </div>
-            <h3 className="text-[10px] font-black text-gold uppercase tracking-[0.15em]">Fidelidade de Padrões</h3>
-          </div>
-          <div className="space-y-1.5 max-h-56 overflow-y-auto scrollbar-thin">
-            {[...patterns]
-              .sort((a: any, b: any) => b.fidelity - a.fidelity)
-              .slice(0, 15)
-              .map((p: any, i: number) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="text-[9px] shrink-0">{p.emoji}</span>
-                <span className="text-[7px] text-muted-foreground/50 flex-1 truncate">{p.name}</span>
-                <div className="w-16 h-1.5 bg-background/20 rounded-full overflow-hidden shrink-0 border border-border/10">
-                  <div className={`h-full rounded-full ${p.fidelity >= 70 ? 'bg-neon-green' : p.fidelity >= 40 ? 'bg-gold' : 'bg-destructive/50'}`}
-                    style={{ width: `${p.fidelity}%` }} />
-                </div>
-                <span className="text-[7px] font-mono text-muted-foreground/40 w-8 text-right shrink-0">{p.fidelity}%</span>
+            {Object.entries(layers).filter(([k, v]) => k.startsWith('bloco') && typeof v === 'object' && (v as any)?.label).map(([k, v]: [string, any]) => (
+              <div key={k} className="flex items-center gap-1.5">
+                <div className={`w-0.5 h-5 rounded-full shrink-0 ${v.score/v.max >= 0.7 ? 'bg-green-500' : v.score/v.max >= 0.4 ? 'bg-amber-500' : 'bg-red-500/50'}`} />
+                <span className="text-[7px] text-muted-foreground/50 flex-1 truncate">{v.label}</span>
+                <span className="text-[7px] font-mono text-muted-foreground/40 shrink-0">{v.score}</span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Logs de aprendizado */}
-      {learnings.length > 0 && (
-        <div className="glass rounded-xl border border-border/20 p-4">
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-neon-pink/15 to-purple-500/10 border border-neon-pink/20 flex items-center justify-center shadow-neon-pink">
-              <span className="text-sm">📝</span>
-            </div>
-            <h3 className="text-[10px] font-black text-neon-pink uppercase tracking-[0.15em]">Log de Aprendizado <span className="text-muted-foreground/30 font-normal">({learnings.length})</span></h3>
+      {patterns.length > 0 && (
+        <div className="bg-card rounded-2xl border border-border/30 p-4">
+          <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-3">Fidelidade de Padrões</h3>
+          <div className="space-y-1.5 max-h-52 overflow-y-auto">
+            {[...patterns].sort((a: any, b: any) => b.fidelity - a.fidelity).slice(0, 14).map((p: any, i: number) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="text-[9px] shrink-0">{p.emoji}</span>
+                <span className="text-[7px] text-muted-foreground/60 flex-1 truncate">{p.name}</span>
+                <div className="w-14 h-1 bg-secondary/30 rounded-full overflow-hidden shrink-0">
+                  <div className={`h-full rounded-full ${p.fidelity >= 70 ? 'bg-green-500' : p.fidelity >= 40 ? 'bg-amber-500' : 'bg-red-500/40'}`} style={{ width: `${p.fidelity}%` }} />
+                </div>
+                <span className="text-[7px] font-mono text-muted-foreground/40 w-7 text-right shrink-0">{p.fidelity}%</span>
+              </div>
+            ))}
           </div>
-          <div className="space-y-1.5 max-h-52 overflow-y-auto scrollbar-thin">
+        </div>
+      )}
+
+      {learnings.length > 0 && (
+        <div className="bg-card rounded-2xl border border-border/30 p-4">
+          <h3 className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-3">Log de Aprendizado ({learnings.length})</h3>
+          <div className="space-y-1.5 max-h-52 overflow-y-auto">
             {learnings.map((l: string, i: number) => (
-              <div key={i} className="px-2.5 py-1.5 rounded-lg glass border border-border/10">
-                <span className="text-[8px] text-foreground/60 leading-snug">{l}</span>
+              <div key={i} className="px-2.5 py-1.5 rounded-xl bg-secondary/20 border border-border/15">
+                <span className="text-[8px] text-foreground/50 leading-snug">{l}</span>
               </div>
             ))}
           </div>
@@ -1464,37 +1173,5 @@ const IATab = memo(({ sniperData }: { sniperData: any }) => {
 });
 IATab.displayName = 'IATab';
 
-
-// Reusable collapsible section
-const CollapsibleSection = memo(({ title, badge, isOpen, onToggle, children }: {
-  title: string; badge?: string; isOpen: boolean; onToggle: () => void; children: React.ReactNode;
-}) => (
-  <div className="glass rounded-xl border border-border/15 overflow-hidden">
-    <button onClick={onToggle} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5 transition-all group">
-      <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-        <ChevronDown className="w-4 h-4 text-primary/40 group-hover:text-primary transition-colors" />
-      </motion.div>
-      <span className="font-display text-[11px] tracking-[0.12em] font-bold text-primary/70 group-hover:text-primary transition-colors">{title}</span>
-      {badge && (
-        <span className="text-[8px] px-2 py-0.5 rounded-full bg-primary/8 text-primary border border-primary/15 font-bold font-mono ml-auto">
-          {badge}
-        </span>
-      )}
-    </button>
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div 
-          initial={{ height: 0, opacity: 0 }} 
-          animate={{ height: 'auto', opacity: 1 }} 
-          exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.25, ease: 'easeInOut' }}
-          className="overflow-hidden"
-        >
-          <div className="p-4 border-t border-border/30">{children}</div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  </div>
-));
 
 export default Index;
