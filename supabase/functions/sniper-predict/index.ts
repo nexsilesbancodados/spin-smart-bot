@@ -656,7 +656,7 @@ Deno.serve(async (req) => {
       }
       // Accept client-side numbers for faster response (before DB sync)
       if (body?.numbers && Array.isArray(body.numbers)) {
-        clientNumbers = body.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 500);
+        clientNumbers = body.numbers.filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 1000);
       }
       // Strategy category filter from UI
       if (body?.strategyFilter && typeof body.strategyFilter === 'string') {
