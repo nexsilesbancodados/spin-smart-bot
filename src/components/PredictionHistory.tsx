@@ -462,7 +462,9 @@ const PredictionHistory = memo(() => {
       </div>
     </div>
   );
-};
+});
+
+PredictionHistory.displayName = 'PredictionHistory';
 
 const StatCard = ({ value, label, variant, icon }: {
   value: string;
