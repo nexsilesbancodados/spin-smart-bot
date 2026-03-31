@@ -783,10 +783,10 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
 
           <Button
             onClick={toggleAutoBet}
-            className={`px-5 h-12 font-bold tracking-wider text-sm rounded-xl transition-all ${
+            className={`px-5 h-12 font-bold tracking-wider text-sm rounded-xl transition-all font-display ${
               config.enabled
                 ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
-                : 'bg-gradient-to-r from-green-600 to-emerald-500 hover:opacity-90 text-white shadow-lg shadow-green-600/30'
+                : 'bg-gradient-to-r from-neon-green/80 to-emerald-500 hover:opacity-90 text-white shadow-lg shadow-neon-green/20'
             }`}
           >
             {config.enabled ? <Square className="w-4 h-4 mr-1.5" /> : <Play className="w-4 h-4 mr-1.5" />}
