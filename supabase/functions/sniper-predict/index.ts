@@ -7215,8 +7215,10 @@ REGRAS ABSOLUTAS:
           if (multiAiNumbers.length >= 2) {
             aiAdjustedNumbers = multiAiNumbers;
             aiReasoning = bestParsed?.suggestedBet || bestParsed?.reasoning || null;
-            aiConfidence = consensusNums.length >= 3
-              ? Math.min(95, (bestParsed?.confidence || 50) + consensusNums.length * 5)
+            aiConfidence = consensusNums.length >= 5
+              ? Math.min(97, (bestParsed?.confidence || 50) + consensusNums.length * 3)
+              : consensusNums.length >= 3
+              ? Math.min(92, (bestParsed?.confidence || 50) + consensusNums.length * 4)
               : bestParsed?.confidence || null;
             aiPatternAnalysis = bestParsed?.patternIdentified || null;
             aiSectorFocus = bestParsed?.sectorFocus || null;
