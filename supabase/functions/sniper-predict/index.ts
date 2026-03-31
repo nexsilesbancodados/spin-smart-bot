@@ -1441,26 +1441,55 @@ Deno.serve(async (req) => {
     };
 
     const MESA_CALIBRATION: Record<string, number> = {
-      // Estratégias internas (número exato) — boost fixo
-      'auto_repeticao'         : 20,
-      'convergencia_absoluta'  : 18,
-      'ensemble_supremo'       : 15,
-      'matriz_numerica'        : 12,
-      'duplo_terminal'         : 10,
+      // Estratégias internas (número exato) — boost moderado (reduzido para dar espaço a apostas externas)
+      'auto_repeticao'         : 12,
+      'convergencia_absoluta'  : 10,
+      'ensemble_supremo'       : 8,
+      'matriz_numerica'        : 6,
+      'duplo_terminal'         : 5,
       // Fusao: boost quando WR > 40%, penaliza quando < 25%
-      'fusao_suprema': dynamicPenalty('fusao_suprema', 15),
-      // Estratégias externas: penalização dinâmica
-      'paridade_reversa'   : dynamicPenalty('paridade_reversa', -30),
-      'alto_baixo_reversa' : dynamicPenalty('alto_baixo_reversa', -30),
-      'cor_reversa'        : dynamicPenalty('cor_reversa', -30),
-      'cor_alternancia'    : dynamicPenalty('cor_alternancia', -15),
-      'alto_baixo'         : dynamicPenalty('alto_baixo', -15),
-      'paridade'           : dynamicPenalty('paridade', -15),
-      'cor'                : dynamicPenalty('cor', -8),
-      'cluster_regional'   : -20,
+      'fusao_suprema': dynamicPenalty('fusao_suprema', 8),
+      // Estratégias externas: penalização REDUZIDA — devem competir quando tendência é forte
+      'paridade_reversa'   : dynamicPenalty('paridade_reversa', -10),
+      'alto_baixo_reversa' : dynamicPenalty('alto_baixo_reversa', -10),
+      'cor_reversa'        : dynamicPenalty('cor_reversa', -10),
+      'cor_alternancia'    : dynamicPenalty('cor_alternancia', -5),
+      'alto_baixo'         : dynamicPenalty('alto_baixo', -5),
+      'paridade'           : dynamicPenalty('paridade', -5),
+      'cor'                : dynamicPenalty('cor', 0),
+      'duzias'             : dynamicPenalty('duzias', 0),
+      'duzia_unica'        : dynamicPenalty('duzia_unica', 0),
+      'coluna'             : dynamicPenalty('coluna', 0),
+      'cavalos'            : dynamicPenalty('cavalos', 0),
+      'terminal_alternation': dynamicPenalty('terminal_alternation', 0),
+      'cluster_regional'   : -8,
     };
     for (const [stType, adj] of Object.entries(MESA_CALIBRATION)) {
       strategyWeightAdjust[stType] = (strategyWeightAdjust[stType] || 0) + adj;
+    }
+    
+    // ── TREND-AWARE BOOST: quando uma tendência é forte numa dimensão, boost nessa categoria ──
+    if (trendEngine.colorTrend.strength >= 65) {
+      strategyWeightAdjust['cor'] = (strategyWeightAdjust['cor'] || 0) + 15;
+      strategyWeightAdjust['cor_alternancia'] = (strategyWeightAdjust['cor_alternancia'] || 0) + 10;
+    }
+    if (trendEngine.parityTrend.strength >= 65) {
+      strategyWeightAdjust['paridade'] = (strategyWeightAdjust['paridade'] || 0) + 15;
+    }
+    if (trendEngine.highLowTrend.strength >= 65) {
+      strategyWeightAdjust['alto_baixo'] = (strategyWeightAdjust['alto_baixo'] || 0) + 15;
+    }
+    if (trendEngine.dozenTrend.strength >= 60) {
+      strategyWeightAdjust['duzias'] = (strategyWeightAdjust['duzias'] || 0) + 15;
+      strategyWeightAdjust['duzia_unica'] = (strategyWeightAdjust['duzia_unica'] || 0) + 15;
+      strategyWeightAdjust['dozen_phase'] = (strategyWeightAdjust['dozen_phase'] || 0) + 12;
+      strategyWeightAdjust['pressao_retorno'] = (strategyWeightAdjust['pressao_retorno'] || 0) + 10;
+    }
+    if (trendEngine.sectorTrend.strength >= 60) {
+      strategyWeightAdjust['sniper'] = (strategyWeightAdjust['sniper'] || 0) + 12;
+      strategyWeightAdjust['voisins'] = (strategyWeightAdjust['voisins'] || 0) + 12;
+      strategyWeightAdjust['setor_oposto'] = (strategyWeightAdjust['setor_oposto'] || 0) + 10;
+      strategyWeightAdjust['jeu_zero'] = (strategyWeightAdjust['jeu_zero'] || 0) + 8;
     }
 
     // ERROR DEEP SCAN: categorize WHY each miss happened
@@ -8260,9 +8289,15 @@ Responda APENAS JSON:
         payout: '1:1',
       };
     } else {
+      // Fallback: use Bayesian + momentum for better confidence even without strong trend
+      const red10 = numbers.slice(0,10).filter(n => RED.includes(n)).length;
       const red5 = numbers.slice(0,5).filter(n => RED.includes(n)).length;
-      const isRed = red5 >= 3;
-      allBetSignals.cor = { recommendation: isRed ? 'VERMELHO' : 'PRETO', numbers: [], confidence: 45, reasoning: 'Sem tendência clara', emoji: isRed ? '🔴' : '⚫', payout: '1:1' };
+      const bayesConf = bayesColor.probability || 40;
+      const momRed = colorMomentum['red']?.momentum || 0;
+      const momBlack = colorMomentum['black']?.momentum || 0;
+      const isRed = (momRed > momBlack) || (momRed === momBlack && red5 >= 3);
+      const baseConf = Math.min(65, 40 + Math.abs(red10 - 5) * 3 + (bayesConf > 50 ? 5 : 0));
+      allBetSignals.cor = { recommendation: isRed ? 'VERMELHO' : 'PRETO', numbers: [], confidence: baseConf, reasoning: `${isRed ? 'Vermelho' : 'Preto'} ${red10}/10 recentes, Bayes ${bayesConf}%`, emoji: isRed ? '🔴' : '⚫', payout: '1:1' };
     }
 
     // PARIDADE
@@ -8278,8 +8313,12 @@ Responda APENAS JSON:
         payout: '1:1',
       };
     } else {
+      const par10 = numbers.slice(0,10).filter(n => n>0 && n%2===0).length;
       const par5 = numbers.slice(0,5).filter(n => n>0 && n%2===0).length;
-      allBetSignals.paridade = { recommendation: par5>=3 ? 'PAR' : 'ÍMPAR', numbers: [], confidence: 42, reasoning: 'Sem tendência clara', emoji: par5>=3 ? '2️⃣' : '1️⃣', payout: '1:1' };
+      const bayesConf = bayesParity.probability || 40;
+      const isPar = par10 >= 6 || (par5 >= 3 && bayesParity.predicted === 'Par');
+      const baseConf = Math.min(65, 40 + Math.abs(par10 - 5) * 3 + (bayesConf > 50 ? 5 : 0));
+      allBetSignals.paridade = { recommendation: isPar ? 'PAR' : 'ÍMPAR', numbers: [], confidence: baseConf, reasoning: `${isPar ? 'Par' : 'Ímpar'} ${par10}/10 recentes, Bayes ${bayesConf}%`, emoji: isPar ? '2️⃣' : '1️⃣', payout: '1:1' };
     }
 
     // ALTO/BAIXO
@@ -8295,8 +8334,11 @@ Responda APENAS JSON:
         payout: '1:1',
       };
     } else {
-      const hi5 = numbers.slice(0,5).filter(n => n>=19).length;
-      allBetSignals.alto_baixo = { recommendation: hi5>=3 ? 'ALTO (19-36)' : 'BAIXO (1-18)', numbers: [], confidence: 42, reasoning: 'Sem tendência clara', emoji: hi5>=3 ? '⬆️' : '⬇️', payout: '1:1' };
+      const hi10 = numbers.slice(0,10).filter(n => n>=19).length;
+      const bayesConf = bayesHighLow.probability || 40;
+      const isAlto = hi10 >= 6 || (numbers.slice(0,5).filter(n => n>=19).length >= 3 && bayesHighLow.predicted === 'Alto');
+      const baseConf = Math.min(65, 40 + Math.abs(hi10 - 5) * 3 + (bayesConf > 50 ? 5 : 0));
+      allBetSignals.alto_baixo = { recommendation: isAlto ? 'ALTO (19-36)' : 'BAIXO (1-18)', numbers: [], confidence: baseConf, reasoning: `${isAlto ? 'Alto' : 'Baixo'} ${hi10}/10 recentes, Bayes ${bayesConf}%`, emoji: isAlto ? '⬆️' : '⬇️', payout: '1:1' };
     }
 
     // DÚZIA
@@ -8315,17 +8357,25 @@ Responda APENAS JSON:
     } else {
       const dzMode = [0,0,0];
       numbers.slice(0,10).filter(n=>n>0).forEach(n => { if(n<=12) dzMode[0]++; else if(n<=24) dzMode[1]++; else dzMode[2]++; });
+      // Also check 20-spin window for confirmation
+      const dzMode20 = [0,0,0];
+      numbers.slice(0,20).filter(n=>n>0).forEach(n => { if(n<=12) dzMode20[0]++; else if(n<=24) dzMode20[1]++; else dzMode20[2]++; });
       const bestDz = dzMode.indexOf(Math.max(...dzMode)) + 1;
       const dzNums = Array.from({length:12},(_, i)=>(bestDz-1)*12+i+1);
-      allBetSignals.duzia = { recommendation: `${bestDz}ª DÚZIA`, numbers: dzNums, confidence: Math.min(60, 35 + dzMode[bestDz-1] * 3), reasoning: `Dúzia ${bestDz} mais frequente (${dzMode[bestDz-1]}/10)`, emoji: '🎲', payout: '2:1' };
+      const dzMom = dozenMomentum[`D${bestDz}`];
+      const dzConf = Math.min(70, 38 + dzMode[bestDz-1] * 4 + (dzMom?.trend === 'rising' ? 8 : 0) + (dzMode20[bestDz-1] >= 9 ? 5 : 0));
+      allBetSignals.duzia = { recommendation: `${bestDz}ª DÚZIA`, numbers: dzNums, confidence: dzConf, reasoning: `Dúzia ${bestDz}: ${dzMode[bestDz-1]}/10 recentes, ${dzMode20[bestDz-1]}/20 confirma${dzMom?.trend === 'rising' ? ', momentum SUBINDO' : ''}`, emoji: '🎲', payout: '2:1' };
     }
 
     // COLUNA
     const colMode = [0,0,0];
     numbers.slice(0,10).filter(n=>n>0).forEach(n => { if(COL1.includes(n)) colMode[0]++; else if(COL2.includes(n)) colMode[1]++; else colMode[2]++; });
+    const colMode20 = [0,0,0];
+    numbers.slice(0,20).filter(n=>n>0).forEach(n => { if(COL1.includes(n)) colMode20[0]++; else if(COL2.includes(n)) colMode20[1]++; else colMode20[2]++; });
     const bestCol = colMode.indexOf(Math.max(...colMode)) + 1;
     const colNumsBet = bestCol===1 ? COL1 : bestCol===2 ? COL2 : COL3;
-    allBetSignals.coluna = { recommendation: `COLUNA ${bestCol}`, numbers: colNumsBet, confidence: Math.min(65, 35 + colMode[bestCol-1] * 4), reasoning: `Coluna ${bestCol} com ${colMode[bestCol-1]}/10 recentes`, emoji: '📐', payout: '2:1' };
+    const colConf = Math.min(70, 38 + colMode[bestCol-1] * 4 + (colMode20[bestCol-1] >= 9 ? 5 : 0));
+    allBetSignals.coluna = { recommendation: `COLUNA ${bestCol}`, numbers: colNumsBet, confidence: colConf, reasoning: `Coluna ${bestCol}: ${colMode[bestCol-1]}/10 recentes, ${colMode20[bestCol-1]}/20 confirma`, emoji: '📐', payout: '2:1' };
 
     // SETOR
     const teSec = trendEngine.sectorTrend;
@@ -8338,34 +8388,45 @@ Responda APENAS JSON:
       numbers.slice(0,10).forEach(n => { const s = getSector(n); if(secCount[s]!==undefined) secCount[s]++; });
       const bestSec = Object.entries(secCount).sort(([,a],[,b])=>b-a)[0];
       const secNums = bestSec[0] === 'Voisins' ? VOISINS : bestSec[0] === 'Tiers' ? TIERS : ORPHELINS;
-      allBetSignals.setor = { recommendation: `SETOR ${bestSec[0].toUpperCase()}`, numbers: secNums, confidence: Math.min(55, 30 + bestSec[1] * 4), reasoning: `${bestSec[0]} com ${bestSec[1]}/10 recentes`, emoji: '🌍', payout: `${Math.round(36/secNums.length)}:1` };
+      const secMom = sectorMomentum[bestSec[0]];
+      const secConf = Math.min(65, 35 + bestSec[1] * 5 + (secMom?.trend === 'rising' ? 8 : 0));
+      allBetSignals.setor = { recommendation: `SETOR ${bestSec[0].toUpperCase()}`, numbers: secNums, confidence: secConf, reasoning: `${bestSec[0]}: ${bestSec[1]}/10 recentes${secMom?.trend === 'rising' ? ', momentum SUBINDO' : ''}`, emoji: '🌍', payout: `${Math.round(36/secNums.length)}:1` };
     }
 
-    // TERMINAL
+    // TERMINAL — enhanced with pull data and Bayesian
     const hotTerminal = detectHotTerminal(numbers, 15);
     const termNums = TERMINALS_MAP[hotTerminal.terminal] || [];
-    allBetSignals.terminal = { recommendation: `TERMINAL ${hotTerminal.terminal}`, numbers: termNums, confidence: Math.min(70, 35 + hotTerminal.count * 7), reasoning: `T${hotTerminal.terminal} saiu ${hotTerminal.count}× em 15 giros`, emoji: '🔢', payout: `${Math.round(36/termNums.length)}:1` };
+    const termPullActive = (FULL_PULL_TERMINALS[numbers[0]] || []).includes(hotTerminal.terminal);
+    const termConf = Math.min(75, 38 + hotTerminal.count * 7 + (termPullActive ? 8 : 0) + (hotTerminal.count >= 4 ? 5 : 0));
+    allBetSignals.terminal = { recommendation: `TERMINAL ${hotTerminal.terminal}`, numbers: termNums, confidence: termConf, reasoning: `T${hotTerminal.terminal} saiu ${hotTerminal.count}× em 15 giros${termPullActive ? ' + puxada de terminal ativa' : ''}`, emoji: '🔢', payout: `${Math.round(36/termNums.length)}:1` };
 
-    // VIZINHOS (do último número)
+    // VIZINHOS (do último número) — enhanced with pull chain
     const lastNum = numbers[0];
     const pullNums = FULL_PULL_MAP[lastNum] || [];
+    const confirmedPullActive = pullNums.some(p => confirmedPullNumbers.includes(p));
     const vizNums = [...new Set([lastNum, ...getNeighbors(lastNum, 4), ...pullNums.slice(0,3)])].slice(0,9);
-    allBetSignals.vizinhos = { recommendation: `VIZINHOS DO ${lastNum}`, numbers: vizNums, confidence: Math.min(60, 40 + pullNums.length * 2), reasoning: `Vizinhos + puxados do ${lastNum}`, emoji: '🎯', payout: `${Math.round(36/vizNums.length)}:1` };
+    const vizConf = Math.min(68, 42 + pullNums.length * 2 + (confirmedPullActive ? 10 : 0));
+    allBetSignals.vizinhos = { recommendation: `VIZINHOS DO ${lastNum}`, numbers: vizNums, confidence: vizConf, reasoning: `Vizinhos + puxados do ${lastNum} (${pullNums.length} alvos)${confirmedPullActive ? ' — PULL CONFIRMADO!' : ''}`, emoji: '🎯', payout: `${Math.round(36/vizNums.length)}:1` };
 
-    // CAVALOS
+    // CAVALOS — enhanced with momentum
     const cavCount: Record<string,number> = { '258':0, '147':0, '03':0, '69':0 };
     numbers.slice(0,10).forEach(n => { const g = getCavalo(n); if(g) cavCount[g]++; });
+    const cavCount20: Record<string,number> = { '258':0, '147':0, '03':0, '69':0 };
+    numbers.slice(0,20).forEach(n => { const g = getCavalo(n); if(g) cavCount20[g]++; });
     const bestCav = Object.entries(cavCount).sort(([,a],[,b])=>b-a)[0];
-    allBetSignals.cavalos = { recommendation: `CAVALOS ${bestCav[0]}`, numbers: CAVALOS[bestCav[0]], confidence: Math.min(60, 30 + bestCav[1] * 5), reasoning: `Grupo ${bestCav[0]} com ${bestCav[1]}/10 recentes`, emoji: '🐴', payout: `${Math.round(36/CAVALOS[bestCav[0]].length)}:1` };
+    const cavConf = Math.min(65, 35 + bestCav[1] * 5 + (cavCount20[bestCav[0]] >= 10 ? 5 : 0));
+    allBetSignals.cavalos = { recommendation: `CAVALOS ${bestCav[0]}`, numbers: CAVALOS[bestCav[0]], confidence: cavConf, reasoning: `Grupo ${bestCav[0]}: ${bestCav[1]}/10 recentes, ${cavCount20[bestCav[0]]}/20 confirma`, emoji: '🐴', payout: `${Math.round(36/CAVALOS[bestCav[0]].length)}:1` };
 
-    // PLENO (top1 da fusão)
-    allBetSignals.pleno = { recommendation: `PLENO ${numTop1}`, numbers: [numTop1], confidence: Math.min(finalProbability, 25), reasoning: `Número com maior convergência de modelos`, emoji: '💎', payout: '35:1' };
+    // PLENO (top1 da fusão) — slightly higher confidence based on confirmations
+    const plenoConf = Math.min(30, 15 + confirmations * 3 + (autoRepConfirms ? 5 : 0));
+    allBetSignals.pleno = { recommendation: `PLENO ${numTop1}`, numbers: [numTop1], confidence: plenoConf, reasoning: `Convergência ${confirmations}/6 fontes${autoRepConfirms ? ' + auto-repetição!' : ''}`, emoji: '💎', payout: '35:1' };
 
-    // RUA
+    // RUA — enhanced
     const streetNum = numTop1 > 0 ? numTop1 : 1;
     const streetStart = Math.floor((streetNum - 1) / 3) * 3 + 1;
     const ruaNums = [streetStart, streetStart+1, streetStart+2].filter(n => n >= 1 && n <= 36);
-    allBetSignals.rua = { recommendation: `RUA ${ruaNums.join('-')}`, numbers: ruaNums, confidence: Math.min(50, 25 + (numbers.slice(0,10).filter(n => ruaNums.includes(n)).length) * 8), reasoning: `Rua contendo o número top (${numTop1})`, emoji: '🛤️', payout: '11:1' };
+    const ruaHits = numbers.slice(0,10).filter(n => ruaNums.includes(n)).length;
+    allBetSignals.rua = { recommendation: `RUA ${ruaNums.join('-')}`, numbers: ruaNums, confidence: Math.min(55, 28 + ruaHits * 8), reasoning: `Rua ${ruaNums.join('-')}: ${ruaHits}/10 recentes contém`, emoji: '🛤️', payout: '11:1' };
 
     return json({
       signal: {
