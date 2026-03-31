@@ -431,7 +431,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="bg-secondary/40 rounded-xl border border-border/50 p-3.5 space-y-3">
+              <div className="glass rounded-xl border border-border/15 p-3.5 space-y-3 backdrop-blur-sm">
                 <div>
                   <label className="text-[9px] text-muted-foreground mb-1.5 block font-bold tracking-wide">VALOR DA APOSTA (R$)</label>
                   <div className="flex gap-1.5">
