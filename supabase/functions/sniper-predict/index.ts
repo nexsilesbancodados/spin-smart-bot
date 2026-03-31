@@ -1441,26 +1441,55 @@ Deno.serve(async (req) => {
     };
 
     const MESA_CALIBRATION: Record<string, number> = {
-      // Estratégias internas (número exato) — boost fixo
-      'auto_repeticao'         : 20,
-      'convergencia_absoluta'  : 18,
-      'ensemble_supremo'       : 15,
-      'matriz_numerica'        : 12,
-      'duplo_terminal'         : 10,
+      // Estratégias internas (número exato) — boost moderado (reduzido para dar espaço a apostas externas)
+      'auto_repeticao'         : 12,
+      'convergencia_absoluta'  : 10,
+      'ensemble_supremo'       : 8,
+      'matriz_numerica'        : 6,
+      'duplo_terminal'         : 5,
       // Fusao: boost quando WR > 40%, penaliza quando < 25%
-      'fusao_suprema': dynamicPenalty('fusao_suprema', 15),
-      // Estratégias externas: penalização dinâmica
-      'paridade_reversa'   : dynamicPenalty('paridade_reversa', -30),
-      'alto_baixo_reversa' : dynamicPenalty('alto_baixo_reversa', -30),
-      'cor_reversa'        : dynamicPenalty('cor_reversa', -30),
-      'cor_alternancia'    : dynamicPenalty('cor_alternancia', -15),
-      'alto_baixo'         : dynamicPenalty('alto_baixo', -15),
-      'paridade'           : dynamicPenalty('paridade', -15),
-      'cor'                : dynamicPenalty('cor', -8),
-      'cluster_regional'   : -20,
+      'fusao_suprema': dynamicPenalty('fusao_suprema', 8),
+      // Estratégias externas: penalização REDUZIDA — devem competir quando tendência é forte
+      'paridade_reversa'   : dynamicPenalty('paridade_reversa', -10),
+      'alto_baixo_reversa' : dynamicPenalty('alto_baixo_reversa', -10),
+      'cor_reversa'        : dynamicPenalty('cor_reversa', -10),
+      'cor_alternancia'    : dynamicPenalty('cor_alternancia', -5),
+      'alto_baixo'         : dynamicPenalty('alto_baixo', -5),
+      'paridade'           : dynamicPenalty('paridade', -5),
+      'cor'                : dynamicPenalty('cor', 0),
+      'duzias'             : dynamicPenalty('duzias', 0),
+      'duzia_unica'        : dynamicPenalty('duzia_unica', 0),
+      'coluna'             : dynamicPenalty('coluna', 0),
+      'cavalos'            : dynamicPenalty('cavalos', 0),
+      'terminal_alternation': dynamicPenalty('terminal_alternation', 0),
+      'cluster_regional'   : -8,
     };
     for (const [stType, adj] of Object.entries(MESA_CALIBRATION)) {
       strategyWeightAdjust[stType] = (strategyWeightAdjust[stType] || 0) + adj;
+    }
+    
+    // ── TREND-AWARE BOOST: quando uma tendência é forte numa dimensão, boost nessa categoria ──
+    if (trendEngine.colorTrend.strength >= 65) {
+      strategyWeightAdjust['cor'] = (strategyWeightAdjust['cor'] || 0) + 15;
+      strategyWeightAdjust['cor_alternancia'] = (strategyWeightAdjust['cor_alternancia'] || 0) + 10;
+    }
+    if (trendEngine.parityTrend.strength >= 65) {
+      strategyWeightAdjust['paridade'] = (strategyWeightAdjust['paridade'] || 0) + 15;
+    }
+    if (trendEngine.highLowTrend.strength >= 65) {
+      strategyWeightAdjust['alto_baixo'] = (strategyWeightAdjust['alto_baixo'] || 0) + 15;
+    }
+    if (trendEngine.dozenTrend.strength >= 60) {
+      strategyWeightAdjust['duzias'] = (strategyWeightAdjust['duzias'] || 0) + 15;
+      strategyWeightAdjust['duzia_unica'] = (strategyWeightAdjust['duzia_unica'] || 0) + 15;
+      strategyWeightAdjust['dozen_phase'] = (strategyWeightAdjust['dozen_phase'] || 0) + 12;
+      strategyWeightAdjust['pressao_retorno'] = (strategyWeightAdjust['pressao_retorno'] || 0) + 10;
+    }
+    if (trendEngine.sectorTrend.strength >= 60) {
+      strategyWeightAdjust['sniper'] = (strategyWeightAdjust['sniper'] || 0) + 12;
+      strategyWeightAdjust['voisins'] = (strategyWeightAdjust['voisins'] || 0) + 12;
+      strategyWeightAdjust['setor_oposto'] = (strategyWeightAdjust['setor_oposto'] || 0) + 10;
+      strategyWeightAdjust['jeu_zero'] = (strategyWeightAdjust['jeu_zero'] || 0) + 8;
     }
 
     // ERROR DEEP SCAN: categorize WHY each miss happened
