@@ -612,11 +612,11 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
           <span className="text-muted-foreground">Aposta atual:</span>
           <span className="font-bold text-primary font-mono">R${getCurrentBetAmount().toFixed(2)}</span>
           {config.useGale && stats.currentGaleStep > 0 && (
-            <span className="text-[8px] px-2 py-0.5 bg-yellow-500/15 text-yellow-400 rounded-md font-bold border border-yellow-500/30">
+            <span className="text-[8px] px-2 py-0.5 bg-gold/10 text-gold rounded-md font-bold border border-gold/20">
               GALE {stats.currentGaleStep}/{config.maxGaleSteps}
             </span>
           )}
-          <span className="text-muted-foreground ml-auto">Total: {stats.totalBets} apostas</span>
+          <span className="text-muted-foreground/40 ml-auto">Total: {stats.totalBets}</span>
         </div>
 
         {/* Waiting result */}
