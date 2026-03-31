@@ -1,6 +1,6 @@
 // Recalcula VALIDATED_MATRIX e PULL_RELIABILITY dos dados reais
 // Roda a cada 50 giros novos — mantém o sniper calibrado com a mesa atual
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 
