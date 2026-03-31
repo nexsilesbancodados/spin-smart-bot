@@ -1186,7 +1186,7 @@ Deno.serve(async (req) => {
       arbiterLog.push(`${name}: WR ${wr} | peso ${w.weight.toFixed(2)} | streak ${w.current_streak}`);
     }
     arbiterLog.push(`🏆 Vencedor: ${winner.modelName} → ${winner.label}`);
-    arbiterLog.push(`📊 Consenso: ${consensus}/5 modelos concordam`);
+    arbiterLog.push(`📊 Consenso: ${consensus}/7 modelos concordam`);
     arbiterLog.push(`💰 Kelly: ${(kelly.fraction * 100).toFixed(1)}% → Entrada ${kelly.force.toUpperCase()}`);
 
     // ── 8. Protection numbers ──────────────────────────────
@@ -1211,6 +1211,7 @@ Deno.serve(async (req) => {
       killSwitch: false,
       ensembleConsensus: consensus,
       ensembleConfidence,
+      totalModels: 7,
       arbiterLog,
       modelPerformance: Object.fromEntries(Object.entries(weights).map(([id, w]) => [id, {
         winRate: w.win_rate,
@@ -1219,7 +1220,7 @@ Deno.serve(async (req) => {
         streak: w.current_streak,
         weight: w.weight,
       }])),
-      modelSignals: scored.slice(0, 8).map(s => ({
+      modelSignals: scored.slice(0, 10).map(s => ({
         modelId: s.modelId,
         modelName: s.modelName,
         label: s.label,
@@ -1232,12 +1233,14 @@ Deno.serve(async (req) => {
         statistical: { weight: weights.statistical?.weight ?? 1, winRate: weights.statistical?.total_predictions > 0 ? `${(weights.statistical.win_rate * 100).toFixed(0)}%` : 'N/A', streak: weights.statistical?.current_streak ?? 0 },
         ballistic: { weight: weights.neural_pattern?.weight ?? 1, winRate: weights.neural_pattern?.total_predictions > 0 ? `${(weights.neural_pattern.win_rate * 100).toFixed(0)}%` : 'N/A', streak: weights.neural_pattern?.current_streak ?? 0 },
         reversion: { weight: weights.bayesian?.weight ?? 1, winRate: weights.bayesian?.total_predictions > 0 ? `${(weights.bayesian.win_rate * 100).toFixed(0)}%` : 'N/A', streak: weights.bayesian?.current_streak ?? 0 },
+        pattern_discovery: { weight: weights.pattern_discovery?.weight ?? 1, winRate: weights.pattern_discovery?.total_predictions > 0 ? `${(weights.pattern_discovery.win_rate * 100).toFixed(0)}%` : 'N/A', streak: weights.pattern_discovery?.current_streak ?? 0 },
+        rl_optimizer: { weight: weights.rl_optimizer?.weight ?? 1, winRate: weights.rl_optimizer?.total_predictions > 0 ? `${(weights.rl_optimizer.win_rate * 100).toFixed(0)}%` : 'N/A', streak: weights.rl_optimizer?.current_streak ?? 0 },
       },
       aiReasoning: {
         betType: winner.betType,
         betDescription: winner.reasoning,
         patternIdentified: winner.label,
-        suggestedBet: `${winner.label} — Entrada ${kelly.force.toUpperCase()} (${consensus}/5 consenso)`,
+        suggestedBet: `${winner.label} — Entrada ${kelly.force.toUpperCase()} (${consensus}/7 consenso)`,
         consensus,
         confidence: ensembleConfidence,
       },
