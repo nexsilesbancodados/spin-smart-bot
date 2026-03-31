@@ -6728,8 +6728,8 @@ serve(async (req) => {
     let aiMarketAnalysis: any = null;
     
     try {
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (LOVABLE_API_KEY && numbers.length >= 15) {
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY"); // kept for supabase auth only
+      if (numbers.length >= 15) {
         const last30 = numbers.slice(0, 30);
         const last5Terms = last30.slice(0, 5).map(n => n % 10);
         const last10Terms = last30.slice(0, 10).map(n => n % 10);
@@ -6993,7 +6993,7 @@ Responda APENAS JSON:
         // =====================================================
         const NVIDIA_API_KEY = Deno.env.get("NVIDIA_API_KEY");
         const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-        const LOVABLE_API_KEY_AI = LOVABLE_API_KEY;
+        // Lovable AI removido — usando apenas NVIDIA + DeepSeek
 
         const aiSystemPrompt = `Você é o cérebro supremo de análise de roleta europeia. Integra física do cilindro, matemática de ciclos, tabelas de puxada da Mesa Brasileira Playtech e aprendizado acumulado.
 
@@ -7056,11 +7056,7 @@ REGRAS ABSOLUTAS:
         // Build parallel AI calls — ALL available chat models
         const aiCalls: Promise<AiResult>[] = [];
 
-        // === LOVABLE AI (Gemini) ===
-        if (LOVABLE_API_KEY_AI) {
-          aiCalls.push(callAi('Gemini-Flash', 'https://ai.gateway.lovable.dev/v1/chat/completions',
-            { "Authorization": `Bearer ${LOVABLE_API_KEY_AI}` }, 'google/gemini-2.5-flash'));
-        }
+        // === LOVABLE AI REMOVIDO — não usar ===
 
         // === DEEPSEEK ===
         if (DEEPSEEK_API_KEY) {
