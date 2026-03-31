@@ -525,7 +525,7 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
         <div>
           <button
             onClick={() => setShowBetTypes(!showBetTypes)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-secondary/50 border border-border/50 text-[9px] font-bold text-foreground hover:bg-secondary transition-all"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl glass border border-border/15 text-[9px] font-bold text-foreground/80 hover:border-primary/20 transition-all backdrop-blur-sm"
           >
             <span>
               {manualBetType === 'auto' ? '🤖 Auto (Sinal da IA)' : 
