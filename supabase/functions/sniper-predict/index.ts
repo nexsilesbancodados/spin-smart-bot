@@ -1489,6 +1489,7 @@ Deno.serve(async (req) => {
       strategyWeightAdjust['sniper'] = (strategyWeightAdjust['sniper'] || 0) + 12;
       strategyWeightAdjust['voisins'] = (strategyWeightAdjust['voisins'] || 0) + 12;
       strategyWeightAdjust['setor_oposto'] = (strategyWeightAdjust['setor_oposto'] || 0) + 10;
+      strategyWeightAdjust['setor_alternancia'] = (strategyWeightAdjust['setor_alternancia'] || 0) + 15;
       strategyWeightAdjust['jeu_zero'] = (strategyWeightAdjust['jeu_zero'] || 0) + 8;
     }
 
@@ -2063,8 +2064,9 @@ Deno.serve(async (req) => {
     // K1-K30: CONCENTRAÇÃO vs DISPERSÃO (Cluster vs Gangorra)
     // Mede se os últimos 15 números caem em poucos setores (concentrado)
     // ou cruzam o cilindro alternadamente (gangorra)
-    const mesaFlowState: { mode: 'concentracao' | 'gangorra' | 'neutro'; clusterZone: string | null; gangorraSequence: string[]; strength: number } = {
-      mode: 'neutro', clusterZone: null, gangorraSequence: [], strength: 0
+    const mesaFlowState: { mode: 'concentracao' | 'gangorra' | 'neutro'; clusterZone: string | null; gangorraSequence: string[]; strength: number; sectorAlternation: { active: boolean; patternPair: [string, string] | null; predictedNextSector: string | null; confidence: number; historicalHitRate: number; depth: number } } = {
+      mode: 'neutro', clusterZone: null, gangorraSequence: [], strength: 0,
+      sectorAlternation: { active: false, patternPair: null, predictedNextSector: null, confidence: 0, historicalHitRate: 0, depth: 0 }
     };
 
     if (numbers.length >= 15) {
@@ -2089,18 +2091,115 @@ Deno.serve(async (req) => {
           if (secSeq[i] !== secSeq[i-1]) alternations++;
         }
         const alternationRate = alternations / (secSeq.length - 1);
+
+        // ============================================================
+        // SECTOR ALTERNATION PATTERN RECOGNITION — Deep Pattern Scan
+        // Detects repeating A↔B sequences: Zero↔Tiers, Voisins↔Orphelins, etc.
+        // Validates against full history (up to 200 giros) before confirming
+        // ============================================================
+        const SECTOR_NAMES = ['Voisins', 'Tiers', 'Orphelins', 'Zero'] as const;
+        const allSectorSeq = numbers.slice(0, Math.min(200, numbers.length)).map(n => getSector(n));
+
+        // 1. Detect recent sector pair alternation (last 8 giros)
+        const recentSec = allSectorSeq.slice(0, 8);
+        let bestAltPair: [string, string] | null = null;
+        let bestAltDepth = 0;
+        let bestAltScore = 0;
+
+        for (let a = 0; a < SECTOR_NAMES.length; a++) {
+          for (let b = a + 1; b < SECTOR_NAMES.length; b++) {
+            const sA = SECTOR_NAMES[a], sB = SECTOR_NAMES[b];
+            // Check if recent numbers follow A→B→A→B or B→A→B→A pattern
+            let matchDepth = 0;
+            for (let i = 0; i < recentSec.length - 1; i++) {
+              const cur = recentSec[i], prev = recentSec[i + 1];
+              if ((cur === sA && prev === sB) || (cur === sB && prev === sA)) {
+                matchDepth++;
+              } else if (cur !== sA && cur !== sB) {
+                break; // broken chain
+              }
+            }
+            if (matchDepth >= 2 && matchDepth > bestAltDepth) {
+              bestAltPair = [sA, sB];
+              bestAltDepth = matchDepth;
+              bestAltScore = matchDepth;
+            }
+          }
+        }
+
+        // 2. Validate against deeper history (scan 200 giros for same pair)
+        if (bestAltPair && bestAltDepth >= 2) {
+          const [pA, pB] = bestAltPair;
+          let historicalMatches = 0;
+          let historicalTests = 0;
+          // Scan for transitions pA→pB or pB→pA in full history
+          for (let i = 0; i < allSectorSeq.length - 2; i++) {
+            const cur = allSectorSeq[i], prev = allSectorSeq[i + 1];
+            if ((prev === pA && cur === pB) || (prev === pB && cur === pA)) {
+              historicalTests++;
+              // Did the NEXT one after this transition continue the pattern?
+              if (i > 0) {
+                const next = allSectorSeq[i - 1];
+                if ((cur === pA && next === pB) || (cur === pB && next === pA)) {
+                  historicalMatches++;
+                }
+              }
+            }
+          }
+          const histHitRate = historicalTests >= 5 ? historicalMatches / historicalTests : 0;
+
+          // Predict which sector comes next based on the alternation
+          const lastSector = recentSec[0];
+          const predictedNext = lastSector === pA ? pB : lastSector === pB ? pA : null;
+
+          if (bestAltDepth >= 2 && (histHitRate > 0.30 || bestAltDepth >= 3)) {
+            mesaFlowState.sectorAlternation = {
+              active: true,
+              patternPair: bestAltPair,
+              predictedNextSector: predictedNext,
+              confidence: Math.min(90, 40 + bestAltDepth * 12 + Math.round(histHitRate * 30)),
+              historicalHitRate: +histHitRate.toFixed(2),
+              depth: bestAltDepth,
+            };
+            blocoK += Math.min(25, 8 + bestAltDepth * 5);
+            const confPct = mesaFlowState.sectorAlternation.confidence;
+            aiLearnings.push(`🔄 ALTERNÂNCIA DE SETOR: ${pA}↔${pB} (${bestAltDepth}x consecutivo, hist ${(histHitRate*100).toFixed(0)}%) → próximo: ${predictedNext || '?'} [${confPct}%]`);
+            if (bestAltDepth >= 4) {
+              aiLearnings.push(`⚡ PADRÃO FORTE: ${pA}↔${pB} ${bestAltDepth}x seguido — alta probabilidade de continuação`);
+            }
+          }
+        }
+
+        // 3. Also detect 3-sector rotation: A→B→C→A→B→C
+        if (!mesaFlowState.sectorAlternation.active && recentSec.length >= 6) {
+          const triplet = [recentSec[2], recentSec[1], recentSec[0]]; // oldest→newest
+          if (triplet[0] !== triplet[1] && triplet[1] !== triplet[2] && triplet[0] !== triplet[2]) {
+            // Check if pattern repeats
+            if (recentSec[3] === triplet[0] && recentSec[4] === triplet[1] && recentSec[5] === triplet[2]) {
+              const predictedNext = triplet[(3 - 0) % 3]; // next in rotation
+              const nextInRotation = recentSec[0] === triplet[2] ? triplet[0] : recentSec[0] === triplet[0] ? triplet[1] : triplet[2];
+              mesaFlowState.sectorAlternation = {
+                active: true,
+                patternPair: [triplet.join('→'), ''],
+                predictedNextSector: nextInRotation,
+                confidence: 65,
+                historicalHitRate: 0,
+                depth: 2,
+              };
+              blocoK += 15;
+              aiLearnings.push(`🔄 ROTAÇÃO 3 SETORES: ${triplet.join('→')} → próximo: ${nextInRotation}`);
+            }
+          }
+        }
+
         if (alternationRate > 0.75) {
           mesaFlowState.mode = 'gangorra';
           mesaFlowState.gangorraSequence = secSeq.slice(0, 5);
           mesaFlowState.strength = alternationRate;
-          blocoK += 25;
-          aiLearnings.push(`🔄 GANGORRA: ${alternationRate.toFixed(0)}% alternância de setores`);
-
-          // Detect sector alternation pattern (Tiers→Voisins→Tiers→Voisins)
-          if (secSeq.length >= 4 && secSeq[0] !== secSeq[1] && secSeq[1] === secSeq[3] && secSeq[0] === secSeq[2]) {
-            aiLearnings.push(`⚡ CONVERGÊNCIA DE ALTERNÂNCIA: ${secSeq[0]}↔${secSeq[1]} (padrão cíclico)`);
-            blocoK += 15;
+          if (!mesaFlowState.sectorAlternation.active) {
+            blocoK += 25;
           }
+          aiLearnings.push(`🔄 GANGORRA: ${(alternationRate * 100).toFixed(0)}% alternância de setores`);
         } else {
           blocoK += 10;
         }
@@ -4076,7 +4175,17 @@ Deno.serve(async (req) => {
       // FLOW DYNAMICS: concentration bonus
       if (mesaFlowState.mode === 'concentracao' && mesaFlowState.clusterZone && getSector(n) === mesaFlowState.clusterZone) { s += 3; r.push(`🔥 Zona ${mesaFlowState.clusterZone}`); }
       // FLOW DYNAMICS: gangorra prediction (opposite sector)
-      if (mesaFlowState.mode === 'gangorra' && mesaFlowState.gangorraSequence.length >= 2) {
+      // SECTOR ALTERNATION PATTERN — strong boost when pattern is confirmed
+      if (mesaFlowState.sectorAlternation.active && mesaFlowState.sectorAlternation.predictedNextSector) {
+        const predSec = mesaFlowState.sectorAlternation.predictedNextSector;
+        if (getSector(n) === predSec) {
+          const altConf = mesaFlowState.sectorAlternation.confidence;
+          const altDepth = mesaFlowState.sectorAlternation.depth;
+          const boost = Math.min(8, 2 + altDepth * 1.5 + (altConf > 70 ? 2 : 0));
+          s += boost;
+          r.push(`🔄 Alternância ${mesaFlowState.sectorAlternation.patternPair?.[0]}↔${mesaFlowState.sectorAlternation.patternPair?.[1]}→${predSec} (${altDepth}x)`);
+        }
+      } else if (mesaFlowState.mode === 'gangorra' && mesaFlowState.gangorraSequence.length >= 2) {
         const lastSec = getSector(numbers[0]);
         const predictedSec = lastSec === 'Voisins' ? 'Tiers' : lastSec === 'Tiers' ? 'Voisins' : lastSec === 'Orphelins' ? 'Voisins' : 'Tiers';
         if (getSector(n) === predictedSec) { s += 2.5; r.push(`🔄 Gangorra→${predictedSec}`); }
@@ -4622,7 +4731,24 @@ Deno.serve(async (req) => {
       justification: `Balanço de cilindro favorece ${opLabel}. ${seesawBias === 'opposite' ? 'Gangorra detectada contra Zero.' : `${opLabel} com concentração recente.`}`,
     });
 
-    // 6. QUEBRA DE SEQUÊNCIA (contra cor/paridade dominante)
+    // 5b. SECTOR ALTERNATION — dedicated strategy when A↔B pattern is confirmed
+    if (mesaFlowState.sectorAlternation.active && mesaFlowState.sectorAlternation.predictedNextSector) {
+      const predSector = mesaFlowState.sectorAlternation.predictedNextSector;
+      const sectorNums = predSector === 'Voisins' ? VOISINS : predSector === 'Tiers' ? TIERS : predSector === 'Orphelins' ? ORPHELINS : JEU_ZERO;
+      const altConf = mesaFlowState.sectorAlternation.confidence;
+      const altDepth = mesaFlowState.sectorAlternation.depth;
+      const altHist = mesaFlowState.sectorAlternation.historicalHitRate;
+      const altScore = sumScores(sectorNums) + altDepth * 8 + Math.round(altConf * 0.3) + (altHist > 0.4 ? 12 : 0);
+      const altBt = backtestSet(sectorNums);
+      const pairLabel = mesaFlowState.sectorAlternation.patternPair;
+      strategies.push({
+        type: 'setor_alternancia', label: `Alternância ${pairLabel?.[0]}↔${pairLabel?.[1]} → ${predSector}`, emoji: '🔄',
+        numbers: [...sectorNums], coverage: (sectorNums.length / 37) * 100, payout: 36 - sectorNums.length,
+        score: altScore + altBt * 18,
+        probability: Math.min(85, Math.round(40 + altDepth * 8 + altConf * 0.3 + altBt * 25)),
+        justification: `Padrão de alternância ${pairLabel?.[0]}↔${pairLabel?.[1]} detectado ${altDepth}x consecutivo. Taxa histórica: ${(altHist * 100).toFixed(0)}%. Próximo setor previsto: ${predSector}.`,
+      });
+    }
     let breakNums: number[] = [];
     let breakLabel = '';
     let breakExtra = 0;
@@ -5939,7 +6065,7 @@ Deno.serve(async (req) => {
       if (mesaMode === 'matematico' && ['cavalos', 'duzias', 'terminal_alternation'].includes(st.type)) st.score += 5;
 
       // TIME-OF-DAY BIAS: night favors physical, day favors math
-      if (['sniper', 'voisins', 'setor_oposto', 'cylinder_bias'].includes(st.type)) st.score += (timeAwareness.physicalBias - 1) * 15;
+      if (['sniper', 'voisins', 'setor_oposto', 'setor_alternancia', 'cylinder_bias'].includes(st.type)) st.score += (timeAwareness.physicalBias - 1) * 15;
       if (['cavalos', 'duzias', 'terminal_alternation', 'dozen_phase'].includes(st.type)) st.score += (timeAwareness.mathBias - 1) * 15;
 
       // CONSECUTIVE HIT PRIORITY BOOST — TRIPLICADO para priorizar acertos em sequência
@@ -5947,7 +6073,7 @@ Deno.serve(async (req) => {
       if (chBoost > 0) st.score += chBoost * 2;
 
       // ERROR-BASED ADAPTATION: if errors are mostly from wrong sector, penalize sector strategies
-      if (errorCategories.wrong_sector >= 2 && ['sniper', 'voisins', 'setor_oposto'].includes(st.type)) st.score -= 10;
+      if (errorCategories.wrong_sector >= 2 && ['sniper', 'voisins', 'setor_oposto', 'setor_alternancia'].includes(st.type)) st.score -= 10;
       if (errorCategories.wrong_terminal >= 2 && ['cavalos', 'terminal_alternation'].includes(st.type)) st.score -= 10;
       if (errorCategories.deflector_bounce >= 2) st.score -= 5;
 
@@ -5978,7 +6104,7 @@ Deno.serve(async (req) => {
       else if (kellyBetting.unitMultiplier <= 0.5) st.score -= 5;
 
       // ====== CHAOS PENALTY ======
-      if (chaoticDealer && ['sniper', 'voisins', 'setor_oposto'].includes(st.type)) st.score -= 10;
+      if (chaoticDealer && ['sniper', 'voisins', 'setor_oposto', 'setor_alternancia'].includes(st.type)) st.score -= 10;
       if (!chaoticDealer && microArcStd < 2 && ['sniper', 'voisins'].includes(st.type)) st.score += 8;
 
       // PERFORMANCE-BASED WEIGHT: REFORÇADO — prioriza estratégias com melhor histórico de acertos
@@ -6035,7 +6161,7 @@ Deno.serve(async (req) => {
       
       // Find best alternative from a DIFFERENT category
       const stuckCategory = (() => {
-        if (['sniper','voisins','setor_oposto','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','jeu_zero'].includes(stuckType)) return 'setor';
+        if (['sniper','voisins','setor_oposto','setor_alternancia','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','jeu_zero'].includes(stuckType)) return 'setor';
         if (['cavalos','cavalos_comp','cavalo_split'].includes(stuckType)) return 'cavalos';
         if (['terminal_alternation','duplo_terminal','terminais_cruzados','poucas_fichas','terminal_alto_baixo'].includes(stuckType)) return 'terminal';
         if (['duzia_unica','dozen_phase','duzias','pressao_retorno','duzia_progressiva'].includes(stuckType)) return 'duzia';
@@ -6044,7 +6170,7 @@ Deno.serve(async (req) => {
       })();
       
       const getCat = (type: string) => {
-        if (['sniper','voisins','setor_oposto','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','jeu_zero'].includes(type)) return 'setor';
+        if (['sniper','voisins','setor_oposto','setor_alternancia','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','jeu_zero'].includes(type)) return 'setor';
         if (['cavalos','cavalos_comp','cavalo_split'].includes(type)) return 'cavalos';
         if (['terminal_alternation','duplo_terminal','terminais_cruzados','poucas_fichas','terminal_alto_baixo'].includes(type)) return 'terminal';
         if (['duzia_unica','dozen_phase','duzias','pressao_retorno','duzia_progressiva'].includes(type)) return 'duzia';
@@ -6418,7 +6544,7 @@ Deno.serve(async (req) => {
     // STRATEGY FILTER — if user selected a category, only keep matching strategies
     if (strategyFilterParam) {
       const catMap: Record<string, string[]> = {
-        setor: ['sniper','voisins','setor_oposto','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','jeu_zero','vizinhos','setor','orphelins','tiers'],
+        setor: ['sniper','voisins','setor_oposto','setor_alternancia','ultra_sniper','ritmo_calibrado','cylinder_bias','cluster_regional','setor_alternancia','jeu_zero','vizinhos','setor','orphelins','tiers'],
         cavalos: ['cavalos','cavalos_comp','cavalo_split'],
         terminal: ['terminal','terminal_comp','terminal_alternation','duplo_terminal','terminais_cruzados','duzia_terminal_corr','terminal_alto_baixo'],
         duzia: ['duzia','duzia_unica','dozen_phase','duzias','pressao_retorno','duzia_progressiva'],
@@ -8050,7 +8176,7 @@ Responda APENAS JSON:
       } else if (t === 'convergencia_absoluta') {
         const mainNum = nums[0];
         bets.push({ type: 'absoluta', label: `Convergência Absoluta → ${mainNum}`, detail: `MÁXIMA CONFIANÇA: ${nums.length} números validados por 5+ dimensões independentes. Pleno ${mainNum} + vizinhos: ${nums.slice(1, 5).join(', ')}`, emoji: '💠' });
-      } else if (t === 'sniper' || t === 'voisins' || t === 'setor_oposto') {
+      } else if (t === 'sniper' || t === 'voisins' || t === 'setor_oposto' || t === 'setor_alternancia') {
         const sector = nums.length > 0 ? getSector(nums[0]) : 'Voisins';
         bets.push({ type: 'setor', label: `Setor ${sector}`, detail: `Cubra o setor ${sector} na roda`, emoji: '🎯' });
         const mainNum = nums[0];
@@ -8155,7 +8281,7 @@ Responda APENAS JSON:
 
     // Generate diverse alternatives — pick from DIFFERENT bet categories
     const getBetCategory = (type: string): string => {
-      if (['sniper', 'voisins', 'setor_oposto', 'ultra_sniper', 'ritmo_calibrado', 'cylinder_bias', 'cluster_regional', 'jeu_zero'].includes(type)) return 'setor';
+      if (['sniper', 'voisins', 'setor_oposto', 'setor_alternancia', 'ultra_sniper', 'ritmo_calibrado', 'cylinder_bias', 'cluster_regional', 'jeu_zero'].includes(type)) return 'setor';
       if (['cavalos', 'cavalos_comp', 'cavalo_split'].includes(type)) return 'cavalos';
       if (['terminal_alternation', 'duplo_terminal', 'terminais_cruzados', 'poucas_fichas', 'terminal_alto_baixo', 'duzia_terminal_corr'].includes(type)) return 'terminal';
       if (['duzia_unica', 'dozen_phase', 'duzias', 'pressao_retorno', 'duzia_progressiva'].includes(type)) return 'duzia';
