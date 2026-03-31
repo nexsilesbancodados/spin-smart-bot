@@ -1404,14 +1404,14 @@ IATab.displayName = 'IATab';
 const CollapsibleSection = memo(({ title, badge, isOpen, onToggle, children }: {
   title: string; badge?: string; isOpen: boolean; onToggle: () => void; children: React.ReactNode;
 }) => (
-  <div className="bg-card/80 rounded-xl border border-border/50 overflow-hidden backdrop-blur-sm">
+  <div className="glass rounded-xl border border-border/15 overflow-hidden">
     <button onClick={onToggle} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5 transition-all group">
       <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-        <ChevronDown className="w-4 h-4 text-primary/50 group-hover:text-primary transition-colors" />
+        <ChevronDown className="w-4 h-4 text-primary/40 group-hover:text-primary transition-colors" />
       </motion.div>
-      <span className="font-display text-[11px] tracking-[0.12em] font-bold text-primary/80 group-hover:text-primary transition-colors">{title}</span>
+      <span className="font-display text-[11px] tracking-[0.12em] font-bold text-primary/70 group-hover:text-primary transition-colors">{title}</span>
       {badge && (
-        <span className="text-[8px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/15 font-bold font-mono ml-auto">
+        <span className="text-[8px] px-2 py-0.5 rounded-full bg-primary/8 text-primary border border-primary/15 font-bold font-mono ml-auto">
           {badge}
         </span>
       )}
