@@ -8324,8 +8324,8 @@ Responda APENAS JSON:
     const colMode = [0,0,0];
     numbers.slice(0,10).filter(n=>n>0).forEach(n => { if(COL1.includes(n)) colMode[0]++; else if(COL2.includes(n)) colMode[1]++; else colMode[2]++; });
     const bestCol = colMode.indexOf(Math.max(...colMode)) + 1;
-    const colNums = bestCol===1 ? COL1 : bestCol===2 ? COL2 : COL3;
-    allBetSignals.coluna = { recommendation: `COLUNA ${bestCol}`, numbers: colNums, confidence: Math.min(65, 35 + colMode[bestCol-1] * 4), reasoning: `Coluna ${bestCol} com ${colMode[bestCol-1]}/10 recentes`, emoji: '📐', payout: '2:1' };
+    const colNumsBet = bestCol===1 ? COL1 : bestCol===2 ? COL2 : COL3;
+    allBetSignals.coluna = { recommendation: `COLUNA ${bestCol}`, numbers: colNumsBet, confidence: Math.min(65, 35 + colMode[bestCol-1] * 4), reasoning: `Coluna ${bestCol} com ${colMode[bestCol-1]}/10 recentes`, emoji: '📐', payout: '2:1' };
 
     // SETOR
     const teSec = trendEngine.sectorTrend;
