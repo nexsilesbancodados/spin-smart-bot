@@ -501,6 +501,7 @@ const Index = () => {
                 <PullRadar pullPatterns={sniperData?.pullPatterns || []} latestNumber={allNumbers[0] ?? 0} />
                 <Scanner500 layerResults={sniperData?.layerResults || null} isScanning={false} />
                 <PatternPanel24h sniperData={sniperData} />
+                <BacktestPanel />
               </div>
             </CollapsibleSection>
 
