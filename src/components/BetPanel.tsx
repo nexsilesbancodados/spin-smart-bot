@@ -271,11 +271,23 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
     } catch { /* ignore */ }
   }, []);
 
+  // Get bet numbers based on manual type or AI signal
+  const getBetNumbers = useCallback((): number[] => {
+    if (manualBetType === 'auto') {
+      return sniperData?.strategy?.numbers?.slice(0, 12) || [];
+    }
+    if (manualBetType === 'custom') {
+      return customNumbers.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n >= 0 && n <= 36).slice(0, 15);
+    }
+    const found = MANUAL_BET_TYPES.find(t => t.id === manualBetType);
+    return found?.numbers || [];
+  }, [manualBetType, customNumbers, sniperData?.strategy?.numbers]);
+
   // Place a bet (manual or auto)
   const placeBet = useCallback(() => {
-    if (!sniperData?.signal || !sniperData?.strategy?.numbers || stats.waitingResult || stats.stopped) return;
-
-    const numbers = sniperData.strategy.numbers.slice(0, 12);
+    const numbers = getBetNumbers();
+    if (numbers.length === 0 || stats.waitingResult || stats.stopped) return;
+    if (manualBetType === 'auto' && (!sniperData?.signal || !sniperData?.strategy?.numbers)) return;
     const betAmount = getCurrentBetAmount();
 
     setStats(prev => ({
