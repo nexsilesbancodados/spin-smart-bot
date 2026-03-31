@@ -470,11 +470,11 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
                     <p className="text-[8px] text-muted-foreground">Dobra aposta após perda</p>
                   </div>
                   <button onClick={() => setConfig(prev => ({ ...prev, useGale: !prev.useGale }))}
-                    className={`w-11 h-6 rounded-full transition-all relative ${
-                      config.useGale ? 'bg-primary' : 'bg-secondary border border-border'
+                    className={`w-11 h-6 rounded-full transition-all relative border ${
+                      config.useGale ? 'bg-primary/30 border-primary/40' : 'bg-background/20 border-border/20'
                     }`}>
-                    <div className="w-4.5 h-4.5 rounded-full bg-white shadow-sm absolute top-[3px] transition-all"
-                      style={{ left: config.useGale ? '22px' : '3px', width: '18px', height: '18px' }} />
+                    <div className={`w-[18px] h-[18px] rounded-full shadow-sm absolute top-[3px] transition-all ${config.useGale ? 'bg-primary' : 'bg-muted-foreground/40'}`}
+                      style={{ left: config.useGale ? '22px' : '3px' }} />
                   </button>
                 </div>
 
