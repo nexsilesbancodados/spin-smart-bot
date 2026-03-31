@@ -101,7 +101,7 @@ const LiveStatsBar = memo(({ allNumbers }: Props) => {
               </div>
               <div className="flex-1">
                 <span className="text-[10px] font-display font-bold text-foreground uppercase tracking-[0.15em]">Atraso (Gap)</span>
-                <div className="text-[7px] text-muted-foreground/40 font-mono">Desvio padrão σ</div>
+                <div className="text-[7px] text-muted-foreground/40 font-mono">Desvio padrão σ • {stats.gaps.length} alertas</div>
               </div>
             </div>
           </div>
@@ -152,6 +152,7 @@ const LiveStatsBar = memo(({ allNumbers }: Props) => {
                 <span className="text-[10px] font-display font-bold text-foreground uppercase tracking-[0.15em]">Tendências</span>
                 <div className="text-[7px] text-muted-foreground/40 font-mono">Últimos 20 giros</div>
               </div>
+              <span className="text-[7px] px-2 py-0.5 rounded-lg glass border border-primary/15 text-primary font-bold font-mono">{stats.trends.length} ativas</span>
             </div>
           </div>
           <div className="px-4 pb-3.5">
@@ -184,6 +185,7 @@ const LiveStatsBar = memo(({ allNumbers }: Props) => {
               <div className="relative flex items-center gap-1.5">
                 <Flame className="w-4 h-4 text-gold" />
                 <span className="text-[9px] font-display font-bold text-gold uppercase tracking-wider">Quentes</span>
+                <span className="text-[6px] px-1.5 py-0.5 rounded-md bg-gold/10 text-gold font-mono ml-auto">{stats.hotNums.length}</span>
               </div>
             </div>
             <div className="px-4 pb-3.5">
@@ -194,14 +196,13 @@ const LiveStatsBar = memo(({ allNumbers }: Props) => {
                     initial={{ scale: 0.6, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: i * 0.05 }}
-                    className={`w-10 h-10 rounded-xl text-[11px] font-black text-white flex items-center justify-center ring-1 ring-gold/40 shadow-sm shadow-gold/15 ${numBg(h.num)}`}
+                    whileHover={{ scale: 1.12 }}
+                    className={`relative w-10 h-10 rounded-xl text-[11px] font-black text-white flex items-center justify-center ring-1 ring-gold/40 shadow-sm shadow-gold/15 cursor-pointer ${numBg(h.num)}`}
                   >
                     {h.num}
+                    <span className="absolute -top-1.5 -right-1.5 text-[6px] font-mono font-bold bg-card/90 text-gold px-1 rounded-full border border-gold/20">{h.count}×</span>
                   </motion.div>
                 ))}
-              </div>
-              <div className="text-[7px] text-muted-foreground/40 mt-2 font-mono">
-                {stats.hotNums.map(h => `${h.num}(${h.count}×)`).join(' · ')}
               </div>
             </div>
           </div>
@@ -214,6 +215,7 @@ const LiveStatsBar = memo(({ allNumbers }: Props) => {
               <div className="relative flex items-center gap-1.5">
                 <Snowflake className="w-4 h-4 text-blue-400" />
                 <span className="text-[9px] font-display font-bold text-blue-400 uppercase tracking-wider">Frios</span>
+                <span className="text-[6px] px-1.5 py-0.5 rounded-md bg-blue-400/10 text-blue-400 font-mono ml-auto">{stats.coldNums.length}</span>
               </div>
             </div>
             <div className="px-4 pb-3.5">
@@ -224,14 +226,12 @@ const LiveStatsBar = memo(({ allNumbers }: Props) => {
                     initial={{ scale: 0.6, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: i * 0.05 }}
-                    className={`w-10 h-10 rounded-xl text-[11px] font-black text-white flex items-center justify-center opacity-45 ring-1 ring-blue-400/30 ${numBg(c.num)}`}
+                    className={`relative w-10 h-10 rounded-xl text-[11px] font-black text-white flex items-center justify-center opacity-45 ring-1 ring-blue-400/30 ${numBg(c.num)}`}
                   >
                     {c.num}
+                    <span className="absolute -top-1.5 -right-1.5 text-[6px] font-mono font-bold bg-card/90 text-blue-400 px-1 rounded-full border border-blue-400/20">{c.count}×</span>
                   </motion.div>
                 ))}
-              </div>
-              <div className="text-[7px] text-muted-foreground/40 mt-2 font-mono">
-                {stats.coldNums.map(c => `${c.num}(${c.count}×)`).join(' · ')}
               </div>
             </div>
           </div>

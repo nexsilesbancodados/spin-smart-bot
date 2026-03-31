@@ -1,5 +1,6 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
-import { Magnet, MapPin, Crosshair, Sparkles } from 'lucide-react';
+import { Magnet, MapPin, Crosshair, Sparkles, Target } from 'lucide-react';
 
 const WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 const RED_NUMBERS = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
@@ -17,13 +18,14 @@ interface Props {
   latestNumber: number;
 }
 
-const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
+const PullRadar = memo(({ pullPatterns, latestNumber }: Props) => {
   if (!pullPatterns || pullPatterns.length === 0) return null;
   const activePull = pullPatterns.find(p => p.source === latestNumber);
   if (!activePull) return null;
 
   const targetNums = new Set(activePull.targets.map(t => t.num));
   const maxCount = Math.max(...activePull.targets.map(t => t.count), 1);
+  const totalPulls = activePull.targets.reduce((a, t) => a + t.count, 0);
 
   return (
     <motion.div 
@@ -36,12 +38,17 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-neon-pink/4" />
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
         <div className="relative flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 to-neon-pink/10 border border-primary/20 flex items-center justify-center shadow-[0_0_15px_hsl(var(--primary)/0.2)]">
+          <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 to-neon-pink/10 border border-primary/20 flex items-center justify-center shadow-[0_0_15px_hsl(var(--primary)/0.2)]">
             <Magnet className="w-5 h-5 text-primary" />
+            <motion.div
+              animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-neon-green shadow-[0_0_6px_hsl(var(--neon-green)/0.5)] border border-background"
+            />
           </div>
           <div className="flex-1 min-w-0">
             <span className="font-display text-xs tracking-[0.15em] font-bold text-primary uppercase">Radar de Puxada</span>
-            <div className="text-[8px] text-muted-foreground/50 font-mono mt-0.5">Nº {latestNumber} → alvos mais prováveis</div>
+            <div className="text-[8px] text-muted-foreground/50 font-mono mt-0.5">Nº {latestNumber} → {activePull.targets.length} alvos ({totalPulls} ocorrências)</div>
           </div>
           <span className="text-[9px] px-3 py-1.5 rounded-xl glass text-primary border border-primary/15 font-bold font-display tracking-wider flex items-center gap-1.5">
             <Sparkles className="w-3 h-3" />
@@ -52,21 +59,22 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
 
       {/* Mini cylinder */}
       <div className="px-3 pb-3">
-        <div className="flex flex-wrap gap-[3px] justify-center py-3 glass rounded-xl p-3 border border-border/10 relative overflow-hidden">
+        <div className="flex flex-wrap gap-[3px] justify-center glass rounded-xl p-3 border border-border/10 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/2 via-transparent to-neon-pink/2" />
           {WHEEL.map((n, i) => {
             const isSource = n === latestNumber;
             const isTarget = targetNums.has(n);
             const targetInfo = activePull.targets.find(t => t.num === n);
             const c = getColor(n);
+            const intensity = targetInfo ? targetInfo.count / maxCount : 0;
 
             return (
               <motion.div
                 key={i}
                 initial={{ scale: 0.8 }}
                 animate={{
-                  scale: isSource ? 1.35 : isTarget ? 1.15 : 0.85,
-                  opacity: isSource || isTarget ? 1 : 0.15,
+                  scale: isSource ? 1.4 : isTarget ? 1.1 + intensity * 0.15 : 0.8,
+                  opacity: isSource || isTarget ? 1 : 0.12,
                 }}
                 transition={{ duration: 0.3, delay: isTarget ? i * 0.01 : 0 }}
                 className={`relative w-[22px] h-[22px] rounded-full flex items-center justify-center text-[7px] font-bold border transition-all ${
@@ -89,43 +97,50 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
         </div>
       </div>
 
-      {/* Pull targets with bars */}
+      {/* Pull targets with enhanced bars */}
       <div className="px-4 pb-3 space-y-1.5">
-        <div className="flex items-center gap-1.5 mb-2">
-          <Crosshair className="w-3.5 h-3.5 text-primary/50" />
-          <span className="text-[9px] font-bold text-muted-foreground/60 font-display tracking-[0.15em] uppercase">Alvos Prioritários</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5 text-primary/50" />
+            <span className="text-[9px] font-bold text-muted-foreground/60 font-display tracking-[0.15em] uppercase">Alvos Prioritários</span>
+          </div>
+          <span className="text-[7px] text-muted-foreground/30 font-mono">{activePull.targets.length} alvos</span>
         </div>
         {activePull.targets.slice(0, 5).map((t, i) => {
           const c = getColor(t.num);
           const pct = (t.count / maxCount) * 100;
+          const isTop = i === 0;
           return (
             <motion.div
               key={t.num}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.08 }}
-              className="flex items-center gap-2.5 group"
+              className={`flex items-center gap-2.5 group p-1.5 rounded-xl transition-all ${isTop ? 'bg-primary/3 border border-primary/10' : 'hover:bg-secondary/10'}`}
             >
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-bold text-white shrink-0 transition-all group-hover:scale-110 ${
-                c === 'red' ? 'bg-red-600' : c === 'green' ? 'bg-emerald-600' : 'bg-zinc-800'
-              } ${i === 0 ? 'ring-1 ring-primary/40 shadow-[0_0_8px_hsl(var(--primary)/0.2)]' : 'border border-white/10'}`}>
-                {t.num}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[8px] font-mono text-muted-foreground/30 w-3">{i + 1}</span>
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-bold text-white shrink-0 transition-all group-hover:scale-110 ${
+                  c === 'red' ? 'bg-red-600' : c === 'green' ? 'bg-emerald-600' : 'bg-zinc-800'
+                } ${isTop ? 'ring-1 ring-primary/40 shadow-[0_0_8px_hsl(var(--primary)/0.2)]' : 'border border-white/10'}`}>
+                  {t.num}
+                </div>
               </div>
               <div className="flex-1">
-                <div className="h-2 bg-background/20 rounded-full overflow-hidden border border-border/10">
+                <div className="h-2.5 bg-background/20 rounded-full overflow-hidden border border-border/10">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${pct}%` }}
                     transition={{ duration: 0.6, delay: i * 0.1 }}
                     className={`h-full rounded-full ${
-                      i === 0 ? 'bg-gradient-to-r from-primary to-neon-pink' :
+                      isTop ? 'bg-gradient-to-r from-primary to-neon-pink' :
                       i <= 2 ? 'bg-primary/60' : 'bg-muted-foreground/30'
                     }`}
                   />
                 </div>
               </div>
               <span className="text-[9px] font-mono font-bold text-foreground/70 w-7 text-right">{t.count}×</span>
-              <span className="text-[7px] text-muted-foreground/30 w-12 text-right font-mono">{t.sector.slice(0, 6)}</span>
+              <span className="text-[7px] text-muted-foreground/30 w-12 text-right font-mono truncate">{t.sector.slice(0, 6)}</span>
             </motion.div>
           );
         })}
@@ -133,16 +148,20 @@ const PullRadar = ({ pullPatterns, latestNumber }: Props) => {
 
       {/* Footer */}
       <div className="px-4 pb-4">
-        <div className="flex items-center gap-4 pt-2.5 border-t border-border/10 text-[8px] text-muted-foreground/50">
-          <div className="flex items-center gap-1.5">
-            <MapPin className="w-3 h-3" />
-            <span>Vizinhos: <b className="text-foreground/60">{activePull.neighborRepeat}×</b></span>
+        <div className="flex items-center justify-between pt-2.5 border-t border-border/10 text-[8px] text-muted-foreground/50">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <MapPin className="w-3 h-3" />
+              <span>Vizinhos: <b className="text-foreground/60">{activePull.neighborRepeat}×</b></span>
+            </div>
+            <span>Setor: <b className="text-primary/60">{activePull.dominantSector}</b></span>
           </div>
-          <span>Setor: <b className="text-primary/60">{activePull.dominantSector}</b></span>
+          <span className="text-[7px] font-mono text-muted-foreground/25">radar v2</span>
         </div>
       </div>
     </motion.div>
   );
-};
+});
 
+PullRadar.displayName = 'PullRadar';
 export default PullRadar;
