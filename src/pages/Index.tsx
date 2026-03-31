@@ -133,7 +133,7 @@ const Index = () => {
   const prevNumbersRef = useRef<string>('');
   const [sniperData, setSniperData] = useState<any>(null);
   const [rtInsights, setRtInsights] = useState<any[]>([]);
-  const [sniperCountdown, setSniperCountdown] = useState(13);
+  const [sniperCountdown, setSniperCountdown] = useState(14);
   const sniperPrevKey = useRef<string>('');
   const sniperSameCount = useRef(0);
   const [sniperStale, setSniperStale] = useState(false);
