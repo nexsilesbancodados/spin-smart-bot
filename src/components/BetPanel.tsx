@@ -361,20 +361,13 @@ const BetPanel = ({ sniperData, allNumbers }: BetPanelProps) => {
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-2xl border-2 transition-all overflow-hidden ${
+      className={`glass rounded-2xl border-2 transition-all overflow-hidden ${
         betFlash
-          ? 'border-primary shadow-lg shadow-primary/30'
+          ? 'border-primary shadow-neon-cyan'
           : config.enabled
-          ? 'border-green-500/50'
-          : 'border-border'
+          ? 'border-neon-green/40'
+          : 'border-border/40'
       }`}
-      style={{
-        background: betFlash
-          ? 'linear-gradient(145deg, hsl(var(--primary) / 0.15), hsl(var(--card)))'
-          : config.enabled
-          ? 'linear-gradient(145deg, rgba(34,197,94,0.06), hsl(var(--card)))'
-          : 'hsl(var(--card))',
-      }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
