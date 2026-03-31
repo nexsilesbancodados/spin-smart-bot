@@ -1,7 +1,7 @@
-import { memo } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  CircleDot, Brain, Wifi, WifiOff, Power, Sparkles, RefreshCw, Shield, Activity
+  CircleDot, Brain, Wifi, WifiOff, Power, Sparkles, RefreshCw, Shield, Activity, Clock
 } from 'lucide-react';
 
 interface NavbarProps {
