@@ -4069,6 +4069,23 @@ serve(async (req) => {
         s += 4; r.push(`🔁 Apareceu recente`);
       }
 
+      // STREAK DETECTOR: conta quantas vezes o número saiu consecutivamente
+      // Ex: 16 saiu 7x seguidas → boost MÁXIMO
+      if (n === numbers[0]) {
+        let streakLen = 1;
+        for (let si = 1; si < Math.min(numbers.length, 15); si++) {
+          if (numbers[si] === n) streakLen++;
+          else break;
+        }
+        if (streakLen >= 2) {
+          const streakBoost = Math.min(60, streakLen * 12); // cap em 60pts
+          s += streakBoost;
+          r.push(`🔱 STREAK ${streakLen}x! (+${streakBoost}pts)`);
+          signalFlags['STREAK_ACTIVE'] = true;
+          (signalFlags as any)['streakLen'] = streakLen;
+        }
+      }
+
       // C1 PUXADOS — com peso por confiabilidade histórica desta mesa
       // Pull reliability: dinâmico do banco > hardcoded
       // PULL_RELIABILITY atualizada com dados reais desta mesa
@@ -5745,6 +5762,39 @@ serve(async (req) => {
       numbers.slice(0,5).forEach(n => { cnt[n] = (cnt[n]||0)+1; });
       return Object.entries(cnt).sort(([,a],[,b]) => (b as number) - (a as number))[0];
     })();
+    // STREAK DETECTOR: conta quantas vezes o número atual saiu consecutivamente
+    let activeStreakNum = numbers[0];
+    let activeStreakLen = 1;
+    for (let si = 1; si < Math.min(numbers.length, 20); si++) {
+      if (numbers[si] === activeStreakNum) activeStreakLen++;
+      else break;
+    }
+
+    if (activeStreakLen >= 2) {
+      // STREAK ATIVO — estratégia de PRIORIDADE MÁXIMA
+      const sn = activeStreakNum;
+      const sNeighbors = getNeighbors(sn, 2);
+      const sTerminal = TERMINALS_MAP[sn % 10] || [];
+      const sPull = (FULL_PULL_MAP[sn] || PULL_MAP[sn] || []).slice(0, 4);
+      const sNums = [...new Set([sn, ...sNeighbors, ...sPull])].slice(0, 8);
+      // Boost proporcional ao streak: 2x=+40, 3x=+70, 4x=+100, 5x+=+130
+      const streakBonus = Math.min(130, 20 + activeStreakLen * 30);
+      const sScore = sumScores(sNums) + streakBonus;
+      const sProb = Math.min(95, 50 + activeStreakLen * 12);
+      strategies.push({
+        type: 'streak_ativo',
+        label: `🔱 STREAK ATIVO: ${sn} (${activeStreakLen}x seguidas!)`,
+        emoji: '🔱',
+        numbers: sNums,
+        coverage: (sNums.length / 37) * 100,
+        payout: 36 - sNums.length,
+        score: sScore,
+        probability: sProb,
+        justification: `🔱 STREAK CRÍTICO: ${sn} saiu ${activeStreakLen}x consecutivas! Esta mesa tem auto-rep 60-86%. Números: ${sn} + vizinhos ${sNeighbors.slice(0,4).join(',')} + puxados ${sPull.join(',')}.`,
+      });
+      aiLearnings.unshift(`🔱 STREAK ATIVO: ${sn} saiu ${activeStreakLen}x seguidas → probabilidade de repetir: ${sProb}%`);
+    }
+
     if (repeatCandidate && Number(repeatCandidate[1]) >= 2) {
       const rn = Number(repeatCandidate[0]);
       const rScore = sumScores([rn]) + Number(repeatCandidate[1]) * 8;
@@ -5759,7 +5809,7 @@ serve(async (req) => {
         payout: 36 - rNums.length,
         score: rScore + Number(repeatCandidate[1]) * 12,
         probability: Math.min(92, Math.round(35 + Number(repeatCandidate[1]) * 18)),
-        justification: `Auto-repetição detectada: ${rn} saiu ${repeatCandidate[1]}x recentes. Padrão observado 500 giros: repetições triplas em 15x (13), 11x (0), 9x (18,14,25).`,
+        justification: `Auto-repetição detectada: ${rn} saiu ${repeatCandidate[1]}x recentes. Padrão observado 500 giros.`,
       });
     }
 
@@ -6395,6 +6445,32 @@ serve(async (req) => {
     // ESTRATÉGIAS DINÂMICAS — construídas do conhecimento aprendido
     // Cada learning que tem hotNumbers vira uma estratégia candidata
     // ══════════════════════════════════════════════════════════════
+
+    // ── STREAK DO BANCO: ai-learn salva streaks ativos ──────────
+    const streakBancoLearning = learned.find(lp =>
+      lp.learning_type === 'streak_ativo' &&
+      (lp.metadata as any)?.streakNum === numbers[0] &&
+      ((lp.metadata as any)?.streakLen || 0) >= 2
+    );
+    if (streakBancoLearning) {
+      const sbLen = (streakBancoLearning.metadata as any).streakLen || 2;
+      const sbNums = ((streakBancoLearning.metadata as any).hotNumbers || []).filter((n: any) => typeof n === 'number' && n >= 0 && n <= 36).slice(0, 8);
+      const sbProb = (streakBancoLearning.metadata as any).probability || 70;
+      if (sbNums.length >= 2) {
+        strategies.push({
+          type: 'streak_banco',
+          label: `🔱 STREAK BANCO: ${numbers[0]} (${sbLen}x confirmado)`,
+          emoji: '🔱',
+          numbers: sbNums,
+          coverage: +(sbNums.length / 37 * 100).toFixed(1),
+          payout: 36 - sbNums.length,
+          score: sumScores(sbNums) + sbLen * 28 + 50,
+          probability: sbProb,
+          justification: `🔱 STREAK CONFIRMADO BANCO: ${numbers[0]} em streak de ${sbLen}x. Prob ${sbProb}%. Nums: [${sbNums.join(',')}].`,
+        });
+        aiLearnings.unshift(`🔱 Banco confirma STREAK ${numbers[0]}×${sbLen}`);
+      }
+    }
 
     // 1. ESTRATÉGIA REALTIME — do padrão mais forte do momento
     const rtLearnings = learned.filter(lp =>

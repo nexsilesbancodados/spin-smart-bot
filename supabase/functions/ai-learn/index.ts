@@ -1527,6 +1527,42 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
       }
     }
 
+    // ── STREAK ATIVO: salvar quando número está em streak agora ──
+    {
+      let activeN = numbers[0], activeLen = 1;
+      for (let i=1; i<Math.min(numbers.length, 20); i++) {
+        if (numbers[i]===activeN) activeLen++;
+        else break;
+      }
+      if (activeLen >= 3) {
+        const prob = Math.min(95, 50 + activeLen * 10);
+        const pull = (PULL_MAP[activeN] || []).slice(0, 5);
+        const neighIdx = WHEEL.indexOf(activeN);
+        const neigh = neighIdx >= 0 ? [WHEEL[(neighIdx+1)%37], WHEEL[(neighIdx-1+37)%37], WHEEL[(neighIdx+2)%37], WHEEL[(neighIdx-2+37)%37]] : [];
+        const streakTitle = `streak_ativo_${activeN}`;
+        const { data: exS } = await supabase.from('ai_learned_patterns')
+          .select('id').eq('learning_type', 'streak_ativo').eq('title', streakTitle).maybeSingle();
+        const streakRow = {
+          knowledge: `STREAK ATIVO: ${activeN} saiu ${activeLen}x consecutivas. Prob de continuar: ${prob}%. Vizinhos: [${neigh.join(',')}]. Puxados: [${pull.join(',')}].`,
+          data_points: activeLen,
+          accuracy: prob,
+          metadata: {
+            hotNumbers: [activeN, ...neigh, ...pull].slice(0, 8),
+            key_numbers: [activeN, ...neigh].slice(0, 6),
+            streakNum: activeN,
+            streakLen: activeLen,
+            probability: prob,
+          },
+          updated_at: new Date().toISOString(),
+        };
+        if ((exS as any)?.id) {
+          await supabase.from('ai_learned_patterns').update(streakRow).eq('id', (exS as any).id);
+        } else {
+          await supabase.from('ai_learned_patterns').insert({ learning_type: 'streak_ativo', title: streakTitle, ...streakRow });
+        }
+      }
+    }
+
     // ── LIMPEZA INTELIGENTE DO BANCO ──────────────────────────────
     const LIMITS_PER_TYPE: Record<string, number> = {
       'pull_confirmed': 37, 'matrix_transition': 100, 'terminal_dominance': 15,

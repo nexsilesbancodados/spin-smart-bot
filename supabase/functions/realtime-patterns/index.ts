@@ -108,13 +108,26 @@ Deno.serve(async (req) => {
     }
     if (streakC >= 2) {
       const wi = WHEEL.indexOf(streakN);
-      const viz = wi>=0 ? [-1,0,1].map(d=>WHEEL[(wi+d+WL)%WL]) : [streakN];
+      // Streak longo = incluir mais vizinhos na roda
+      const vizRadius = streakC >= 5 ? 4 : streakC >= 4 ? 3 : streakC >= 3 ? 2 : 1;
+      const viz: number[] = [];
+      if (wi>=0) {
+        for (let d=1; d<=vizRadius; d++) {
+          viz.push(WHEEL[(wi+d+WL)%WL]);
+          viz.push(WHEEL[(wi-d+WL)%WL]);
+        }
+      }
+      // Puxados do número em streak também são candidatos fortes
+      const streakPull = (PULL[streakN] || []).slice(0, 4);
+      const streakNums = [...new Set([streakN, ...viz, ...streakPull])].slice(0, 10);
+      // Score PROPORCIONAL: 2x=30, 3x=50, 4x=70, 5x+=90
+      const streakScore = Math.min(90, 20 + streakC * 18);
       insights.push({
         type: 'streak_consecutivo',
-        numbers: [...new Set([streakN, ...viz])],
-        score: streakC >= 4 ? 20 : streakC >= 3 ? 14 : 8,
-        reason: `${streakN} CONSECUTIVO ${streakC}x — Streak ativo agora`,
-        confidence: Math.min(92, 45 + streakC*15),
+        numbers: streakNums,
+        score: streakScore,
+        reason: `🔱 ${streakN} STREAK ${streakC}x CONSECUTIVO — maior probabilidade de repetir!`,
+        confidence: Math.min(95, 50 + streakC * 12),
       });
     }
 
