@@ -219,15 +219,23 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
   const typeIcons: Record<string, string> = { info: '📡', alert: '⚡', pattern: '🔍', calibration: '⚙️' };
 
   return (
-    <div className="glass rounded-xl p-3.5">
-      <div className="flex items-center gap-2 mb-2.5">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-neon-pink/15 to-purple-500/10 border border-neon-pink/20 flex items-center justify-center shadow-neon-pink">
-          <Brain className="w-3.5 h-3.5 text-neon-pink" />
+    <div className="glass rounded-2xl overflow-hidden border border-border/20">
+      <div className="relative px-4 pt-4 pb-3">
+        <div className="absolute inset-0 bg-gradient-to-r from-neon-pink/4 via-transparent to-purple-500/3" />
+        <div className="relative flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-neon-pink/15 to-purple-500/10 border border-neon-pink/20 flex items-center justify-center shadow-neon-pink">
+            <Brain className="w-4 h-4 text-neon-pink" />
+          </div>
+          <div className="flex-1">
+            <span className="font-display text-[10px] tracking-[0.15em] font-bold text-neon-pink uppercase">Log de Aprendizado</span>
+            <div className="text-[7px] text-muted-foreground/50 font-mono">Análise em tempo real</div>
+          </div>
+          {scanning && <Activity className="w-3.5 h-3.5 text-neon-cyan animate-pulse" />}
+          {!scanning && <span className="text-[7px] text-muted-foreground/40 font-mono">{logs.length} entradas</span>}
         </div>
-        <span className="font-display text-[10px] tracking-[0.2em] font-bold text-neon-pink">LOG DE APRENDIZADO</span>
-        {scanning && <Activity className="w-3 h-3 text-neon-cyan animate-pulse ml-auto" />}
-        {!scanning && <span className="text-[7px] text-muted-foreground/40 ml-auto font-mono">{logs.length} entradas</span>}
       </div>
+
+      <div className="px-4 pb-4">
 
       {/* Scan progress bar */}
       <div className="w-full h-1 bg-background/30 rounded-full overflow-hidden mb-2.5 border border-border/10">
@@ -263,6 +271,7 @@ const AILearningLog = ({ allNumbers, sniperData, autoLearnStatus, rtInsights = [
         {logs.length === 0 && (
           <div className="text-[9px] text-muted-foreground/30 italic py-2 text-center">Aguardando próximo giro...</div>
         )}
+        </div>
       </div>
     </div>
   );

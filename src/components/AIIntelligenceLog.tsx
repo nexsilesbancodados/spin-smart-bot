@@ -48,25 +48,30 @@ const AIIntelligenceLog = memo(() => {
   }, []);
 
   return (
-    <div className="space-y-3">
+    <div className="glass rounded-2xl overflow-hidden border border-border/20 space-y-0">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500/15 to-neon-cyan/10 border border-purple-500/20 flex items-center justify-center shadow-[0_0_10px_rgba(168,85,247,0.15)]">
-            <Brain className="w-3.5 h-3.5 text-purple-400" />
+      <div className="relative px-4 pt-4 pb-3">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-neon-cyan/3" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500/15 to-neon-cyan/10 border border-purple-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(168,85,247,0.15)]">
+              <Brain className="w-4 h-4 text-purple-400" />
+            </div>
+            <div>
+              <span className="text-[10px] font-display font-bold uppercase tracking-[0.15em] text-purple-400">Motor IA Markov</span>
+              {data && (
+                <div className="text-[7px] text-muted-foreground/50 font-mono">{data.dataPoints.toLocaleString()} giros processados</div>
+              )}
+            </div>
           </div>
-          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-purple-400">Motor IA Markov</span>
-          {data && (
-            <span className="text-[8px] px-2 py-0.5 rounded-full bg-purple-500/8 text-purple-400 font-bold border border-purple-500/15">
-              {data.dataPoints.toLocaleString()} giros
-            </span>
-          )}
+          <button onClick={fetchEngine} disabled={loading}
+            className="text-[9px] px-3 py-1.5 rounded-xl glass text-neon-cyan font-bold border border-neon-cyan/15 hover:bg-neon-cyan/10 transition-all disabled:opacity-30">
+            {loading ? '⏳ Analisando...' : '🔄 Atualizar'}
+          </button>
         </div>
-        <button onClick={fetchEngine} disabled={loading}
-          className="text-[9px] px-3 py-1.5 rounded-lg bg-neon-cyan/8 text-neon-cyan font-bold border border-neon-cyan/15 hover:bg-neon-cyan/15 transition-all disabled:opacity-30">
-          {loading ? '⏳ Analisando...' : '🔄 Atualizar'}
-        </button>
       </div>
+
+      <div className="px-4 pb-4 space-y-3">
 
       {/* Log entries */}
       {data?.log && (
@@ -155,10 +160,11 @@ const AIIntelligenceLog = memo(() => {
       )}
 
       {data && (
-        <div className="text-[8px] text-muted-foreground/30 text-center">
+        <div className="text-[7px] text-muted-foreground/25 text-center font-mono pt-1 border-t border-border/10">
           Processado em {data.analysisMs}ms • {data.dataPoints.toLocaleString()} rodadas analisadas
         </div>
       )}
+      </div>
     </div>
   );
 });
