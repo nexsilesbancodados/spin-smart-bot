@@ -52,8 +52,8 @@ const PerformanceMonitor = memo(({ betHistory, balance, allNumbers }: Props) => 
   const PIE_COLORS = ['hsl(0, 72%, 51%)', 'hsl(0, 0%, 20%)', 'hsl(142, 76%, 36%)'];
 
   return (
-    <div className="glass rounded-2xl overflow-hidden border border-border/20">
-      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center gap-3 p-4 border-b border-border/10">
+    <div className="glass rounded-2xl overflow-hidden border border-border/20 relative">
+      <div className="absolute inset-0 bg-gradient-to-br from-neon-green/[0.01] via-transparent to-neon-cyan/[0.01]" />
         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-neon-green/15 to-neon-cyan/10 border border-neon-green/20 flex items-center justify-center shadow-neon-green">
           <BarChart3 className="w-4 h-4 text-neon-green" />
         </div>
