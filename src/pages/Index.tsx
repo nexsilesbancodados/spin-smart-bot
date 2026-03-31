@@ -19,6 +19,8 @@ import WheelMap from '@/components/WheelMap';
 import Scanner500 from '@/components/Scanner500';
 import BacktestPanel from '@/components/BacktestPanel';
 import PatternPanel24h from '@/components/PatternPanel24h';
+import EngineSignalCard from '@/components/EngineSignalCard';
+import NumberTicker from '@/components/NumberTicker';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
@@ -725,6 +727,8 @@ const Index = () => {
                   setStrategyFilter={setStrategyFilter}
                 />
               </div>
+              {/* ── ENGINE ANALYSIS (Streaks, Cold Zones) ────── */}
+              <EngineSignalCard allNumbers={allNumbers} />
               </>
             ) : (
               <div className="bg-card rounded-2xl border border-border p-12 text-center">
@@ -949,6 +953,12 @@ const Index = () => {
         )}
 
       </main>
+
+      {/* ── TICKER FIXO NO RODAPÉ ──────────────────────── */}
+      <NumberTicker numbers={allNumbers} />
+
+      {/* Padding para não esconder conteúdo atrás do ticker */}
+      <div className="h-14" />
 
       <NumberDNADialog number={dnaNumber} allNumbers={allNumbers} open={dnaOpen} onClose={() => setDnaOpen(false)} />
     </div>
