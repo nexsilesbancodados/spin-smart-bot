@@ -6647,7 +6647,7 @@ serve(async (req) => {
     const numScoreTop = numScores[0];
     
     // Usar interseção multi-estratégia SE tem 3+ confirmações, senão fallback para numScore
-    const numTop1: number = (bestMultiStrat && bestMultiStrat.count >= 3) 
+    let numTop1: number = (bestMultiStrat && bestMultiStrat.count >= 3) 
       ? bestMultiStrat.num 
       : numScoreTop?.num ?? winner.numbers[0];
     const numTop1Score: number = numScoreTop?.score ?? 0;
