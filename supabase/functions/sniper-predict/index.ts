@@ -3557,7 +3557,7 @@ Deno.serve(async (req) => {
         if (isRotating && dzSeq.length >= 3 && dzSeq[0] !== dzSeq[1] && dzSeq[1] !== dzSeq[2]) {
           // Predict next dozen based on pattern
           const usedDzs = new Set(dzSeq.slice(0, 2));
-          const missingDz = [1, 2, 3].find(d => !usedDzs.has(d)) || dzSeq[0];
+          const missingDz = ([1, 2, 3] as const).find(d => !usedDzs.has(d)) || dzSeq[0];
           transitionMatrix.detectedPatterns.push({
             name: `Rotação de Dúzias (${dzSeq.slice(0, 3).map(d => 'D' + d).join('→')})`,
             emoji: '🔄', confidence: 65,
