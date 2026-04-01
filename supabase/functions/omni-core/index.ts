@@ -1245,13 +1245,13 @@ Deno.serve(async (req) => {
         .order('fetched_at', { ascending: false }).limit(500),
       supabase.from('historico_roleta').select('numero, created_at')
         .order('created_at', { ascending: false }).limit(500)
-        .then((r: any) => r).catch(() => ({ data: [] })),
+        .then((r: any) => r).catch?.(() => ({ data: [] })) ?? supabase.from('historico_roleta').select('numero, created_at').order('created_at', { ascending: false }).limit(500),
       supabase.from('resultados_roleta').select('numero, created_at')
         .order('created_at', { ascending: false }).limit(500)
-        .then((r: any) => r).catch(() => ({ data: [] })),
+        .then((r: any) => r).catch?.(() => ({ data: [] })) ?? supabase.from('resultados_roleta').select('numero, created_at').order('created_at', { ascending: false }).limit(500),
       supabase.from('ensemble_weights').select('*'),
       supabase.from('rl_qtable').select('state, action, q_value, visits').limit(500)
-        .then((r: any) => r).catch(() => ({ data: [] })),
+        .then((r: any) => r).catch?.(() => ({ data: [] })) ?? supabase.from('rl_qtable').select('state, action, q_value, visits').limit(500),
     ]);
 
     // Merge all historical sources (DB is always the primary source)
