@@ -1047,12 +1047,13 @@ Deno.serve(async (req) => {
 
           // 🧠 DEEP LEARNING: Save hit/miss pattern for future predictions
           try {
-            if (isHit) {
+          if (isHit) {
+              const predStratTypeLocal = pred.strategy_type || 'unknown';
               // Save what WORKED: strategy + numbers + context
               await supabase.from('ai_learned_patterns').insert({
                 learning_type: 'hit_pattern',
-                title: `ACERTO ${hitType}: ${predStratType} → ${latestNum}`,
-                knowledge: `Estratégia ${predStratType} acertou ${hitType === 'exact' ? 'EXATO' : 'vizinho'} no ${latestNum}. Previstos: [${nums.slice(0,5).join(',')}]. Principal: ${pred.predicted_main}.`,
+                title: `ACERTO ${hitType}: ${predStratTypeLocal} → ${latestNum}`,
+                knowledge: `Estratégia ${predStratTypeLocal} acertou ${hitType === 'exact' ? 'EXATO' : 'vizinho'} no ${latestNum}. Previstos: [${nums.slice(0,5).join(',')}]. Principal: ${pred.predicted_main}.`,
                 accuracy: hitType === 'exact' ? 95 : 80,
                 data_points: nums.length,
                 metadata: {
