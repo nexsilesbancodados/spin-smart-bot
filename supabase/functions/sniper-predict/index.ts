@@ -1059,7 +1059,7 @@ Deno.serve(async (req) => {
                 metadata: {
                   hotNumbers: nums.slice(0, 8),
                   key_numbers: [latestNum, ...(nums.filter((n: number) => n !== latestNum).slice(0, 4))],
-                  strategy: predStratType,
+                  strategy: predStratTypeLocal,
                   hitType,
                   actualNumber: latestNum,
                 },
