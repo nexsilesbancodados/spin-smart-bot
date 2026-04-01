@@ -147,32 +147,6 @@ const PredictionHistory = memo(() => {
     : resolved.slice(0, 15);
 
   const tabs: { key: TabType; label: string; icon: React.ReactNode; count?: number }[] = [
-      // Botão de exportação CSV
-      // Exibe acima da lista de previsões
-      // Exporta as previsões atualmente filtradas
-      // (pode ser ajustado para exportar todas, se preferir)
-
-      // ...dentro do JSX do componente, antes da lista de previsões:
-
-      /* ...existing code... */
-
-      return (
-        <div>
-          {/* Painel comparativo de estratégias */}
-          <ComparativeDashboard predictions={resolved} />
-          <div className="flex items-center justify-between mb-2">
-            <div className="font-bold text-[13px]">Histórico de Previsões</div>
-            <button
-              className="flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-primary text-[11px] font-bold hover:bg-primary/20 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-              onClick={() => exportPredictionsToCSV(filteredPredictions)}
-              title="Exportar CSV"
-              aria-label="Exportar relatório de previsões em CSV"
-              tabIndex={0}
-            >
-              <Download className="w-4 h-4" aria-hidden="true" /> Exportar CSV
-            </button>
-          </div>
-          {/* ...existing code... */
     { key: 'resumo', label: 'Resumo', icon: <BarChart3 className="w-3 h-3" /> },
     { key: 'todos', label: 'Todos', icon: <Target className="w-3 h-3" />, count: resolved.length },
     { key: 'acertos', label: 'Acertos', icon: <CheckCircle2 className="w-3 h-3" />, count: hits.length },
