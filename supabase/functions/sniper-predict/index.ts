@@ -6628,7 +6628,7 @@ Deno.serve(async (req) => {
         const rtScore = sumScores(rtNums) + (topRT.accuracy || 50) * 0.6;
         const rtBt = backtestSet(rtNums);
         const rtType = (topRT.metadata as any)?.realtimeType || 'realtime';
-        const rtLabel = {
+        const rtLabel = ({
           'auto_repeticao_rt': '🔁 Auto-Repetição RT',
           'streak_consecutivo': '🔥 Streak RT',
           'triple_pull': '🔱 Triple Pull RT',
@@ -6637,7 +6637,7 @@ Deno.serve(async (req) => {
           'terminal_dominante_rt': '🔢 Terminal RT',
           'combo_ouro_rt': '👑 Combo Ouro RT',
           'matriz_momento': '🔮 Matriz RT',
-        }[rtType] || `⚡ RT ${rtType}`;
+        } as Record<string, string>)[rtType] || `⚡ RT ${rtType}`;
         strategies.push({
           type: 'realtime_aprendido',
           label: rtLabel,
