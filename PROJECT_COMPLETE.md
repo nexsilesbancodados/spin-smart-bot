@@ -22,13 +22,16 @@ O **Spin Smart Bot** é um sistema avançado de previsão de roleta com intelig�
 ## 🎯 10 Principais Funcionalidades Implementadas
 
 ### 1. **Explicabilidade de Previsões** ✅
+
 Cada previsão inclui explicação detalhada do raciocínio da IA.
 
 **Arquivos:**
+
 - `src/lib/getPredictionExplanation.ts` - Geração de explicações
 - `src/components/AIDebatePanel.tsx` - Painel visual
 
 **Exemplo:**
+
 ```
 🚀 MODO TENDÊNCIA: 72% confiança
 🔴 Vermelho ACELERANDO: 4/5 recentes
@@ -39,9 +42,11 @@ Cada previsão inclui explicação detalhada do raciocínio da IA.
 ---
 
 ### 2. **Feedback em Tempo Real** ✅
+
 Integração bidirecional com o usuário ajustando pesos constantemente.
 
 **Arquivos:**
+
 - `supabase/functions/feedback-adjust/index.ts` - Processamento de feedback
 - `src/components/AILearningLog.tsx` - Visualização
 
@@ -50,9 +55,11 @@ Integração bidirecional com o usuário ajustando pesos constantemente.
 ---
 
 ### 3. **Exportação de Relatórios** ✅
+
 Gerar relatórios em CSV, JSON e PDF com performance detalhada.
 
 **Formatos:**
+
 - CSV: Performance por estratégia
 - JSON: Dados estruturados para análise
 - PDF: Relatório visual formatado
@@ -60,9 +67,11 @@ Gerar relatórios em CSV, JSON e PDF com performance detalhada.
 ---
 
 ### 4. **Testes Automatizados Ampliados** ✅
+
 Cobertura completa de análise, aprendizado e integração.
 
 **Testes:**
+
 - `src/test/analysis-learning.test.ts` - 85+ casos de teste
 - `src/test/api-integration.test.ts` - Integração externa
 - `src/test/example.test.ts` - Exemplos gerais
@@ -72,9 +81,11 @@ Cobertura completa de análise, aprendizado e integração.
 ---
 
 ### 5. **Gráficos Interativos e Painéis** ✅
+
 Visualizações avançadas com Recharts e componentes customizados.
 
 **Componentes:**
+
 - `ComparativeDashboard.tsx` - Comparação de estratégias
 - `StrategyLeaderboard` - Ranking de performance
 - `PatternPanel24h` - Padrões últimas 24h
@@ -83,9 +94,11 @@ Visualizações avançadas com Recharts e componentes customizados.
 ---
 
 ### 6. **Acessibilidade e UX** ✅
+
 WCAG 2.1 completo, navegação por teclado, leitores de tela.
 
 **Implementados:**
+
 - `aria-label` em todos componentes
 - Focus management automático
 - Navegação por teclado (Tab, Enter, Escape)
@@ -95,13 +108,16 @@ WCAG 2.1 completo, navegação por teclado, leitores de tela.
 ---
 
 ### 7. **Logs Detalhados de Decisões da IA** ✅
+
 Rastreabilidade completa de cada decisão do sistema.
 
 **Componentes:**
+
 - `AIIntelligenceLog.tsx` - Visualização de decisões
 - 100+ pontos de log no motor principal
 
 **Informações capturadas:**
+
 - Estratégias ativas
 - Confiança por camada
 - Ajustes dinâmicos
@@ -110,9 +126,11 @@ Rastreabilidade completa de cada decisão do sistema.
 ---
 
 ### 8. **Autoaprendizado e Ajuste Dinâmico** ✅
+
 Rede neural adaptativa que aprende com erros e sucessos.
 
 **Mecanismos:**
+
 - Backtest de 50 camadas profundo
 - Ajuste de pesos em tempo real
 - Detecção de mudança de dealer
@@ -123,9 +141,11 @@ Rede neural adaptativa que aprende com erros e sucessos.
 ---
 
 ### 9. **Alertas Inteligentes** ✅
+
 Sistema de notificações em tempo real para anomalias e oportunidades.
 
 **Tipos de Alerta:**
+
 - 🎯 Oportunidade de alta confiança (>70%)
 - ⚠️ Queda de win rate detectada
 - 🔄 Mudança de padrão em andamento
@@ -137,19 +157,23 @@ Sistema de notificações em tempo real para anomalias e oportunidades.
 ---
 
 ### 10. **API Pública de Previsões** ✅
+
 Expor a engine completa para integrações externas com rate limiting.
 
 **Endpoints:**
+
 - `POST /sniper-predict` - Obter previsão
 - `GET /strategy-stats` - Estatísticas
 - `GET /prediction-history` - Histórico
 - `GET /public-api-docs` - Documentação
 
 **Rate Limits:**
+
 - Anonymous: 100 req/hora
 - Authenticated: 1000 req/hora
 
 **SDK Disponível:**
+
 - TypeScript: `src/lib/spin-smart-bot-api.ts`
 - JavaScript/Node: `npm install spin-smart-bot-sdk`
 - Python: `pip install spin-smart-bot`
@@ -159,6 +183,7 @@ Expor a engine completa para integrações externas com rate limiting.
 ## 📊 Arquitetura do Sistema
 
 ### Frontend (React + TypeScript)
+
 ```
 src/
 ├── components/          # Componentes UI
@@ -178,6 +203,7 @@ src/
 ```
 
 ### Backend (Supabase Edge Functions - Deno)
+
 ```
 supabase/functions/
 ├── sniper-predict/              # Engine principal (2760+ linhas)
@@ -189,6 +215,7 @@ supabase/functions/
 ```
 
 ### Banco de Dados (Supabase PostgreSQL)
+
 ```
 - prediction_history      # Histórico de previsões
 - strategy_stats          # Performance por estratégia
@@ -201,21 +228,21 @@ supabase/functions/
 
 ## 🔬 Camadas Computacionais (A-O)
 
-| Camada | Nome | Pontos | Função |
-|--------|------|--------|---------|
-| A | Frequência Bruta | 100 | Números mais frequentes |
-| B | Reincidência | 100 | Números vencidos x presentes |
-| C | Geometria de Pano | 100 | Padrões visuais no cilindro |
-| D | Inteligência Preditiva | 100 | Machine learning |
-| E | Calibragem de Sessão | 50 | Adaptação à mesa |
-| F | DNA de Mesa | 100 | Fingerprint único |
-| G | Algoritmo Genético | 100 | Clustering dinâmico |
-| H | Física Avançada | 100 | Biometria de cilindro |
-| K | Dinâmica de Fluxo | 100 | Puxada x Alternância |
-| L | Filtro de Ruído | 100 | Índice de aleatoriedade |
-| M | Micro-vibração | 100 | Mapeamento de defletores |
-| N | Kelly Criterion | 100 | Gestão de risco |
-| O | Biometria de Dealer | 100 | Perfil único do dealer |
+| Camada | Nome                   | Pontos | Função                       |
+| ------ | ---------------------- | ------ | ---------------------------- |
+| A      | Frequência Bruta       | 100    | Números mais frequentes      |
+| B      | Reincidência           | 100    | Números vencidos x presentes |
+| C      | Geometria de Pano      | 100    | Padrões visuais no cilindro  |
+| D      | Inteligência Preditiva | 100    | Machine learning             |
+| E      | Calibragem de Sessão   | 50     | Adaptação à mesa             |
+| F      | DNA de Mesa            | 100    | Fingerprint único            |
+| G      | Algoritmo Genético     | 100    | Clustering dinâmico          |
+| H      | Física Avançada        | 100    | Biometria de cilindro        |
+| K      | Dinâmica de Fluxo      | 100    | Puxada x Alternância         |
+| L      | Filtro de Ruído        | 100    | Índice de aleatoriedade      |
+| M      | Micro-vibração         | 100    | Mapeamento de defletores     |
+| N      | Kelly Criterion        | 100    | Gestão de risco              |
+| O      | Biometria de Dealer    | 100    | Perfil único do dealer       |
 
 **Total**: 1250+ pontos de análise por previsão
 
@@ -224,12 +251,14 @@ supabase/functions/
 ## 📈 Resultados e Métricas
 
 ### Performance Média
+
 - **Win Rate**: 30.4% (acima da probabilidade estatística de 27%)
 - **Exact Hits**: 25.8% (acertou número exato)
 - **Neighbor Hits**: 4.6% (acertou vizinhos)
 - **Confiança Média**: 58%
 
 ### Top 5 Estratégias
+
 1. **Voisins**: 33.7% win rate
 2. **Sniper**: 30.4% win rate
 3. **Terminal Duplo**: 29.3% win rate
@@ -237,6 +266,7 @@ supabase/functions/
 5. **Coluna**: 27.1% win rate
 
 ### Melhorias Contínuas
+
 - ✅ +15% quando feedback aplicado
 - ✅ +28% após 100 previsões de aprendizado
 - ✅ -35% em falsos positivos com filtro de ruído
@@ -247,6 +277,7 @@ supabase/functions/
 ## 🚀 Como Usar
 
 ### 1. Iniciar Aplicação Web
+
 ```bash
 cd spin-smart-bot
 npm install
@@ -255,6 +286,7 @@ npm run dev
 ```
 
 ### 2. Usar API Pública
+
 ```bash
 curl -X POST https://integrate.supabase.co/functions/v1/sniper-predict \
   -H "Content-Type: application/json" \
@@ -264,12 +296,13 @@ curl -X POST https://integrate.supabase.co/functions/v1/sniper-predict \
 ```
 
 ### 3. Integração via SDK
-```typescript
-import { SpinSmartBotAPI } from 'spin-smart-bot-sdk';
 
-const bot = new SpinSmartBotAPI({ apiKey: 'sua-chave' });
-const prediction = await bot.getPrediction({ 
-  numbers: [32, 15, 19, 4, 21, 2, 25, 17, 34, 6] 
+```typescript
+import { SpinSmartBotAPI } from "spin-smart-bot-sdk";
+
+const bot = new SpinSmartBotAPI({ apiKey: "sua-chave" });
+const prediction = await bot.getPrediction({
+  numbers: [32, 15, 19, 4, 21, 2, 25, 17, 34, 6],
 });
 ```
 
@@ -310,11 +343,13 @@ const prediction = await bot.getPrediction({
 ## 📱 Suporte e Próximos Passos
 
 ### Suporte
+
 - 📧 Email: api-support@spin-smart-bot.com
 - 🐛 Issues: https://github.com/spin-smart-bot/issues
 - 💬 Discord: https://discord.gg/spin-smart-bot
 
 ### Futuras Melhorias
+
 - [ ] Mobile app nativa
 - [ ] Análise de vídeo (detecção de velocidade)
 - [ ] Integração com CMS populares
@@ -343,4 +378,3 @@ O **Spin Smart Bot** é um sistema completo, robusto e pronto para produção qu
 **Commits**: 42  
 **Linhas de Código**: 8,500+  
 **Tempo de Desenvolvimento**: 2 semanas intensivas
-
