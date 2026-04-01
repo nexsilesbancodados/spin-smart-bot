@@ -959,7 +959,7 @@ Deno.serve(async (req) => {
     }
 
     for (const insight of patternInsights) {
-      const src = (insight.source_data as any) || {};
+      const src = ((insight as any).source_data || {}) as any;
       const isRealtime = src.realtime === true; // padrão capturado neste giro
       const conf = (insight.confidence || 0) / 100;
       if (conf < 0.25) continue; // threshold ainda mais baixo para não perder sinais
@@ -1047,18 +1047,19 @@ Deno.serve(async (req) => {
 
           // 🧠 DEEP LEARNING: Save hit/miss pattern for future predictions
           try {
-            if (isHit) {
+          if (isHit) {
+              const predStratTypeLocal = pred.strategy_type || 'unknown';
               // Save what WORKED: strategy + numbers + context
               await supabase.from('ai_learned_patterns').insert({
                 learning_type: 'hit_pattern',
-                title: `ACERTO ${hitType}: ${predStratType} → ${latestNum}`,
-                knowledge: `Estratégia ${predStratType} acertou ${hitType === 'exact' ? 'EXATO' : 'vizinho'} no ${latestNum}. Previstos: [${nums.slice(0,5).join(',')}]. Principal: ${pred.predicted_main}.`,
+                title: `ACERTO ${hitType}: ${predStratTypeLocal} → ${latestNum}`,
+                knowledge: `Estratégia ${predStratTypeLocal} acertou ${hitType === 'exact' ? 'EXATO' : 'vizinho'} no ${latestNum}. Previstos: [${nums.slice(0,5).join(',')}]. Principal: ${pred.predicted_main}.`,
                 accuracy: hitType === 'exact' ? 95 : 80,
                 data_points: nums.length,
                 metadata: {
                   hotNumbers: nums.slice(0, 8),
                   key_numbers: [latestNum, ...(nums.filter((n: number) => n !== latestNum).slice(0, 4))],
-                  strategy: predStratType,
+                  strategy: predStratTypeLocal,
                   hitType,
                   actualNumber: latestNum,
                 },
@@ -3556,7 +3557,7 @@ Deno.serve(async (req) => {
         if (isRotating && dzSeq.length >= 3 && dzSeq[0] !== dzSeq[1] && dzSeq[1] !== dzSeq[2]) {
           // Predict next dozen based on pattern
           const usedDzs = new Set(dzSeq.slice(0, 2));
-          const missingDz = [1, 2, 3].find(d => !usedDzs.has(d)) || dzSeq[0];
+          const missingDz = ([1, 2, 3] as const).find(d => !usedDzs.has(d)) || dzSeq[0];
           transitionMatrix.detectedPatterns.push({
             name: `Rotação de Dúzias (${dzSeq.slice(0, 3).map(d => 'D' + d).join('→')})`,
             emoji: '🔄', confidence: 65,
@@ -6214,7 +6215,7 @@ Deno.serve(async (req) => {
         if (mesaMode === 'matematico' && ['cavalos','terminal_alternation','duplo_terminal','duzias','duzia_progressiva','poucas_fichas','coluna','column_cycle'].includes(st.type)) {
           st.score += transitionBoost;
         }
-        if (mesaMode === 'misto' && ['fusao_suprema','convergencia_absoluta','matrix_fusion','archetype_fusion','ensemble_supremo','combo_ouro'].includes(st.type)) {
+        if ((mesaMode as string) === 'misto' && ['fusao_suprema','convergencia_absoluta','matrix_fusion','archetype_fusion','ensemble_supremo','combo_ouro'].includes(st.type)) {
           st.score += transitionBoost;
         }
       }
@@ -6627,7 +6628,7 @@ Deno.serve(async (req) => {
         const rtScore = sumScores(rtNums) + (topRT.accuracy || 50) * 0.6;
         const rtBt = backtestSet(rtNums);
         const rtType = (topRT.metadata as any)?.realtimeType || 'realtime';
-        const rtLabel = {
+        const rtLabel = ({
           'auto_repeticao_rt': '🔁 Auto-Repetição RT',
           'streak_consecutivo': '🔥 Streak RT',
           'triple_pull': '🔱 Triple Pull RT',
@@ -6636,7 +6637,7 @@ Deno.serve(async (req) => {
           'terminal_dominante_rt': '🔢 Terminal RT',
           'combo_ouro_rt': '👑 Combo Ouro RT',
           'matriz_momento': '🔮 Matriz RT',
-        }[rtType] || `⚡ RT ${rtType}`;
+        } as Record<string, string>)[rtType] || `⚡ RT ${rtType}`;
         strategies.push({
           type: 'realtime_aprendido',
           label: rtLabel,
@@ -6722,7 +6723,7 @@ Deno.serve(async (req) => {
       if (iNums.length >= 2) {
         const iScore = sumScores(iNums) + topInsights.length * 6;
         const iBt = backtestSet(iNums);
-        const src = (topInsights[0].source_data as any) || {};
+        const src = ((topInsights[0] as any).source_data || {}) as any;
         const isRT = src.realtime === true;
         strategies.push({
           type: isRT ? 'realtime_insight' : 'pattern_consensus',

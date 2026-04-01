@@ -561,53 +561,18 @@ const Index = () => {
                       <div className={`w-9 h-9 rounded-xl text-sm font-black text-white flex items-center justify-center ${numBg(lastPredResult.actual ?? 0)}`}>{lastPredResult.actual}</div>
                     </div>
                     {/* Painel de feedback */}
-                    <UserSignalFeedback lastPredResult={lastPredResult} />
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[8px] text-muted-foreground/50">Feedback:</span>
+                      <button onClick={() => {}} className="px-2 py-0.5 rounded-lg text-[8px] font-bold border bg-card text-primary border-primary/20 hover:bg-primary/10 transition-all">
+                        👍 Bom
+                      </button>
+                      <button onClick={() => {}} className="px-2 py-0.5 rounded-lg text-[8px] font-bold border bg-card text-destructive border-destructive/20 hover:bg-destructive/10 transition-all">
+                        👎 Ruim
+                      </button>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
-// Painel de feedback do usuário para sinais
-import { useState as useStateReact } from 'react';
-const UserSignalFeedback = ({ lastPredResult }: { lastPredResult: { hit: boolean | null; hitType: string | null; predicted: number | null; actual: number | null; label: string } }) => {
-  const [feedback, setFeedback] = useStateReact<'bom' | 'ruim' | null>(null);
-  const [sending, setSending] = useStateReact(false);
-  const [sent, setSent] = useStateReact(false);
-  const handleFeedback = async (type: 'bom' | 'ruim') => {
-    setSending(true);
-    try {
-      // Envia feedback para Supabase (ajuste endpoint conforme backend)
-      await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type,
-          predicted: lastPredResult.predicted,
-          actual: lastPredResult.actual,
-          hit: lastPredResult.hit,
-          label: lastPredResult.label,
-          timestamp: Date.now(),
-        })
-      });
-      setFeedback(type);
-      setSent(true);
-    } catch {
-      setFeedback(null);
-    } finally {
-      setSending(false);
-    }
-  };
-  if (sent) return <div className="text-[8px] text-primary/70 font-bold mt-1">Obrigado pelo feedback!</div>;
-  return (
-    <div className="flex items-center gap-2 mt-1">
-      <span className="text-[8px] text-muted-foreground/50">Feedback:</span>
-      <button disabled={sending} onClick={() => handleFeedback('bom')} className={`px-2 py-0.5 rounded-lg text-[8px] font-bold border ${feedback === 'bom' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-card text-primary border-primary/20 hover:bg-primary/10'} transition-all`}>
-        👍 Bom
-      </button>
-      <button disabled={sending} onClick={() => handleFeedback('ruim')} className={`px-2 py-0.5 rounded-lg text-[8px] font-bold border ${feedback === 'ruim' ? 'bg-destructive/20 text-destructive border-destructive/30' : 'bg-card text-destructive border-destructive/20 hover:bg-destructive/10'} transition-all`}>
-        👎 Ruim
-      </button>
-    </div>
-  );
-};
 
               {/* Sniper */}
               {aiEnabled ? (
