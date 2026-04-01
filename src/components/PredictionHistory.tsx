@@ -28,7 +28,7 @@ function exportPredictionsToCSV(predictions: PredictionRecord[]) {
   a.click();
   setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
 }
-import { CheckCircle2, XCircle } from 'lucide-react';
+
 // Função para enviar feedback do usuário para Supabase Edge Function
 async function sendPredictionFeedback(predictionId: string, feedback: 'hit' | 'miss') {
   await fetch('/functions/v1/feedback-adjust', {
