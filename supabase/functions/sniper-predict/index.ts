@@ -959,7 +959,7 @@ Deno.serve(async (req) => {
     }
 
     for (const insight of patternInsights) {
-      const src = (insight.source_data as any) || {};
+      const src = ((insight as any).source_data || {}) as any;
       const isRealtime = src.realtime === true; // padrão capturado neste giro
       const conf = (insight.confidence || 0) / 100;
       if (conf < 0.25) continue; // threshold ainda mais baixo para não perder sinais
