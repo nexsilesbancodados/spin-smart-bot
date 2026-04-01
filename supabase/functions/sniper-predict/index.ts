@@ -6215,7 +6215,7 @@ Deno.serve(async (req) => {
         if (mesaMode === 'matematico' && ['cavalos','terminal_alternation','duplo_terminal','duzias','duzia_progressiva','poucas_fichas','coluna','column_cycle'].includes(st.type)) {
           st.score += transitionBoost;
         }
-        if (mesaMode === 'misto' && ['fusao_suprema','convergencia_absoluta','matrix_fusion','archetype_fusion','ensemble_supremo','combo_ouro'].includes(st.type)) {
+        if ((mesaMode as string) === 'misto' && ['fusao_suprema','convergencia_absoluta','matrix_fusion','archetype_fusion','ensemble_supremo','combo_ouro'].includes(st.type)) {
           st.score += transitionBoost;
         }
       }
