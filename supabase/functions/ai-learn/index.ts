@@ -1535,9 +1535,10 @@ Analise os dados recebidos. Detecte até 5 padrões específicos e retorne via t
       }
       if (activeLen >= 3) {
         const prob = Math.min(95, 50 + activeLen * 10);
-        const pull = (PULL_MAP[activeN] || []).slice(0, 5);
-        const neighIdx = WHEEL.indexOf(activeN);
-        const neigh = neighIdx >= 0 ? [WHEEL[(neighIdx+1)%37], WHEEL[(neighIdx-1+37)%37], WHEEL[(neighIdx+2)%37], WHEEL[(neighIdx-2+37)%37]] : [];
+        const pull = (PULL_MAP_LEARN[activeN] || []).slice(0, 5);
+        const WHEEL_SEQ = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+        const neighIdx = WHEEL_SEQ.indexOf(activeN);
+        const neigh = neighIdx >= 0 ? [WHEEL_SEQ[(neighIdx+1)%37], WHEEL_SEQ[(neighIdx-1+37)%37], WHEEL_SEQ[(neighIdx+2)%37], WHEEL_SEQ[(neighIdx-2+37)%37]] : [];
         const streakTitle = `streak_ativo_${activeN}`;
         const { data: exS } = await supabase.from('ai_learned_patterns')
           .select('id').eq('learning_type', 'streak_ativo').eq('title', streakTitle).maybeSingle();

@@ -6723,7 +6723,7 @@ Deno.serve(async (req) => {
       if (iNums.length >= 2) {
         const iScore = sumScores(iNums) + topInsights.length * 6;
         const iBt = backtestSet(iNums);
-        const src = (topInsights[0].source_data as any) || {};
+        const src = ((topInsights[0] as any).source_data || {}) as any;
         const isRT = src.realtime === true;
         strategies.push({
           type: isRT ? 'realtime_insight' : 'pattern_consensus',
