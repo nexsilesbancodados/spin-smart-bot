@@ -1,4 +1,5 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, useEffect } from 'react';
+import { toast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart3, AlertTriangle, ChevronDown } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
@@ -12,6 +13,23 @@ const PerformanceMonitor = memo(({ betHistory, balance, allNumbers }: Props) => 
   const [expanded, setExpanded] = useState(false);
 
   const metrics = useMemo(() => {
+      // Alerta inteligente: win rate baixo ou anomalia
+      useEffect(() => {
+        if (!metrics) return;
+        if (metrics.anomaly && metrics.anomalyMsg) {
+          toast({
+            title: 'Alerta de Performance',
+            description: metrics.anomalyMsg,
+            variant: metrics.anomalyMsg.startsWith('⚠️') ? 'destructive' : 'default',
+          });
+        } else if (metrics.winRate < 0.35 && metrics.total > 10) {
+          toast({
+            title: 'Win Rate Crítico',
+            description: `Seu win rate caiu para ${Math.round(metrics.winRate * 100)}%. Considere revisar estratégias.`,
+            variant: 'destructive',
+          });
+        }
+      }, [metrics?.anomalyMsg, metrics?.winRate, metrics?.total]);
     if (betHistory.length < 2) return null;
     const wins = betHistory.filter(b => b.won).length;
     const total = betHistory.length;

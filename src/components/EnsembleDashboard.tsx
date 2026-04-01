@@ -1,4 +1,5 @@
 import { memo, useEffect, useState, useMemo, useCallback } from 'react';
+import { getPredictionExplanation } from '@/lib/getPredictionExplanation';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
@@ -238,7 +239,7 @@ const EnsembleDashboard = memo(({ sniperData }: EnsembleDashboardProps) => {
                         <span className="text-[7px] text-foreground/80 truncate flex-1">{signal.label}</span>
                         <span className="text-[7px] font-mono text-primary ml-2 shrink-0">{signal.confidence}%</span>
                       </div>
-                      <p className="text-[6px] text-muted-foreground/40 mt-0.5 line-clamp-2">{signal.reasoning}</p>
+                      <p className="text-[6px] text-muted-foreground/40 mt-0.5 line-clamp-2">{getPredictionExplanation(signal)}</p>
                     </div>
                   )}
                 </motion.div>

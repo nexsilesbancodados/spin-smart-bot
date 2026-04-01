@@ -1,4 +1,5 @@
 import { memo, useState } from 'react';
+import { getPredictionExplanation } from '@/lib/getPredictionExplanation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -143,7 +144,7 @@ const AIDebatePanel = memo(({ agents, consensusMap, ensembleConsensus, fusionTop
                           <span className="text-[9px] text-muted-foreground">+{agent.numbers.length - 5}</span>
                         )}
                       </div>
-                      <p className="text-[9px] text-muted-foreground line-clamp-2 leading-tight">{agent.reasoning}</p>
+                      <p className="text-[9px] text-muted-foreground line-clamp-2 leading-tight">{getPredictionExplanation(agent)}</p>
                     </div>
                   );
                 })}

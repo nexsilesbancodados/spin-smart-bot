@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, memo, useMemo } from 'react';
+import { getPredictionExplanation } from '@/lib/getPredictionExplanation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -176,7 +177,7 @@ const SniperSignal = memo(({ sniperData, sniperCountdown, sniperStale, lastPredR
                   </span>
                 </div>
                 <p className="text-lg font-extrabold text-foreground leading-tight tracking-tight">{best.recommendation}</p>
-                <p className="text-[9px] text-muted-foreground/50 mt-1 leading-relaxed line-clamp-2">{best.reasoning}</p>
+                <p className="text-[9px] text-muted-foreground/50 mt-1 leading-relaxed line-clamp-2">{getPredictionExplanation(best)}</p>
 
                 {/* Numbers */}
                 {best.numbers.length > 0 && best.numbers.length <= 18 && (

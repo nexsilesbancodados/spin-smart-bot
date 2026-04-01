@@ -1,4 +1,43 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import ComparativeDashboard from './ComparativeDashboard';
+import { Download } from 'lucide-react';
+// Função utilitária para exportar CSV
+function exportPredictionsToCSV(predictions: PredictionRecord[]) {
+  if (!predictions.length) return;
+  const header = [
+    'Data', 'Estratégia', 'Rótulo', 'Números', 'Principal', 'Probabilidade', 'Acertou', 'Tipo Acerto', 'Justificativa'
+  ];
+  const rows = predictions.map(p => [
+    p.created_at,
+    p.strategy_type,
+    p.strategy_label,
+    p.predicted_numbers.join(' '),
+    p.predicted_main,
+    p.probability,
+    p.hit === null ? '' : p.hit ? 'Sim' : 'Não',
+    p.hit_type || '',
+    p.justification || ''
+  ]);
+  const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `relatorio-previsoes-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+}
+import { CheckCircle2, XCircle } from 'lucide-react';
+// Função para enviar feedback do usuário para Supabase Edge Function
+async function sendPredictionFeedback(predictionId: string, feedback: 'hit' | 'miss') {
+  await fetch('/functions/v1/feedback-adjust', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ predictionId, feedback }),
+  });
+}
+import { getPredictionExplanation } from '@/lib/getPredictionExplanation';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, XCircle, Target, TrendingUp, BarChart3, Flame, Trophy, ArrowRight, ChevronDown, ChevronUp, Sparkles, Award, Zap } from 'lucide-react';
@@ -108,6 +147,32 @@ const PredictionHistory = memo(() => {
     : resolved.slice(0, 15);
 
   const tabs: { key: TabType; label: string; icon: React.ReactNode; count?: number }[] = [
+      // Botão de exportação CSV
+      // Exibe acima da lista de previsões
+      // Exporta as previsões atualmente filtradas
+      // (pode ser ajustado para exportar todas, se preferir)
+
+      // ...dentro do JSX do componente, antes da lista de previsões:
+
+      /* ...existing code... */
+
+      return (
+        <div>
+          {/* Painel comparativo de estratégias */}
+          <ComparativeDashboard predictions={resolved} />
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-bold text-[13px]">Histórico de Previsões</div>
+            <button
+              className="flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-primary text-[11px] font-bold hover:bg-primary/20 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+              onClick={() => exportPredictionsToCSV(filteredPredictions)}
+              title="Exportar CSV"
+              aria-label="Exportar relatório de previsões em CSV"
+              tabIndex={0}
+            >
+              <Download className="w-4 h-4" aria-hidden="true" /> Exportar CSV
+            </button>
+          </div>
+          {/* ...existing code... */
     { key: 'resumo', label: 'Resumo', icon: <BarChart3 className="w-3 h-3" /> },
     { key: 'todos', label: 'Todos', icon: <Target className="w-3 h-3" />, count: resolved.length },
     { key: 'acertos', label: 'Acertos', icon: <CheckCircle2 className="w-3 h-3" />, count: hits.length },
@@ -436,13 +501,33 @@ const PredictionHistory = memo(() => {
                               </div>
                             )}
 
-                            {p.justification && (
+                            {getPredictionExplanation(p) && (
                               <div className="bg-background/20 rounded-xl p-2.5 border border-border/10">
                                 <div className="flex items-center gap-1.5 mb-1">
                                   <Zap className="w-3 h-3 text-neon-cyan/60" />
                                   <span className="text-[7px] text-neon-cyan/60 font-display tracking-wider">JUSTIFICATIVA IA</span>
                                 </div>
-                                <span className="text-[9px] text-foreground/70 leading-relaxed">{p.justification}</span>
+                                <span className="text-[9px] text-foreground/70 leading-relaxed">{getPredictionExplanation(p)}</span>
+                                <div className="flex gap-2 mt-2">
+                                  <button
+                                    className="flex items-center gap-1 px-2 py-1 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold hover:bg-emerald-200 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/70"
+                                    onClick={() => sendPredictionFeedback(p.id, 'hit')}
+                                    title="Marcar como Acertou"
+                                    aria-label="Marcar previsão como Acertou"
+                                    tabIndex={0}
+                                  >
+                                    <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> Acertou
+                                  </button>
+                                  <button
+                                    className="flex items-center gap-1 px-2 py-1 rounded bg-red-100 text-red-800 text-[10px] font-bold hover:bg-red-200 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600/70"
+                                    onClick={() => sendPredictionFeedback(p.id, 'miss')}
+                                    title="Marcar como Errou"
+                                    aria-label="Marcar previsão como Errou"
+                                    tabIndex={0}
+                                  >
+                                    <XCircle className="w-3 h-3" aria-hidden="true" /> Errou
+                                  </button>
+                                </div>
                               </div>
                             )}
 

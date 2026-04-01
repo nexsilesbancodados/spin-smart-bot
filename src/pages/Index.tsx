@@ -446,10 +446,15 @@ const Index = () => {
               )}
 
               {/* AI Toggle */}
-              <button onClick={() => setAiEnabled(v => !v)}
-                className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider border transition-all active:scale-95 ${
+              <button
+                onClick={() => setAiEnabled(v => !v)}
+                className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider border transition-all active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${
                   aiEnabled ? 'bg-primary/10 text-primary border-primary/25' : 'bg-muted/30 text-muted-foreground/50 border-border/20'
-                }`}>
+                }`}
+                aria-pressed={aiEnabled}
+                aria-label={aiEnabled ? 'Desligar IA' : 'Ligar IA'}
+                tabIndex={0}
+              >
                 {aiEnabled ? '⚡ ON' : '○ OFF'}
               </button>
             </div>
@@ -459,10 +464,17 @@ const Index = () => {
           {allNumbers.length > 0 && (
             <div className="flex items-center gap-1 pb-2 overflow-x-auto scrollbar-none">
               {allNumbers.slice(0, 10).map((n, i) => (
-                <button key={`h${i}`} onClick={() => { setDnaNumber(n); setDnaOpen(true); }}
-                  className={`shrink-0 font-black text-white transition-all active:scale-90 flex items-center justify-center ${numBg(n)} ${
+                <button
+                  key={`h${i}`}
+                  onClick={() => { setDnaNumber(n); setDnaOpen(true); }}
+                  className={`shrink-0 font-black text-white transition-all active:scale-90 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${numBg(n)} ${
                     i === 0 ? 'w-9 h-9 rounded-xl text-sm ring-2 ring-primary/50 ring-offset-1 ring-offset-background shadow-lg shadow-primary/10' : 'w-7 h-7 rounded-lg text-[10px] opacity-70'
-                  }`}>{n}</button>
+                  }`}
+                  aria-label={`Ver DNA do número ${n}`}
+                  tabIndex={0}
+                >
+                  {n}
+                </button>
               ))}
               {streakActive && (
                 <span className="shrink-0 ml-1 px-2 py-0.5 rounded-full bg-accent/15 border border-accent/30 text-accent text-[8px] font-black">
@@ -480,10 +492,16 @@ const Index = () => {
               { id: 'padroes', icon: '🔍', label: 'ANÁLISE' },
               { id: 'ia', icon: '🧠', label: 'IA' },
             ].map(t => (
-              <button key={t.id} onClick={() => setActiveTab(t.id as any)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[8px] font-black tracking-wider transition-all relative ${
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id as any)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[8px] font-black tracking-wider transition-all relative focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${
                   activeTab === t.id ? 'text-primary' : 'text-muted-foreground/40 hover:text-muted-foreground/60'
-                }`}>
+                }`}
+                aria-current={activeTab === t.id}
+                aria-label={`Selecionar aba ${t.label}`}
+                tabIndex={0}
+              >
                 <span className="text-[11px]">{t.icon}</span>
                 <span>{t.label}</span>
                 {activeTab === t.id && (
@@ -522,27 +540,74 @@ const Index = () => {
                 </div>
               )}
 
-              {/* Last result */}
+              {/* Last result + Feedback */}
               <AnimatePresence mode="wait">
                 {lastPredResult && lastPredResult.hit !== null && (
                   <motion.div key={`res${lastPredResult.actual}`}
                     initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${
+                    className={`flex flex-col gap-2 px-4 py-3 rounded-2xl border ${
                       lastPredResult.hit ? 'bg-primary/5 border-primary/20' : 'bg-destructive/5 border-destructive/15'
                     }`}>
-                    <span className="text-xl">{lastPredResult.hit ? '✅' : '❌'}</span>
-                    <div className="flex-1 min-w-0">
-                      <span className={`text-[11px] font-black ${lastPredResult.hit ? 'text-primary' : 'text-destructive'}`}>
-                        {lastPredResult.hit ? 'ACERTOU!' : 'ERROU'}
-                      </span>
-                      <div className="text-[8px] text-muted-foreground/50 mt-0.5">
-                        Saiu <b className="text-foreground">{lastPredResult.actual}</b> · Previsto #{lastPredResult.predicted}
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{lastPredResult.hit ? '✅' : '❌'}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className={`text-[11px] font-black ${lastPredResult.hit ? 'text-primary' : 'text-destructive'}`}>
+                          {lastPredResult.hit ? 'ACERTOU!' : 'ERROU'}
+                        </span>
+                        <div className="text-[8px] text-muted-foreground/50 mt-0.5">
+                          Saiu <b className="text-foreground">{lastPredResult.actual}</b> · Previsto #{lastPredResult.predicted}
+                        </div>
                       </div>
+                      <div className={`w-9 h-9 rounded-xl text-sm font-black text-white flex items-center justify-center ${numBg(lastPredResult.actual ?? 0)}`}>{lastPredResult.actual}</div>
                     </div>
-                    <div className={`w-9 h-9 rounded-xl text-sm font-black text-white flex items-center justify-center ${numBg(lastPredResult.actual ?? 0)}`}>{lastPredResult.actual}</div>
+                    {/* Painel de feedback */}
+                    <UserSignalFeedback lastPredResult={lastPredResult} />
                   </motion.div>
                 )}
               </AnimatePresence>
+// Painel de feedback do usuário para sinais
+import { useState as useStateReact } from 'react';
+const UserSignalFeedback = ({ lastPredResult }: { lastPredResult: { hit: boolean | null; hitType: string | null; predicted: number | null; actual: number | null; label: string } }) => {
+  const [feedback, setFeedback] = useStateReact<'bom' | 'ruim' | null>(null);
+  const [sending, setSending] = useStateReact(false);
+  const [sent, setSent] = useStateReact(false);
+  const handleFeedback = async (type: 'bom' | 'ruim') => {
+    setSending(true);
+    try {
+      // Envia feedback para Supabase (ajuste endpoint conforme backend)
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          predicted: lastPredResult.predicted,
+          actual: lastPredResult.actual,
+          hit: lastPredResult.hit,
+          label: lastPredResult.label,
+          timestamp: Date.now(),
+        })
+      });
+      setFeedback(type);
+      setSent(true);
+    } catch {
+      setFeedback(null);
+    } finally {
+      setSending(false);
+    }
+  };
+  if (sent) return <div className="text-[8px] text-primary/70 font-bold mt-1">Obrigado pelo feedback!</div>;
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <span className="text-[8px] text-muted-foreground/50">Feedback:</span>
+      <button disabled={sending} onClick={() => handleFeedback('bom')} className={`px-2 py-0.5 rounded-lg text-[8px] font-bold border ${feedback === 'bom' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-card text-primary border-primary/20 hover:bg-primary/10'} transition-all`}>
+        👍 Bom
+      </button>
+      <button disabled={sending} onClick={() => handleFeedback('ruim')} className={`px-2 py-0.5 rounded-lg text-[8px] font-bold border ${feedback === 'ruim' ? 'bg-destructive/20 text-destructive border-destructive/30' : 'bg-card text-destructive border-destructive/20 hover:bg-destructive/10'} transition-all`}>
+        👎 Ruim
+      </button>
+    </div>
+  );
+};
 
               {/* Sniper */}
               {aiEnabled ? (
@@ -626,11 +691,18 @@ const Index = () => {
                 ) : (
                   <div className="flex flex-wrap gap-1">
                     {historySlice.map((n, i) => (
-                      <button key={i} onClick={() => setSelectedNum(selectedNum === n ? null : n)}
-                        className={`font-bold text-white transition-all flex items-center justify-center ${numBg(n)} ${
+                      <button
+                        key={i}
+                        onClick={() => setSelectedNum(selectedNum === n ? null : n)}
+                        className={`font-bold text-white transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${numBg(n)} ${
                           i === 0 ? 'w-8 h-8 rounded-xl text-[11px] ring-2 ring-primary/40 ring-offset-1 ring-offset-background' : 'w-7 h-7 rounded-lg text-[9px]'
                         } ${selectedNum === n ? 'ring-2 ring-accent ring-offset-1 ring-offset-background scale-110 z-10' : ''}
-                        ${selectedNum !== null && selectedNum !== n ? 'opacity-15' : ''}`}>{n}</button>
+                        ${selectedNum !== null && selectedNum !== n ? 'opacity-15' : ''}`}
+                        aria-label={`Selecionar número ${n} no histórico`}
+                        tabIndex={0}
+                      >
+                        {n}
+                      </button>
                     ))}
                   </div>
                 )}
@@ -734,6 +806,8 @@ const PatternsTab = memo(({ allNumbers, sniperData, streakNum, streakLen, streak
   streakActive: boolean; zeroPressure: number; hotTerm: [string,number]|undefined;
   numBg: (n: number) => string;
 }) => {
+  const [selectedPattern, setSelectedPattern] = useState<string | null>(null);
+  // Geração dos padrões
   const patterns = useMemo(() => {
     const list: any[] = [];
     if (allNumbers.length < 3) return list;
@@ -742,7 +816,8 @@ const PatternsTab = memo(({ allNumbers, sniperData, streakNum, streakLen, streak
       const pux = (PULL[streakNum] || []).slice(0, 4);
       list.push({ id: 'streak', emoji: '🔱', title: `STREAK ${streakNum} × ${streakLen}`,
         detail: `Repetiu ${streakLen}× seguidas. Cobrir: [${pux.join(', ')}]`,
-        conf: prob, type: streakLen >= 4 ? 'high' : 'mid', numbers: [streakNum, ...pux].slice(0, 5) });
+        conf: prob, type: streakLen >= 4 ? 'high' : 'mid', numbers: [streakNum, ...pux].slice(0, 5),
+        validate: (n: number) => n === streakNum });
     }
     if (hotTerm) {
       const [tStr, c] = hotTerm; const t = Number(tStr);
@@ -753,43 +828,93 @@ const PatternsTab = memo(({ allNumbers, sniperData, streakNum, streakLen, streak
         list.push({ id: 'term', emoji: bias > 0 ? '🔥' : '❄️',
           title: `Terminal T${t} ${bias > 0 ? 'QUENTE' : 'FRIO'}`,
           detail: `${bias > 0 ? `+${bias.toFixed(0)}% acima` : `${Math.abs(bias).toFixed(0)}% abaixo`} do esperado`,
-          conf: Math.min(88, Math.abs(bias) > 60 ? 85 : 65), type: bias > 60 ? 'high' : 'mid', numbers: tNums });
+          conf: Math.min(88, Math.abs(bias) > 60 ? 85 : 65), type: bias > 60 ? 'high' : 'mid', numbers: tNums,
+          validate: (n: number) => tNums.includes(n) });
       }
     }
     if (zeroPressure >= 22) {
+      const zeroNums = [0, 32, 15, 26, 3, 35, 12];
       list.push({ id: 'zero', emoji: '🟢', title: `Zero ausente — ${zeroPressure}g`,
         detail: `Média 37. ${zeroPressure > 55 ? 'CRÍTICO!' : zeroPressure > 37 ? 'Acima da média.' : 'Atenção.'}`,
         conf: Math.min(88, 35 + zeroPressure * 0.8), type: zeroPressure > 50 ? 'high' : 'mid',
-        numbers: [0, 32, 15, 26, 3, 35, 12] });
+        numbers: zeroNums, validate: (n: number) => zeroNums.includes(n) });
     }
     if (allNumbers.length > 0) {
       const pux = PULL[allNumbers[0]] || [];
       if (pux.length > 0) list.push({ id: 'pull', emoji: '🧲', title: `Puxados do ${allNumbers[0]}`,
         detail: `Frequentes: [${pux.slice(0,6).join(', ')}]`,
-        conf: 68, type: 'mid', numbers: pux.slice(0, 6) });
+        conf: 68, type: 'mid', numbers: pux.slice(0, 6), validate: (n: number) => pux.includes(n) });
     }
     // Sector analysis
     const sc: Record<string,number> = {};
     allNumbers.slice(0,15).forEach(n => { const s = getSectorPT(n); sc[s]=(sc[s]||0)+1; });
     const topS = Object.entries(sc).sort(([,a],[,b])=>b-a)[0];
     if (topS && topS[1] >= 5) list.push({ id: 'sector', emoji: '🌍', title: `${topS[0]} dominante (${topS[1]}/15)`,
-      detail: `Setor concentrou ${topS[1]} dos últimos 15.`, conf: 60, type: 'info' });
+      detail: `Setor concentrou ${topS[1]} dos últimos 15.`, conf: 60, type: 'info', validate: (n: number) => getSectorPT(n) === topS[0] });
     // AI detected patterns
     const detectedPatterns = Array.isArray(sniperData?.detectedPatterns) ? sniperData.detectedPatterns : [];
     detectedPatterns.filter((p: any) => p.confidence >= 68).slice(0, 4).forEach((p: any) => {
       if (list.length >= 9) return;
       list.push({ id: `det_${p.name}`, emoji: p.emoji || '📊', title: p.name,
-        detail: p.description + (p.action ? ` → ${p.action}` : ''), conf: p.confidence, type: p.confidence >= 80 ? 'mid' : 'info' });
+        detail: p.description + (p.action ? ` → ${p.action}` : ''), conf: p.confidence, type: p.confidence >= 80 ? 'mid' : 'info',
+        numbers: Array.isArray(p.numbers) ? p.numbers : [], validate: (n: number) => Array.isArray(p.numbers) && p.numbers.includes(n),
+        ia: p.ia, reasoning: p.reasoning });
     });
     // Agents
     const agents = Array.isArray(sniperData?.agents) ? sniperData.agents : [];
     agents.slice(0, 2).forEach((a: any) => {
       if (!a.signal || !a.numbers?.length || list.length >= 10) return;
       list.push({ id: `agent_${a.modelId}`, emoji: '🤖', title: `${a.modelName}: ${a.label}`,
-        detail: a.reasoning?.slice(0, 120) || '', conf: a.confidence, type: a.confidence >= 72 ? 'mid' : 'info', numbers: Array.isArray(a.numbers) ? a.numbers.slice(0, 5) : [] });
+        detail: a.reasoning?.slice(0, 120) || '', conf: a.confidence, type: a.confidence >= 72 ? 'mid' : 'info', numbers: Array.isArray(a.numbers) ? a.numbers.slice(0, 5) : [],
+        validate: (n: number) => Array.isArray(a.numbers) && a.numbers.includes(n), ia: a.modelName, reasoning: a.reasoning });
     });
     return list.slice(0, 10);
   }, [allNumbers.slice(0, 20).join(','), sniperData?.detectedPatterns?.length, sniperData?.agents?.length, streakActive, zeroPressure]);
+
+  // Validação visual: destaca ocorrências do padrão no histórico
+  const historyHighlight = useMemo(() => {
+    if (!selectedPattern) return [];
+    const pat = patterns.find((p: any) => p.id === selectedPattern);
+    if (!pat || !pat.validate) return [];
+    return allNumbers.map((n, i) => pat.validate(n) ? i : -1).filter(i => i >= 0);
+  }, [selectedPattern, patterns, allNumbers]);
+
+  // Estatísticas do padrão selecionado
+  const patternStats = useMemo(() => {
+    if (!selectedPattern) return null;
+    const pat = patterns.find((p: any) => p.id === selectedPattern);
+    if (!pat || !pat.validate) return null;
+    const total = allNumbers.length;
+    const occurrences = allNumbers.filter(pat.validate).length;
+    let streaks = 0, maxStreak = 0, curStreak = 0;
+    for (let i = 0; i < allNumbers.length; i++) {
+      if (pat.validate(allNumbers[i])) { curStreak++; maxStreak = Math.max(maxStreak, curStreak); }
+      else { if (curStreak > 1) streaks++; curStreak = 0; }
+    }
+    if (curStreak > 1) streaks++;
+    // Frequência por janela de 20
+    const windowSize = 20;
+    const freqByWindow = [];
+    for (let i = 0; i < allNumbers.length; i += windowSize) {
+      const win = allNumbers.slice(i, i + windowSize);
+      freqByWindow.push(win.filter(pat.validate).length);
+    }
+    // Taxa de acerto (hit rate) se houver dados de acerto
+    let hitRate = null;
+    if (typeof sniperData?.predictionHistory === 'object' && Array.isArray(sniperData.predictionHistory)) {
+      // predictionHistory: [{predicted, actual, hit, timestamp}]
+      const relevant = sniperData.predictionHistory.filter((h: any) => pat.validate(h.predicted));
+      const hits = relevant.filter((h: any) => h.hit === true).length;
+      hitRate = relevant.length > 0 ? Math.round((hits / relevant.length) * 100) : null;
+    }
+    // Gráfico de evolução de acertos (últimos 20)
+    let hitHistory: number[] = [];
+    if (typeof sniperData?.predictionHistory === 'object' && Array.isArray(sniperData.predictionHistory)) {
+      const relevant = sniperData.predictionHistory.filter((h: any) => pat.validate(h.predicted));
+      hitHistory = relevant.slice(-20).map((h: any) => h.hit ? 1 : 0);
+    }
+    return { total, occurrences, pct: total > 0 ? Math.round(occurrences / total * 100) : 0, streaks, maxStreak, freqByWindow, hitRate, hitHistory };
+  }, [selectedPattern, patterns, allNumbers, sniperData?.predictionHistory]);
 
   if (patterns.length === 0) return (
     <div className="bg-card/80 rounded-2xl border border-border/20 p-14 text-center">
@@ -797,14 +922,17 @@ const PatternsTab = memo(({ allNumbers, sniperData, streakNum, streakLen, streak
       <p className="text-sm text-muted-foreground/40">Aguardando dados...</p>
     </div>
   );
+
   return (
     <div className="space-y-2">
       {patterns.map((p: any, i: number) => (
         <motion.div key={p.id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
-          className={`p-3.5 rounded-2xl border flex items-start gap-3 ${
+          className={`p-3.5 rounded-2xl border flex items-start gap-3 cursor-pointer ${
             p.type === 'high' ? 'bg-accent/5 border-accent/20' : p.type === 'mid' ? 'bg-primary/4 border-primary/15' :
             p.type === 'cold' ? 'bg-blue-500/5 border-blue-500/15' : 'bg-card/80 border-border/20'
-          }`}>
+          } ${selectedPattern === p.id ? 'ring-2 ring-primary/40' : ''}`}
+          onClick={() => setSelectedPattern(selectedPattern === p.id ? null : p.id)}
+        >
           <span className="text-xl shrink-0 mt-0.5">{p.emoji}</span>
           <div className="flex-1 min-w-0">
             <div className={`text-[10px] font-black leading-tight ${
@@ -818,12 +946,67 @@ const PatternsTab = memo(({ allNumbers, sniperData, streakNum, streakLen, streak
                 ))}
               </div>
             )}
+            {/* Integração IA: mostra qual IA detectou e raciocínio */}
+            {p.ia && (
+              <div className="mt-2 text-[7px] text-primary/80 font-mono">IA: {p.ia} <span className="text-muted-foreground/40">{p.reasoning?.slice(0, 80)}</span></div>
+            )}
           </div>
           <span className={`shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[36px] text-center ${
             p.conf >= 80 ? 'bg-primary/10 text-primary' : p.conf >= 60 ? 'bg-accent/10 text-accent' : 'bg-card text-muted-foreground/40'
           }`}>{p.conf}%</span>
         </motion.div>
       ))}
+
+      {/* Se um padrão está selecionado, mostra incidência, estatísticas e gráfico */}
+      {selectedPattern && (
+        <div className="bg-card/80 rounded-2xl border border-primary/20 p-4 mt-2">
+          <div className="text-[9px] font-black text-primary mb-2">Validação no histórico</div>
+          <div className="flex flex-wrap gap-1 mb-2">
+            {allNumbers.slice(0, 60).map((n, i) => (
+              <span key={i} className={`w-6 h-6 rounded text-[9px] font-black flex items-center justify-center border transition-all ${
+                historyHighlight.includes(i) ? 'bg-primary/80 text-white border-primary/80 scale-110 z-10' : numBgFn(n) + ' text-white border-border/20 opacity-40'
+              }`} title={historyHighlight.includes(i) ? 'Ocorrência do padrão' : ''}>{n}</span>
+            ))}
+          </div>
+          {patternStats && (
+            <div className="mb-2 text-[8px] text-muted-foreground/60 flex flex-wrap gap-4">
+              <span><b className="text-primary font-bold">{patternStats.occurrences}</b> ocorrências ({patternStats.pct}%)</span>
+              <span><b className="text-primary font-bold">{patternStats.streaks}</b> streaks</span>
+              <span>máx streak: <b className="text-primary font-bold">{patternStats.maxStreak}</b></span>
+              <span>total analisado: {patternStats.total}</span>
+              {patternStats.hitRate !== null && (
+                <span className="text-primary font-bold">Hit rate: {patternStats.hitRate}%</span>
+              )}
+            </div>
+          )}
+          {/* Gráfico de evolução de acertos */}
+          {patternStats && patternStats.hitHistory && patternStats.hitHistory.length > 0 && (
+            <div className="mt-1 mb-2">
+              <div className="text-[7px] text-muted-foreground/40 mb-1">Evolução dos últimos acertos</div>
+              <div className="flex items-end gap-0.5 h-7">
+                {patternStats.hitHistory.map((v, i) => (
+                  <div key={i} className={`w-2 rounded ${v ? 'bg-primary' : 'bg-destructive/40'}`} style={{ height: v ? 20 : 7 }} />
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Gráfico de barras simples */}
+          {patternStats && patternStats.freqByWindow.length > 1 && (
+            <div className="mt-2">
+              <div className="text-[7px] text-muted-foreground/40 mb-1">Ocorrências por janela de 20 giros</div>
+              <div className="flex items-end gap-1 h-14">
+                {patternStats.freqByWindow.map((v, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center">
+                    <div className="w-4 rounded-t bg-primary/60" style={{ height: `${6 * v}px`, minHeight: 2 }} />
+                    <div className="text-[7px] text-muted-foreground/40 mt-0.5">{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="text-[7px] text-muted-foreground/40 mt-2">Ocorrências destacadas nos últimos 60 giros.</div>
+        </div>
+      )}
     </div>
   );
 });

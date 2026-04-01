@@ -8570,6 +8570,7 @@ Responda APENAS JSON:
           recentCount,
         },
         diagnostic,
+        justification: (numScores[0]?.reasons?.length ? numScores[0].reasons.slice(0, 3).join(' | ') : (decisionJustification || '')),
       },
       strategy: {
         type: winner.type,
@@ -8580,7 +8581,7 @@ Responda APENAS JSON:
         coverage: +(finalBetNumbers.length / 37 * 100).toFixed(1),
         payout: 36 - finalBetNumbers.length,
         probability: finalProbability,
-        justification: decisionJustification,
+        justification: (decisionJustification || (numScores[0]?.reasons?.length ? numScores[0].reasons.slice(0, 3).join(' | ') : '')),
       },
       betInstructions,
       topAlternatives,
