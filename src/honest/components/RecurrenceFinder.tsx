@@ -1,7 +1,30 @@
 import { memo, useMemo, useState } from "react";
 import { useHonestStore } from "../lib/store";
-import { colorOf, sectorOf, DOZEN_1, DOZEN_2, DOZEN_3 } from "../lib/wheel";
-import { Card, SectionHeader } from "./ui";
+import { colorOf, sectorOf, DOZEN_1, DOZEN_2, DOZEN_3, SLOTS } from "../lib/wheel";
+import { Card, SectionHeader, Pill } from "./ui";
+
+const LENS_BASELINES: Record<string, Record<string, number>> = {
+  color: { red: 18 / 37, black: 18 / 37, green: 1 / 37 },
+  sector: { Voisins: 17 / 37, Tiers: 12 / 37, Orphelins: 8 / 37 },
+  dozen: { "1ª dúzia": 12 / 37, "2ª dúzia": 12 / 37, "3ª dúzia": 12 / 37, zero: 1 / 37 },
+};
+
+const binomialP = (k: number, n: number, p: number): number => {
+  if (n === 0) return 1;
+  const sigma = Math.sqrt(n * p * (1 - p));
+  if (sigma < 1e-9) return 1;
+  const z = Math.abs((k - n * p) / sigma);
+  const erfc = (x: number) => {
+    const t = 1 / (1 + 0.3275911 * x);
+    const y =
+      1 -
+      (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) *
+        t *
+        Math.exp(-x * x);
+    return 1 - y;
+  };
+  return Math.min(1, erfc(z / Math.SQRT2));
+};
 
 type Lens = "exact" | "color" | "sector" | "dozen";
 
@@ -19,6 +42,8 @@ interface Followup {
   key: string;
   count: number;
   pct: number;
+  expected: number;
+  pBinomial: number;
 }
 
 const RecurrenceFinder = memo(() => {
@@ -48,8 +73,18 @@ const RecurrenceFinder = memo(() => {
       }
     }
 
+    const baselineMap = LENS_BASELINES[lens] || {};
     const followups: Followup[] = Object.entries(followCounts)
-      .map(([key, count]) => ({ key, count, pct: total > 0 ? count / total : 0 }))
+      .map(([key, count]) => {
+        const pExp = lens === "exact" ? 1 / SLOTS : baselineMap[key] ?? 1 / SLOTS;
+        return {
+          key,
+          count,
+          pct: total > 0 ? count / total : 0,
+          expected: pExp * total,
+          pBinomial: binomialP(count, total, pExp),
+        };
+      })
       .sort((a, b) => b.count - a.count);
 
     return { targetKey, occurrences: occurrences.length, total, followups };
@@ -127,26 +162,48 @@ const RecurrenceFinder = memo(() => {
             seguintes nos próximos {windowAfter} giros
           </div>
           <div className="space-y-1">
-            {analysis.followups.slice(0, 6).map((f, i) => (
-              <div key={f.key} className="flex items-center gap-2 text-[11px]">
-                <span className={`w-20 truncate shrink-0 font-bold ${i === 0 ? "text-amber-300" : "text-neutral-300"}`}>
-                  {f.key}
-                </span>
-                <div className="flex-1 h-3 bg-neutral-900 rounded overflow-hidden">
-                  <div
-                    className={`h-full ${i === 0 ? "bg-amber-500" : "bg-neutral-600"}`}
-                    style={{ width: `${f.pct * 100}%` }}
-                  />
+            {analysis.followups.slice(0, 6).map((f, i) => {
+              const sig = f.pBinomial < 0.05 && f.count > f.expected;
+              return (
+                <div key={f.key} className="flex items-center gap-2 text-[11px]">
+                  <span className={`w-20 truncate shrink-0 font-bold ${i === 0 ? "text-amber-300" : "text-neutral-300"}`}>
+                    {f.key}
+                  </span>
+                  <div className="flex-1 h-3 bg-neutral-900 rounded overflow-hidden relative">
+                    <div
+                      className="absolute inset-y-0 left-0 w-px bg-neutral-500"
+                      style={{ left: `${Math.min(100, (f.expected / Math.max(1, analysis.total)) * 100)}%` }}
+                      title={`esperado ${f.expected.toFixed(1)}×`}
+                    />
+                    <div
+                      className={`h-full ${sig ? "bg-amber-500" : i === 0 ? "bg-amber-700" : "bg-neutral-600"}`}
+                      style={{ width: `${f.pct * 100}%` }}
+                    />
+                  </div>
+                  <span className="font-mono shrink-0 text-neutral-400 w-12 text-right">
+                    {(f.pct * 100).toFixed(1)}%
+                  </span>
+                  <span
+                    className={`font-mono shrink-0 w-14 text-right ${
+                      f.pBinomial < 0.01
+                        ? "text-red-300 font-bold"
+                        : f.pBinomial < 0.05
+                        ? "text-amber-300 font-bold"
+                        : "text-neutral-500"
+                    }`}
+                    title="p-valor binomial vs esperado"
+                  >
+                    p={f.pBinomial.toFixed(2)}
+                  </span>
                 </div>
-                <span className="font-mono shrink-0 text-neutral-400 w-12 text-right">
-                  {(f.pct * 100).toFixed(1)}%
-                </span>
-                <span className="font-mono shrink-0 text-neutral-500 w-8 text-right">
-                  {f.count}×
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
+          {analysis.followups.some((f) => f.pBinomial < 0.05 && f.count > f.expected) && (
+            <div className="mt-2">
+              <Pill accent="warn">⚠ desvio estatisticamente significativo na amostra (p &lt; 0,05)</Pill>
+            </div>
+          )}
           <div className="text-[9px] text-neutral-600 italic mt-2 text-center">
             Padrão histórico ≠ previsão. Casa retém ~2,7% sob distribuição justa.
           </div>

@@ -21,6 +21,8 @@ const RecurrenceFinder = lazy(() => import("../components/RecurrenceFinder"));
 const NumberFrequency = lazy(() => import("../components/NumberFrequency"));
 const HourlyHeatmap = lazy(() => import("../components/HourlyHeatmap"));
 const StrategyPresets = lazy(() => import("../components/StrategyPresets"));
+const WheelBiasDetector = lazy(() => import("../components/WheelBiasDetector"));
+const TransitionMatrix = lazy(() => import("../components/TransitionMatrix"));
 
 const fmtMoney = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
@@ -151,6 +153,8 @@ const Dashboard = memo(() => {
           <HotColdWheel />
           <SectorHeatmap />
           <NumberFrequency />
+          <WheelBiasDetector />
+          <TransitionMatrix />
           <RecurrenceFinder />
           <HourlyHeatmap />
           <BetTracker />
