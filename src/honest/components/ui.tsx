@@ -38,10 +38,10 @@ export const Card = memo(
     padding?: "sm" | "md" | "lg";
     className?: string;
   }) => {
-    const pad = padding === "sm" ? "p-3" : padding === "lg" ? "p-6" : "p-4";
+    const pad = padding === "sm" ? "p-3" : padding === "lg" ? "p-5" : "p-3.5";
     return (
       <section
-        className={`rounded-2xl border ${accentBorder[accent]} ${accentBg[accent]} ${pad} ${className}`}
+        className={`rounded-xl border ${accentBorder[accent]} ${accentBg[accent]} ${pad} shadow-md shadow-black/20 ${className}`}
       >
         {children}
       </section>
@@ -62,17 +62,17 @@ export const SectionHeader = memo(
     actions?: ReactNode;
     eyebrow?: string;
   }) => (
-    <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
-      <div>
+    <div className="flex items-start justify-between gap-3 mb-2.5 flex-wrap">
+      <div className="min-w-0">
         {eyebrow && (
-          <div className="text-[10px] uppercase tracking-[0.14em] font-bold text-neutral-500 mb-1">
+          <div className="text-[9px] uppercase tracking-[0.18em] font-black text-amber-400/80 mb-0.5">
             {eyebrow}
           </div>
         )}
-        <h2 className="text-base font-semibold tracking-tight text-neutral-100">{title}</h2>
-        {subtitle && <p className="text-xs text-neutral-400 mt-0.5 leading-relaxed">{subtitle}</p>}
+        <h2 className="text-sm font-bold tracking-tight text-neutral-100">{title}</h2>
+        {subtitle && <p className="text-[11px] text-neutral-400 mt-0.5 leading-snug">{subtitle}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2 flex-wrap shrink-0">{actions}</div>}
+      {actions && <div className="flex items-center gap-1.5 flex-wrap shrink-0">{actions}</div>}
     </div>
   )
 );
@@ -224,7 +224,7 @@ export const StatGrid = memo(
 StatGrid.displayName = "UIStatGrid";
 
 export const PageContainer = memo(({ children }: { children: ReactNode }) => (
-  <div className="space-y-6">{children}</div>
+  <div className="space-y-3">{children}</div>
 ));
 PageContainer.displayName = "UIPageContainer";
 
