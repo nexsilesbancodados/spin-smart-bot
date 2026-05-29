@@ -1,412 +1,161 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 400px;
+      width: 320px;
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: #0a0a0f;
-      color: #e0e0e0;
+      background: #0a0a0a;
+      color: #e5e5e5;
+      font-size: 13px;
     }
-
-    /* Header */
     .header {
-      background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
-      padding: 18px 20px 14px;
-      border-bottom: 1px solid #00e5ff15;
-      position: relative;
-      overflow: hidden;
+      background: #141414;
+      border-bottom: 1px solid #262626;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
-    .header::before {
-      content: '';
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, #00e5ff, #ff00e5, #00e5ff);
-      opacity: 0.6;
-    }
-    .header-row { display: flex; align-items: center; gap: 10px; }
-    .header h1 {
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: 1.5px;
-      background: linear-gradient(135deg, #00e5ff, #ff00e5);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .version {
-      font-size: 9px;
-      padding: 2px 6px;
-      background: #00e5ff15;
-      color: #00e5ff;
-      border: 1px solid #00e5ff30;
-      border-radius: 4px;
-      font-weight: 700;
-    }
-    .header p { font-size: 11px; color: #555; margin-top: 4px; }
-
-    /* Tabs */
-    .tabs { display: flex; border-bottom: 1px solid #1a1a2e; }
-    .tab {
-      flex: 1; padding: 10px 0; text-align: center;
-      font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
-      cursor: pointer; border: none;
-      background: transparent; color: #444;
-      transition: all 0.25s; position: relative;
-    }
-    .tab.active {
-      color: #00e5ff;
-    }
-    .tab.active::after {
-      content: '';
-      position: absolute;
-      bottom: 0; left: 20%; right: 20%;
-      height: 2px;
-      background: #00e5ff;
-      border-radius: 2px;
-    }
-    .tab:hover { color: #888; }
-
-    /* Tab content */
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-
-    /* Status bar */
-    .status-bar {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 16px;
-      background: #0d0d15;
-      border-bottom: 1px solid #1a1a2e;
-    }
-    .pulse-dot {
-      width: 10px; height: 10px; border-radius: 50%;
-      position: relative;
-    }
-    .pulse-dot.on { background: #00e5ff; box-shadow: 0 0 8px #00e5ff80; }
-    .pulse-dot.on::after {
-      content: ''; position: absolute; inset: -3px;
-      border-radius: 50%; border: 2px solid #00e5ff40;
-      animation: ripple 2s infinite;
-    }
-    .pulse-dot.off { background: #ff4455; }
-    .pulse-dot.paused { background: #f59e0b; }
-    @keyframes ripple {
-      0% { transform: scale(1); opacity: 0.6; }
-      100% { transform: scale(1.8); opacity: 0; }
-    }
-    .status-text { font-size: 12px; font-weight: 600; }
-
-    /* Sections */
-    .section { padding: 14px 16px; border-bottom: 1px solid #12121e; }
-    .section-title {
-      font-size: 9px; font-weight: 800; letter-spacing: 1.5px;
-      text-transform: uppercase; color: #555; margin-bottom: 8px;
-    }
-
-    /* Inputs */
-    input[type="text"], input[type="number"] {
-      width: 100%; padding: 9px 12px;
-      background: #12121e; border: 1px solid #222240;
-      border-radius: 8px; color: #fff; font-size: 12px;
-      outline: none; transition: border 0.2s;
-      margin-bottom: 6px;
-    }
-    input:focus { border-color: #00e5ff; box-shadow: 0 0 0 2px #00e5ff15; }
-
-    /* Buttons */
-    .btn {
-      width: 100%; padding: 10px; border: none; border-radius: 8px;
-      cursor: pointer; font-size: 12px; font-weight: 700;
-      letter-spacing: 0.5px; margin-top: 6px; transition: all 0.2s;
-      position: relative; overflow: hidden;
-    }
-    .btn:hover { transform: translateY(-1px); }
-    .btn:active { transform: translateY(0); }
-    .btn-neon {
-      background: linear-gradient(135deg, #00e5ff, #00b4d8);
-      color: #000; box-shadow: 0 4px 15px #00e5ff30;
-    }
-    .btn-neon:hover { box-shadow: 0 4px 20px #00e5ff50; }
-    .btn-pink {
-      background: linear-gradient(135deg, #ff00e5, #d400aa);
-      color: #fff; box-shadow: 0 4px 15px #ff00e530;
-    }
-    .btn-danger {
-      background: linear-gradient(135deg, #ff4455, #cc2233);
-      color: #fff; box-shadow: 0 4px 12px #ff445530;
-    }
-    .btn-ghost {
-      background: #1a1a2e; color: #888; border: 1px solid #222240;
-    }
-    .btn-ghost:hover { color: #ccc; border-color: #333; }
-    .btn-success {
-      background: linear-gradient(135deg, #00ff88, #00cc6a);
-      color: #000; box-shadow: 0 4px 15px #00ff8830;
-    }
-
-    /* Stats grid */
-    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-    .stat-card {
-      background: #12121e; border: 1px solid #1a1a30;
-      border-radius: 10px; padding: 12px; text-align: center;
-      transition: border-color 0.2s;
-    }
-    .stat-card:hover { border-color: #00e5ff30; }
-    .stat-label { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-    .stat-value { font-size: 22px; font-weight: 900; font-family: 'Courier New', monospace; margin-top: 2px; }
-    .stat-value.cyan { color: #00e5ff; }
-    .stat-value.green { color: #00ff88; }
-    .stat-value.red { color: #ff4455; }
-    .stat-value.pink { color: #ff00e5; }
-
-    /* Number log */
-    .log-scroll { max-height: 160px; overflow-y: auto; }
-    .log-scroll::-webkit-scrollbar { width: 4px; }
-    .log-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-    .log-item {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 5px 0; border-bottom: 1px solid #12121e;
-    }
-    .num-ball {
-      width: 28px; height: 28px; border-radius: 50%;
+    .badge {
+      width: 30px; height: 30px;
+      border-radius: 6px;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
       display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 800; flex-shrink: 0;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      font-weight: 800; font-size: 12px;
     }
-    .num-ball.red { background: linear-gradient(135deg, #dc2626, #991b1b); color: #fff; }
-    .num-ball.black { background: linear-gradient(135deg, #1a1a2e, #0d0d15); color: #fff; border: 1px solid #333; }
-    .num-ball.green { background: linear-gradient(135deg, #16a34a, #0d7a36); color: #fff; }
-    .log-time { color: #444; font-size: 10px; font-family: monospace; }
-    .log-status { font-size: 9px; }
-    .log-status.ok { color: #00ff88; }
-    .log-status.err { color: #ff4455; }
-    .empty-state { color: #333; text-align: center; padding: 20px; font-size: 12px; }
-
-    /* Toggle switch */
-    .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
-    .toggle-row .label-text { font-size: 11px; font-weight: 600; }
-    .toggle-row .label-sub { font-size: 9px; color: #444; }
-    .switch { position: relative; width: 42px; height: 22px; flex-shrink: 0; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute; cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: #222240; border-radius: 22px;
-      transition: 0.3s;
+    .header h1 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
     }
-    .slider:before {
-      content: ''; position: absolute;
-      height: 18px; width: 18px;
-      left: 2px; bottom: 2px;
-      background: white; border-radius: 50%;
-      transition: 0.3s;
+    .header p { font-size: 10px; color: #737373; margin-top: 2px; }
+
+    .status {
+      padding: 12px 16px;
+      border-bottom: 1px solid #262626;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
-    .switch input:checked + .slider { background: #00e5ff; }
-    .switch input:checked + .slider:before { transform: translateX(20px); }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #525252;
+    }
+    .dot.on { background: #10b981; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15); }
+    .dot.paused { background: #f59e0b; }
+    .status-text { font-size: 12px; font-weight: 600; }
+    .status-count { margin-left: auto; font-size: 11px; color: #a3a3a3; font-family: ui-monospace, monospace; }
 
-    /* Row layout */
-    .row { display: flex; gap: 8px; }
-    .row > * { flex: 1; }
-
-    /* Stop alert */
-    .stop-alert {
-      background: #ff445515; border: 1px solid #ff445540;
-      border-radius: 8px; padding: 10px 14px;
-      font-size: 12px; color: #ff6666;
-      margin-bottom: 10px; display: none;
+    .actions {
+      padding: 12px 16px;
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid #262626;
+    }
+    .btn {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #262626;
+      background: #1a1a1a;
+      color: #e5e5e5;
+      font-size: 11px;
       font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: #262626; }
+    .btn-primary { background: #f59e0b; color: #0a0a0a; border-color: #f59e0b; }
+    .btn-primary:hover { background: #fbbf24; }
+    .btn-danger { background: #1a1a1a; color: #f87171; border-color: #3f1d1d; }
+    .btn-danger:hover { background: #3f1d1d; color: #fca5a5; }
+
+    .section {
+      padding: 12px 16px;
+    }
+    .section h2 {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #737373;
+      margin-bottom: 10px;
+    }
+    .log {
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .log::-webkit-scrollbar { width: 4px; }
+    .log::-webkit-scrollbar-thumb { background: #404040; border-radius: 2px; }
+    .num {
+      width: 28px; height: 28px;
+      border-radius: 5px;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      font-family: ui-monospace, monospace;
+    }
+    .num.green { background: #16a34a; }
+    .num.red { background: #dc2626; }
+    .num.black { background: #27272a; }
+    .empty {
+      text-align: center;
+      color: #525252;
+      font-size: 11px;
+      padding: 30px 0;
     }
 
-    /* Count display */
-    .count-display {
-      text-align: center; margin-bottom: 10px;
+    .footer {
+      padding: 10px 16px;
+      border-top: 1px solid #262626;
+      font-size: 9px;
+      color: #525252;
+      text-align: center;
+      line-height: 1.5;
     }
-    .count-num {
-      font-size: 32px; font-weight: 900;
-      font-family: 'Courier New', monospace;
-      background: linear-gradient(135deg, #00e5ff, #ff00e5);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .count-label { font-size: 9px; color: #444; letter-spacing: 1px; }
+    .footer strong { color: #a3a3a3; }
   </style>
 </head>
 <body>
-  <!-- Header -->
   <div class="header">
-    <div class="header-row">
-      <h1>SPIN SMART BOT</h1>
-      <span class="version">v2.0</span>
-    </div>
-    <p>IA Sniper + AutoBet Playtech</p>
-  </div>
-
-  <!-- Tabs -->
-  <div class="tabs">
-    <button class="tab active" data-tab="sniper">🎯 SNIPER</button>
-    <button class="tab" data-tab="tracker">📡 TRACKER</button>
-    <button class="tab" data-tab="autobet">🤖 AUTO-BET</button>
-  </div>
-
-  <!-- TAB: SNIPER -->
-  <div class="tab-content active" id="tab-sniper">
-    <div class="section" style="border:none;">
-      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
-        <span>Sinal ao Vivo</span>
-        <button onclick="fetchSniperSignal()" style="font-size:9px;padding:3px 8px;background:#00e5ff20;color:#00e5ff;border:1px solid #00e5ff30;border-radius:6px;cursor:pointer;font-weight:700;">↺ Atualizar</button>
-      </div>
-      <div id="sniper-panel">
-        <div class="empty-state">Carregando sinal...</div>
-      </div>
+    <div class="badge">RV</div>
+    <div>
+      <h1>Roleta Vision AI</h1>
+      <p>Captura de giros · sem previsões</p>
     </div>
   </div>
 
-  <!-- TAB: TRACKER -->
-  <div class="tab-content" id="tab-tracker">
-    <div class="status-bar">
-      <div class="pulse-dot" id="statusDot"></div>
-      <span class="status-text" id="statusText">Verificando...</span>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Webhook URL</div>
-      <input type="text" id="webhookInput" placeholder="https://...supabase.co/functions/v1/webhook-roulette" />
-      <button class="btn btn-neon" id="saveBtn">💾 Salvar</button>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Números Capturados</div>
-      <div class="count-display">
-        <div class="count-num" id="totalCount">0</div>
-        <div class="count-label">CAPTURADOS</div>
-      </div>
-      <div class="log-scroll" id="logContainer">
-        <div class="empty-state">Nenhum número capturado ainda</div>
-      </div>
-      <button class="btn btn-ghost" id="clearBtn" style="margin-top:8px;">🗑️ Limpar Log</button>
-    </div>
-
-    <div class="section">
-      <div class="row">
-        <button class="btn btn-pink" id="pauseBtn">⏸️ Pausar</button>
-        <button class="btn btn-danger" id="testBtn">🧪 Teste</button>
-      </div>
-    </div>
+  <div class="status">
+    <div class="dot" id="statusDot"></div>
+    <span class="status-text" id="statusText">—</span>
+    <span class="status-count" id="statusCount">0</span>
   </div>
 
-  <!-- TAB: AUTO-BET -->
-  <div class="tab-content" id="tab-autobet">
-    <div class="section">
-      <div class="stop-alert" id="ab-stop-reason"></div>
+  <div class="actions">
+    <button class="btn btn-primary" id="toggleBtn">Pausar</button>
+    <button class="btn btn-danger" id="clearBtn">Limpar log</button>
+  </div>
 
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Apostas</div>
-          <div class="stat-value cyan" id="ab-stat-bets">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Lucro</div>
-          <div class="stat-value green" id="ab-stat-profit">R$ 0.00</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Wins</div>
-          <div class="stat-value green" id="ab-stat-wins">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Losses</div>
-          <div class="stat-value red" id="ab-stat-losses">0</div>
-        </div>
-      </div>
+  <div class="section">
+    <h2>Últimos giros capturados</h2>
+    <div class="log" id="log"></div>
+  </div>
 
-      <button class="btn btn-success" id="ab-toggle">🤖 Ativar Bot</button>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Configuração</div>
-      <label style="font-size:10px;color:#555;display:block;margin-bottom:4px;">API Sniper URL</label>
-      <input type="text" id="ab-apiUrl" placeholder="https://...supabase.co/functions/v1/sniper-predict" />
-
-      <div class="row">
-        <div>
-          <label style="font-size:10px;color:#555;display:block;margin-bottom:4px;">Aposta (R$)</label>
-          <input type="number" id="ab-betValue" value="1" min="0.1" step="0.5" />
-        </div>
-        <div>
-          <label style="font-size:10px;color:#555;display:block;margin-bottom:4px;">Prob. Min (%)</label>
-          <input type="number" id="ab-minProb" value="85" min="50" max="100" />
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label style="font-size:10px;color:#555;display:block;margin-bottom:4px;">Stop Loss (R$)</label>
-          <input type="number" id="ab-stopLoss" value="-50" max="0" />
-        </div>
-        <div>
-          <label style="font-size:10px;color:#555;display:block;margin-bottom:4px;">Stop Win (R$)</label>
-          <input type="number" id="ab-stopWin" value="100" min="1" />
-        </div>
-      </div>
-
-      <div class="toggle-row">
-        <div>
-          <div class="label-text">Martingale (Gale)</div>
-          <div class="label-sub">Dobra aposta após perda</div>
-        </div>
-        <label class="switch">
-          <input type="checkbox" id="ab-gale" />
-          <span class="slider"></span>
-        </label>
-      </div>
-
-      <div class="row" id="gale-options" style="display:none;">
-        <div>
-          <label style="font-size:10px;color:#555;display:block;margin-bottom:4px;">Max Steps</label>
-          <input type="number" id="ab-maxGale" value="3" min="1" max="5" />
-        </div>
-        <div>
-          <label style="font-size:10px;color:#555;display:block;margin-bottom:4px;">Fator (x)</label>
-          <input type="number" id="ab-galeFactor" value="2" min="1.5" max="3" step="0.1" />
-        </div>
-      </div>
-
-      <button class="btn btn-neon" id="ab-save">💾 Salvar Config</button>
-    </div>
-
-    <div class="section" style="border:none;">
-      <div class="section-title">Log de Apostas</div>
-      <div class="log-scroll" id="ab-log">
-        <div class="empty-state">Nenhuma aposta automática</div>
-      </div>
-      <button class="btn btn-ghost" id="ab-reset" style="margin-top:8px;">🗑️ Resetar Tudo</button>
-    </div>
+  <div class="footer">
+    <strong>Dados descritivos</strong> · não preveem o próximo giro<br />
+    Vantagem da casa fixa: 2,70%
   </div>
 
   <script src="popup.js"></script>
-  <script src="popup-autobet.js"></script>
-  <script>
-    // Tab switching
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
-        if (tab.dataset.tab === 'autobet') loadAutobetUI();
-      });
-    });
-    // Auto-carregar sniper na abertura
-    fetchSniperSignal();
-
-    // Gale toggle visibility
-    document.getElementById('ab-gale').addEventListener('change', function() {
-      document.getElementById('gale-options').style.display = this.checked ? 'flex' : 'none';
-    });
-
-    setupAutobetEvents();
-    loadAutobetUI();
-  </script>
 </body>
 </html>
