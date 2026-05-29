@@ -89,6 +89,7 @@ const SignalFAB = memo(() => {
             latest ? `${ballBg(latest.mainPick)} ring-4 ring-amber-400/50` : "bg-neutral-800 border border-neutral-700"
           }`}
           title="Sinal ao vivo"
+          aria-label={latest ? `Sinal ao vivo: número ${latest.mainPick}` : "Painel de sinal (aguardando)"}
         >
           {latest ? (
             <span className="text-white text-xl font-bold">{latest.mainPick}</span>

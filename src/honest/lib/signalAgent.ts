@@ -12,6 +12,7 @@ import { usePerf } from "./perf";
 import { runAutoPauseCheck } from "./autoPause";
 import { runAutoTuneCheck } from "./autoTuner";
 import { logActivity } from "./activityFeed";
+import { useABTest } from "./abTest";
 
 export interface SignalRecord {
   id: string;
@@ -31,6 +32,8 @@ export interface SignalRecord {
   hitNeighbors: boolean | null;
   explanation?: string[];
   modelContributions?: Array<{ id: string; name: string; weight: number; topPickProb: number }>;
+  emitted?: boolean;
+  filteredReason?: string;
 }
 
 export interface SignalAgentConfig {
@@ -56,6 +59,7 @@ interface SignalAgentStore {
   trainedSpins: number;
   setConfig: (patch: Partial<SignalAgentConfig>) => void;
   clearHistory: () => void;
+  pushPrediction: (s: SignalRecord) => void;
   pushSignal: (s: SignalRecord) => void;
   resolvePending: (actual: number) => SignalRecord[];
   setLatest: (s: SignalRecord | null) => void;
@@ -79,7 +83,7 @@ const defaultConfig: SignalAgentConfig = {
 
 export const useSignalAgent = create<SignalAgentStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       config: defaultConfig,
       history: [],
       pending: [],
@@ -87,28 +91,34 @@ export const useSignalAgent = create<SignalAgentStore>()(
       trainedSpins: 0,
       setConfig: (patch) => set((s) => ({ config: { ...s.config, ...patch } })),
       clearHistory: () => set({ history: [], pending: [] }),
-      pushSignal: (sig) =>
+      pushPrediction: (sig) =>
         set((s) => ({ pending: [sig, ...s.pending].slice(0, 50), latest: sig })),
-      resolvePending: (actual) => {
-        const resolved: SignalRecord[] = [];
+      pushSignal: (sig) =>
         set((s) => {
-          if (s.pending.length === 0) return s;
-          const sig = s.pending[s.pending.length - 1];
-          const updated: SignalRecord = {
-            ...sig,
-            actualNumber: actual,
-            resolvedAt: Date.now(),
-            hitMain: sig.mainPick === actual,
-            hitTop5: sig.topPicks.includes(actual),
-            hitNeighbors: sig.topPicks.includes(actual),
-          };
-          resolved.push(updated);
-          return {
-            pending: s.pending.slice(0, -1),
-            history: [updated, ...s.history].slice(0, 500),
-          };
+          const updated = { ...sig, emitted: true };
+          const exists = s.pending.findIndex((p) => p.id === sig.id);
+          const pending = exists >= 0
+            ? s.pending.map((p, i) => (i === exists ? updated : p))
+            : [updated, ...s.pending].slice(0, 50);
+          return { pending, latest: updated };
+        }),
+      resolvePending: (actual) => {
+        const current = get();
+        if (current.pending.length === 0) return [];
+        const sig = current.pending[current.pending.length - 1];
+        const updated: SignalRecord = {
+          ...sig,
+          actualNumber: actual,
+          resolvedAt: Date.now(),
+          hitMain: sig.mainPick === actual,
+          hitTop5: sig.topPicks.includes(actual),
+          hitNeighbors: sig.topPicks.includes(actual),
+        };
+        set({
+          pending: current.pending.slice(0, -1),
+          history: [updated, ...current.history].slice(0, 500),
         });
-        return resolved;
+        return [updated];
       },
       setLatest: (sig) => set({ latest: sig }),
       setTrainedSpins: (n) => set({ trainedSpins: n }),
@@ -253,7 +263,13 @@ export const runAgentTick = (): AgentTick => {
     modelContributions,
   };
 
-  useSignalAgent.getState().setLatest(signal);
+  useSignalAgent.getState().pushPrediction(signal);
+
+  const ab = useABTest.getState();
+  if (ab.enabled) {
+    if (signal.mainProb >= ab.configA.threshold) ab.pushPredictionA(signal);
+    if (signal.mainProb >= ab.configB.threshold) ab.pushPredictionB(signal);
+  }
 
   let effectiveThreshold = agent.config.threshold;
   if (agent.config.dynamicThreshold) {
@@ -294,6 +310,11 @@ export const startAgentLoop = () => {
     if (previousKey === "") return;
 
     const resolved = useSignalAgent.getState().resolvePending(newest.n);
+    const abState = useABTest.getState();
+    if (abState.enabled) {
+      abState.resolveA(newest.n);
+      abState.resolveB(newest.n);
+    }
     for (const r of resolved) {
       if (r.hitMain || r.hitTop5) {
         playHitSound();

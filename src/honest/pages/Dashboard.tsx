@@ -10,6 +10,9 @@ import PatternMatchPanel from "../components/PatternMatchPanel";
 import AnomalyBanner from "../components/AnomalyBanner";
 import TiltAlerts from "../components/TiltAlerts";
 import Scoreboard from "../components/Scoreboard";
+import MultiHorizonPanel from "../components/MultiHorizonPanel";
+import ConditionalsPanel from "../components/ConditionalsPanel";
+import ABTestPanel from "../components/ABTestPanel";
 import { useFeedStatus } from "../lib/feedStatus";
 import { ingestProxyNumbers } from "../lib/useLiveFeed";
 import { Card, PageContainer, Stat, StatGrid, Button } from "../components/ui";
@@ -112,6 +115,12 @@ const Dashboard = memo(() => {
       <BestBetRecommendation />
 
       <SignalPanel />
+
+      <MultiHorizonPanel />
+
+      <ConditionalsPanel />
+
+      <ABTestPanel />
 
       <PatternMatchPanel />
 

@@ -1,7 +1,8 @@
-import { memo, useState } from "react";
-import { useNotifications, requestBrowserNotificationPermission, playSignalChord, playHitSound } from "../lib/notifications";
+import { memo, useEffect, useState } from "react";
+import { useNotifications, requestBrowserNotificationPermission, playSignalChord, playHitSound, cancelPendingSounds } from "../lib/notifications";
 
 const NotificationSettings = memo(() => {
+  useEffect(() => () => cancelPendingSounds(), []);
   const soundEnabled = useNotifications((s) => s.soundEnabled);
   const browserEnabled = useNotifications((s) => s.browserNotificationEnabled);
   const threshold = useNotifications((s) => s.signalThresholdConfidence);

@@ -19,6 +19,7 @@ const BestBetRecommendation = memo(() => {
   const profile = useRiskProfile((s) => s.profile);
   const setProfile = useRiskProfile((s) => s.setProfile);
 
+  const recentSpinsKey = useMemo(() => spins.slice(0, 50).map((s) => s.n).join(","), [spins]);
   const ranked = useMemo(() => {
     if (!latest) return [];
     const probs = new Float32Array(SLOTS);
@@ -35,15 +36,17 @@ const BestBetRecommendation = memo(() => {
         if (!latest.topPicks.includes(n)) probs[n] = eachRemaining;
       }
     }
+    const recentSpins = recentSpinsKey.length > 0 ? recentSpinsKey.split(",").map(Number) : [];
     const bets = generateAllBets({
       topPicks: latest.topPicks,
       topProbs: latest.topProbs,
       mainPick: latest.mainPick,
-      recentSpins: spins.map((s) => s.n),
+      recentSpins,
       modelProbs: probs,
     });
     return rankBets(bets, profile);
-  }, [latest, spins, profile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latest, recentSpinsKey, profile]);
 
   if (!latest || ranked.length === 0) return null;
 
@@ -82,6 +85,25 @@ const BestBetRecommendation = memo(() => {
 
         <p className="text-xs text-neutral-300 mb-3">{winner.description}</p>
 
+        {winner.kellyFraction > 0 && (
+          <div className="mb-3 rounded-lg border border-emerald-700/40 bg-emerald-950/20 p-2.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-bold">💰 Stake recomendado (Kelly 50%)</div>
+                <div className="text-[11px] text-neutral-300 mt-0.5">
+                  Aposta <strong className="text-emerald-300">{(winner.recommendedStakePct * 100).toFixed(2)}%</strong> da banca por rodada
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-base font-bold font-mono text-emerald-300">
+                  Kelly raw: {(winner.kellyFraction * 100).toFixed(2)}%
+                </div>
+                <div className="text-[10px] text-neutral-500">b={(winner.payoutOnHit / winner.unitsRisked - 1).toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <StatGrid cols={4}>
           <Stat
             label="Hit prob modelo"
@@ -114,7 +136,9 @@ const BestBetRecommendation = memo(() => {
             {Array.from(winner.numbers).slice(0, 30).map((n) => (
               <span
                 key={n}
-                className={`${ballBg(n)} text-white text-[11px] font-bold w-7 h-7 rounded-md flex items-center justify-center`}
+                role="img"
+                aria-label={`Número ${n}`}
+                className={`${ballBg(n)} text-white text-[11px] font-bold w-8 h-8 rounded-md flex items-center justify-center`}
               >
                 {n}
               </span>

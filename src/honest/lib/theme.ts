@@ -53,4 +53,3 @@ export const useApplyTheme = () => {
   }, [theme, accent]);
 };
 
-void ACCENT_HUES;

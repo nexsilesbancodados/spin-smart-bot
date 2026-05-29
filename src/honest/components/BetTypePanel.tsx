@@ -21,6 +21,7 @@ const BetTypePanel = memo(() => {
   const profile = useRiskProfile((s) => s.profile);
   const [category, setCategory] = useState<BetSignal["category"] | "all">("all");
 
+  const recentSpinsKey = useMemo(() => spins.slice(0, 50).map((s) => s.n).join(","), [spins]);
   const ranked = useMemo(() => {
     if (!latest) return [];
     const probs = new Float32Array(SLOTS);
@@ -36,15 +37,17 @@ const BetTypePanel = memo(() => {
         if (!latest.topPicks.includes(n)) probs[n] = each;
       }
     }
+    const recentSpins = recentSpinsKey.length > 0 ? recentSpinsKey.split(",").map(Number) : [];
     const bets = generateAllBets({
       topPicks: latest.topPicks,
       topProbs: latest.topProbs,
       mainPick: latest.mainPick,
-      recentSpins: spins.map((s) => s.n),
+      recentSpins,
       modelProbs: probs,
     });
     return rankBets(bets, profile);
-  }, [latest, spins, profile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latest, recentSpinsKey, profile]);
 
   const filtered = useMemo(
     () => (category === "all" ? ranked : ranked.filter((b) => b.category === category)),

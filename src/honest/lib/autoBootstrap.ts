@@ -6,7 +6,7 @@ import { useAutoTuner } from "./autoTuner";
 import { useDigest } from "./digest";
 import { useAutoPause } from "./autoPause";
 
-const BOOTSTRAP_KEY = "rv-bootstrap-v2";
+const BOOTSTRAP_KEY = "rv-bootstrap-v3";
 
 export const runAutoBootstrap = () => {
   if (typeof window === "undefined") return;
@@ -14,7 +14,7 @@ export const runAutoBootstrap = () => {
 
   useSignalAgent.getState().setConfig({
     enabled: true,
-    threshold: 0.045,
+    threshold: 0.032,
     lstmEnabled: true,
     lstmHiddenSize: 24,
     trainOnEverySpin: true,
@@ -28,14 +28,14 @@ export const runAutoBootstrap = () => {
   });
 
   const conditionDefaults: Record<string, { enabled: boolean; param: number }> = {
-    "agent-confidence-min": { enabled: true, param: 0.4 },
-    "agent-mainprob-min": { enabled: true, param: 0.045 },
-    "no-dealer-drift": { enabled: true, param: 30 },
-    "min-history": { enabled: true, param: 50 },
+    "agent-confidence-min": { enabled: false, param: 0.4 },
+    "agent-mainprob-min": { enabled: false, param: 0.045 },
+    "no-dealer-drift": { enabled: false, param: 30 },
+    "min-history": { enabled: true, param: 20 },
     "no-zero-recent": { enabled: false, param: 2 },
-    "sector-dominance": { enabled: true, param: 8 },
-    "lstm-agrees": { enabled: true, param: 0 },
-    "model-min-contributors": { enabled: true, param: 3 },
+    "sector-dominance": { enabled: false, param: 8 },
+    "lstm-agrees": { enabled: false, param: 0 },
+    "model-min-contributors": { enabled: false, param: 3 },
   };
   useEntryFilter.setState((s) => ({
     enabled: true,

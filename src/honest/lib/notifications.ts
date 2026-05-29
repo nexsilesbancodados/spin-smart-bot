@@ -34,10 +34,17 @@ export const useNotifications = create<NotificationStore>()(
 
 let ctx: AudioContext | null = null;
 
-const getCtx = (): AudioContext => {
+const getCtx = (): AudioContext | null => {
+  if (typeof window === "undefined") return null;
   if (!ctx) {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    ctx = new AC();
+    type WindowWithWebkit = Window & { webkitAudioContext?: typeof AudioContext };
+    const AC = window.AudioContext || (window as WindowWithWebkit).webkitAudioContext;
+    if (!AC) return null;
+    try {
+      ctx = new AC();
+    } catch {
+      return null;
+    }
   }
   return ctx;
 };
@@ -47,6 +54,7 @@ export const playSignalBeep = (frequency = 880, durationMs = 220, type: Oscillat
   if (!settings.soundEnabled) return;
   try {
     const c = getCtx();
+    if (!c) return;
     const osc = c.createOscillator();
     const gain = c.createGain();
     osc.type = type;
@@ -63,15 +71,30 @@ export const playSignalBeep = (frequency = 880, durationMs = 220, type: Oscillat
   }
 };
 
+const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+
+const scheduleBeep = (frequency: number, durationMs: number, type: OscillatorType, delayMs: number) => {
+  const t = setTimeout(() => {
+    pendingTimers.delete(t);
+    playSignalBeep(frequency, durationMs, type);
+  }, delayMs);
+  pendingTimers.add(t);
+};
+
+export const cancelPendingSounds = () => {
+  for (const t of pendingTimers) clearTimeout(t);
+  pendingTimers.clear();
+};
+
 export const playSignalChord = () => {
   playSignalBeep(880, 180, "sine");
-  setTimeout(() => playSignalBeep(1175, 200, "sine"), 90);
-  setTimeout(() => playSignalBeep(1568, 260, "sine"), 200);
+  scheduleBeep(1175, 200, "sine", 90);
+  scheduleBeep(1568, 260, "sine", 200);
 };
 
 export const playHitSound = () => {
   playSignalBeep(523, 120, "triangle");
-  setTimeout(() => playSignalBeep(784, 200, "triangle"), 100);
+  scheduleBeep(784, 200, "triangle", 100);
 };
 
 export const playMissSound = () => {

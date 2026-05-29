@@ -1,6 +1,7 @@
 import { SLOTS, sectorOf, terminalOf, VOISINS, TIERS, ORPHELINS } from "./wheel";
 import { createMarkov, trainMarkov, predictMarkov, type MarkovModel } from "./learning";
 import { buildPatternMatcherProbs } from "./patternMatcher";
+import { detectRegime } from "./regimeDetector";
 
 export type ProbVector = Float32Array;
 
@@ -255,8 +256,15 @@ export const createEnsemble = (): EnsembleEngine => {
       for (let i = 0; i < SLOTS; i++) combined[i] += probs[i] * w;
       totalWeight += w;
     }
-    if (totalWeight > 0) {
+    if (totalWeight > 1e-6) {
       for (let i = 0; i < SLOTS; i++) combined[i] /= totalWeight;
+      let sumCombined = 0;
+      for (let i = 0; i < SLOTS; i++) sumCombined += combined[i];
+      if (sumCombined > 1e-6) {
+        for (let i = 0; i < SLOTS; i++) combined[i] /= sumCombined;
+      } else {
+        combined.fill(1 / SLOTS);
+      }
     } else {
       combined.fill(1 / SLOTS);
     }
@@ -267,6 +275,26 @@ export const createEnsemble = (): EnsembleEngine => {
   const train = (sequence: number[]) => {
     lastSequence = sequence;
     for (const m of models) m.update(sequence);
+    if (sequence.length >= 20) {
+      const regime = detectRegime(sequence, 50);
+      const weightMap: Record<string, number> = {
+        "markov-1": regime.recommendedWeights.markov,
+        "markov-2": regime.recommendedWeights.markov,
+        "markov-3": regime.recommendedWeights.markov,
+        "markov-4": regime.recommendedWeights.markov,
+        "freq-exp": regime.recommendedWeights.frequency,
+        "pagerank": regime.recommendedWeights.pageRank,
+        "sector-boost": regime.recommendedWeights.sector,
+        "pattern-matcher": regime.recommendedWeights.pattern,
+        "terminal-drift": regime.recommendedWeights.frequency,
+      };
+      const blend = Math.min(1, regime.confidence);
+      for (const m of models) {
+        const target = weightMap[m.id] ?? 1;
+        m.weight = m.weight * (1 - blend * 0.4) + target * (blend * 0.4);
+        if (!Number.isFinite(m.weight)) m.weight = 1;
+      }
+    }
   };
 
   const observe = (actual: number) => {
@@ -287,8 +315,9 @@ export const createEnsemble = (): EnsembleEngine => {
     for (const m of models) totalImprovement += Math.max(0, baseline - m.rollingLogLoss);
     for (const m of models) {
       const improvement = Math.max(0, baseline - m.rollingLogLoss);
-      const ratio = totalImprovement > 0 ? improvement / totalImprovement : 1 / models.length;
-      m.weight = 0.2 + 0.8 * ratio;
+      const ratio = totalImprovement > 1e-9 ? improvement / totalImprovement : 1 / models.length;
+      const newWeight = 0.2 + 0.8 * ratio;
+      m.weight = Number.isFinite(newWeight) ? newWeight : 1 / models.length;
     }
   };
 

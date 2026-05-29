@@ -4,11 +4,11 @@ import { useFeedStatus } from "../lib/feedStatus";
 import { colorOf } from "../lib/wheel";
 import { ingestProxyNumbers } from "../lib/useLiveFeed";
 
-const colorClass = (n: number) => {
+const ballBg = (n: number) => {
   const c = colorOf(n);
-  if (c === "green") return "bg-emerald-600";
-  if (c === "red") return "bg-red-600";
-  return "bg-neutral-800";
+  if (c === "green") return "bg-emerald-600 ring-emerald-400/50 shadow-emerald-500/30";
+  if (c === "red") return "bg-gradient-to-br from-red-500 to-red-700 ring-red-400/40 shadow-red-500/30";
+  return "bg-gradient-to-br from-neutral-700 to-neutral-900 ring-neutral-500/40 shadow-black/40";
 };
 
 const formatRelative = (ms: number): string => {
@@ -61,38 +61,32 @@ const LiveHistoryBar = memo(() => {
     : null;
 
   return (
-    <div className="sticky top-[57px] z-20 border-b border-neutral-800 bg-neutral-950/95 backdrop-blur">
-      <div className="max-w-5xl mx-auto px-4 py-2 flex items-center gap-3">
-        <div className="flex flex-col leading-none shrink-0">
-          <span className="text-[9px] uppercase tracking-wider text-emerald-400 font-bold">
-            {mesa ?? "Tempo real"}
+    <div className="sticky top-[57px] z-20 border-b border-neutral-800/70 bg-neutral-950/95 backdrop-blur">
+      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-3">
+        <div className="flex flex-col leading-none shrink-0 min-w-[80px]">
+          <span className="text-[9px] uppercase tracking-[0.18em] text-amber-400 font-bold">
+            {mesa ?? "AO VIVO"}
           </span>
           <span className="text-[10px] text-neutral-400 font-mono">
-            último: {lastTs ? formatRelative(Date.now() - lastTs) : "—"} · próximo: {nextPollIn !== null ? `${nextPollIn}s` : "—"} · #{totalPolls}
+            {lastTs ? formatRelative(Date.now() - lastTs) : "—"}
+            {nextPollIn !== null && (
+              <span className="text-neutral-600"> · {nextPollIn}s</span>
+            )}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="shrink-0 px-2 py-1 rounded bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-bold disabled:opacity-50"
-          title="Forçar busca agora"
-        >
-          {refreshing ? "↻" : "↻ Agora"}
-        </button>
-        <div className="flex-1 min-w-0 overflow-x-auto scrollbar-thin">
+        <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none">
           {recent.length === 0 ? (
             <div className="text-[10px] text-neutral-500 italic">Aguardando giros do feed ao vivo…</div>
           ) : (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5 py-1">
               {recent.map((s, i) => (
                 <span
                   key={`${s.t}-${i}`}
                   data-fresh={i === 0 ? pulseKey : undefined}
-                  className={`shrink-0 ${colorClass(s.n)} ${
+                  className={`shrink-0 ${ballBg(s.n)} flex items-center justify-center font-bold text-white tabular-nums ${
                     i === 0
-                      ? "w-8 h-8 rounded-md text-[12px] font-bold text-white flex items-center justify-center ring-2 ring-amber-400/70 ring-offset-1 ring-offset-neutral-950 [animation:pop_0.45s_ease-out]"
-                      : "w-6 h-6 rounded text-[10px] font-bold text-white/90 flex items-center justify-center"
+                      ? "w-9 h-9 rounded-full text-[14px] ring-2 ring-offset-2 ring-offset-neutral-950 [animation:pop_0.45s_ease-out] shadow-lg"
+                      : "w-7 h-7 rounded-full text-[12px] ring-1 ring-offset-1 ring-offset-neutral-950/50 shadow-sm"
                   }`}
                   title={new Date(s.t).toLocaleTimeString("pt-BR") + ` · ${s.source}`}
                 >
@@ -103,9 +97,20 @@ const LiveHistoryBar = memo(() => {
           )}
         </div>
         <div className="hidden sm:flex flex-col leading-none shrink-0 text-right">
-          <span className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold">Total</span>
+          <span className="text-[9px] uppercase tracking-[0.14em] text-neutral-500 font-bold">Total</span>
           <span className="text-[11px] text-neutral-300 font-mono">{spins.length}</span>
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="shrink-0 px-2.5 py-1 rounded-md bg-amber-500/90 hover:bg-amber-400 text-black text-[11px] font-bold disabled:opacity-50"
+          title="Atualizar agora"
+        >
+          {refreshing ? "…" : "↻ Agora"}
+        </button>
+        <span className="hidden md:inline text-[9px] text-neutral-600 font-mono shrink-0">
+          #{totalPolls}
+        </span>
       </div>
     </div>
   );
