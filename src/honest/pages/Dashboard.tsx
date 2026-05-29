@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from "react";
+import { lazy, memo, Suspense, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useHonestStore } from "../lib/store";
 import { sessionPnL } from "../lib/bankroll";
@@ -10,13 +10,15 @@ import AnomalyBanner from "../components/AnomalyBanner";
 import TiltAlerts from "../components/TiltAlerts";
 import Scoreboard from "../components/Scoreboard";
 import StreakAlerts from "../components/StreakAlerts";
-import BetCalculator from "../components/BetCalculator";
-import HotColdWheel from "../components/HotColdWheel";
-import BetTracker from "../components/BetTracker";
-import SectorHeatmap from "../components/SectorHeatmap";
-import MonteCarloSim from "../components/MonteCarloSim";
-import RecurrenceFinder from "../components/RecurrenceFinder";
 import { Card, PageContainer, Button } from "../components/ui";
+
+const BetCalculator = lazy(() => import("../components/BetCalculator"));
+const HotColdWheel = lazy(() => import("../components/HotColdWheel"));
+const BetTracker = lazy(() => import("../components/BetTracker"));
+const SectorHeatmap = lazy(() => import("../components/SectorHeatmap"));
+const MonteCarloSim = lazy(() => import("../components/MonteCarloSim"));
+const RecurrenceFinder = lazy(() => import("../components/RecurrenceFinder"));
+const NumberFrequency = lazy(() => import("../components/NumberFrequency"));
 
 const fmtMoney = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
@@ -133,14 +135,23 @@ const Dashboard = memo(() => {
       </button>
 
       {toolsOpen && (
-        <>
+        <Suspense
+          fallback={
+            <Card padding="sm">
+              <div className="text-[11px] text-neutral-500 italic py-2 text-center">
+                Carregando ferramentas…
+              </div>
+            </Card>
+          }
+        >
           <BetCalculator />
           <HotColdWheel />
           <SectorHeatmap />
+          <NumberFrequency />
           <RecurrenceFinder />
           <BetTracker />
           <MonteCarloSim />
-        </>
+        </Suspense>
       )}
 
       {last8.length > 0 && (

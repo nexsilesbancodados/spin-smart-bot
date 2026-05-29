@@ -5,6 +5,7 @@ import FeedStatusIndicator from "./FeedStatusIndicator";
 import LiveHistoryBar from "./LiveHistoryBar";
 import OnboardingTour from "./OnboardingTourV2";
 import SignalFAB from "./SignalFAB";
+import QuickBetFAB from "./QuickBetFAB";
 import CommandPalette from "./CommandPalette";
 import GlobalSearch from "./GlobalSearch";
 import DigestPopup from "./DigestPopup";
@@ -213,6 +214,7 @@ const HonestyLayout = memo(({ children }: { children?: ReactNode }) => {
         <ErrorBoundary>{children ?? <Outlet />}</ErrorBoundary>
       </main>
       <SignalFAB />
+      <QuickBetFAB />
       <CommandPalette />
       <GlobalSearch />
       <DigestPopup />
