@@ -4,6 +4,7 @@ import { useHonestStore } from "../lib/store";
 import { sessionPnL } from "../lib/bankroll";
 import { colorOf } from "../lib/wheel";
 import { useSignalAgent } from "../lib/signalAgent";
+import { useUiPrefs } from "../lib/uiPrefs";
 import SignalPanel from "../components/SignalPanel";
 import BestBetRecommendation from "../components/BestBetRecommendation";
 import AnomalyBanner from "../components/AnomalyBanner";
@@ -26,6 +27,8 @@ const TransitionMatrix = lazy(() => import("../components/TransitionMatrix"));
 const RunsTest = lazy(() => import("../components/RunsTest"));
 const Autocorrelation = lazy(() => import("../components/Autocorrelation"));
 const CalibrationCurve = lazy(() => import("../components/CalibrationCurve"));
+const WheelDistanceAnalyzer = lazy(() => import("../components/WheelDistanceAnalyzer"));
+const EntropyTracker = lazy(() => import("../components/EntropyTracker"));
 
 const fmtMoney = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
@@ -42,6 +45,8 @@ const Dashboard = memo(() => {
   const session = useHonestStore((s) => s.session);
   const endSession = useHonestStore((s) => s.endSession);
   const agentEnabled = useSignalAgent((s) => s.config.enabled);
+  const compact = useUiPrefs((s) => s.compact);
+  const toggleCompact = useUiPrefs((s) => s.toggleCompact);
   const [elapsed, setElapsed] = useState("00:00");
   const [toolsOpen, setToolsOpen] = useState(false);
 
@@ -73,7 +78,15 @@ const Dashboard = memo(() => {
 
       <SignalPanel />
 
-      <Scoreboard />
+      {!compact && <Scoreboard />}
+      {compact && (
+        <button
+          onClick={toggleCompact}
+          className="text-[10px] text-neutral-500 hover:text-amber-300 italic text-center"
+        >
+          modo compacto ativo · clique pra ver placar completo
+        </button>
+      )}
 
       <StreakAlerts />
 
@@ -127,19 +140,32 @@ const Dashboard = memo(() => {
         </div>
       )}
 
-      <button
-        onClick={() => setToolsOpen((v) => !v)}
-        className="w-full bg-neutral-900/60 hover:bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 flex items-center justify-between text-[11px] font-bold text-neutral-300 transition"
-      >
-        <span className="flex items-center gap-2">
-          <span className="text-amber-400">🛠</span>
-          Ferramentas de jogada
-          <span className="text-[9px] text-neutral-500 font-normal">
-            calculadora · roleta · vizinhos
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setToolsOpen((v) => !v)}
+          className="flex-1 bg-neutral-900/60 hover:bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 flex items-center justify-between text-[11px] font-bold text-neutral-300 transition"
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-amber-400">🛠</span>
+            Ferramentas
+            <span className="text-[9px] text-neutral-500 font-normal hidden sm:inline">
+              análises · estratégia · banca
+            </span>
           </span>
-        </span>
-        <span className="text-amber-400 text-[10px]">{toolsOpen ? "▲ fechar" : "▼ abrir"}</span>
-      </button>
+          <span className="text-amber-400 text-[10px]">{toolsOpen ? "▲ fechar" : "▼ abrir"}</span>
+        </button>
+        <button
+          onClick={toggleCompact}
+          title={compact ? "Modo normal" : "Modo compacto (oculta painéis secundários)"}
+          className={`shrink-0 px-2 py-2 rounded-lg border text-[10px] font-bold transition ${
+            compact
+              ? "bg-amber-500 text-black border-amber-400"
+              : "bg-neutral-900/60 text-neutral-400 border-neutral-800 hover:text-amber-300"
+          }`}
+        >
+          {compact ? "▣" : "▢"}
+        </button>
+      </div>
 
       {toolsOpen && (
         <Suspense
@@ -158,6 +184,8 @@ const Dashboard = memo(() => {
           <SectorHeatmap />
           <NumberFrequency />
           <WheelBiasDetector />
+          <WheelDistanceAnalyzer />
+          <EntropyTracker />
           <RunsTest />
           <Autocorrelation />
           <TransitionMatrix />
