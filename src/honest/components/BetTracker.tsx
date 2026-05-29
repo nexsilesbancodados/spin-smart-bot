@@ -99,6 +99,17 @@ const BetTracker = memo(() => {
 
   const stats = useMemo(() => computeTrackerStats(entries), [entries]);
 
+  const pnlSeries = useMemo(() => {
+    const resolved = entries.filter((e) => e.outcome === "win" || e.outcome === "loss");
+    if (resolved.length < 2) return null;
+    const ordered = [...resolved].reverse();
+    let cumulative = 0;
+    return ordered.map((e) => {
+      cumulative += e.delta;
+      return cumulative;
+    });
+  }, [entries]);
+
   const handleExport = () => {
     if (entries.length === 0) return;
     const header = "data;hora;tipo;payout;aposta;resultado;n_picked;n_actual;delta;nota";
@@ -178,6 +189,12 @@ const BetTracker = memo(() => {
           </div>
         }
       />
+
+      {pnlSeries && pnlSeries.length >= 2 && (
+        <div className="mb-2">
+          <PnLSpark data={pnlSeries} />
+        </div>
+      )}
 
       {entries.length > 0 && (
         <div className="grid grid-cols-4 gap-1 mb-2 text-center">
@@ -306,5 +323,41 @@ const BetTracker = memo(() => {
   );
 });
 BetTracker.displayName = "BetTracker";
+
+const PnLSpark = memo(({ data }: { data: number[] }) => {
+  const W = 600;
+  const H = 60;
+  const min = Math.min(0, ...data);
+  const max = Math.max(0, ...data);
+  const range = Math.max(0.001, max - min);
+  const x = (i: number) => (i / (data.length - 1)) * W;
+  const y = (v: number) => H - ((v - min) / range) * (H - 8) - 4;
+  const path = data.map((v, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(v)}`).join(" ");
+  const zeroY = y(0);
+  const lastV = data[data.length - 1];
+  const color = lastV >= 0 ? "#10b981" : "#f43f5e";
+  return (
+    <div>
+      <div className="flex items-center justify-between text-[9px] mb-0.5">
+        <span className="uppercase tracking-wider text-neutral-500 font-bold">PnL acumulado</span>
+        <span className={`font-mono font-bold ${lastV >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+          {lastV >= 0 ? "+" : ""}R$ {lastV.toFixed(2)}
+        </span>
+      </div>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full h-12 bg-neutral-950 rounded border border-neutral-800"
+        preserveAspectRatio="none"
+      >
+        {min < 0 && max > 0 && (
+          <line x1={0} y1={zeroY} x2={W} y2={zeroY} stroke="#525252" strokeDasharray="3 3" strokeWidth={0.5} />
+        )}
+        <path d={path} fill="none" stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
+        <circle cx={x(data.length - 1)} cy={y(lastV)} r={3} fill={color} />
+      </svg>
+    </div>
+  );
+});
+PnLSpark.displayName = "PnLSpark";
 
 export default BetTracker;

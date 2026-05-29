@@ -19,6 +19,8 @@ const SectorHeatmap = lazy(() => import("../components/SectorHeatmap"));
 const MonteCarloSim = lazy(() => import("../components/MonteCarloSim"));
 const RecurrenceFinder = lazy(() => import("../components/RecurrenceFinder"));
 const NumberFrequency = lazy(() => import("../components/NumberFrequency"));
+const HourlyHeatmap = lazy(() => import("../components/HourlyHeatmap"));
+const StrategyPresets = lazy(() => import("../components/StrategyPresets"));
 
 const fmtMoney = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
@@ -144,11 +146,13 @@ const Dashboard = memo(() => {
             </Card>
           }
         >
+          <StrategyPresets />
           <BetCalculator />
           <HotColdWheel />
           <SectorHeatmap />
           <NumberFrequency />
           <RecurrenceFinder />
+          <HourlyHeatmap />
           <BetTracker />
           <MonteCarloSim />
         </Suspense>

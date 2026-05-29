@@ -13,6 +13,7 @@ import { runAutoPauseCheck } from "./autoPause";
 import { runAutoTuneCheck } from "./autoTuner";
 import { logActivity } from "./activityFeed";
 import { useABTest } from "./abTest";
+import { toastHit, toastMiss, toastSignal } from "./toast";
 
 export interface SignalRecord {
   id: string;
@@ -335,9 +336,11 @@ export const startAgentLoop = () => {
       if (r.hitMain || r.hitTop5) {
         playHitSound();
         useEntryFilter.getState().pushResult(true);
+        if (r.emitted) toastHit(r.mainPick, r.actualNumber ?? -1, !!r.hitMain);
       } else {
         playMissSound();
         useEntryFilter.getState().pushResult(false);
+        if (r.emitted) toastMiss(r.mainPick, r.actualNumber ?? -1);
       }
       logActivity(
         "signal-resolved",
@@ -376,6 +379,7 @@ export const startAgentLoop = () => {
         if (tick.signal.confidenceScore >= notifyThreshold) {
           playSignalChord();
           speakSignal(tick.signal.mainPick, tick.signal.sector, tick.signal.mainProb);
+          toastSignal(tick.signal.mainPick, tick.signal.mainProb, tick.signal.sector);
           showBrowserNotification(
             `🎯 Sinal: ${tick.signal.mainPick}`,
             `Top 5: ${tick.signal.topPicks.join(", ")} · ${(tick.signal.mainProb * 100).toFixed(1)}% · ${tick.signal.sector}`,
