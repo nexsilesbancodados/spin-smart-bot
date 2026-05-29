@@ -57,8 +57,8 @@ export const SectionHeader = memo(
     actions,
     eyebrow,
   }: {
-    title: string;
-    subtitle?: string;
+    title: ReactNode;
+    subtitle?: ReactNode;
     actions?: ReactNode;
     eyebrow?: string;
   }) => (

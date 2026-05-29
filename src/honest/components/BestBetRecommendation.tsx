@@ -19,6 +19,7 @@ const BestBetRecommendation = memo(() => {
   const profile = useRiskProfile((s) => s.profile);
   const setProfile = useRiskProfile((s) => s.setProfile);
 
+  const recentSpinsKey = useMemo(() => spins.slice(0, 50).map((s) => s.n).join(","), [spins]);
   const ranked = useMemo(() => {
     if (!latest) return [];
     const probs = new Float32Array(SLOTS);
@@ -35,15 +36,17 @@ const BestBetRecommendation = memo(() => {
         if (!latest.topPicks.includes(n)) probs[n] = eachRemaining;
       }
     }
+    const recentSpins = recentSpinsKey.length > 0 ? recentSpinsKey.split(",").map(Number) : [];
     const bets = generateAllBets({
       topPicks: latest.topPicks,
       topProbs: latest.topProbs,
       mainPick: latest.mainPick,
-      recentSpins: spins.map((s) => s.n),
+      recentSpins,
       modelProbs: probs,
     });
     return rankBets(bets, profile);
-  }, [latest, spins, profile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latest, recentSpinsKey, profile]);
 
   if (!latest || ranked.length === 0) return null;
 
@@ -114,7 +117,9 @@ const BestBetRecommendation = memo(() => {
             {Array.from(winner.numbers).slice(0, 30).map((n) => (
               <span
                 key={n}
-                className={`${ballBg(n)} text-white text-[11px] font-bold w-7 h-7 rounded-md flex items-center justify-center`}
+                role="img"
+                aria-label={`Número ${n}`}
+                className={`${ballBg(n)} text-white text-[11px] font-bold w-8 h-8 rounded-md flex items-center justify-center`}
               >
                 {n}
               </span>

@@ -39,4 +39,3 @@ export const computeAutocorrelation = (spinsOldestFirst: number[], feature: Feat
   return result;
 };
 
-void SLOTS;

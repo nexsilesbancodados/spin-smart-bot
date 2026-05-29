@@ -255,8 +255,15 @@ export const createEnsemble = (): EnsembleEngine => {
       for (let i = 0; i < SLOTS; i++) combined[i] += probs[i] * w;
       totalWeight += w;
     }
-    if (totalWeight > 0) {
+    if (totalWeight > 1e-6) {
       for (let i = 0; i < SLOTS; i++) combined[i] /= totalWeight;
+      let sumCombined = 0;
+      for (let i = 0; i < SLOTS; i++) sumCombined += combined[i];
+      if (sumCombined > 1e-6) {
+        for (let i = 0; i < SLOTS; i++) combined[i] /= sumCombined;
+      } else {
+        combined.fill(1 / SLOTS);
+      }
     } else {
       combined.fill(1 / SLOTS);
     }
@@ -287,8 +294,9 @@ export const createEnsemble = (): EnsembleEngine => {
     for (const m of models) totalImprovement += Math.max(0, baseline - m.rollingLogLoss);
     for (const m of models) {
       const improvement = Math.max(0, baseline - m.rollingLogLoss);
-      const ratio = totalImprovement > 0 ? improvement / totalImprovement : 1 / models.length;
-      m.weight = 0.2 + 0.8 * ratio;
+      const ratio = totalImprovement > 1e-9 ? improvement / totalImprovement : 1 / models.length;
+      const newWeight = 0.2 + 0.8 * ratio;
+      m.weight = Number.isFinite(newWeight) ? newWeight : 1 / models.length;
     }
   };
 

@@ -63,6 +63,17 @@ export const simulateBankroll = (cfg: BankrollConfig, trials = 600): SimSummary 
     if (fin >= targetAt) hitTarget++;
   }
   finals.sort((a, b) => a - b);
+  const percentile = (sorted: number[], p: number): number => {
+    if (sorted.length === 0) return 0;
+    if (sorted.length === 1) return sorted[0];
+    const idx = p * (sorted.length - 1);
+    const lo = Math.floor(idx);
+    const hi = Math.ceil(idx);
+    if (lo === hi) return sorted[lo];
+    const w = idx - lo;
+    return sorted[lo] * (1 - w) + sorted[hi] * w;
+  };
+  const median = percentile(finals, 0.5);
 
   const curveMean: number[] = [];
   const curveP10: number[] = [];
@@ -72,14 +83,14 @@ export const simulateBankroll = (cfg: BankrollConfig, trials = 600): SimSummary 
     const slice = curves.map((c) => c[i]).sort((a, b) => a - b);
     const mean = slice.reduce((a, b) => a + b, 0) / slice.length;
     curveMean.push(mean);
-    curveP10.push(slice[Math.floor(slice.length * 0.1)]);
-    curveP90.push(slice[Math.floor(slice.length * 0.9)]);
+    curveP10.push(percentile(slice, 0.1));
+    curveP90.push(percentile(slice, 0.9));
   }
 
   const expectedLoss = cfg.stake * cfg.maxRounds * HOUSE_EDGE;
   return {
     meanFinal: finals.reduce((a, b) => a + b, 0) / finals.length,
-    medianFinal: finals[Math.floor(finals.length / 2)],
+    medianFinal: median,
     worstFinal: finals[0],
     bestFinal: finals[finals.length - 1],
     hitStopLossPct: (hitStop / trials) * 100,

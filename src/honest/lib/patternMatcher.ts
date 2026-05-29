@@ -121,19 +121,26 @@ export const buildPatternMatcherProbs = (spinsNewestFirst: number[]): Float32Arr
   }
 
   const totalWeight = matches.reduce((a, b) => a + b.weight, 0);
-  for (let n = 0; n < SLOTS; n++) probs[n] = smoothing;
-
+  if (totalWeight < 1e-9) {
+    probs.fill(1 / SLOTS);
+    return probs;
+  }
+  probs.fill(0);
   for (const { match, weight } of matches) {
     const denom = match.totalMatches + smoothing * SLOTS;
+    const w = weight / totalWeight;
     for (let n = 0; n < SLOTS; n++) {
       const c = match.nextDistribution[n] ?? 0;
-      probs[n] += ((c + smoothing) / denom) * (weight / totalWeight) * SLOTS;
+      probs[n] += w * ((c + smoothing) / denom);
     }
   }
-
   let sum = 0;
   for (let n = 0; n < SLOTS; n++) sum += probs[n];
-  for (let n = 0; n < SLOTS; n++) probs[n] /= sum;
+  if (sum > 1e-9) {
+    for (let n = 0; n < SLOTS; n++) probs[n] /= sum;
+  } else {
+    probs.fill(1 / SLOTS);
+  }
   return probs;
 };
 

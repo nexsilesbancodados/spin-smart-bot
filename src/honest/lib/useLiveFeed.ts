@@ -209,9 +209,19 @@ export const useLiveFeed = (enabled: boolean = true) => {
 
   useEffect(() => {
     if (!enabled || !pollEnabled) return;
-    ingestFromProxy();
-    const id = setInterval(ingestFromProxy, pollInterval);
-    return () => clearInterval(id);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const tick = async () => {
+      if (cancelled) return;
+      await ingestFromProxy();
+      if (cancelled) return;
+      timer = setTimeout(tick, pollInterval);
+    };
+    tick();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [enabled, pollEnabled, pollInterval, ingestFromProxy]);
 
   return { refreshNow: ingestFromProxy };

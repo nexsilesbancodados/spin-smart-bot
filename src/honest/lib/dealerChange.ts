@@ -76,4 +76,3 @@ export const detectDealerChange = (spins: number[], windowSize = 30): DealerDrif
   return { spinsAnalyzed: spins.length, windowSize, metrics, alertLevel, message };
 };
 
-void sectorOf;

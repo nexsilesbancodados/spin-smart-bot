@@ -1,16 +1,44 @@
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useSignalAgent } from "../lib/signalAgent";
-import { Card, SectionHeader } from "./ui";
-import { SLOTS } from "../lib/wheel";
+import { useHonestStore } from "../lib/store";
+import { Card, SectionHeader, Pill } from "./ui";
+import { SLOTS, colorOf } from "../lib/wheel";
+
+const ballBg = (n: number) => {
+  const c = colorOf(n);
+  if (c === "green") return "bg-emerald-600";
+  if (c === "red") return "bg-red-600";
+  return "bg-neutral-800";
+};
+
+const fmtAgo = (ms: number): string => {
+  if (ms < 1000) return "agora";
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}min`;
+  return `${Math.floor(m / 60)}h`;
+};
 
 const Scoreboard = memo(() => {
   const history = useSignalAgent((s) => s.history);
+  const pending = useSignalAgent((s) => s.pending);
+  const latest = useSignalAgent((s) => s.latest);
+  const agentEnabled = useSignalAgent((s) => s.config.enabled);
+  const lastSpin = useHonestStore((s) => s.spins[0]);
+  const [, setNow] = useState(Date.now());
+  const prevCountRef = useRef({ exact: 0, top5: 0, miss: 0 });
+  const [flash, setFlash] = useState<"hit" | "miss" | null>(null);
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(t);
+  }, []);
 
   const stats = useMemo(() => {
     const resolved = history.filter((s) => s.actualNumber !== null);
     const hitMain = resolved.filter((s) => s.hitMain === true).length;
     const hitTop5 = resolved.filter((s) => s.hitTop5 === true).length;
-    const hitTop5OnlyNotMain = resolved.filter((s) => s.hitTop5 === true && s.hitMain !== true).length;
     const miss = resolved.filter((s) => s.hitTop5 === false).length;
 
     let currentStreak = 0;
@@ -46,12 +74,23 @@ const Scoreboard = memo(() => {
     const baseline1 = 1 / SLOTS;
     const baseline5 = 5 / SLOTS;
 
+    const lastResolved = resolved[0];
+    const timeSinceLastResolution = lastResolved ? Date.now() - (lastResolved.resolvedAt ?? lastResolved.t) : null;
+
+    const rollingHitRate: number[] = [];
+    const windowSize = 20;
+    for (let i = resolved.length - 1; i >= 0; i -= 1) {
+      const window = resolved.slice(Math.max(0, i - windowSize + 1), i + 1);
+      if (window.length >= 3) {
+        rollingHitRate.push(window.filter((s) => s.hitTop5).length / window.length);
+      }
+    }
+
     return {
       total: resolved.length,
-      pending: history.length - resolved.length,
+      pending: pending.length,
       hitMain,
       hitTop5,
-      hitTop5OnlyNotMain,
       miss,
       hitRateMain: resolved.length > 0 ? hitMain / resolved.length : 0,
       hitRateTop5: resolved.length > 0 ? hitTop5 / resolved.length : 0,
@@ -63,39 +102,113 @@ const Scoreboard = memo(() => {
       baseline5,
       lift1: resolved.length > 0 ? hitMain / resolved.length / baseline1 : 0,
       lift5: resolved.length > 0 ? hitTop5 / resolved.length / baseline5 : 0,
+      timeSinceLastResolution,
+      rollingHitRate,
+      lastResolved,
     };
-  }, [history]);
+  }, [history, pending]);
+
+  useEffect(() => {
+    const prev = prevCountRef.current;
+    const next = { exact: stats.hitMain, top5: stats.hitTop5, miss: stats.miss };
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    if (stats.hitMain > prev.exact || stats.hitTop5 > prev.top5) {
+      setFlash("hit");
+      timer = setTimeout(() => setFlash(null), 1200);
+    } else if (stats.miss > prev.miss) {
+      setFlash("miss");
+      timer = setTimeout(() => setFlash(null), 1200);
+    }
+    prevCountRef.current = next;
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [stats.hitMain, stats.hitTop5, stats.miss]);
 
   const last30 = useMemo(() => {
     const resolved = history.filter((s) => s.actualNumber !== null).slice(0, 30);
     return resolved.reverse();
   }, [history]);
 
+  const currentPending = pending[pending.length - 1];
+
   return (
-    <Card padding="md">
+    <Card
+      padding="md"
+      accent={flash === "hit" ? "good" : flash === "miss" ? "bad" : "neutral"}
+      className={flash ? "[animation:pop_0.6s_ease-out]" : ""}
+    >
       <SectionHeader
-        title="📊 Placar do Agente"
-        subtitle={`${stats.total} sinais resolvidos · ${stats.pending} aguardando próximo giro`}
+        title={
+          <span className="flex items-center gap-2">
+            📊 Placar do Agente
+            <span className={`w-2 h-2 rounded-full ${agentEnabled ? "bg-emerald-400 animate-pulse" : "bg-neutral-600"}`} />
+            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold">
+              {agentEnabled ? "AO VIVO" : "PAUSADO"}
+            </span>
+          </span>
+        }
+        subtitle={
+          <span>
+            {stats.total} sinais resolvidos · {stats.pending} aguardando · última resolução{" "}
+            {stats.timeSinceLastResolution !== null ? fmtAgo(stats.timeSinceLastResolution) + " atrás" : "—"}
+          </span>
+        }
+        actions={
+          stats.streakKind === "hit" && stats.currentStreak >= 2 ? (
+            <Pill accent="good">🔥 {stats.currentStreak} seguidos</Pill>
+          ) : stats.streakKind === "miss" && stats.currentStreak >= 3 ? (
+            <Pill accent="bad">❄ {stats.currentStreak} erros</Pill>
+          ) : null
+        }
       />
+
+      {currentPending && (
+        <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-950/20 p-3 flex items-center gap-3">
+          <div
+            className={`${ballBg(currentPending.mainPick)} text-white text-xl font-bold w-14 h-14 rounded-xl flex items-center justify-center ring-2 ring-amber-400 animate-pulse shadow-lg shadow-amber-500/30`}
+          >
+            {currentPending.mainPick}
+          </div>
+          <div className="flex-1">
+            <div className="text-[10px] uppercase tracking-wider text-amber-400 font-bold">🎯 Sinal pendente</div>
+            <div className="text-sm font-bold text-amber-100">
+              Aposta no {currentPending.mainPick} · {(currentPending.mainProb * 100).toFixed(1)}%
+            </div>
+            <div className="text-[10px] text-amber-100/70 mt-0.5">
+              {currentPending.sector} · {currentPending.color} · top-5: {currentPending.topPicks.join(", ")}
+            </div>
+          </div>
+          {lastSpin && (
+            <div className="text-right text-[10px] text-neutral-400">
+              <div>Aguardando próximo</div>
+              <div className="font-mono">após {fmtAgo(Date.now() - lastSpin.t)}</div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
         <ScoreCell
           label="Acertos exatos"
           big={String(stats.hitMain)}
-          sub={`${(stats.hitRateMain * 100).toFixed(1)}%`}
+          sub={`${(stats.hitRateMain * 100).toFixed(1)}% · lift ${stats.lift1.toFixed(2)}×`}
           accent="good-strong"
+          flashKind={flash}
         />
         <ScoreCell
           label="Acertos top-5"
           big={String(stats.hitTop5)}
-          sub={`${(stats.hitRateTop5 * 100).toFixed(1)}%`}
+          sub={`${(stats.hitRateTop5 * 100).toFixed(1)}% · lift ${stats.lift5.toFixed(2)}×`}
           accent="good"
+          flashKind={flash}
         />
         <ScoreCell
           label="Erros"
           big={String(stats.miss)}
           sub={stats.total > 0 ? `${((stats.miss / stats.total) * 100).toFixed(1)}%` : "—"}
           accent="bad"
+          flashKind={flash === "miss" ? "miss" : null}
         />
         <ScoreCell
           label="Streak atual"
@@ -111,23 +224,36 @@ const Scoreboard = memo(() => {
         />
       </div>
 
+      {stats.rollingHitRate.length >= 3 && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold">Taxa top-5 rolante (20 sinais)</span>
+            <span className="text-[10px] text-neutral-500 font-mono">
+              último: {(stats.rollingHitRate[stats.rollingHitRate.length - 1] * 100).toFixed(0)}%
+            </span>
+          </div>
+          <Sparkline data={stats.rollingHitRate} baseline={stats.baseline5} />
+        </div>
+      )}
+
       <div>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold">Últimos {last30.length} sinais</span>
-          <span className="text-[10px] text-neutral-500">
-            Lift exato {stats.lift1.toFixed(2)}× · top-5 {stats.lift5.toFixed(2)}× vs baseline
+          <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold">
+            Últimos {last30.length} sinais
           </span>
         </div>
         <div className="flex gap-0.5 flex-wrap">
           {last30.length === 0 ? (
-            <div className="text-xs text-neutral-500 py-4 w-full text-center">Aguardando primeiros sinais resolverem…</div>
+            <div className="text-xs text-neutral-500 py-4 w-full text-center">
+              Aguardando primeiros sinais resolverem…
+            </div>
           ) : (
-            last30.map((s) => (
+            last30.map((s, i) => (
               <div
                 key={s.id}
                 className={`w-6 h-6 rounded text-[10px] font-bold text-white flex items-center justify-center ${
                   s.hitMain ? "bg-emerald-500" : s.hitTop5 ? "bg-sky-500" : "bg-red-700/70"
-                }`}
+                } ${i === last30.length - 1 && flash ? "ring-2 ring-amber-400 scale-110 transition" : ""}`}
                 title={`Predito ${s.mainPick} · saiu ${s.actualNumber} · ${s.hitMain ? "EXATO" : s.hitTop5 ? "Top 5" : "Erro"}`}
               >
                 {s.hitMain ? "✓✓" : s.hitTop5 ? "✓" : "✗"}
@@ -146,9 +272,7 @@ const Scoreboard = memo(() => {
             <span className="flex items-center gap-1">
               <span className="w-3 h-3 rounded bg-red-700/70" /> Errou
             </span>
-            <span className="ml-auto text-neutral-500">
-              Baseline acaso: exato 2,7% · top-5 13,5%
-            </span>
+            <span className="ml-auto text-neutral-500">Baseline acaso: exato 2,7% · top-5 13,5%</span>
           </div>
         )}
       </div>
@@ -162,9 +286,10 @@ interface ScoreCellProps {
   big: string;
   sub?: string;
   accent: "good-strong" | "good" | "bad" | "neutral" | "info";
+  flashKind?: "hit" | "miss" | null;
 }
 
-const ScoreCell = memo(({ label, big, sub, accent }: ScoreCellProps) => {
+const ScoreCell = memo(({ label, big, sub, accent, flashKind }: ScoreCellProps) => {
   const accentColors = {
     "good-strong": "text-emerald-300 border-emerald-700/50 bg-emerald-950/40",
     good: "text-sky-300 border-sky-700/50 bg-sky-950/40",
@@ -172,8 +297,14 @@ const ScoreCell = memo(({ label, big, sub, accent }: ScoreCellProps) => {
     neutral: "text-neutral-200 border-neutral-700 bg-neutral-900/40",
     info: "text-amber-300 border-amber-700/50 bg-amber-950/30",
   } as const;
+  const flashCls =
+    flashKind === "hit" && (accent === "good-strong" || accent === "good")
+      ? "[animation:pop_0.6s_ease-out] ring-2 ring-emerald-400"
+      : flashKind === "miss" && accent === "bad"
+        ? "[animation:pop_0.6s_ease-out] ring-2 ring-red-400"
+        : "";
   return (
-    <div className={`rounded-xl border p-2.5 ${accentColors[accent]}`}>
+    <div className={`rounded-xl border p-2.5 transition ${accentColors[accent]} ${flashCls}`}>
       <div className="text-[10px] uppercase tracking-wider opacity-70 font-bold">{label}</div>
       <div className="text-2xl font-bold font-mono mt-0.5 leading-none">{big}</div>
       {sub && <div className="text-[10px] opacity-70 mt-1 font-mono">{sub}</div>}
@@ -181,5 +312,27 @@ const ScoreCell = memo(({ label, big, sub, accent }: ScoreCellProps) => {
   );
 });
 ScoreCell.displayName = "ScoreCell";
+
+const Sparkline = memo(({ data, baseline }: { data: number[]; baseline: number }) => {
+  if (data.length < 2) return null;
+  const W = 600;
+  const H = 50;
+  const maxY = Math.max(0.4, ...data);
+  const minY = 0;
+  const range = Math.max(0.001, maxY - minY);
+  const x = (i: number) => (i / (data.length - 1)) * W;
+  const y = (v: number) => H - ((v - minY) / range) * (H - 8) - 4;
+  const path = data.map((v, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(v)}`).join(" ");
+  const baselineY = y(baseline);
+  const lastV = data[data.length - 1];
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-12 bg-neutral-950 rounded-md border border-neutral-800">
+      <line x1={0} y1={baselineY} x2={W} y2={baselineY} stroke="#525252" strokeDasharray="3 3" strokeWidth={0.5} />
+      <path d={path} fill="none" stroke={lastV >= baseline ? "#10b981" : "#f43f5e"} strokeWidth={1.5} />
+      <circle cx={x(data.length - 1)} cy={y(lastV)} r={3} fill={lastV >= baseline ? "#10b981" : "#f43f5e"} />
+    </svg>
+  );
+});
+Sparkline.displayName = "ScoreboardSparkline";
 
 export default Scoreboard;

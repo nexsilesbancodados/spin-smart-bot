@@ -79,7 +79,7 @@ const evaluateBet = (
   const netMiss = -unitsRisked;
   const expectedReturnBaseline = hitProbabilityBaseline * netHit + (1 - hitProbabilityBaseline) * netMiss;
   const expectedReturnModel = hitProbabilityModel * netHit + (1 - hitProbabilityModel) * netMiss;
-  const evRatioPerUnit = unitsRisked > 0 ? expectedReturnModel / unitsRisked : 0;
+  const evRatioPerUnit = unitsRisked > 0 ? expectedReturnModel / Math.max(unitsRisked, 1) : 0;
 
   const variance =
     hitProbabilityModel * Math.pow(netHit - expectedReturnModel, 2) +

@@ -214,6 +214,3 @@ export const runAllBacktests = (spinsNewestFirst: number[]): StrategyResult[] =>
   return STRATEGIES.map((s) => runBacktest(spinsNewestFirst, s.id));
 };
 
-void colorOf;
-void terminalOf;
-void BLACK;

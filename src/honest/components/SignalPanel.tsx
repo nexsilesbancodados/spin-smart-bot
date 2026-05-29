@@ -97,6 +97,7 @@ const SignalPanel = memo(() => {
               value={threshold}
               onChange={(e) => setConfig({ threshold: Number(e.target.value) })}
               className="bg-neutral-950 border border-neutral-700 rounded-md px-2 py-1 text-xs"
+              aria-label="Limiar de probabilidade do agente"
             >
               <option value={0.03}>3%</option>
               <option value={0.04}>4%</option>
