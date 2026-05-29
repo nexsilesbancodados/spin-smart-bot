@@ -30,6 +30,36 @@ const BetTracker = memo(() => {
 
   const stats = useMemo(() => computeTrackerStats(entries), [entries]);
 
+  const handleExport = () => {
+    if (entries.length === 0) return;
+    const header = "data;hora;tipo;payout;aposta;resultado;n_picked;n_actual;delta;nota";
+    const rows = entries.map((e) => {
+      const d = new Date(e.t);
+      const data = d.toLocaleDateString("pt-BR");
+      const hora = d.toLocaleTimeString("pt-BR");
+      return [
+        data,
+        hora,
+        `"${e.betType.replace(/"/g, "")}"`,
+        e.payout,
+        e.stake.toFixed(2),
+        e.outcome ?? "pendente",
+        e.pickedNumber ?? "",
+        e.actualNumber ?? "",
+        e.delta.toFixed(2),
+        `"${(e.note || "").replace(/"/g, "")}"`,
+      ].join(";");
+    });
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([`﻿${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `apostas-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleAdd = (outcome: "win" | "loss" | null) => {
     addEntry({ betType, payout, stake, outcome, note: note || undefined });
     setNote("");
@@ -42,20 +72,29 @@ const BetTracker = memo(() => {
         eyebrow="Ferramenta"
         actions={
           entries.length > 0 ? (
-            <button
-              onClick={() => {
-                if (confirmClear) {
-                  clearAll();
-                  setConfirmClear(false);
-                } else {
-                  setConfirmClear(true);
-                  setTimeout(() => setConfirmClear(false), 3000);
-                }
-              }}
-              className="text-[10px] text-red-400 hover:text-red-300 font-bold"
-            >
-              {confirmClear ? "Confirmar?" : "Limpar"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExport}
+                className="text-[10px] text-amber-400 hover:text-amber-300 font-bold"
+                title="Exportar para CSV"
+              >
+                ↓ CSV
+              </button>
+              <button
+                onClick={() => {
+                  if (confirmClear) {
+                    clearAll();
+                    setConfirmClear(false);
+                  } else {
+                    setConfirmClear(true);
+                    setTimeout(() => setConfirmClear(false), 3000);
+                  }
+                }}
+                className="text-[10px] text-red-400 hover:text-red-300 font-bold"
+              >
+                {confirmClear ? "Confirmar?" : "Limpar"}
+              </button>
+            </div>
           ) : null
         }
       />
