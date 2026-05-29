@@ -1,12 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Spin Smart Bot — IA Sniper",
-  "version": "5.0.0",
-  "description": "IA Sniper + AutoBet Playtech — Detecta padrões e aposta automaticamente na roleta brasileira",
+  "name": "Roleta Vision AI — Captura de giros",
+  "version": "6.0.0",
+  "description": "Captura números da roleta brasileira (Playtech) e alimenta o app Roleta Vision AI. Apenas ingestão de dados — sem previsões, sem apostas automáticas.",
   "permissions": [
     "activeTab",
     "storage",
-    "alarms",
     "scripting"
   ],
   "host_permissions": [
@@ -14,8 +13,7 @@
     "*://*.onabet.com/*",
     "*://*.ona.bet.br/*",
     "*://*.betano.com/*",
-    "*://*.bet365.com/*",
-    "*://spin-smart-bot.lovable.app/*"
+    "*://*.bet365.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -37,31 +35,10 @@
         "*://*.bet365.com/*"
       ],
       "js": [
-        "content.js",
-        "autobet.js"
-      ],
-      "run_at": "document_idle",
-      "all_frames": true
-    },
-    {
-      "matches": [
-        "*://spin-smart-bot.lovable.app/*"
-      ],
-      "js": [
         "content.js"
       ],
       "run_at": "document_idle",
-      "all_frames": false
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "icon.png"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
+      "all_frames": true
     }
   ],
   "icons": {

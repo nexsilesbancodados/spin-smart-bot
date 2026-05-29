@@ -1,30 +1,34 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
-    <title>Lovable App</title>
-    <meta name="description" content="Lovable Generated Project">
-    <meta name="author" content="Lovable" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0a0a0a" />
+    <title>Roleta Vision AI</title>
+    <meta name="description" content="Análise estatística e sinais em tempo real para roleta brasileira" />
+    <meta name="author" content="Roleta Vision AI" />
 
-    <!-- TODO: Update og:title to match your application name -->
-    
-    
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bcefffa7-1562-49af-9f6b-a546dde4ca40/id-preview-ecfb8847--b7b64828-9650-4c72-9bd9-bd3accc948d0.lovable.app-1774768188785.png">
+    <meta property="og:title" content="Roleta Vision AI" />
+    <meta property="og:description" content="Análise estatística e sinais em tempo real" />
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
-    <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bcefffa7-1562-49af-9f6b-a546dde4ca40/id-preview-ecfb8847--b7b64828-9650-4c72-9bd9-bd3accc948d0.lovable.app-1774768188785.png">
-    <meta property="og:title" content="Lovable App">
-  <meta name="twitter:title" content="Lovable App">
-  <meta property="og:description" content="Lovable Generated Project">
-  <meta name="twitter:description" content="Lovable Generated Project">
-</head>
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Roleta Vision AI" />
+    <meta name="twitter:description" content="Análise estatística e sinais em tempo real" />
+  </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js").catch(() => {});
+        });
+      }
+    </script>
   </body>
 </html>

@@ -1,5 +1,5 @@
-// SPIN SMART BOT — Content Script v3
-// Captura números da roleta por múltiplas estratégias
+// Roleta Vision AI — Content Script v6
+// Captura números da roleta por múltiplas estratégias. Apenas ingestão.
 (function () {
   'use strict';
   const DEBOUNCE = 2800;
@@ -11,7 +11,7 @@
     const now = Date.now();
     if (n === lastNum && now - lastTime < DEBOUNCE) return;
     lastNum = n; lastTime = now;
-    console.log('[SSB-Content] 🎯 Número capturado:', n);
+    console.log('[RV-Content] Número capturado:', n);
 
     // 1. Webhook Supabase
     fetch(WEBHOOK, {
@@ -150,17 +150,6 @@
     if (el) { const n = extract(el); if (n !== null) send(n); }
   }, 2000);
 
-  // Ouvir postMessages (bridge entre frames)
-  window.addEventListener('message', evt => {
-    const d = evt.data;
-    if (!d || typeof d !== 'object') return;
-    if (d.type === 'SNIPER_BET_SIGNAL' || d.type === 'NUMBER_CAPTURED_FROM_APP') {
-      if (window._ssb && d.type === 'SNIPER_BET_SIGNAL') {
-        window._ssb.bet(d.numbers, d.betAmount, d.probability);
-      }
-    }
-  });
-
   window._rtSendNumber = send;
-  console.log('[SSB-Content] v3 ativo:', window.location.href);
+  console.log('[RV-Content] Roleta Vision AI capture ativo:', window.location.href);
 })();
