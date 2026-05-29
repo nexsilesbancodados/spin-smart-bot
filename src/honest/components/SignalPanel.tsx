@@ -119,16 +119,23 @@ const SignalPanel = memo(() => {
       {latest && (
         <>
           <div className="flex items-center gap-4 mb-4">
-            <div
-              className={`${ballBg(latest.mainPick)} text-white text-3xl font-bold w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg shadow-black/30 ${
-                wouldEmit && filterPass ? "ring-4 ring-amber-400/60" : "ring-2 ring-neutral-700/60"
-              }`}
-            >
-              {latest.mainPick}
+            <div className="relative">
+              <div
+                className={`${ballBg(latest.mainPick)} text-white text-5xl font-black w-24 h-24 rounded-2xl flex items-center justify-center shadow-2xl shadow-black/50 ${
+                  wouldEmit && filterPass ? "ring-4 ring-amber-400/70 [animation:pop_0.5s_ease-out]" : "ring-2 ring-neutral-700/60"
+                }`}
+              >
+                {latest.mainPick}
+              </div>
+              {wouldEmit && filterPass && (
+                <span className="absolute -top-1 -right-1 bg-amber-500 text-black text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-lg">
+                  EMITIR
+                </span>
+              )}
             </div>
             <div className="flex-1">
-              <div className="text-[10px] uppercase tracking-wider text-neutral-500">Pick principal</div>
-              <div className="text-2xl font-bold font-mono text-amber-300">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-neutral-500 font-bold">Pick principal</div>
+              <div className="text-3xl font-black font-mono text-amber-300 leading-none mt-1">
                 {(latest.mainProb * 100).toFixed(2)}%
               </div>
               <div className="text-[11px] text-neutral-500 mt-0.5">
@@ -163,16 +170,16 @@ const SignalPanel = memo(() => {
           </div>
 
           <div className="mb-4">
-            <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1.5">Top 5</div>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-neutral-500 mb-2 font-bold">Top 5 candidatos</div>
             <div className="flex gap-2">
               {latest.topPicks.map((n, i) => (
-                <div key={`${n}-${i}`} className="flex flex-col items-center gap-1">
+                <div key={`${n}-${i}`} className="flex flex-col items-center gap-1 flex-1">
                   <div
-                    className={`${ballBg(n)} text-white text-sm font-bold w-10 h-10 rounded-lg flex items-center justify-center ${i === 0 ? "ring-2 ring-amber-400" : ""}`}
+                    className={`${ballBg(n)} text-white text-base font-bold w-12 h-12 rounded-full flex items-center justify-center shadow-md ${i === 0 ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-neutral-950" : "ring-1 ring-white/10"}`}
                   >
                     {n}
                   </div>
-                  <span className="text-[9px] font-mono text-neutral-400">
+                  <span className="text-[10px] font-mono text-neutral-400 font-semibold">
                     {(latest.topProbs[i] * 100).toFixed(1)}%
                   </span>
                 </div>
