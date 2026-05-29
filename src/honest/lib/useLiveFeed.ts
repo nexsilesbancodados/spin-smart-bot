@@ -74,6 +74,22 @@ let lastFreshLen = 0;
 let consecutiveErrors = 0;
 let backoffUntil = 0;
 
+export const resetFeedState = () => {
+  lastFreshHead = null;
+  lastFreshLen = 0;
+  consecutiveErrors = 0;
+  backoffUntil = 0;
+  useFeedStatus.getState().setError(null);
+};
+
+export const getFeedDebug = () => ({
+  lastFreshHead,
+  lastFreshLen,
+  consecutiveErrors,
+  backoffUntil,
+  backoffActive: Date.now() < backoffUntil,
+});
+
 export const ingestProxyNumbers = async (): Promise<number> => {
   const feed = useFeedStatus.getState();
   if (Date.now() < backoffUntil) {

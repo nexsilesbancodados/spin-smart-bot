@@ -9,6 +9,9 @@ import BestBetRecommendation from "../components/BestBetRecommendation";
 import AnomalyBanner from "../components/AnomalyBanner";
 import TiltAlerts from "../components/TiltAlerts";
 import Scoreboard from "../components/Scoreboard";
+import StreakAlerts from "../components/StreakAlerts";
+import BetCalculator from "../components/BetCalculator";
+import HotColdWheel from "../components/HotColdWheel";
 import { Card, PageContainer, Button } from "../components/ui";
 
 const fmtMoney = (v: number) =>
@@ -27,6 +30,7 @@ const Dashboard = memo(() => {
   const endSession = useHonestStore((s) => s.endSession);
   const agentEnabled = useSignalAgent((s) => s.config.enabled);
   const [elapsed, setElapsed] = useState("00:00");
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   useEffect(() => {
     if (!session.startedAt) return;
@@ -57,6 +61,8 @@ const Dashboard = memo(() => {
       <SignalPanel />
 
       <Scoreboard />
+
+      <StreakAlerts />
 
       <AnomalyBanner />
       <TiltAlerts />
@@ -106,6 +112,27 @@ const Dashboard = memo(() => {
             {spins.length} giros · agente {agentEnabled ? "ON" : "OFF"}
           </span>
         </div>
+      )}
+
+      <button
+        onClick={() => setToolsOpen((v) => !v)}
+        className="w-full bg-neutral-900/60 hover:bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 flex items-center justify-between text-[11px] font-bold text-neutral-300 transition"
+      >
+        <span className="flex items-center gap-2">
+          <span className="text-amber-400">🛠</span>
+          Ferramentas de jogada
+          <span className="text-[9px] text-neutral-500 font-normal">
+            calculadora · roleta · vizinhos
+          </span>
+        </span>
+        <span className="text-amber-400 text-[10px]">{toolsOpen ? "▲ fechar" : "▼ abrir"}</span>
+      </button>
+
+      {toolsOpen && (
+        <>
+          <BetCalculator />
+          <HotColdWheel />
+        </>
       )}
 
       {last8.length > 0 && (
