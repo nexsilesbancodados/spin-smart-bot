@@ -74,6 +74,17 @@ const Scoreboard = memo(() => {
     const baseline1 = 1 / SLOTS;
     const baseline5 = 5 / SLOTS;
 
+    const wilsonInterval = (hits: number, n: number, z = 1.96): [number, number] => {
+      if (n === 0) return [0, 0];
+      const p = hits / n;
+      const denom = 1 + (z * z) / n;
+      const center = (p + (z * z) / (2 * n)) / denom;
+      const margin = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / denom;
+      return [Math.max(0, center - margin), Math.min(1, center + margin)];
+    };
+    const ciMain = wilsonInterval(hitMain, resolved.length);
+    const ciTop5 = wilsonInterval(hitTop5, resolved.length);
+
     const lastResolved = resolved[0];
     const timeSinceLastResolution = lastResolved ? Date.now() - (lastResolved.resolvedAt ?? lastResolved.t) : null;
 
@@ -105,6 +116,8 @@ const Scoreboard = memo(() => {
       timeSinceLastResolution,
       rollingHitRate,
       lastResolved,
+      ciMain,
+      ciTop5,
     };
   }, [history, pending]);
 
@@ -192,14 +205,22 @@ const Scoreboard = memo(() => {
         <ScoreCell
           label="Acertos exatos"
           big={String(stats.hitMain)}
-          sub={`${(stats.hitRateMain * 100).toFixed(1)}% · lift ${stats.lift1.toFixed(2)}×`}
+          sub={
+            stats.total >= 10
+              ? `${(stats.hitRateMain * 100).toFixed(1)}% · CI95 [${(stats.ciMain[0] * 100).toFixed(1)}–${(stats.ciMain[1] * 100).toFixed(1)}]`
+              : `${(stats.hitRateMain * 100).toFixed(1)}% · lift ${stats.lift1.toFixed(2)}×`
+          }
           accent="good-strong"
           flashKind={flash}
         />
         <ScoreCell
           label="Acertos top-5"
           big={String(stats.hitTop5)}
-          sub={`${(stats.hitRateTop5 * 100).toFixed(1)}% · lift ${stats.lift5.toFixed(2)}×`}
+          sub={
+            stats.total >= 10
+              ? `${(stats.hitRateTop5 * 100).toFixed(1)}% · CI95 [${(stats.ciTop5[0] * 100).toFixed(1)}–${(stats.ciTop5[1] * 100).toFixed(1)}]`
+              : `${(stats.hitRateTop5 * 100).toFixed(1)}% · lift ${stats.lift5.toFixed(2)}×`
+          }
           accent="good"
           flashKind={flash}
         />

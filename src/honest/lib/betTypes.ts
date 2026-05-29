@@ -47,6 +47,8 @@ export interface BetSignal {
   sharpe: number;
   confidence: number;
   rankingScore: number;
+  kellyFraction: number;
+  recommendedStakePct: number;
   description: string;
 }
 
@@ -88,6 +90,13 @@ const evaluateBet = (
   const sharpe = stddev > 0 ? expectedReturnModel / stddev : 0;
   const confidence = Math.min(1, Math.max(0, modelLift > 1 ? Math.log(modelLift + 1) / 2 : 0));
 
+  const b = unitsRisked > 0 ? netHit / unitsRisked : 0;
+  const p = hitProbabilityModel;
+  const q = 1 - p;
+  const rawKelly = b > 0 ? (b * p - q) / b : 0;
+  const kellyFraction = Math.max(0, Math.min(0.25, rawKelly));
+  const recommendedStakePct = kellyFraction * 0.5;
+
   return {
     id,
     label,
@@ -107,6 +116,8 @@ const evaluateBet = (
     sharpe,
     confidence,
     rankingScore: 0,
+    kellyFraction,
+    recommendedStakePct,
     description,
   };
 };

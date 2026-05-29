@@ -85,6 +85,25 @@ const BestBetRecommendation = memo(() => {
 
         <p className="text-xs text-neutral-300 mb-3">{winner.description}</p>
 
+        {winner.kellyFraction > 0 && (
+          <div className="mb-3 rounded-lg border border-emerald-700/40 bg-emerald-950/20 p-2.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-bold">💰 Stake recomendado (Kelly 50%)</div>
+                <div className="text-[11px] text-neutral-300 mt-0.5">
+                  Aposta <strong className="text-emerald-300">{(winner.recommendedStakePct * 100).toFixed(2)}%</strong> da banca por rodada
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-base font-bold font-mono text-emerald-300">
+                  Kelly raw: {(winner.kellyFraction * 100).toFixed(2)}%
+                </div>
+                <div className="text-[10px] text-neutral-500">b={(winner.payoutOnHit / winner.unitsRisked - 1).toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <StatGrid cols={4}>
           <Stat
             label="Hit prob modelo"
