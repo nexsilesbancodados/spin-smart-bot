@@ -1,6 +1,44 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useBetTracker, computeTrackerStats } from "../lib/betTracker";
 import { Card, SectionHeader, Button } from "./ui";
+
+type SpeechRec = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  onresult: ((e: { results: Array<Array<{ transcript: string }>> }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+};
+
+const getSpeech = (): SpeechRec | null => {
+  if (typeof window === "undefined") return null;
+  const Ctor =
+    (window as unknown as { SpeechRecognition?: new () => SpeechRec }).SpeechRecognition ||
+    (window as unknown as { webkitSpeechRecognition?: new () => SpeechRec }).webkitSpeechRecognition;
+  if (!Ctor) return null;
+  const r = new Ctor();
+  r.lang = "pt-BR";
+  r.continuous = false;
+  r.interimResults = false;
+  return r;
+};
+
+const parseVoice = (text: string): { stake?: number; outcome?: "win" | "loss"; note: string } => {
+  const lower = text.toLowerCase();
+  let outcome: "win" | "loss" | undefined;
+  if (/\b(ganh|venc|acert)/.test(lower)) outcome = "win";
+  else if (/\b(perd|err|n[ãa]o foi)/.test(lower)) outcome = "loss";
+  const m = lower.match(/(\d+(?:[.,]\d+)?)/);
+  let stake: number | undefined;
+  if (m) {
+    stake = Number(m[1].replace(",", "."));
+    if (!isFinite(stake)) stake = undefined;
+  }
+  return { stake, outcome, note: text };
+};
 
 const BET_OPTIONS = [
   { label: "1:1 (cor/par/alto)", payout: 1 },
@@ -27,6 +65,37 @@ const BetTracker = memo(() => {
   const [stake, setStake] = useState(10);
   const [note, setNote] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const recRef = useRef<SpeechRec | null>(null);
+
+  useEffect(() => {
+    setVoiceSupported(getSpeech() !== null);
+  }, []);
+
+  const handleVoice = () => {
+    if (listening) {
+      recRef.current?.stop();
+      return;
+    }
+    const rec = getSpeech();
+    if (!rec) return;
+    recRef.current = rec;
+    rec.onresult = (e) => {
+      const transcript = e.results?.[0]?.[0]?.transcript || "";
+      const parsed = parseVoice(transcript);
+      if (parsed.stake !== undefined) setStake(parsed.stake);
+      setNote(parsed.note);
+      if (parsed.outcome && parsed.stake !== undefined) {
+        addEntry({ betType, payout, stake: parsed.stake, outcome: parsed.outcome, note: parsed.note });
+        setNote("");
+      }
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    setListening(true);
+    rec.start();
+  };
 
   const stats = useMemo(() => computeTrackerStats(entries), [entries]);
 
@@ -71,31 +140,42 @@ const BetTracker = memo(() => {
         title="Tracker pessoal de jogadas"
         eyebrow="Ferramenta"
         actions={
-          entries.length > 0 ? (
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            {voiceSupported && (
               <button
-                onClick={handleExport}
-                className="text-[10px] text-amber-400 hover:text-amber-300 font-bold"
-                title="Exportar para CSV"
+                onClick={handleVoice}
+                className={`text-[10px] font-bold ${listening ? "text-red-400 animate-pulse" : "text-cyan-400 hover:text-cyan-300"}`}
+                title='Diga: "ganhei 50 no vermelho" ou "perdi 20 no pleno"'
               >
-                ↓ CSV
+                {listening ? "● ouvindo" : "🎤 voz"}
               </button>
-              <button
-                onClick={() => {
-                  if (confirmClear) {
-                    clearAll();
-                    setConfirmClear(false);
-                  } else {
-                    setConfirmClear(true);
-                    setTimeout(() => setConfirmClear(false), 3000);
-                  }
-                }}
-                className="text-[10px] text-red-400 hover:text-red-300 font-bold"
-              >
-                {confirmClear ? "Confirmar?" : "Limpar"}
-              </button>
-            </div>
-          ) : null
+            )}
+            {entries.length > 0 && (
+              <>
+                <button
+                  onClick={handleExport}
+                  className="text-[10px] text-amber-400 hover:text-amber-300 font-bold"
+                  title="Exportar para CSV"
+                >
+                  ↓ CSV
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirmClear) {
+                      clearAll();
+                      setConfirmClear(false);
+                    } else {
+                      setConfirmClear(true);
+                      setTimeout(() => setConfirmClear(false), 3000);
+                    }
+                  }}
+                  className="text-[10px] text-red-400 hover:text-red-300 font-bold"
+                >
+                  {confirmClear ? "Confirmar?" : "Limpar"}
+                </button>
+              </>
+            )}
+          </div>
         }
       />
 

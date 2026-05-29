@@ -274,13 +274,29 @@ export const runAgentTick = (): AgentTick => {
   let effectiveThreshold = agent.config.threshold;
   if (agent.config.dynamicThreshold) {
     const history = useSignalAgent.getState().history;
-    const resolved = history.filter((s) => s.actualNumber !== null).slice(0, 20);
-    if (resolved.length >= 5) {
+    const resolved = history.filter((s) => s.actualNumber !== null).slice(0, 30);
+    if (resolved.length >= 8) {
       const hitRate = resolved.filter((s) => s.hitTop5).length / resolved.length;
       const baseline = 5 / SLOTS;
       const lift = hitRate / baseline;
-      if (lift > 1.2) effectiveThreshold = Math.max(0.03, agent.config.threshold * 0.85);
-      else if (lift < 0.8) effectiveThreshold = Math.min(0.15, agent.config.threshold * 1.25);
+
+      let brierSum = 0;
+      for (const s of resolved) {
+        const p = Math.max(0, Math.min(1, (s.topProbs || []).slice(0, 5).reduce((a, b) => a + b, 0)));
+        const y = s.hitTop5 ? 1 : 0;
+        brierSum += (p - y) ** 2;
+      }
+      const brier = brierSum / resolved.length;
+      const naiveBrier = baseline * (1 - baseline);
+      const skill = naiveBrier > 0 ? 1 - brier / naiveBrier : 0;
+
+      let multiplier = 1;
+      if (skill > 0.15 && lift > 1.3) multiplier = 0.72;
+      else if (skill > 0.05 && lift > 1.15) multiplier = 0.85;
+      else if (skill < -0.15 || lift < 0.7) multiplier = 1.5;
+      else if (skill < -0.05 || lift < 0.85) multiplier = 1.25;
+
+      effectiveThreshold = Math.max(0.025, Math.min(0.18, agent.config.threshold * multiplier));
     }
   }
 
