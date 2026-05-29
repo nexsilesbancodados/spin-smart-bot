@@ -12,6 +12,7 @@ import { usePerf } from "./perf";
 import { runAutoPauseCheck } from "./autoPause";
 import { runAutoTuneCheck } from "./autoTuner";
 import { logActivity } from "./activityFeed";
+import { useABTest } from "./abTest";
 
 export interface SignalRecord {
   id: string;
@@ -264,6 +265,12 @@ export const runAgentTick = (): AgentTick => {
 
   useSignalAgent.getState().pushPrediction(signal);
 
+  const ab = useABTest.getState();
+  if (ab.enabled) {
+    if (signal.mainProb >= ab.configA.threshold) ab.pushPredictionA(signal);
+    if (signal.mainProb >= ab.configB.threshold) ab.pushPredictionB(signal);
+  }
+
   let effectiveThreshold = agent.config.threshold;
   if (agent.config.dynamicThreshold) {
     const history = useSignalAgent.getState().history;
@@ -303,6 +310,11 @@ export const startAgentLoop = () => {
     if (previousKey === "") return;
 
     const resolved = useSignalAgent.getState().resolvePending(newest.n);
+    const abState = useABTest.getState();
+    if (abState.enabled) {
+      abState.resolveA(newest.n);
+      abState.resolveB(newest.n);
+    }
     for (const r of resolved) {
       if (r.hitMain || r.hitTop5) {
         playHitSound();
