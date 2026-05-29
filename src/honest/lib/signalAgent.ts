@@ -272,6 +272,22 @@ export const runAgentTick = (): AgentTick => {
     if (signal.mainProb >= ab.configB.threshold) ab.pushPredictionB(signal);
   }
 
+  const calibratedProb = (() => {
+    if (!agent.config.dynamicThreshold) return mainProb;
+    const hist = useSignalAgent.getState().history;
+    const resolved = hist.filter((s) => s.actualNumber !== null);
+    if (resolved.length < 15) return mainProb;
+    const lo = mainProb * 0.7;
+    const hi = Math.max(mainProb * 1.5, mainProb + 0.02);
+    const bucket = resolved.filter((s) => s.mainProb >= lo && s.mainProb <= hi);
+    if (bucket.length < 5) return mainProb;
+    const observed = bucket.filter((s) => s.hitMain).length / bucket.length;
+    const meanPred = bucket.reduce((a, s) => a + s.mainProb, 0) / bucket.length;
+    if (meanPred <= 1e-6) return mainProb;
+    const ratio = Math.max(0.3, Math.min(2.0, observed / meanPred));
+    return mainProb * ratio;
+  })();
+
   let effectiveThreshold = agent.config.threshold;
   if (agent.config.dynamicThreshold) {
     const history = useSignalAgent.getState().history;
@@ -308,7 +324,7 @@ export const runAgentTick = (): AgentTick => {
     }
   }
 
-  const shouldEmit = mainProb >= effectiveThreshold;
+  const shouldEmit = calibratedProb >= effectiveThreshold;
   return { signal, shouldEmit, ensembleTopProb: ensembleProbs[mainPick], lstmTopProb: lstmProbs ? lstmProbs[mainPick] : null };
 };
 

@@ -23,6 +23,9 @@ const HourlyHeatmap = lazy(() => import("../components/HourlyHeatmap"));
 const StrategyPresets = lazy(() => import("../components/StrategyPresets"));
 const WheelBiasDetector = lazy(() => import("../components/WheelBiasDetector"));
 const TransitionMatrix = lazy(() => import("../components/TransitionMatrix"));
+const RunsTest = lazy(() => import("../components/RunsTest"));
+const Autocorrelation = lazy(() => import("../components/Autocorrelation"));
+const CalibrationCurve = lazy(() => import("../components/CalibrationCurve"));
 
 const fmtMoney = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
@@ -149,11 +152,14 @@ const Dashboard = memo(() => {
           }
         >
           <StrategyPresets />
+          <CalibrationCurve />
           <BetCalculator />
           <HotColdWheel />
           <SectorHeatmap />
           <NumberFrequency />
           <WheelBiasDetector />
+          <RunsTest />
+          <Autocorrelation />
           <TransitionMatrix />
           <RecurrenceFinder />
           <HourlyHeatmap />
