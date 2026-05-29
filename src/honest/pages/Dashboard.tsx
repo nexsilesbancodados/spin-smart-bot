@@ -12,6 +12,7 @@ import Scoreboard from "../components/Scoreboard";
 import StreakAlerts from "../components/StreakAlerts";
 import BetCalculator from "../components/BetCalculator";
 import HotColdWheel from "../components/HotColdWheel";
+import BetTracker from "../components/BetTracker";
 import { Card, PageContainer, Button } from "../components/ui";
 
 const fmtMoney = (v: number) =>
@@ -132,6 +133,7 @@ const Dashboard = memo(() => {
         <>
           <BetCalculator />
           <HotColdWheel />
+          <BetTracker />
         </>
       )}
 

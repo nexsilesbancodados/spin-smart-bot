@@ -97,6 +97,23 @@ const Scoreboard = memo(() => {
       }
     }
 
+    let brierMain = 0;
+    let brierTop = 0;
+    for (const s of resolved) {
+      const pMain = Math.max(0, Math.min(1, s.mainProb));
+      const yMain = s.hitMain ? 1 : 0;
+      brierMain += (pMain - yMain) ** 2;
+      const pTop = Math.max(0, Math.min(1, (s.topProbs || []).slice(0, 5).reduce((a, b) => a + b, 0)));
+      const yTop = s.hitTop5 ? 1 : 0;
+      brierTop += (pTop - yTop) ** 2;
+    }
+    brierMain = resolved.length > 0 ? brierMain / resolved.length : 0;
+    brierTop = resolved.length > 0 ? brierTop / resolved.length : 0;
+    const naiveBrierMain = baseline1 * (1 - baseline1);
+    const naiveBrierTop = baseline5 * (1 - baseline5);
+    const skillMain = naiveBrierMain > 0 ? 1 - brierMain / naiveBrierMain : 0;
+    const skillTop = naiveBrierTop > 0 ? 1 - brierTop / naiveBrierTop : 0;
+
     return {
       total: resolved.length,
       pending: pending.length,
@@ -118,6 +135,10 @@ const Scoreboard = memo(() => {
       lastResolved,
       ciMain,
       ciTop5,
+      brierMain,
+      brierTop,
+      skillMain,
+      skillTop,
     };
   }, [history, pending]);
 
@@ -244,6 +265,21 @@ const Scoreboard = memo(() => {
           accent="info"
         />
       </div>
+
+      {stats.total >= 10 && (
+        <div className="mb-3 flex items-center gap-2 flex-wrap text-[10px]">
+          <span className="uppercase tracking-wider text-neutral-500 font-bold">Calibração</span>
+          <Pill accent={stats.skillTop > 0.05 ? "good" : stats.skillTop > -0.05 ? "neutral" : "bad"}>
+            Skill top-5: {(stats.skillTop * 100).toFixed(1)}%
+          </Pill>
+          <span className="text-neutral-500 font-mono">
+            Brier {stats.brierTop.toFixed(3)} (acaso {((stats.baseline5 * (1 - stats.baseline5))).toFixed(3)})
+          </span>
+          <span className="text-neutral-600 italic">
+            {stats.skillTop > 0.05 ? "modelo vence o acaso" : stats.skillTop > -0.05 ? "equivalente ao acaso" : "abaixo do acaso"}
+          </span>
+        </div>
+      )}
 
       {stats.rollingHitRate.length >= 3 && (
         <div className="mb-4">
