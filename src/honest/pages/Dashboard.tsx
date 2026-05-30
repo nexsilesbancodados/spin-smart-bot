@@ -4,7 +4,6 @@ import { Card, PageContainer } from "../components/ui";
 
 const RealityCheckBanner = lazy(() => import("../components/RealityCheckBanner"));
 const AutoBetPanel = lazy(() => import("../components/AutoBetPanel"));
-const DiscordWebhookConfig = lazy(() => import("../components/DiscordWebhookConfig"));
 const BetCalculator = lazy(() => import("../components/BetCalculator"));
 const HotColdWheel = lazy(() => import("../components/HotColdWheel"));
 const BetTracker = lazy(() => import("../components/BetTracker"));
@@ -51,7 +50,6 @@ const Dashboard = memo(() => {
           }
         >
           <RealityCheckBanner />
-          <DiscordWebhookConfig />
           <AutoBetPanel />
           <MasterBacktest />
           <BotEnsembleStatus />

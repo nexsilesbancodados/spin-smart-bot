@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { SignalRecord } from "./signalAgent";
 import type { MasterCandidate } from "./masterSignal";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface WebhookConfig {
   enabled: boolean;
@@ -144,13 +145,77 @@ const formatMasterPayload = (
   };
 };
 
+let relayAvailable: boolean | null = null;
+
+const tryRelay = async (
+  candidate: MasterCandidate,
+  context: { spinsSeen: number; validatedCount: number }
+): Promise<{ ok: boolean; error?: string }> => {
+  if (relayAvailable === false) return { ok: false, error: "relay-disabled" };
+  try {
+    const res = await supabase.functions.invoke<{ ok?: boolean; error?: string; detail?: string }>(
+      "discord-relay",
+      {
+        body: {
+          task: "master-signal",
+          candidate: {
+            targetLabel: candidate.targetLabel,
+            targetType: candidate.targetType,
+            prob: candidate.prob,
+            payout: candidate.payout,
+            coverage: candidate.coverage,
+            lift: candidate.lift,
+            baseline: candidate.baseline,
+            confidence: candidate.confidence,
+            strictValid: candidate.strictValid,
+            numbers: candidate.numbers,
+          },
+          context,
+        },
+      }
+    );
+    if (res.error) {
+      const msg = res.error.message ?? "";
+      if (msg.includes("NOT_FOUND") || msg.includes("404")) {
+        relayAvailable = false;
+        return { ok: false, error: "relay-not-deployed" };
+      }
+      return { ok: false, error: msg };
+    }
+    if (!res.data || res.data.ok !== true) {
+      return {
+        ok: false,
+        error: res.data?.error ?? res.data?.detail ?? "relay-unknown-error",
+      };
+    }
+    relayAvailable = true;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+};
+
 export const fireMasterWebhook = async (
   candidate: MasterCandidate,
   context: { spinsSeen: number; validatedCount: number }
 ): Promise<void> => {
   const { config, recordFired } = useWebhook.getState();
-  if (!config.enabled || !config.url) return;
   if (candidate.confidence < config.minConfidence) return;
+
+  // Try server-side relay first (URL kept in Supabase secrets, never in client)
+  const relayResult = await tryRelay(candidate, context);
+  if (relayResult.ok) {
+    recordFired();
+    return;
+  }
+
+  // Fallback: direct POST if user has configured a URL in localStorage
+  if (!config.enabled || !config.url) {
+    if (relayResult.error && relayResult.error !== "relay-not-deployed") {
+      recordFired(`relay: ${relayResult.error}`);
+    }
+    return;
+  }
 
   try {
     const body = formatMasterPayload(candidate, context, config.format);
