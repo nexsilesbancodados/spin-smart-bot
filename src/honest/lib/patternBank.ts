@@ -16,6 +16,7 @@ import {
   numbersWithTerminal,
 } from "./wheel";
 import { buildNgramPatterns } from "./ngramPatterns";
+import { buildDeepPatterns } from "./deepPatterns";
 
 export type PredictionTargetKind =
   | "number"
@@ -1078,6 +1079,7 @@ export const getPatternBank = (): PatternRule[] => {
     ...generateSixains(),
     ...generateTrios(),
     ...buildNgramPatterns(),
+    ...buildDeepPatterns(),
   ];
   return CACHED_BANK;
 };

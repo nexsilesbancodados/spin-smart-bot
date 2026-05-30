@@ -64,8 +64,9 @@ const edgeQualityFromLift = (lift: number): number => {
 };
 
 const engineForGroup = (group: string): EngineKind => {
-  if (group.startsWith("cross-")) return "cross-lens";
-  if (group.endsWith("ngram") || group.endsWith("gram")) return "ngram";
+  if (group.startsWith("cross-") || group.startsWith("conditional-")) return "cross-lens";
+  if (group.endsWith("ngram") || group.endsWith("gram") || group.endsWith("-long")) return "ngram";
+  if (group.endsWith("-pyramid") || group.endsWith("-streak-broken") || group === "wheel-distance-series" || group === "anchor-recovery") return "pattern-bank";
   return "pattern-bank";
 };
 
