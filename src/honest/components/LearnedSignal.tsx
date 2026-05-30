@@ -102,14 +102,14 @@ const LearnedSignal = memo(() => {
       <SectionHeader
         title={
           <span className="flex items-center gap-2">
-            🧠 Sinal Aprendido
+            🧠 Sinal Aprendido pelo Histórico
             <Pill accent={accent}>{tag}</Pill>
           </span>
         }
-        eyebrow="Aprende com cada giro · sempre devolve UMA única jogada"
+        eyebrow="100% padrões aprendidos: alternâncias · regiões · terminais · puxadas"
         subtitle={
           <span className="text-[10px] text-neutral-500">
-            {bankTotal} padrões monitorados · {summary.tracked} treinados ·{" "}
+            {bankTotal} padrões observados · {summary.tracked} treinados ·{" "}
             {summary.totalLearned} aprendizagens · acerto global{" "}
             {(summary.overallAccuracy * 100).toFixed(1)}%
           </span>

@@ -615,6 +615,280 @@ const generateMirrorPairs = (): PatternRule[] => {
   return out;
 };
 
+const WHEEL_QUADRANTS: Array<{ key: string; label: string; set: Set<number> }> = [
+  { key: "q1", label: "Quadrante NE roleta", set: new Set([0, 32, 15, 19, 4, 21, 2, 25, 17]) },
+  { key: "q2", label: "Quadrante SE roleta", set: new Set([34, 6, 27, 13, 36, 11, 30, 8, 23]) },
+  { key: "q3", label: "Quadrante SO roleta", set: new Set([10, 5, 24, 16, 33, 1, 20, 14, 31]) },
+  { key: "q4", label: "Quadrante NO roleta", set: new Set([9, 22, 18, 29, 7, 28, 12, 35, 3, 26]) },
+];
+
+const TABLE_REGIONS: Array<{ key: string; label: string; set: Set<number> }> = [
+  { key: "table-left", label: "Mesa esquerda (1-6,…,31-36)", set: new Set([1, 2, 3, 4, 5, 6, 13, 14, 15, 16, 17, 18, 25, 26, 27, 28, 29, 30]) },
+  { key: "table-right", label: "Mesa direita (7-12,…,31-36)", set: new Set([7, 8, 9, 10, 11, 12, 19, 20, 21, 22, 23, 24, 31, 32, 33, 34, 35, 36]) },
+  { key: "table-center", label: "Mesa central (linhas 5-8)", set: new Set([13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]) },
+];
+
+const generateWheelQuadrants = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (const q of WHEEL_QUADRANTS) {
+    for (const repeat of [2, 3, 4]) {
+      out.push({
+        id: `wheel-quad-rep-${q.key}-r${repeat}`,
+        group: "wheel-region-repeat",
+        description: `${q.label} ${repeat}× → continua na região`,
+        activate(history) {
+          if (history.length < repeat) return null;
+          for (let i = 0; i < repeat; i++) if (!q.set.has(history[i])) return null;
+          return {
+            numbers: q.set,
+            payout: 35 / q.set.size,
+            baseline: q.set.size / SLOTS,
+            targetLabel: q.label,
+            targetType: "neighbors",
+            strength: Math.min(1, repeat / 4),
+          };
+        },
+      });
+    }
+    for (const gap of [10, 20, 30]) {
+      out.push({
+        id: `wheel-quad-overdue-${q.key}-g${gap}`,
+        group: "wheel-region-overdue",
+        description: `${q.label} ausente ${gap} giros → volta`,
+        activate(history) {
+          if (history.length < gap) return null;
+          const slice = history.slice(0, gap);
+          if (slice.some((n) => q.set.has(n))) return null;
+          return {
+            numbers: q.set,
+            payout: 35 / q.set.size,
+            baseline: q.set.size / SLOTS,
+            targetLabel: `${q.label} (atrasada)`,
+            targetType: "neighbors",
+            strength: Math.min(1, gap / 30),
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateTableRegions = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (const r of TABLE_REGIONS) {
+    for (const lookback of [4, 8, 14]) {
+      out.push({
+        id: `table-region-cluster-${r.key}-l${lookback}`,
+        group: "table-region-cluster",
+        description: `≥3 números da ${r.label} nos últimos ${lookback}`,
+        activate(history) {
+          if (history.length < lookback) return null;
+          const slice = history.slice(0, lookback);
+          let count = 0;
+          for (const n of slice) if (r.set.has(n)) count++;
+          if (count < 3) return null;
+          return {
+            numbers: r.set,
+            payout: 35 / r.set.size,
+            baseline: r.set.size / SLOTS,
+            targetLabel: r.label,
+            targetType: "neighbors",
+            strength: Math.min(1, count / 6),
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateTerminalAttraction = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (let a = 0; a <= 9; a++) {
+    for (let b = 0; b <= 9; b++) {
+      if (a === b) continue;
+      out.push({
+        id: `term-attract-${a}-then-${b}`,
+        group: "terminal-attraction",
+        description: `Após terminal ${a} → terminal ${b}`,
+        activate(history) {
+          if (history.length < 1) return null;
+          if (terminalOf(history[0]) !== a) return null;
+          const numbers = setOf(numbersWithTerminal(b));
+          return {
+            numbers,
+            payout: 35 / numbers.size,
+            baseline: numbers.size / SLOTS,
+            targetLabel: `Terminal ${b} (após ${a})`,
+            targetType: "terminal",
+            strength: 0.5,
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateNumberPull = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (let a = 1; a <= 36; a++) {
+    for (const window of [5, 10]) {
+      const targets = [a - 1, a + 1, a + 17, a + 18].filter((n) => n >= 0 && n <= 36 && n !== a);
+      const set = new Set(targets);
+      if (set.size === 0) continue;
+      out.push({
+        id: `num-pull-${a}-w${window}`,
+        group: "number-pull",
+        description: `Após ${a} → puxa adjacentes/espelhos em ${window} giros`,
+        activate(history) {
+          if (history.length < 1) return null;
+          if (history[0] !== a) return null;
+          return {
+            numbers: set,
+            payout: 35 / set.size,
+            baseline: set.size / SLOTS,
+            targetLabel: `Próximos de ${a}`,
+            targetType: "neighbors",
+            strength: 0.45,
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateAlternationLong = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (const lens of ["dozen", "column"] as const) {
+    const members = lens === "dozen" ? dozenMembers : colMembers;
+    const labels = lens === "dozen" ? dozenLabels : colLabels;
+    const idxFn = lens === "dozen" ? dozenIndex : colIndex;
+    for (let a = 0; a < 3; a++) {
+      for (let b = 0; b < 3; b++) {
+        if (a === b) continue;
+        out.push({
+          id: `${lens}-alt5-${a}-${b}`,
+          group: `${lens}-alternation-long`,
+          description: `Alternância ${lens === "dozen" ? "D" : "C"}${a + 1}↔${lens === "dozen" ? "D" : "C"}${b + 1} (5 últimos) → continua`,
+          activate(history) {
+            if (history.length < 5) return null;
+            const seq = [idxFn(history[0]), idxFn(history[1]), idxFn(history[2]), idxFn(history[3]), idxFn(history[4])];
+            if (seq[0] === a && seq[1] === b && seq[2] === a && seq[3] === b && seq[4] === a) {
+              return {
+                numbers: members[b],
+                payout: 2,
+                baseline: 12 / SLOTS,
+                targetLabel: labels[b],
+                targetType: lens,
+                strength: 0.85,
+              };
+            }
+            return null;
+          },
+        });
+      }
+    }
+  }
+  for (const color of ["red", "black"] as const) {
+    const opposite = color === "red" ? "black" : "red";
+    const oppositeSet = color === "red" ? BLACK : RED;
+    const oppositeLabel = color === "red" ? "Preto" : "Vermelho";
+    out.push({
+      id: `color-alt4-${color}`,
+      group: "color-alternation-long",
+      description: `Alternância R↔B (4 últimos começando em ${color}) → ${oppositeLabel}`,
+      activate(history) {
+        if (history.length < 4) return null;
+        const seq = [colorOf(history[0]), colorOf(history[1]), colorOf(history[2]), colorOf(history[3])];
+        const expected = color === "red" ? ["red", "black", "red", "black"] : ["black", "red", "black", "red"];
+        for (let i = 0; i < 4; i++) if (seq[i] !== expected[i]) return null;
+        return {
+          numbers: oppositeSet,
+          payout: 1,
+          baseline: 18 / SLOTS,
+          targetLabel: oppositeLabel,
+          targetType: "color",
+          strength: 0.8,
+        };
+      },
+    });
+  }
+  return out;
+};
+
+const generateDozenZigzag = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (const pattern of [
+    [0, 1, 2],
+    [0, 2, 1],
+    [1, 0, 2],
+    [1, 2, 0],
+    [2, 0, 1],
+    [2, 1, 0],
+  ]) {
+    for (let next = 0; next < 3; next++) {
+      out.push({
+        id: `dozen-zigzag-${pattern.join("")}-pred${next}`,
+        group: "dozen-zigzag",
+        description: `Zigzag D${pattern[0] + 1}→D${pattern[1] + 1}→D${pattern[2] + 1} → D${next + 1}`,
+        activate(history) {
+          if (history.length < 3) return null;
+          if (dozenIndex(history[2]) !== pattern[0]) return null;
+          if (dozenIndex(history[1]) !== pattern[1]) return null;
+          if (dozenIndex(history[0]) !== pattern[2]) return null;
+          return {
+            numbers: dozenMembers[next],
+            payout: 2,
+            baseline: 12 / SLOTS,
+            targetLabel: dozenLabels[next],
+            targetType: "dozen",
+            strength: 0.55,
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateColorRegionCombo = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  const colorSets = [
+    { key: "red", set: RED, label: "Vermelho" },
+    { key: "black", set: BLACK, label: "Preto" },
+  ];
+  for (const c of colorSets) {
+    for (const d of [0, 1, 2]) {
+      const combo = new Set<number>();
+      for (const n of dozenMembers[d]) if (c.set.has(n)) combo.add(n);
+      if (combo.size === 0) continue;
+      for (const repeat of [2, 3]) {
+        out.push({
+          id: `color-dozen-${c.key}-d${d}-r${repeat}`,
+          group: "color-dozen-combo",
+          description: `${c.label}+D${d + 1} ${repeat}× → continua`,
+          activate(history) {
+            if (history.length < repeat) return null;
+            for (let i = 0; i < repeat; i++) if (!combo.has(history[i])) return null;
+            return {
+              numbers: combo,
+              payout: 35 / combo.size,
+              baseline: combo.size / SLOTS,
+              targetLabel: `${c.label} + D${d + 1}`,
+              targetType: "neighbors",
+              strength: Math.min(1, repeat / 3),
+            };
+          },
+        });
+      }
+    }
+  }
+  return out;
+};
+
 let CACHED_BANK: PatternRule[] | null = null;
 
 export const getPatternBank = (): PatternRule[] => {
@@ -622,17 +896,24 @@ export const getPatternBank = (): PatternRule[] => {
   CACHED_BANK = [
     ...generateTerminalReturn(),
     ...generateTerminalAbsent(),
+    ...generateTerminalAttraction(),
     ...generateDozenChain(),
+    ...generateDozenZigzag(),
     ...generateColumnChain(),
     ...generateColorPatterns(),
     ...generateParityPatterns(),
     ...generateHighLowPatterns(),
     ...generateSectorPatterns(),
     ...generateNumberReturn(),
+    ...generateNumberPull(),
     ...generateNeighborsCluster(),
     ...generateAlternation(),
+    ...generateAlternationLong(),
     ...generateRowPatterns(),
     ...generateMirrorPairs(),
+    ...generateWheelQuadrants(),
+    ...generateTableRegions(),
+    ...generateColorRegionCombo(),
   ];
   return CACHED_BANK;
 };
