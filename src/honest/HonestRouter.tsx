@@ -25,6 +25,7 @@ const Insights = lazy(() => import("./pages/Insights"));
 const Comparacao = lazy(() => import("./pages/Comparacao"));
 const Cobertura = lazy(() => import("./pages/Cobertura"));
 const Duzias = lazy(() => import("./pages/Duzias"));
+const SinaisPadroes = lazy(() => import("./pages/SinaisPadroes"));
 
 const lazyWrap = (el: React.ReactNode) => (
   <Suspense fallback={<LoadingPlaceholder height="h-96" />}>{el}</Suspense>
@@ -56,6 +57,7 @@ export default function HonestRouter() {
         <Route path="comparacao" element={lazyWrap(<Comparacao />)} />
         <Route path="cobertura" element={lazyWrap(<Cobertura />)} />
         <Route path="duzias" element={lazyWrap(<Duzias />)} />
+        <Route path="sinais-padroes" element={lazyWrap(<SinaisPadroes />)} />
       </Route>
     </Routes>
   );

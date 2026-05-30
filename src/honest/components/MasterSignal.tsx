@@ -144,11 +144,17 @@ const MasterSignal = memo(() => {
             )}
           </span>
         }
-        eyebrow="Todas as análises combinadas → 1 única jogada mais provável"
+        eyebrow={
+          summary.validationLevel === "strong"
+            ? "✓ Padrão validado — enviando jogada acertiva"
+            : summary.validationLevel === "weak"
+            ? "~ Padrão fraco — sinal disponível mas sem validação forte"
+            : "⏳ Aguardando padrão validado"
+        }
         subtitle={
           <span className="text-[10px] text-neutral-500">
-            {summary.bankSize} padrões + análise unificada · {summary.trackedRules} regras treinadas ·{" "}
-            {summary.learnedTotal} aprendizagens · acerto global{" "}
+            {summary.bankSize} padrões · {summary.autoDiscoveredTotal} auto-aprendidos ·{" "}
+            {summary.validatedCount} validados · acerto global{" "}
             {(summary.learnedAccuracy * 100).toFixed(1)}%
             {lastResolved && (
               <span className="ml-1">

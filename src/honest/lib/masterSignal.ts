@@ -49,6 +49,9 @@ export interface MasterSummary {
   learnedAccuracy: number;
   bankSize: number;
   trackedRules: number;
+  validatedCount: number;
+  autoDiscoveredTotal: number;
+  validationLevel: "strong" | "weak" | "none";
 }
 
 const numbersKey = (numbers: Iterable<number>): string =>
@@ -424,7 +427,39 @@ export const computeMasterSignal = (
     return b.prob - a.prob;
   });
 
+  // Validation: a candidate is "strongly validated" when the supporting
+  // pattern rule has Wilson lower bound above baseline × 1.15 with ≥ 8
+  // attempts, OR the unified analysis lifts above 1.15× baseline with
+  // confidence ≥ 0.5. "Weakly validated" relaxes the thresholds.
+  const validatedCount = ranked.filter((c) => {
+    const r = c.patternRule;
+    if (r && r.attempts >= 8 && r.learnedAccuracy > r.baseline * 1.15) return true;
+    if (c.unifiedCandidate && c.lift > 1.15 && c.confidence > 0.5) return true;
+    return false;
+  }).length;
+
+  let validationLevel: "strong" | "weak" | "none" = "none";
+  if (ranked.length > 0) {
+    const top = ranked[0];
+    const r = top.patternRule;
+    const strong =
+      (r && r.attempts >= 8 && r.learnedAccuracy > r.baseline * 1.15) ||
+      (top.unifiedCandidate && top.lift > 1.15 && top.confidence > 0.5);
+    const weak =
+      top.lift > 1.05 && top.confidence > 0.3 && (top.patternRule?.attempts ?? 0) >= 3;
+    validationLevel = strong ? "strong" : weak ? "weak" : "none";
+  }
+
   const learningSummary = summarizeLearning();
+  const autoDiscoveredTotal = (() => {
+    try {
+      // Avoid hard dep; import getter dynamically
+      const { useAutoDiscovery } = require("./autoDiscovery") as typeof import("./autoDiscovery");
+      return useAutoDiscovery.getState().totalDiscovered;
+    } catch {
+      return 0;
+    }
+  })();
   const summary: MasterSummary = {
     total: ranked.length,
     patternsActive: patternRules.length,
@@ -433,6 +468,9 @@ export const computeMasterSignal = (
     learnedAccuracy: learningSummary.overallAccuracy,
     bankSize: learningSummary.bank,
     trackedRules: learningSummary.tracked,
+    validatedCount,
+    autoDiscoveredTotal,
+    validationLevel,
   };
 
   void sigmoid;
