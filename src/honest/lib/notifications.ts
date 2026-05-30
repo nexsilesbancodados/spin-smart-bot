@@ -144,10 +144,39 @@ export const speakSignal = (mainPick: number, sector: string, prob: number) => {
   speak(txt);
 };
 
+let permissionRequested = false;
+
+export const ensureNotificationPermission = async (): Promise<boolean> => {
+  if (typeof window === "undefined" || !("Notification" in window)) return false;
+  if (Notification.permission === "granted") return true;
+  if (Notification.permission === "denied") return false;
+  if (permissionRequested) return false;
+  permissionRequested = true;
+  try {
+    const result = await Notification.requestPermission();
+    return result === "granted";
+  } catch {
+    return false;
+  }
+};
+
 export const showBrowserNotification = (title: string, body: string, icon?: string) => {
   const settings = useNotifications.getState();
   if (!settings.browserNotificationEnabled) return;
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "default") {
+    ensureNotificationPermission().then((granted) => {
+      if (granted) {
+        try {
+          new Notification(title, { body, icon, silent: false });
+        } catch {
+          /* noop */
+        }
+      }
+    });
+    return;
+  }
+  if (Notification.permission !== "granted") return;
   try {
     new Notification(title, { body, icon, silent: false });
   } catch {

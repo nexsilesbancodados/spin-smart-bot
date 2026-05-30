@@ -56,8 +56,6 @@ const MasterSignal = memo(() => {
   const lastNotifiedKeyRef = useRef<string | null>(null);
   const strictValidation = useUiPrefs((s) => s.strictValidation);
   const focusedScope = useUiPrefs((s) => s.focusedScope);
-  void useUiPrefs((s) => s.toggleStrictValidation);
-  void useUiPrefs((s) => s.setFocusedScope);
   const autoBetEnabled = useAutoBet((s) => s.config.enabled);
   const autoBetOnlyStrict = useAutoBet((s) => s.config.onlyStrict);
   const autoBetPaused = useAutoBet((s) => s.pausedReason);

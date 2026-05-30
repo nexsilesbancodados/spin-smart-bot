@@ -299,7 +299,6 @@ const generateColorPatterns = (): PatternRule[] => {
           };
         },
       });
-      const opposite = c.key === "red" ? "black" : "red";
       const oppositeSet = c.key === "red" ? BLACK : RED;
       const oppositeLabel = c.key === "red" ? "Preto" : "Vermelho";
       out.push({
@@ -311,7 +310,6 @@ const generateColorPatterns = (): PatternRule[] => {
           for (let i = 0; i < repeat; i++) {
             if (colorOf(history[i]) !== c.key) return null;
           }
-          void opposite;
           return {
             numbers: oppositeSet,
             payout: 1,

@@ -146,6 +146,8 @@ const formatMasterPayload = (
 };
 
 let relayAvailable: boolean | null = null;
+let lastSentAt = 0;
+const MIN_INTERVAL_MS = 60_000;
 
 const tryRelay = async (
   candidate: MasterCandidate,
@@ -218,6 +220,11 @@ export const fireMasterWebhook = async (
   const { config, recordFired } = useWebhook.getState();
   if (candidate.confidence < config.minConfidence) return;
   if (!WEBHOOK_ALLOWED_TYPES.has(candidate.targetType.toLowerCase())) return;
+
+  // Time-based cooldown: prevent spam even when numbersKey changes rapidly
+  const now = Date.now();
+  if (now - lastSentAt < MIN_INTERVAL_MS) return;
+  lastSentAt = now;
 
   // Try server-side relay first (URL kept in Supabase secrets, never in client)
   const relayResult = await tryRelay(candidate, context);

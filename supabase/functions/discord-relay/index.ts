@@ -50,6 +50,31 @@ const colorOfNum = (n: number): "🔴" | "⚫" | "🟢" =>
 
 const ALLOWED_TYPES = new Set(["color", "dozen", "parity"]);
 
+const typeEmoji = (type: string, label: string): string => {
+  if (type === "dozen") {
+    if (label.includes("1ª")) return "1️⃣";
+    if (label.includes("2ª")) return "2️⃣";
+    if (label.includes("3ª")) return "3️⃣";
+    return "🎲";
+  }
+  if (type === "color") {
+    if (/vermelho/i.test(label)) return "🔴";
+    if (/preto/i.test(label)) return "⚫";
+    return "🎨";
+  }
+  if (type === "parity") {
+    if (/par(?!c)/i.test(label) && !/ímpar/i.test(label)) return "2️⃣";
+    if (/ímpar|impar/i.test(label)) return "1️⃣";
+    return "⚖";
+  }
+  return "🎯";
+};
+
+const probBar = (prob: number): string => {
+  const filled = Math.round(prob * 10);
+  return "█".repeat(filled) + "░".repeat(10 - filled);
+};
+
 const buildDiscordPayload = (req: RelayRequest): unknown | null => {
   if (req.task === "test") {
     return {
@@ -63,10 +88,11 @@ const buildDiscordPayload = (req: RelayRequest): unknown | null => {
   const label = c.targetLabel || "Sinal";
   const prob = c.prob ?? 0;
   const payout = c.payout ?? 0;
+  const emoji = typeEmoji(type, label);
   const lastSpin = ctx.lastSpin;
   const lastSpinLine =
     typeof lastSpin === "number"
-      ? `\n${colorOfNum(lastSpin)} Último: **${lastSpin}**`
+      ? `\n${colorOfNum(lastSpin)} Último número: **${lastSpin}**`
       : "";
   const hits = ctx.recentHits ?? 0;
   const misses = ctx.recentMisses ?? 0;
@@ -74,14 +100,15 @@ const buildDiscordPayload = (req: RelayRequest): unknown | null => {
   const hitRate = total > 0 ? (hits / total) * 100 : 0;
   const placarLine =
     total > 0
-      ? `\n📊 Placar: **${hits}✓ / ${misses}✗** (${hitRate.toFixed(0)}% acerto · últimos ${total})`
+      ? `\n📊 ${hits}✓ / ${misses}✗ · **${hitRate.toFixed(0)}%** acerto (últ. ${total})`
       : "";
   return {
     embeds: [
       {
-        title: `🎯 ${label}`,
+        title: `${emoji} ${label}`,
         description:
-          `**${(prob * 100).toFixed(1)}%** de chance · paga **${payout.toFixed(0)}:1**` +
+          `\`${probBar(prob)}\` **${(prob * 100).toFixed(1)}%**\n` +
+          `Paga **${payout.toFixed(0)}:1**` +
           lastSpinLine +
           placarLine,
         color: c.strictValid ? 5763719 : 15844367,
