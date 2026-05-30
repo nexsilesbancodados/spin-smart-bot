@@ -18,6 +18,7 @@ import {
 import { buildNgramPatterns } from "./ngramPatterns";
 import { buildDeepPatterns } from "./deepPatterns";
 import { buildTerminalDeepPatterns } from "./terminalDeepPatterns";
+import { buildWheelDeepPatterns } from "./wheelDeepPatterns";
 
 export type PredictionTargetKind =
   | "number"
@@ -1046,6 +1047,7 @@ export const getPatternBank = (): PatternRule[] => {
     ...buildNgramPatterns(),
     ...buildDeepPatterns(),
     ...buildTerminalDeepPatterns(),
+    ...buildWheelDeepPatterns(),
   ];
   return CACHED_BANK;
 };
