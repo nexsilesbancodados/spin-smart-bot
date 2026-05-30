@@ -30,6 +30,7 @@ const Autocorrelation = lazy(() => import("../components/Autocorrelation"));
 const CalibrationCurve = lazy(() => import("../components/CalibrationCurve"));
 const WheelDistanceAnalyzer = lazy(() => import("../components/WheelDistanceAnalyzer"));
 const EntropyTracker = lazy(() => import("../components/EntropyTracker"));
+const DozenAlternationAnalysis = lazy(() => import("../components/DozenAlternationAnalysis"));
 
 const fmtMoney = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
@@ -80,6 +81,10 @@ const Dashboard = memo(() => {
       <SignalPanel />
 
       <DozenColumnSignal />
+
+      <Suspense fallback={null}>
+        <DozenAlternationAnalysis />
+      </Suspense>
 
       {!compact && <Scoreboard />}
       {compact && (

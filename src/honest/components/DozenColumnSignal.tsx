@@ -2,6 +2,16 @@ import { memo, useMemo } from "react";
 import { useHonestStore } from "../lib/store";
 import { useSignalAgent } from "../lib/signalAgent";
 import { DOZEN_1, DOZEN_2, DOZEN_3, COLUMN_1, COLUMN_2, COLUMN_3 } from "../lib/wheel";
+import {
+  buildMarkov2,
+  markov2Predict,
+  dozenOf,
+  columnOf,
+  NON_ZERO_DOZENS,
+  NON_ZERO_COLUMNS,
+  GroupCode,
+  ColumnCode,
+} from "../lib/groupAnalysis";
 import { Card, SectionHeader, Pill } from "./ui";
 
 interface Group {
@@ -55,7 +65,8 @@ const analyze = (
   groups: Group[],
   spins: number[],
   agentTopPicks: number[],
-  agentTopProbs: number[]
+  agentTopProbs: number[],
+  markov2Probs: Record<string, number>
 ): GroupAnalysis[] => {
   const total = spins.length;
   const half = 25;
@@ -106,16 +117,20 @@ const analyze = (
     const liftLong = total > 0 ? observed / expected : 1;
     const liftCombined = liftRecent * 0.6 + liftLong * 0.4;
     const transitionLift = transitionProb / BASELINE;
+    const markov2Lift = (markov2Probs[g.id] ?? 1 / 3) / (1 / 3);
 
     const score =
-      0.35 * Math.min(2, liftCombined) +
-      0.25 * Math.min(2, transitionLift) +
-      0.4 * agentNorm;
+      0.25 * Math.min(2, liftCombined) +
+      0.2 * Math.min(2, transitionLift) +
+      0.25 * Math.min(2, markov2Lift) +
+      0.3 * agentNorm;
 
     const reasons: string[] = [];
-    if (liftRecent > 1.2) reasons.push(`recente ${(liftRecent * 100).toFixed(0)}% baseline`);
-    else if (liftRecent < 0.8) reasons.push(`fria ${(liftRecent * 100).toFixed(0)}% baseline`);
-    if (transitionLift > 1.25) reasons.push(`P(continuação)=${(transitionProb * 100).toFixed(0)}%`);
+    if (liftRecent > 1.2) reasons.push(`recente ${(liftRecent * 100).toFixed(0)}%`);
+    else if (liftRecent < 0.8) reasons.push(`fria ${(liftRecent * 100).toFixed(0)}%`);
+    if (markov2Lift > 1.25)
+      reasons.push(`M2: ${((markov2Probs[g.id] ?? 1 / 3) * 100).toFixed(0)}%`);
+    if (transitionLift > 1.25) reasons.push(`M1: ${(transitionProb * 100).toFixed(0)}%`);
     if (agentTopPicksInside.length > 0)
       reasons.push(`agente: ${agentTopPicksInside.join(", ")}`);
     if (p < 0.05) reasons.push(`desvio (p=${p.toFixed(2)})`);
@@ -145,13 +160,35 @@ const DozenColumnSignal = memo(() => {
   const topPicks = latest?.topPicks ?? [];
   const topProbs = latest?.topProbs ?? [];
 
+  const dozenM2 = useMemo<Record<string, number>>(() => {
+    const series = spins.map((s) => dozenOf(s.n)).filter((c) => c !== "Z") as GroupCode[];
+    if (series.length < 10) return { d1: 1 / 3, d2: 1 / 3, d3: 1 / 3 };
+    const m2 = buildMarkov2<string>(series);
+    const head = series[0];
+    const prev = series[1] ?? head;
+    const baseline: Record<string, number> = { D1: 1 / 3, D2: 1 / 3, D3: 1 / 3 };
+    const pred = markov2Predict<string>(m2, [prev, head], NON_ZERO_DOZENS as string[], baseline);
+    return { d1: pred.probs["D1"] ?? 1 / 3, d2: pred.probs["D2"] ?? 1 / 3, d3: pred.probs["D3"] ?? 1 / 3 };
+  }, [spins]);
+
+  const columnM2 = useMemo<Record<string, number>>(() => {
+    const series = spins.map((s) => columnOf(s.n)).filter((c) => c !== "Z") as ColumnCode[];
+    if (series.length < 10) return { c1: 1 / 3, c2: 1 / 3, c3: 1 / 3 };
+    const m2 = buildMarkov2<string>(series);
+    const head = series[0];
+    const prev = series[1] ?? head;
+    const baseline: Record<string, number> = { C1: 1 / 3, C2: 1 / 3, C3: 1 / 3 };
+    const pred = markov2Predict<string>(m2, [prev, head], NON_ZERO_COLUMNS as string[], baseline);
+    return { c1: pred.probs["C1"] ?? 1 / 3, c2: pred.probs["C2"] ?? 1 / 3, c3: pred.probs["C3"] ?? 1 / 3 };
+  }, [spins]);
+
   const dozenAnalysis = useMemo(
-    () => analyze(DOZENS, numbers, topPicks, topProbs),
-    [numbers, topPicks, topProbs]
+    () => analyze(DOZENS, numbers, topPicks, topProbs, dozenM2),
+    [numbers, topPicks, topProbs, dozenM2]
   );
   const columnAnalysis = useMemo(
-    () => analyze(COLUMNS, numbers, topPicks, topProbs),
-    [numbers, topPicks, topProbs]
+    () => analyze(COLUMNS, numbers, topPicks, topProbs, columnM2),
+    [numbers, topPicks, topProbs, columnM2]
   );
 
   if (numbers.length < 12) {
