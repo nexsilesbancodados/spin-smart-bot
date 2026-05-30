@@ -12,6 +12,7 @@ import {
   showBrowserNotification,
   useNotifications,
 } from "../lib/notifications";
+import { fireMasterWebhook } from "../lib/webhook";
 import { colorOf } from "../lib/wheel";
 import { Card, SectionHeader, Pill } from "./ui";
 
@@ -124,7 +125,11 @@ const MasterSignal = memo(() => {
       `Chance ${(top.prob * 100).toFixed(1)}% · paga ${top.payout.toFixed(1)}:1 · cobre ${top.coverage} nº`,
       "/icon-192.png"
     );
-  }, [ranked, soundEnabled]);
+    fireMasterWebhook(top, {
+      spinsSeen: history.length,
+      validatedCount: summary.validatedCount,
+    }).catch(() => undefined);
+  }, [ranked, soundEnabled, history.length, summary.validatedCount]);
 
   useEffect(() => {
     if (!autoBetEnabled || autoBetPaused) return;
