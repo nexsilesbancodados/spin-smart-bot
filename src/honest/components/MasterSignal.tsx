@@ -48,6 +48,8 @@ const MasterSignal = memo(() => {
   const resolveEngineContribution = useEngineWeights((s) => s.resolveContribution);
   const strictValidation = useUiPrefs((s) => s.strictValidation);
   const toggleStrict = useUiPrefs((s) => s.toggleStrictValidation);
+  const focusedScope = useUiPrefs((s) => s.focusedScope);
+  const setFocusedScope = useUiPrefs((s) => s.setFocusedScope);
   const autoBetEnabled = useAutoBet((s) => s.config.enabled);
   const autoBetOnlyStrict = useAutoBet((s) => s.config.onlyStrict);
   const autoBetPaused = useAutoBet((s) => s.pausedReason);
@@ -136,13 +138,17 @@ const MasterSignal = memo(() => {
     );
   }
 
-  const strictPool = ranked.filter((c) => c.strictValid);
-  const winnerRaw = ranked[0];
+  const scopedRanked = ranked.filter((c) =>
+    focusedScope.length === 0 || focusedScope.includes(c.targetType as never)
+  );
+  const effectiveRanked = scopedRanked.length > 0 ? scopedRanked : ranked;
+  const strictPool = effectiveRanked.filter((c) => c.strictValid);
+  const winnerRaw = effectiveRanked[0];
   const winner = strictValidation && strictPool.length > 0 ? strictPool[0] : winnerRaw;
   const noStrictMatch = strictValidation && strictPool.length === 0;
   const alternatives = strictValidation
     ? strictPool.slice(1, 5)
-    : ranked.slice(1, 5);
+    : effectiveRanked.slice(1, 5);
 
   const lastResolved = recentWinners.find((w) => w.resolved);
   const recentHits = recentWinners.filter((w) => w.resolved && w.hit).length;
@@ -297,7 +303,7 @@ const MasterSignal = memo(() => {
           </span>
         }
         eyebrow={
-          <span className="flex items-center gap-2">
+          <span className="flex items-center gap-2 flex-wrap">
             {winner.strictValid
               ? "✓ Padrão validado — Wilson + ≥10 amostras + agente concorda"
               : summary.validationLevel === "strong"
@@ -313,6 +319,27 @@ const MasterSignal = memo(() => {
               title={strictValidation ? "Modo estrito ON — só emite com validação dura" : "Modo estrito OFF — emite sempre o melhor"}
             >
               {strictValidation ? "🔒 estrita" : "📶 normal"}
+            </button>
+            <button
+              onClick={() =>
+                setFocusedScope(
+                  focusedScope.length <= 6
+                    ? []
+                    : ["color", "parity", "highlow", "dozen", "column", "sector"]
+                )
+              }
+              className={`text-[9px] px-2 py-0.5 rounded font-bold ${
+                focusedScope.length > 0 && focusedScope.length <= 6
+                  ? "bg-amber-700 text-white"
+                  : "bg-neutral-800 text-neutral-400"
+              }`}
+              title="Filtra tipos de jogada"
+            >
+              {focusedScope.length === 0
+                ? "🎰 todos"
+                : focusedScope.length <= 6
+                ? "🎯 cor+dúzia+setor"
+                : "🎲 alguns"}
             </button>
           </span>
         }
