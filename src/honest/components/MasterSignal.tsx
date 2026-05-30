@@ -18,16 +18,17 @@ const ballBg = (n: number) => {
 };
 
 const labelTag = (c: MasterCandidate): string => {
-  if (c.prob >= 0.45 && c.lift >= 1.1) return "ALTÍSSIMA CHANCE";
-  if (c.prob >= 0.32 && c.lift >= 1.1) return "ALTA CHANCE";
-  if (c.prob >= 0.18 && c.lift >= 1.2) return "BOA CHANCE";
-  if (c.lift >= 1.4) return "EDGE FORTE";
+  if (c.prob >= 0.55) return "QUASE CERTO";
+  if (c.prob >= 0.45) return "ALTÍSSIMA CHANCE";
+  if (c.prob >= 0.32) return "ALTA CHANCE";
+  if (c.prob >= 0.18) return "BOA CHANCE";
+  if (c.lift >= 1.3) return "EDGE FORTE";
   if (c.lift >= 1.1) return "OPORTUNIDADE";
   return "BAIXA CHANCE";
 };
 
 const tagAccent = (tag: string): "good" | "warn" | "neutral" | "bad" => {
-  if (tag === "ALTÍSSIMA CHANCE" || tag === "ALTA CHANCE") return "good";
+  if (tag === "QUASE CERTO" || tag === "ALTÍSSIMA CHANCE" || tag === "ALTA CHANCE") return "good";
   if (tag === "BOA CHANCE" || tag === "EDGE FORTE") return "warn";
   if (tag === "OPORTUNIDADE") return "neutral";
   return "bad";
@@ -194,7 +195,10 @@ const MasterSignal = memo(() => {
           </div>
           <div className="text-[10px] text-neutral-400 font-mono">
             {winner.lift.toFixed(2)}× o acaso ({(winner.baseline * 100).toFixed(1)}%) · confiança{" "}
-            {(winner.confidence * 100).toFixed(0)}% · score {winner.accuracyScore.toFixed(3)}
+            {(winner.confidence * 100).toFixed(0)}%
+          </div>
+          <div className="text-[10px] text-emerald-300/80 font-bold mt-1">
+            ≈ {Math.round(winner.prob * 10)} acertos a cada 10 rodadas
           </div>
         </div>
 

@@ -324,16 +324,26 @@ export const computeMasterSignal = (
   }
 
   const spinCount = history.length;
+  // Hit-rate-first ranking: probability dominates, edge gates,
+  // confidence is the tiebreaker. Anti-stick penalty as before.
+  // This means high-coverage bets with marginal edge (Voisins ~46%,
+  // cor ~48%) win over a pleno with low absolute probability.
   const ranked = Array.from(map.values()).map((c) => {
     const stick = computeAntiStickPenalty(c.numbersKey, spinCount);
-    const acc = c.prob * c.edgeQuality * (0.55 + 0.45 * c.confidence) * stick.penalty;
+    const probScore = c.prob;
+    const edgeGate = c.lift < 0.95 ? 0.7 : c.lift < 1.0 ? 0.92 : 1.0;
+    const confTiebreaker = 0.85 + 0.15 * c.confidence;
+    const acc = probScore * edgeGate * confTiebreaker * stick.penalty;
     const sources = stick.penalty < 1
-      ? [...c.sources, `anti-stick ×${stick.penalty.toFixed(2)} (${stick.recentCount}× recente, ${stick.recentMisses} miss)`]
+      ? [...c.sources, `anti-repetição ×${stick.penalty.toFixed(2)}`]
       : c.sources;
     return { ...c, accuracyScore: acc, sources };
   });
 
-  ranked.sort((a, b) => b.accuracyScore - a.accuracyScore);
+  ranked.sort((a, b) => {
+    if (Math.abs(b.accuracyScore - a.accuracyScore) > 0.001) return b.accuracyScore - a.accuracyScore;
+    return b.prob - a.prob;
+  });
 
   const learningSummary = summarizeLearning();
   const summary: MasterSummary = {
