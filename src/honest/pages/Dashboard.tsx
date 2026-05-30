@@ -8,6 +8,7 @@ import { useUiPrefs } from "../lib/uiPrefs";
 import SignalPanel from "../components/SignalPanel";
 import BestBetRecommendation from "../components/BestBetRecommendation";
 import DozenColumnSignal from "../components/DozenColumnSignal";
+import UnifiedSignal from "../components/UnifiedSignal";
 import AnomalyBanner from "../components/AnomalyBanner";
 import TiltAlerts from "../components/TiltAlerts";
 import Scoreboard from "../components/Scoreboard";
@@ -76,6 +77,8 @@ const Dashboard = memo(() => {
 
   return (
     <PageContainer>
+      <UnifiedSignal />
+
       <BestBetRecommendation />
 
       <SignalPanel />
