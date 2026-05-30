@@ -27,6 +27,7 @@ const WheelDistanceAnalyzer = lazy(() => import("../components/WheelDistanceAnal
 const EntropyTracker = lazy(() => import("../components/EntropyTracker"));
 const MetaIntelligence = lazy(() => import("../components/MetaIntelligence"));
 const AIInsights = lazy(() => import("../components/AIInsights"));
+const BotEnsembleStatus = lazy(() => import("../components/BotEnsembleStatus"));
 
 const fmtMoney = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
@@ -143,6 +144,7 @@ const Dashboard = memo(() => {
             </Card>
           }
         >
+          <BotEnsembleStatus />
           <AIInsights />
           <MetaIntelligence />
           <StrategyPresets />
