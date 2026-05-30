@@ -17,7 +17,7 @@ export const useUiPrefs = create<UiPrefsStore>()(
     (set) => ({
       compact: false,
       toolsAutoOpen: false,
-      honestMode: true,
+      honestMode: false,
       setCompact: (v) => set({ compact: v }),
       toggleCompact: () => set((s) => ({ compact: !s.compact })),
       setToolsAutoOpen: (v) => set({ toolsAutoOpen: v }),

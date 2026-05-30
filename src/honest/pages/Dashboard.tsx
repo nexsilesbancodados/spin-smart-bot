@@ -11,13 +11,6 @@ import AnomalyBanner from "../components/AnomalyBanner";
 import TiltAlerts from "../components/TiltAlerts";
 import { Card, PageContainer, Button } from "../components/ui";
 
-const LearnedSignal = lazy(() => import("../components/LearnedSignal"));
-const SignalPanel = lazy(() => import("../components/SignalPanel"));
-const BestBetRecommendation = lazy(() => import("../components/BestBetRecommendation"));
-const DozenColumnSignal = lazy(() => import("../components/DozenColumnSignal"));
-const UnifiedSignal = lazy(() => import("../components/UnifiedSignal"));
-const Scoreboard = lazy(() => import("../components/Scoreboard"));
-const StreakAlerts = lazy(() => import("../components/StreakAlerts"));
 const BetCalculator = lazy(() => import("../components/BetCalculator"));
 const HotColdWheel = lazy(() => import("../components/HotColdWheel"));
 const BetTracker = lazy(() => import("../components/BetTracker"));
@@ -34,7 +27,6 @@ const Autocorrelation = lazy(() => import("../components/Autocorrelation"));
 const CalibrationCurve = lazy(() => import("../components/CalibrationCurve"));
 const WheelDistanceAnalyzer = lazy(() => import("../components/WheelDistanceAnalyzer"));
 const EntropyTracker = lazy(() => import("../components/EntropyTracker"));
-const DozenAlternationAnalysis = lazy(() => import("../components/DozenAlternationAnalysis"));
 
 const fmtMoney = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
@@ -55,8 +47,8 @@ const Dashboard = memo(() => {
   const toggleCompact = useUiPrefs((s) => s.toggleCompact);
   const honestMode = useUiPrefs((s) => s.honestMode);
   const [elapsed, setElapsed] = useState("00:00");
-  const [otherSignalsOpen, setOtherSignalsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [realityOpen, setRealityOpen] = useState(false);
 
   useEffect(() => {
     if (!session.startedAt) return;
@@ -82,9 +74,7 @@ const Dashboard = memo(() => {
 
   return (
     <PageContainer>
-      <RealityCheckBanner />
-
-      {!honestMode && <MasterSignal />}
+      <MasterSignal />
 
       <AnomalyBanner />
       <TiltAlerts />
@@ -138,14 +128,14 @@ const Dashboard = memo(() => {
 
       <div className="grid grid-cols-2 gap-2">
         <button
-          onClick={() => setOtherSignalsOpen((v) => !v)}
+          onClick={() => setRealityOpen((v) => !v)}
           className="bg-neutral-900/60 hover:bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 flex items-center justify-between text-[11px] font-bold text-neutral-300 transition"
         >
           <span className="flex items-center gap-2">
-            <span className="text-cyan-400">📊</span>
-            Outros sinais
+            <span className="text-amber-300">⚠</span>
+            Reality check
           </span>
-          <span className="text-cyan-400 text-[10px]">{otherSignalsOpen ? "▲" : "▼"}</span>
+          <span className="text-amber-300 text-[10px]">{realityOpen ? "▲" : "▼"}</span>
         </button>
         <button
           onClick={() => setToolsOpen((v) => !v)}
@@ -167,39 +157,11 @@ const Dashboard = memo(() => {
           {compact ? "▣ compacto" : "▢ normal"}
         </button>
         <span>·</span>
-        <span>focado em 1 sinal</span>
+        <span>1 sinal mestre · todas análises combinadas</span>
+        {honestMode && <span className="text-emerald-400">· 🛡 honesto ON</span>}
       </div>
 
-      {otherSignalsOpen && (
-        <Suspense
-          fallback={
-            <Card padding="sm">
-              <div className="text-[11px] text-neutral-500 italic py-2 text-center">
-                Carregando sinais alternativos…
-              </div>
-            </Card>
-          }
-        >
-          {honestMode && (
-            <Card padding="sm" accent="warn">
-              <div className="text-[11px] text-amber-200 text-center leading-snug">
-                ⚠ Modo honesto está ON. Os painéis abaixo são <b>preditivos</b> e foram
-                desativados da tela principal. Mostrados aqui apenas pra você inspecionar — não
-                aposte neles esperando vantagem real.
-              </div>
-            </Card>
-          )}
-          {honestMode && <MasterSignal />}
-          <LearnedSignal />
-          <UnifiedSignal />
-          <BestBetRecommendation />
-          <SignalPanel />
-          <DozenColumnSignal />
-          <DozenAlternationAnalysis />
-          {!compact && <Scoreboard />}
-          <StreakAlerts />
-        </Suspense>
-      )}
+      {realityOpen && <RealityCheckBanner />}
 
       {toolsOpen && (
         <Suspense

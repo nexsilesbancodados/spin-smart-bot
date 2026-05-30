@@ -1,6 +1,19 @@
-import { runPatternBank, ActivatedRule, summarizeLearning } from "./patternLearning";
+import { runPatternBank, ActivatedRule, summarizeLearning, getRankedLearnedPatterns } from "./patternLearning";
 import { computeUnifiedSignal, UnifiedCandidate } from "./unifiedAnalysis";
 import type { SignalRecord } from "./signalAgent";
+import { DOZEN_1, DOZEN_2, DOZEN_3, COLUMN_1, COLUMN_2, COLUMN_3 } from "./wheel";
+import {
+  buildMarkov2,
+  markov2Predict,
+  dozenOf,
+  columnOf,
+  gapStats,
+  detectCycles,
+  NON_ZERO_DOZENS,
+  NON_ZERO_COLUMNS,
+  GroupCode,
+  ColumnCode,
+} from "./groupAnalysis";
 
 export interface MasterCandidate {
   id: string;
@@ -142,12 +155,67 @@ const merge = (a: MasterCandidate, b: MasterCandidate): MasterCandidate => {
   };
 };
 
+const numbersFromSet = (set: Set<number>): number[] => Array.from(set);
+
+const overdueBoost = (history: number[]): { dozen: Record<string, number>; column: Record<string, number> } => {
+  const dSeries = history.map(dozenOf).filter((c) => c !== "Z") as GroupCode[];
+  const cSeries = history.map(columnOf).filter((c) => c !== "Z") as ColumnCode[];
+  const dGap = dSeries.length >= 5 ? gapStats<string>(dSeries, NON_ZERO_DOZENS as string[]) : null;
+  const cGap = cSeries.length >= 5 ? gapStats<string>(cSeries, NON_ZERO_COLUMNS as string[]) : null;
+  const dBoost: Record<string, number> = {};
+  const cBoost: Record<string, number> = {};
+  if (dGap) {
+    for (const k of NON_ZERO_DOZENS) {
+      const meanGap = dGap.meanGap[k];
+      const currGap = dGap.currentGap[k];
+      dBoost[k] = meanGap > 0 && currGap > meanGap * 1.5 ? 1 + Math.min(0.25, (currGap - meanGap * 1.5) / meanGap / 5) : 1;
+    }
+  }
+  if (cGap) {
+    for (const k of NON_ZERO_COLUMNS) {
+      const meanGap = cGap.meanGap[k];
+      const currGap = cGap.currentGap[k];
+      cBoost[k] = meanGap > 0 && currGap > meanGap * 1.5 ? 1 + Math.min(0.25, (currGap - meanGap * 1.5) / meanGap / 5) : 1;
+    }
+  }
+  return { dozen: dBoost, column: cBoost };
+};
+
+const cycleBoost = (history: number[]): { dozen: string | null; column: string | null } => {
+  const dSeries = history.map(dozenOf).filter((c) => c !== "Z") as GroupCode[];
+  const cSeries = history.map(columnOf).filter((c) => c !== "Z") as ColumnCode[];
+  const dCycle = dSeries.length >= 6 ? detectCycles<string>(dSeries) : null;
+  const cCycle = cSeries.length >= 6 ? detectCycles<string>(cSeries) : null;
+  let dPred: string | null = null;
+  let cPred: string | null = null;
+  if (dCycle?.found && dCycle.pattern.length > 0) {
+    dPred = dCycle.pattern[dSeries.length % dCycle.cycleLength];
+  }
+  if (cCycle?.found && cCycle.pattern.length > 0) {
+    cPred = cCycle.pattern[cSeries.length % cCycle.cycleLength];
+  }
+  return { dozen: dPred, column: cPred };
+};
+
+const dozenSetsByKey: Record<string, { set: Set<number>; label: string; range: string }> = {
+  D1: { set: DOZEN_1, label: "1ª Dúzia", range: "1-12" },
+  D2: { set: DOZEN_2, label: "2ª Dúzia", range: "13-24" },
+  D3: { set: DOZEN_3, label: "3ª Dúzia", range: "25-36" },
+};
+const colSetsByKey: Record<string, { set: Set<number>; label: string; range: string }> = {
+  C1: { set: COLUMN_1, label: "1ª Coluna", range: "1,4,…,34" },
+  C2: { set: COLUMN_2, label: "2ª Coluna", range: "2,5,…,35" },
+  C3: { set: COLUMN_3, label: "3ª Coluna", range: "3,6,…,36" },
+};
+
 export const computeMasterSignal = (
   history: number[],
   latest: SignalRecord | null
 ): { ranked: MasterCandidate[]; summary: MasterSummary } => {
   const patternRules = history.length > 0 ? runPatternBank(history) : [];
   const unified = history.length >= 10 ? computeUnifiedSignal(history, latest) : [];
+  const overdue = history.length >= 12 ? overdueBoost(history) : null;
+  const cycles = history.length >= 12 ? cycleBoost(history) : null;
 
   const map = new Map<string, MasterCandidate>();
   for (const rule of patternRules) {
@@ -169,6 +237,88 @@ export const computeMasterSignal = (
       map.set(cand.numbersKey, merged);
     } else {
       map.set(cand.numbersKey, cand);
+    }
+  }
+
+  if (overdue) {
+    for (const [k, b] of Object.entries(overdue.dozen)) {
+      if (b > 1.0) {
+        const def = dozenSetsByKey[k];
+        if (!def) continue;
+        const arr = numbersFromSet(def.set);
+        const key = arr.sort((a, b2) => a - b2).join(",");
+        const existing = map.get(key);
+        if (existing) {
+          existing.prob = Math.min(0.95, existing.prob * b);
+          existing.lift = existing.prob / existing.baseline;
+          existing.sources = Array.from(new Set([...existing.sources, `gap-overdue (×${b.toFixed(2)})`]));
+        }
+      }
+    }
+    for (const [k, b] of Object.entries(overdue.column)) {
+      if (b > 1.0) {
+        const def = colSetsByKey[k];
+        if (!def) continue;
+        const arr = numbersFromSet(def.set);
+        const key = arr.sort((a, b2) => a - b2).join(",");
+        const existing = map.get(key);
+        if (existing) {
+          existing.prob = Math.min(0.95, existing.prob * b);
+          existing.lift = existing.prob / existing.baseline;
+          existing.sources = Array.from(new Set([...existing.sources, `gap-overdue (×${b.toFixed(2)})`]));
+        }
+      }
+    }
+  }
+
+  if (cycles) {
+    if (cycles.dozen) {
+      const def = dozenSetsByKey[cycles.dozen];
+      if (def) {
+        const arr = numbersFromSet(def.set);
+        const key = arr.sort((a, b2) => a - b2).join(",");
+        const existing = map.get(key);
+        if (existing) {
+          existing.prob = Math.min(0.95, existing.prob * 1.15);
+          existing.lift = existing.prob / existing.baseline;
+          existing.confidence = Math.min(1, existing.confidence + 0.1);
+          existing.sources = Array.from(new Set([...existing.sources, "ciclo detectado"]));
+        }
+      }
+    }
+    if (cycles.column) {
+      const def = colSetsByKey[cycles.column];
+      if (def) {
+        const arr = numbersFromSet(def.set);
+        const key = arr.sort((a, b2) => a - b2).join(",");
+        const existing = map.get(key);
+        if (existing) {
+          existing.prob = Math.min(0.95, existing.prob * 1.15);
+          existing.lift = existing.prob / existing.baseline;
+          existing.confidence = Math.min(1, existing.confidence + 0.1);
+          existing.sources = Array.from(new Set([...existing.sources, "ciclo detectado"]));
+        }
+      }
+    }
+  }
+
+  const learnedAll = getRankedLearnedPatterns(8);
+  for (const cand of map.values()) {
+    let topMatch: (typeof learnedAll)[number] | null = null;
+    for (const r of learnedAll) {
+      if (cand.targetType === "dozen" && r.group.startsWith("dozen-")) {
+        if (!topMatch || r.wilsonLower > topMatch.wilsonLower) topMatch = r;
+      } else if (cand.targetType === "column" && r.group.startsWith("column-")) {
+        if (!topMatch || r.wilsonLower > topMatch.wilsonLower) topMatch = r;
+      } else if (cand.targetType === "color" && r.group.startsWith("color-")) {
+        if (!topMatch || r.wilsonLower > topMatch.wilsonLower) topMatch = r;
+      } else if (cand.targetType === "terminal" && r.group.startsWith("terminal-")) {
+        if (!topMatch || r.wilsonLower > topMatch.wilsonLower) topMatch = r;
+      }
+    }
+    if (topMatch && topMatch.wilsonLower > cand.baseline) {
+      cand.confidence = Math.min(1, cand.confidence + 0.08);
+      cand.sources = Array.from(new Set([...cand.sources, `família ${topMatch.group} W95L=${(topMatch.wilsonLower * 100).toFixed(0)}%`]));
     }
   }
 
