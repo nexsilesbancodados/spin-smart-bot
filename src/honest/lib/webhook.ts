@@ -55,7 +55,6 @@ export const useWebhook = create<WebhookStore>()(
 const formatPayload = (sig: SignalRecord, format: WebhookConfig["format"]) => {
   if (format === "discord") {
     return {
-      content: null,
       embeds: [
         {
           title: `🎯 Sinal: ${sig.mainPick}`,
@@ -90,12 +89,13 @@ const formatMasterPayload = (
   format: WebhookConfig["format"]
 ) => {
   const headBalls = c.numbers.slice(0, 10).join(", ") + (c.numbers.length > 10 ? "…" : "");
+  const safeLabel = c.targetLabel || "Sinal";
+  const safeType = c.targetType || "geral";
   if (format === "discord") {
     return {
-      content: null,
       embeds: [
         {
-          title: `🎯 ${c.targetLabel}`,
+          title: `🎯 ${safeLabel}`,
           description:
             `**Chance combinada:** ${(c.prob * 100).toFixed(1)}%\n` +
             `**Paga:** ${c.payout.toFixed(1)}:1 · cobre ${c.coverage} nº\n` +
@@ -103,13 +103,13 @@ const formatMasterPayload = (
             `**Confiança:** ${(c.confidence * 100).toFixed(0)}%`,
           color: c.strictValid ? 5763719 : 15844367,
           fields: [
-            { name: "Tipo", value: c.targetType, inline: true },
+            { name: "Tipo", value: safeType, inline: true },
             {
               name: "Validação",
               value: c.strictValid ? "✓ Estrito" : "○ Parcial",
               inline: true,
             },
-            { name: "Cobertura", value: `${headBalls}`, inline: false },
+            { name: "Cobertura", value: headBalls || "—", inline: false },
             {
               name: "Contexto",
               value: `${ctx.spinsSeen} giros · ${ctx.validatedCount} sinais validados no banco`,
@@ -179,16 +179,7 @@ export const testWebhook = async (): Promise<{ ok: boolean; error?: string }> =>
     const testPayload =
       config.format === "discord"
         ? {
-            content: null,
-            embeds: [
-              {
-                title: "🧪 Teste de webhook",
-                description: "Mensagem de teste do Roleta Vision. Se você está vendo isso no Discord, está tudo configurado.",
-                color: 5763719,
-                timestamp: new Date().toISOString(),
-                footer: { text: "Roleta Vision · teste" },
-              },
-            ],
+            content: "🧪 Teste do Roleta Vision — se você está vendo isso, o webhook está funcionando.",
           }
         : config.format === "slack"
         ? { text: "🧪 Teste do Roleta Vision — webhook funcionando." }
