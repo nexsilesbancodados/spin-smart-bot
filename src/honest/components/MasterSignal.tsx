@@ -54,9 +54,9 @@ const MasterSignal = memo(() => {
   const soundEnabled = useNotifications((s) => s.soundEnabled);
   const lastNotifiedKeyRef = useRef<string | null>(null);
   const strictValidation = useUiPrefs((s) => s.strictValidation);
-  const toggleStrict = useUiPrefs((s) => s.toggleStrictValidation);
   const focusedScope = useUiPrefs((s) => s.focusedScope);
-  const setFocusedScope = useUiPrefs((s) => s.setFocusedScope);
+  void useUiPrefs((s) => s.toggleStrictValidation);
+  void useUiPrefs((s) => s.setFocusedScope);
   const autoBetEnabled = useAutoBet((s) => s.config.enabled);
   const autoBetOnlyStrict = useAutoBet((s) => s.config.onlyStrict);
   const autoBetPaused = useAutoBet((s) => s.pausedReason);
@@ -270,13 +270,6 @@ const MasterSignal = memo(() => {
             Melhor candidato atual: {winnerRaw.targetLabel} ({(winnerRaw.prob * 100).toFixed(1)}%) — aguardando validação
           </div>
         </div>
-        <div className="flex items-center justify-center gap-2 text-[10px] text-neutral-500">
-          <button onClick={toggleStrict} className="hover:text-amber-300">
-            {strictValidation ? "▣ validação estrita ON" : "▢ estrita OFF"}
-          </button>
-          <span>·</span>
-          <span>desligue se quiser ver sinais fracos também</span>
-        </div>
       </Card>
     );
   }
@@ -330,45 +323,13 @@ const MasterSignal = memo(() => {
           </span>
         }
         eyebrow={
-          <span className="flex items-center gap-2 flex-wrap">
-            {winner.strictValid
-              ? "✓ Padrão validado — Wilson + ≥10 amostras + agente concorda"
-              : summary.validationLevel === "strong"
-              ? "✓ Padrão forte (mas não estrito) — pode emitir"
-              : summary.validationLevel === "weak"
-              ? "~ Padrão fraco — sinal disponível com ressalva"
-              : "⏳ Mostrando melhor candidato (validação parcial)"}
-            <button
-              onClick={toggleStrict}
-              className={`text-[9px] px-2 py-0.5 rounded font-bold ${
-                strictValidation ? "bg-emerald-700 text-white" : "bg-neutral-800 text-neutral-400"
-              }`}
-              title={strictValidation ? "Modo estrito ON — só emite com validação dura" : "Modo estrito OFF — emite sempre o melhor"}
-            >
-              {strictValidation ? "🔒 estrita" : "📶 normal"}
-            </button>
-            <button
-              onClick={() =>
-                setFocusedScope(
-                  focusedScope.length <= 6
-                    ? []
-                    : ["color", "parity", "highlow", "dozen", "column", "sector"]
-                )
-              }
-              className={`text-[9px] px-2 py-0.5 rounded font-bold ${
-                focusedScope.length > 0 && focusedScope.length <= 6
-                  ? "bg-amber-700 text-white"
-                  : "bg-neutral-800 text-neutral-400"
-              }`}
-              title="Filtra tipos de jogada"
-            >
-              {focusedScope.length === 0
-                ? "🎰 todos"
-                : focusedScope.length <= 6
-                ? "🎯 cor+dúzia+setor"
-                : "🎲 alguns"}
-            </button>
-          </span>
+          winner.strictValid
+            ? "✓ Sinal validado — pronto pra apostar"
+            : summary.validationLevel === "strong"
+            ? "✓ Sinal forte"
+            : summary.validationLevel === "weak"
+            ? "~ Sinal disponível"
+            : "⏳ Melhor candidato no momento"
         }
         subtitle={
           <span className="text-[10px] text-neutral-500">
@@ -439,48 +400,9 @@ const MasterSignal = memo(() => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mt-2 text-[10px] flex-wrap justify-center">
-          <span className="text-neutral-500 uppercase tracking-wider font-bold shrink-0">
-            Aposta R$
-          </span>
-          <input
-            type="number"
-            min={1}
-            value={stake}
-            onChange={(e) => setStake(Math.max(0, Number(e.target.value) || 0))}
-            className="w-20 bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-sm font-mono"
-          />
-          <span className="text-neutral-500">→</span>
-          <span className="font-mono text-emerald-300 font-bold">
-            +{fmt(potentialReturn)} se acertar
-          </span>
-          <span className="text-neutral-500">·</span>
-          <span
-            className={`font-mono ${evReais >= 0 ? "text-emerald-300" : "text-red-300"}`}
-          >
-            EV {evReais >= 0 ? "+" : ""}
-            {fmt(evReais)}
-          </span>
-        </div>
-
-        {kelly > 0 && (
-          <div className="text-[10px] text-amber-300/80 mt-1 font-mono text-center">
-            💰 Kelly: aposte até {(kelly * 100).toFixed(1)}% da banca
-          </div>
-        )}
-
-        <div className="text-[10px] text-neutral-300 mt-2 leading-snug text-center">
-          <span className="text-neutral-500 uppercase tracking-wider font-bold">razão:</span>{" "}
-          {winner.reasoning}
-        </div>
-
-        <div className="text-[9px] text-neutral-500 mt-1 text-center">
-          motores ativos ({winner.engines.length}): {winner.engines.join(" · ")}
-        </div>
         {newestSpin && (
-          <div className="text-[9px] text-neutral-600 mt-1 text-center">
-            calculado após giro {newestSpin.n} sobre {history.length} giros ·{" "}
-            {summary.bankSize} padrões + {summary.autoDiscoveredTotal} auto + {summary.validatedCount} validados
+          <div className="text-[9px] text-neutral-600 mt-2 text-center">
+            sobre {history.length} giros · {summary.validatedCount} sinais validados
           </div>
         )}
 
@@ -503,56 +425,36 @@ const MasterSignal = memo(() => {
         )}
       </div>
 
-      <button
-        onClick={() => setShowAlts((v) => !v)}
-        className="w-full text-[10px] text-neutral-400 hover:text-amber-300 text-center py-1"
-      >
-        {showAlts
-          ? "▲ ocultar alternativas"
-          : `▼ ver ${alternatives.length} próximas jogadas ranqueadas`}
-      </button>
-
-      {showAlts && (
-        <div className="space-y-1 mt-1">
-          {alternatives.map((c, i) => {
-            const t = labelTag(c);
-            const ta = tagAccent(t);
-            return (
-              <div
-                key={c.id}
-                className="flex items-center gap-2 bg-neutral-900/50 rounded px-2 py-1.5 text-[11px]"
-              >
-                <div className="w-5 text-neutral-500 font-bold text-center shrink-0">
-                  {i + 2}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-neutral-200 truncate">
-                    <span className="text-[9px] uppercase tracking-wider text-neutral-500 mr-1">
-                      {c.targetType}
-                    </span>
-                    {c.targetLabel}
+      {alternatives.length > 0 && (
+        <details className="mt-1">
+          <summary className="text-[10px] text-neutral-600 hover:text-amber-300 text-center py-1 cursor-pointer list-none">
+            ⋯
+          </summary>
+          <div className="space-y-1 mt-1">
+            {alternatives.map((c, i) => {
+              const t = labelTag(c);
+              const ta = tagAccent(t);
+              return (
+                <div
+                  key={c.id}
+                  className="flex items-center gap-2 bg-neutral-900/50 rounded px-2 py-1.5 text-[11px]"
+                >
+                  <div className="w-5 text-neutral-500 font-bold text-center shrink-0">
+                    {i + 2}
                   </div>
-                  <div className="text-[9px] text-neutral-500 truncate">{c.reasoning}</div>
-                </div>
-                <div className="text-right shrink-0 font-mono">
-                  <div className="font-bold text-emerald-300">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-neutral-200 truncate">{c.targetLabel}</div>
+                  </div>
+                  <div className="font-mono text-emerald-300 shrink-0">
                     {(c.prob * 100).toFixed(1)}%
                   </div>
-                  <div className="text-[9px] text-neutral-500">
-                    {c.lift.toFixed(2)}× · {c.payout.toFixed(1)}:1
-                  </div>
+                  <Pill accent={ta}>{t}</Pill>
                 </div>
-                <Pill accent={ta}>{t}</Pill>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </details>
       )}
-
-      <div className="text-[9px] text-neutral-600 italic mt-2 text-center">
-        Score = prob × edge × confiança. Sinais combinam padrões aprendidos + Markov + recência +
-        agente IA. Casa retém 2,7%.
-      </div>
     </Card>
   );
 });
