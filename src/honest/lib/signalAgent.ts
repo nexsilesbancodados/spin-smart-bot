@@ -14,6 +14,7 @@ import { runAutoTuneCheck } from "./autoTuner";
 import { logActivity } from "./activityFeed";
 import { useABTest } from "./abTest";
 import { toastHit, toastMiss, toastSignal } from "./toast";
+import { recordCurrentActivations, usePatternLearning } from "./patternLearning";
 
 export interface SignalRecord {
   id: string;
@@ -342,6 +343,7 @@ export const startAgentLoop = () => {
     lastSpinKey = key;
     if (previousKey === "") return;
 
+    usePatternLearning.getState().resolveWith(newest.n, newest.t);
     const resolved = useSignalAgent.getState().resolvePending(newest.n);
     const abState = useABTest.getState();
     if (abState.enabled) {
@@ -367,6 +369,8 @@ export const startAgentLoop = () => {
 
     runAutoPauseCheck();
     runAutoTuneCheck();
+    const historyForLearning = useHonestStore.getState().spins.map((s) => s.n);
+    recordCurrentActivations(historyForLearning, newest.t);
     const t0 = performance.now();
     const tick = runAgentTick();
     usePerf.getState().recordAgentTick(performance.now() - t0);

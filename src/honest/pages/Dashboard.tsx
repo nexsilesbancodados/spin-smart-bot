@@ -5,16 +5,17 @@ import { sessionPnL } from "../lib/bankroll";
 import { colorOf } from "../lib/wheel";
 import { useSignalAgent } from "../lib/signalAgent";
 import { useUiPrefs } from "../lib/uiPrefs";
-import SignalPanel from "../components/SignalPanel";
-import BestBetRecommendation from "../components/BestBetRecommendation";
-import DozenColumnSignal from "../components/DozenColumnSignal";
-import UnifiedSignal from "../components/UnifiedSignal";
+import LearnedSignal from "../components/LearnedSignal";
 import AnomalyBanner from "../components/AnomalyBanner";
 import TiltAlerts from "../components/TiltAlerts";
-import Scoreboard from "../components/Scoreboard";
-import StreakAlerts from "../components/StreakAlerts";
 import { Card, PageContainer, Button } from "../components/ui";
 
+const SignalPanel = lazy(() => import("../components/SignalPanel"));
+const BestBetRecommendation = lazy(() => import("../components/BestBetRecommendation"));
+const DozenColumnSignal = lazy(() => import("../components/DozenColumnSignal"));
+const UnifiedSignal = lazy(() => import("../components/UnifiedSignal"));
+const Scoreboard = lazy(() => import("../components/Scoreboard"));
+const StreakAlerts = lazy(() => import("../components/StreakAlerts"));
 const BetCalculator = lazy(() => import("../components/BetCalculator"));
 const HotColdWheel = lazy(() => import("../components/HotColdWheel"));
 const BetTracker = lazy(() => import("../components/BetTracker"));
@@ -51,6 +52,7 @@ const Dashboard = memo(() => {
   const compact = useUiPrefs((s) => s.compact);
   const toggleCompact = useUiPrefs((s) => s.toggleCompact);
   const [elapsed, setElapsed] = useState("00:00");
+  const [otherSignalsOpen, setOtherSignalsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
 
   useEffect(() => {
@@ -77,29 +79,7 @@ const Dashboard = memo(() => {
 
   return (
     <PageContainer>
-      <UnifiedSignal />
-
-      <BestBetRecommendation />
-
-      <SignalPanel />
-
-      <DozenColumnSignal />
-
-      <Suspense fallback={null}>
-        <DozenAlternationAnalysis />
-      </Suspense>
-
-      {!compact && <Scoreboard />}
-      {compact && (
-        <button
-          onClick={toggleCompact}
-          className="text-[10px] text-neutral-500 hover:text-amber-300 italic text-center"
-        >
-          modo compacto ativo · clique pra ver placar completo
-        </button>
-      )}
-
-      <StreakAlerts />
+      <LearnedSignal />
 
       <AnomalyBanner />
       <TiltAlerts />
@@ -151,32 +131,59 @@ const Dashboard = memo(() => {
         </div>
       )}
 
-      <div className="flex items-center gap-2">
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={() => setOtherSignalsOpen((v) => !v)}
+          className="bg-neutral-900/60 hover:bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 flex items-center justify-between text-[11px] font-bold text-neutral-300 transition"
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-cyan-400">📊</span>
+            Outros sinais
+          </span>
+          <span className="text-cyan-400 text-[10px]">{otherSignalsOpen ? "▲" : "▼"}</span>
+        </button>
         <button
           onClick={() => setToolsOpen((v) => !v)}
-          className="flex-1 bg-neutral-900/60 hover:bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 flex items-center justify-between text-[11px] font-bold text-neutral-300 transition"
+          className="bg-neutral-900/60 hover:bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 flex items-center justify-between text-[11px] font-bold text-neutral-300 transition"
         >
           <span className="flex items-center gap-2">
             <span className="text-amber-400">🛠</span>
             Ferramentas
-            <span className="text-[9px] text-neutral-500 font-normal hidden sm:inline">
-              análises · estratégia · banca
-            </span>
           </span>
-          <span className="text-amber-400 text-[10px]">{toolsOpen ? "▲ fechar" : "▼ abrir"}</span>
-        </button>
-        <button
-          onClick={toggleCompact}
-          title={compact ? "Modo normal" : "Modo compacto (oculta painéis secundários)"}
-          className={`shrink-0 px-2 py-2 rounded-lg border text-[10px] font-bold transition ${
-            compact
-              ? "bg-amber-500 text-black border-amber-400"
-              : "bg-neutral-900/60 text-neutral-400 border-neutral-800 hover:text-amber-300"
-          }`}
-        >
-          {compact ? "▣" : "▢"}
+          <span className="text-amber-400 text-[10px]">{toolsOpen ? "▲" : "▼"}</span>
         </button>
       </div>
+
+      <div className="flex items-center gap-2 text-[10px] text-neutral-500 px-2">
+        <button
+          onClick={toggleCompact}
+          className={`${compact ? "text-amber-300" : "text-neutral-500"} hover:text-amber-300`}
+        >
+          {compact ? "▣ compacto" : "▢ normal"}
+        </button>
+        <span>·</span>
+        <span>focado em 1 sinal</span>
+      </div>
+
+      {otherSignalsOpen && (
+        <Suspense
+          fallback={
+            <Card padding="sm">
+              <div className="text-[11px] text-neutral-500 italic py-2 text-center">
+                Carregando sinais alternativos…
+              </div>
+            </Card>
+          }
+        >
+          <UnifiedSignal />
+          <BestBetRecommendation />
+          <SignalPanel />
+          <DozenColumnSignal />
+          <DozenAlternationAnalysis />
+          {!compact && <Scoreboard />}
+          <StreakAlerts />
+        </Suspense>
+      )}
 
       {toolsOpen && (
         <Suspense

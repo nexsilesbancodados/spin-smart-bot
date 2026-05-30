@@ -1,0 +1,640 @@
+import {
+  RED,
+  BLACK,
+  DOZEN_1,
+  DOZEN_2,
+  DOZEN_3,
+  COLUMN_1,
+  COLUMN_2,
+  COLUMN_3,
+  VOISINS,
+  TIERS,
+  ORPHELINS,
+  colorOf,
+  sectorOf,
+  physicalNeighbors,
+  numbersWithTerminal,
+} from "./wheel";
+
+export type PredictionTargetKind =
+  | "number"
+  | "dozen"
+  | "column"
+  | "color"
+  | "parity"
+  | "highlow"
+  | "sector"
+  | "terminal"
+  | "neighbors";
+
+export interface PatternActivation {
+  numbers: Set<number>;
+  payout: number;
+  baseline: number;
+  targetLabel: string;
+  targetType: PredictionTargetKind;
+  strength: number;
+}
+
+export interface PatternRule {
+  id: string;
+  group: string;
+  description: string;
+  activate: (history: number[]) => PatternActivation | null;
+}
+
+const SLOTS = 37;
+const dozenIndex = (n: number) => (n === 0 ? -1 : Math.floor((n - 1) / 12));
+const colIndex = (n: number) => (n === 0 ? -1 : (n - 1) % 3);
+const terminalOf = (n: number) => n % 10;
+
+const setOf = (nums: number[]): Set<number> => new Set(nums);
+
+const dozenMembers = [DOZEN_1, DOZEN_2, DOZEN_3];
+const dozenLabels = ["1ª Dúzia", "2ª Dúzia", "3ª Dúzia"];
+const colMembers = [COLUMN_1, COLUMN_2, COLUMN_3];
+const colLabels = ["1ª Coluna", "2ª Coluna", "3ª Coluna"];
+const sectorMembers = [VOISINS, TIERS, ORPHELINS];
+const sectorLabels = ["Voisins", "Tiers", "Orphelins"];
+
+const generateTerminalReturn = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (let t = 0; t <= 9; t++) {
+    for (const lookback of [2, 4, 7, 12]) {
+      out.push({
+        id: `term-return-${t}-l${lookback}`,
+        group: "terminal-return",
+        description: `Terminal ${t} visto nos últimos ${lookback} giros → próximo termina em ${t}`,
+        activate(history) {
+          if (history.length < lookback) return null;
+          const slice = history.slice(0, lookback);
+          let count = 0;
+          for (const n of slice) if (terminalOf(n) === t) count++;
+          if (count === 0) return null;
+          const numbers = setOf(numbersWithTerminal(t));
+          const strength = Math.min(1, count / (lookback / 4));
+          return {
+            numbers,
+            payout: 35 / numbers.size,
+            baseline: numbers.size / SLOTS,
+            targetLabel: `Terminal ${t}`,
+            targetType: "terminal",
+            strength,
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateTerminalAbsent = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (let t = 0; t <= 9; t++) {
+    for (const lookback of [8, 15, 25]) {
+      out.push({
+        id: `term-absent-${t}-l${lookback}`,
+        group: "terminal-overdue",
+        description: `Terminal ${t} ausente em ${lookback} giros → atrasado`,
+        activate(history) {
+          if (history.length < lookback) return null;
+          const slice = history.slice(0, lookback);
+          const present = slice.some((n) => terminalOf(n) === t);
+          if (present) return null;
+          const numbers = setOf(numbersWithTerminal(t));
+          return {
+            numbers,
+            payout: 35 / numbers.size,
+            baseline: numbers.size / SLOTS,
+            targetLabel: `Terminal ${t} atrasado`,
+            targetType: "terminal",
+            strength: Math.min(1, lookback / 25),
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateDozenChain = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (let d = 0; d < 3; d++) {
+    for (const repeat of [2, 3, 4]) {
+      out.push({
+        id: `dozen-rep-${d}-r${repeat}`,
+        group: "dozen-repeat",
+        description: `Dúzia ${d + 1} saiu ${repeat}× seguidas → continua`,
+        activate(history) {
+          if (history.length < repeat) return null;
+          for (let i = 0; i < repeat; i++) {
+            if (dozenIndex(history[i]) !== d) return null;
+          }
+          return {
+            numbers: dozenMembers[d],
+            payout: 2,
+            baseline: 12 / SLOTS,
+            targetLabel: dozenLabels[d],
+            targetType: "dozen",
+            strength: Math.min(1, repeat / 4),
+          };
+        },
+      });
+    }
+  }
+  for (let a = 0; a < 3; a++) {
+    for (let b = 0; b < 3; b++) {
+      if (a === b) continue;
+      for (const targetD of [0, 1, 2]) {
+        out.push({
+          id: `dozen-cycle-${a}-${b}-pred${targetD}`,
+          group: "dozen-cycle",
+          description: `D${a + 1}→D${b + 1} (prev) → próxima D${targetD + 1}`,
+          activate(history) {
+            if (history.length < 2) return null;
+            if (dozenIndex(history[1]) !== a || dozenIndex(history[0]) !== b) return null;
+            return {
+              numbers: dozenMembers[targetD],
+              payout: 2,
+              baseline: 12 / SLOTS,
+              targetLabel: dozenLabels[targetD],
+              targetType: "dozen",
+              strength: 0.6,
+            };
+          },
+        });
+      }
+    }
+  }
+  for (let d = 0; d < 3; d++) {
+    for (const gap of [10, 18, 30]) {
+      out.push({
+        id: `dozen-overdue-${d}-g${gap}`,
+        group: "dozen-overdue",
+        description: `Dúzia ${d + 1} ausente em ${gap} giros → volta`,
+        activate(history) {
+          if (history.length < gap) return null;
+          const slice = history.slice(0, gap);
+          const present = slice.some((n) => dozenIndex(n) === d);
+          if (present) return null;
+          return {
+            numbers: dozenMembers[d],
+            payout: 2,
+            baseline: 12 / SLOTS,
+            targetLabel: `${dozenLabels[d]} (atrasada)`,
+            targetType: "dozen",
+            strength: Math.min(1, gap / 30),
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateColumnChain = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (let c = 0; c < 3; c++) {
+    for (const repeat of [2, 3, 4]) {
+      out.push({
+        id: `col-rep-${c}-r${repeat}`,
+        group: "column-repeat",
+        description: `Coluna ${c + 1} saiu ${repeat}× seguidas`,
+        activate(history) {
+          if (history.length < repeat) return null;
+          for (let i = 0; i < repeat; i++) {
+            if (colIndex(history[i]) !== c) return null;
+          }
+          return {
+            numbers: colMembers[c],
+            payout: 2,
+            baseline: 12 / SLOTS,
+            targetLabel: colLabels[c],
+            targetType: "column",
+            strength: Math.min(1, repeat / 4),
+          };
+        },
+      });
+    }
+  }
+  for (let a = 0; a < 3; a++) {
+    for (let b = 0; b < 3; b++) {
+      if (a === b) continue;
+      for (const targetC of [0, 1, 2]) {
+        out.push({
+          id: `col-cycle-${a}-${b}-pred${targetC}`,
+          group: "column-cycle",
+          description: `C${a + 1}→C${b + 1} → próxima C${targetC + 1}`,
+          activate(history) {
+            if (history.length < 2) return null;
+            if (colIndex(history[1]) !== a || colIndex(history[0]) !== b) return null;
+            return {
+              numbers: colMembers[targetC],
+              payout: 2,
+              baseline: 12 / SLOTS,
+              targetLabel: colLabels[targetC],
+              targetType: "column",
+              strength: 0.6,
+            };
+          },
+        });
+      }
+    }
+  }
+  for (let c = 0; c < 3; c++) {
+    for (const gap of [10, 18, 30]) {
+      out.push({
+        id: `col-overdue-${c}-g${gap}`,
+        group: "column-overdue",
+        description: `Coluna ${c + 1} ausente em ${gap} giros`,
+        activate(history) {
+          if (history.length < gap) return null;
+          const slice = history.slice(0, gap);
+          const present = slice.some((n) => colIndex(n) === c);
+          if (present) return null;
+          return {
+            numbers: colMembers[c],
+            payout: 2,
+            baseline: 12 / SLOTS,
+            targetLabel: `${colLabels[c]} (atrasada)`,
+            targetType: "column",
+            strength: Math.min(1, gap / 30),
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateColorPatterns = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  const colors: Array<{ key: "red" | "black"; set: Set<number>; label: string }> = [
+    { key: "red", set: RED, label: "Vermelho" },
+    { key: "black", set: BLACK, label: "Preto" },
+  ];
+  for (const c of colors) {
+    for (const repeat of [3, 4, 5, 6, 7, 8]) {
+      out.push({
+        id: `color-streak-${c.key}-r${repeat}`,
+        group: "color-streak",
+        description: `${c.label} ${repeat}× seguido → continua`,
+        activate(history) {
+          if (history.length < repeat) return null;
+          for (let i = 0; i < repeat; i++) {
+            if (colorOf(history[i]) !== c.key) return null;
+          }
+          return {
+            numbers: c.set,
+            payout: 1,
+            baseline: 18 / SLOTS,
+            targetLabel: c.label,
+            targetType: "color",
+            strength: Math.min(1, (repeat - 2) / 5),
+          };
+        },
+      });
+      const opposite = c.key === "red" ? "black" : "red";
+      const oppositeSet = c.key === "red" ? BLACK : RED;
+      const oppositeLabel = c.key === "red" ? "Preto" : "Vermelho";
+      out.push({
+        id: `color-break-${c.key}-r${repeat}`,
+        group: "color-break",
+        description: `${c.label} ${repeat}× → reverte para ${oppositeLabel}`,
+        activate(history) {
+          if (history.length < repeat) return null;
+          for (let i = 0; i < repeat; i++) {
+            if (colorOf(history[i]) !== c.key) return null;
+          }
+          void opposite;
+          return {
+            numbers: oppositeSet,
+            payout: 1,
+            baseline: 18 / SLOTS,
+            targetLabel: oppositeLabel,
+            targetType: "color",
+            strength: Math.min(1, (repeat - 2) / 5),
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateParityPatterns = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  const evens = new Set<number>();
+  const odds = new Set<number>();
+  for (let n = 1; n <= 36; n++) (n % 2 === 0 ? evens : odds).add(n);
+  const groups = [
+    { key: "even", set: evens, label: "Par" },
+    { key: "odd", set: odds, label: "Ímpar" },
+  ];
+  for (const g of groups) {
+    for (const repeat of [3, 4, 5, 6, 7]) {
+      out.push({
+        id: `parity-streak-${g.key}-r${repeat}`,
+        group: "parity-streak",
+        description: `${g.label} ${repeat}× → continua`,
+        activate(history) {
+          if (history.length < repeat) return null;
+          for (let i = 0; i < repeat; i++) {
+            const n = history[i];
+            if (n === 0 || !g.set.has(n)) return null;
+          }
+          return {
+            numbers: g.set,
+            payout: 1,
+            baseline: 18 / SLOTS,
+            targetLabel: g.label,
+            targetType: "parity",
+            strength: Math.min(1, (repeat - 2) / 5),
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateHighLowPatterns = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  const high = new Set<number>();
+  const low = new Set<number>();
+  for (let n = 1; n <= 36; n++) (n > 18 ? high : low).add(n);
+  const groups = [
+    { key: "high", set: high, label: "19–36" },
+    { key: "low", set: low, label: "1–18" },
+  ];
+  for (const g of groups) {
+    for (const repeat of [3, 4, 5, 6, 7]) {
+      out.push({
+        id: `highlow-streak-${g.key}-r${repeat}`,
+        group: "highlow-streak",
+        description: `${g.label} ${repeat}× → continua`,
+        activate(history) {
+          if (history.length < repeat) return null;
+          for (let i = 0; i < repeat; i++) {
+            const n = history[i];
+            if (n === 0 || !g.set.has(n)) return null;
+          }
+          return {
+            numbers: g.set,
+            payout: 1,
+            baseline: 18 / SLOTS,
+            targetLabel: g.label,
+            targetType: "highlow",
+            strength: Math.min(1, (repeat - 2) / 5),
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateSectorPatterns = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (let s = 0; s < 3; s++) {
+    for (const repeat of [2, 3, 4]) {
+      out.push({
+        id: `sector-rep-${s}-r${repeat}`,
+        group: "sector-repeat",
+        description: `${sectorLabels[s]} ${repeat}× → continua`,
+        activate(history) {
+          if (history.length < repeat) return null;
+          for (let i = 0; i < repeat; i++) {
+            if (sectorOf(history[i]) !== sectorLabels[s]) return null;
+          }
+          return {
+            numbers: sectorMembers[s],
+            payout: 35 / sectorMembers[s].size,
+            baseline: sectorMembers[s].size / SLOTS,
+            targetLabel: sectorLabels[s],
+            targetType: "sector",
+            strength: Math.min(1, repeat / 4),
+          };
+        },
+      });
+    }
+    for (const gap of [12, 20, 30]) {
+      out.push({
+        id: `sector-overdue-${s}-g${gap}`,
+        group: "sector-overdue",
+        description: `${sectorLabels[s]} ausente ${gap} giros`,
+        activate(history) {
+          if (history.length < gap) return null;
+          const slice = history.slice(0, gap);
+          const present = slice.some((n) => sectorOf(n) === sectorLabels[s]);
+          if (present) return null;
+          return {
+            numbers: sectorMembers[s],
+            payout: 35 / sectorMembers[s].size,
+            baseline: sectorMembers[s].size / SLOTS,
+            targetLabel: `${sectorLabels[s]} (atrasado)`,
+            targetType: "sector",
+            strength: Math.min(1, gap / 30),
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateNumberReturn = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (let n = 0; n <= 36; n++) {
+    for (const window of [3, 6, 12]) {
+      out.push({
+        id: `num-return-${n}-w${window}`,
+        group: "number-return",
+        description: `Número ${n} saiu nos últimos ${window} giros → repete`,
+        activate(history) {
+          if (history.length < window) return null;
+          const slice = history.slice(0, window);
+          if (!slice.includes(n)) return null;
+          return {
+            numbers: new Set([n]),
+            payout: 35,
+            baseline: 1 / SLOTS,
+            targetLabel: `Nº ${n}`,
+            targetType: "number",
+            strength: 0.4,
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateNeighborsCluster = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (let n = 0; n <= 36; n++) {
+    for (const radius of [2, 4]) {
+      out.push({
+        id: `neighbors-${n}-r${radius}`,
+        group: "physical-neighbors",
+        description: `Último foi ${n} → vizinhos ±${radius} na roleta`,
+        activate(history) {
+          if (history.length < 1 || history[0] !== n) return null;
+          const neighbors = physicalNeighbors(n, radius);
+          const set = new Set([n, ...neighbors]);
+          return {
+            numbers: set,
+            payout: 35 / set.size,
+            baseline: set.size / SLOTS,
+            targetLabel: `Vizinhos ±${radius} do ${n}`,
+            targetType: "neighbors",
+            strength: 0.5,
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateAlternation = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (let a = 0; a < 3; a++) {
+    for (let b = 0; b < 3; b++) {
+      if (a === b) continue;
+      out.push({
+        id: `dozen-alt-${a}-${b}`,
+        group: "dozen-alternation",
+        description: `Padrão alternado D${a + 1}↔D${b + 1} (3 últimos) → continua`,
+        activate(history) {
+          if (history.length < 3) return null;
+          const idx = [dozenIndex(history[0]), dozenIndex(history[1]), dozenIndex(history[2])];
+          if (idx[0] === a && idx[1] === b && idx[2] === a) {
+            return {
+              numbers: dozenMembers[b],
+              payout: 2,
+              baseline: 12 / SLOTS,
+              targetLabel: dozenLabels[b],
+              targetType: "dozen",
+              strength: 0.7,
+            };
+          }
+          return null;
+        },
+      });
+    }
+  }
+  for (let a = 0; a < 3; a++) {
+    for (let b = 0; b < 3; b++) {
+      if (a === b) continue;
+      out.push({
+        id: `col-alt-${a}-${b}`,
+        group: "column-alternation",
+        description: `Padrão alternado C${a + 1}↔C${b + 1} (3 últimos) → continua`,
+        activate(history) {
+          if (history.length < 3) return null;
+          const idx = [colIndex(history[0]), colIndex(history[1]), colIndex(history[2])];
+          if (idx[0] === a && idx[1] === b && idx[2] === a) {
+            return {
+              numbers: colMembers[b],
+              payout: 2,
+              baseline: 12 / SLOTS,
+              targetLabel: colLabels[b],
+              targetType: "column",
+              strength: 0.7,
+            };
+          }
+          return null;
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateRowPatterns = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  const rows: Array<{ key: string; set: Set<number>; label: string }> = [];
+  for (let r = 0; r < 12; r++) {
+    const s = new Set<number>();
+    s.add(r * 3 + 1);
+    s.add(r * 3 + 2);
+    s.add(r * 3 + 3);
+    rows.push({ key: `row-${r}`, set: s, label: `Linha ${r + 1} (${r * 3 + 1}-${r * 3 + 3})` });
+  }
+  for (const row of rows) {
+    for (const lookback of [5, 12]) {
+      out.push({
+        id: `row-cluster-${row.key}-l${lookback}`,
+        group: "row-cluster",
+        description: `2+ números da ${row.label} nos últimos ${lookback}`,
+        activate(history) {
+          if (history.length < lookback) return null;
+          const slice = history.slice(0, lookback);
+          let count = 0;
+          for (const n of slice) if (row.set.has(n)) count++;
+          if (count < 2) return null;
+          return {
+            numbers: row.set,
+            payout: 11,
+            baseline: 3 / SLOTS,
+            targetLabel: row.label,
+            targetType: "neighbors",
+            strength: Math.min(1, count / 4),
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateMirrorPairs = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (let n = 1; n <= 18; n++) {
+    const mirror = 37 - n;
+    const set = new Set([n, mirror]);
+    out.push({
+      id: `mirror-${n}`,
+      group: "mirror-pair",
+      description: `Após ${n} ou ${mirror} → repete um dos espelhos`,
+      activate(history) {
+        if (history.length < 1) return null;
+        if (history[0] !== n && history[0] !== mirror) return null;
+        return {
+          numbers: set,
+          payout: 35 / 2,
+          baseline: 2 / SLOTS,
+          targetLabel: `${n} / ${mirror}`,
+          targetType: "number",
+          strength: 0.4,
+        };
+      },
+    });
+  }
+  return out;
+};
+
+let CACHED_BANK: PatternRule[] | null = null;
+
+export const getPatternBank = (): PatternRule[] => {
+  if (CACHED_BANK) return CACHED_BANK;
+  CACHED_BANK = [
+    ...generateTerminalReturn(),
+    ...generateTerminalAbsent(),
+    ...generateDozenChain(),
+    ...generateColumnChain(),
+    ...generateColorPatterns(),
+    ...generateParityPatterns(),
+    ...generateHighLowPatterns(),
+    ...generateSectorPatterns(),
+    ...generateNumberReturn(),
+    ...generateNeighborsCluster(),
+    ...generateAlternation(),
+    ...generateRowPatterns(),
+    ...generateMirrorPairs(),
+  ];
+  return CACHED_BANK;
+};
+
+export const patternBankSize = (): number => getPatternBank().length;
