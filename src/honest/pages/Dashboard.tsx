@@ -4,26 +4,11 @@ import { Card, PageContainer } from "../components/ui";
 
 const RealityCheckBanner = lazy(() => import("../components/RealityCheckBanner"));
 const AutoBetPanel = lazy(() => import("../components/AutoBetPanel"));
-const BetCalculator = lazy(() => import("../components/BetCalculator"));
-const HotColdWheel = lazy(() => import("../components/HotColdWheel"));
-const BetTracker = lazy(() => import("../components/BetTracker"));
-const SectorHeatmap = lazy(() => import("../components/SectorHeatmap"));
-const MonteCarloSim = lazy(() => import("../components/MonteCarloSim"));
-const RecurrenceFinder = lazy(() => import("../components/RecurrenceFinder"));
-const NumberFrequency = lazy(() => import("../components/NumberFrequency"));
-const HourlyHeatmap = lazy(() => import("../components/HourlyHeatmap"));
-const StrategyPresets = lazy(() => import("../components/StrategyPresets"));
-const WheelBiasDetector = lazy(() => import("../components/WheelBiasDetector"));
-const TransitionMatrix = lazy(() => import("../components/TransitionMatrix"));
-const RunsTest = lazy(() => import("../components/RunsTest"));
-const Autocorrelation = lazy(() => import("../components/Autocorrelation"));
-const CalibrationCurve = lazy(() => import("../components/CalibrationCurve"));
-const WheelDistanceAnalyzer = lazy(() => import("../components/WheelDistanceAnalyzer"));
-const EntropyTracker = lazy(() => import("../components/EntropyTracker"));
-const MetaIntelligence = lazy(() => import("../components/MetaIntelligence"));
-const AIInsights = lazy(() => import("../components/AIInsights"));
-const BotEnsembleStatus = lazy(() => import("../components/BotEnsembleStatus"));
 const MasterBacktest = lazy(() => import("../components/MasterBacktest"));
+const BotEnsembleStatus = lazy(() => import("../components/BotEnsembleStatus"));
+const AIInsights = lazy(() => import("../components/AIInsights"));
+const StrategyPresets = lazy(() => import("../components/StrategyPresets"));
+const BetTracker = lazy(() => import("../components/BetTracker"));
 
 const Dashboard = memo(() => {
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -50,27 +35,12 @@ const Dashboard = memo(() => {
           }
         >
           <RealityCheckBanner />
-          <AutoBetPanel />
-          <MasterBacktest />
-          <BotEnsembleStatus />
-          <AIInsights />
-          <MetaIntelligence />
           <StrategyPresets />
-          <CalibrationCurve />
-          <BetCalculator />
-          <HotColdWheel />
-          <SectorHeatmap />
-          <NumberFrequency />
-          <WheelBiasDetector />
-          <WheelDistanceAnalyzer />
-          <EntropyTracker />
-          <RunsTest />
-          <Autocorrelation />
-          <TransitionMatrix />
-          <RecurrenceFinder />
-          <HourlyHeatmap />
+          <BotEnsembleStatus />
+          <MasterBacktest />
+          <AutoBetPanel />
           <BetTracker />
-          <MonteCarloSim />
+          <AIInsights />
         </Suspense>
       )}
     </PageContainer>
