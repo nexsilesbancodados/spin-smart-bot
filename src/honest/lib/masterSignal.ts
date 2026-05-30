@@ -1,5 +1,6 @@
 import { runPatternBank, ActivatedRule, summarizeLearning, getRankedLearnedPatterns } from "./patternLearning";
 import { computeUnifiedSignal, UnifiedCandidate } from "./unifiedAnalysis";
+import { computeAntiStickPenalty } from "./masterSignalState";
 import type { SignalRecord } from "./signalAgent";
 import { DOZEN_1, DOZEN_2, DOZEN_3, COLUMN_1, COLUMN_2, COLUMN_3 } from "./wheel";
 import {
@@ -322,9 +323,14 @@ export const computeMasterSignal = (
     }
   }
 
+  const spinCount = history.length;
   const ranked = Array.from(map.values()).map((c) => {
-    const acc = c.prob * c.edgeQuality * (0.55 + 0.45 * c.confidence);
-    return { ...c, accuracyScore: acc };
+    const stick = computeAntiStickPenalty(c.numbersKey, spinCount);
+    const acc = c.prob * c.edgeQuality * (0.55 + 0.45 * c.confidence) * stick.penalty;
+    const sources = stick.penalty < 1
+      ? [...c.sources, `anti-stick ×${stick.penalty.toFixed(2)} (${stick.recentCount}× recente, ${stick.recentMisses} miss)`]
+      : c.sources;
+    return { ...c, accuracyScore: acc, sources };
   });
 
   ranked.sort((a, b) => b.accuracyScore - a.accuracyScore);

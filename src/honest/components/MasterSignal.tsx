@@ -1,7 +1,8 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useHonestStore } from "../lib/store";
 import { useSignalAgent } from "../lib/signalAgent";
 import { computeMasterSignal, MasterCandidate } from "../lib/masterSignal";
+import { useMasterSignalState } from "../lib/masterSignalState";
 import { usePatternLearning } from "../lib/patternLearning";
 import { colorOf } from "../lib/wheel";
 import { Card, SectionHeader, Pill } from "./ui";
@@ -36,14 +37,36 @@ const MasterSignal = memo(() => {
   const spins = useHonestStore((s) => s.spins);
   const latest = useSignalAgent((s) => s.latest);
   usePatternLearning((s) => s.totalLearned);
+  const recordShown = useMasterSignalState((s) => s.recordShown);
+  const resolveLast = useMasterSignalState((s) => s.resolveLast);
+  const recentWinners = useMasterSignalState((s) => s.recent);
   const [stake, setStake] = useState(50);
   const [showAlts, setShowAlts] = useState(false);
+  const prevSpinCountRef = useRef(spins.length);
 
   const history = useMemo(() => spins.map((s) => s.n), [spins]);
   const { ranked, summary } = useMemo(
     () => computeMasterSignal(history, latest),
     [history, latest]
   );
+
+  useEffect(() => {
+    if (spins.length > prevSpinCountRef.current && spins.length > 0) {
+      const newest = spins[0].n;
+      const candidateNumbers = recentWinners.map((w) => {
+        const numbers = ranked.find((r) => r.numbersKey === w.numbersKey)?.numbers;
+        return numbers ?? [];
+      });
+      resolveLast(newest, candidateNumbers);
+    }
+    prevSpinCountRef.current = spins.length;
+  }, [spins, ranked, resolveLast, recentWinners]);
+
+  useEffect(() => {
+    if (ranked.length > 0) {
+      recordShown(ranked[0].id, ranked[0].numbersKey, spins.length);
+    }
+  }, [ranked, recordShown, spins.length]);
 
   if (history.length < 6) {
     return (
@@ -69,6 +92,10 @@ const MasterSignal = memo(() => {
 
   const winner = ranked[0];
   const alternatives = ranked.slice(1, 5);
+
+  const lastResolved = recentWinners.find((w) => w.resolved);
+  const recentHits = recentWinners.filter((w) => w.resolved && w.hit).length;
+  const recentMisses = recentWinners.filter((w) => w.resolved && w.hit === false).length;
   const tag = labelTag(winner);
   const accent = tagAccent(tag);
 
@@ -96,6 +123,12 @@ const MasterSignal = memo(() => {
           <span className="flex items-center gap-2">
             🎯 Sinal Mestre
             <Pill accent={accent}>{tag}</Pill>
+            {recentWinners.length >= 3 && (
+              <span className="text-[9px] font-mono text-neutral-500">
+                últimos: <span className="text-emerald-300">{recentHits}✓</span>/
+                <span className="text-red-300">{recentMisses}✗</span>
+              </span>
+            )}
           </span>
         }
         eyebrow="Todas as análises combinadas → 1 única jogada mais provável"
@@ -104,6 +137,11 @@ const MasterSignal = memo(() => {
             {summary.bankSize} padrões + análise unificada · {summary.trackedRules} regras treinadas ·{" "}
             {summary.learnedTotal} aprendizagens · acerto global{" "}
             {(summary.learnedAccuracy * 100).toFixed(1)}%
+            {lastResolved && (
+              <span className="ml-1">
+                · último {lastResolved.hit ? <span className="text-emerald-300">acertou</span> : <span className="text-red-300">errou</span>}
+              </span>
+            )}
           </span>
         }
       />
