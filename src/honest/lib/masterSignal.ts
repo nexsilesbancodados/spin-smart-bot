@@ -1,4 +1,5 @@
 import { runPatternBank, ActivatedRule, summarizeLearning, getRankedLearnedPatterns } from "./patternLearning";
+import { activateDiscovered, AutoDiscoveryActivation } from "./autoDiscovery";
 import { computeUnifiedSignal, UnifiedCandidate } from "./unifiedAnalysis";
 import { computeAntiStickPenalty } from "./masterSignalState";
 import { getEngineWeight, useEngineWeights, EngineKind } from "./engineWeights";
@@ -97,6 +98,34 @@ const fromPatternRule = (rule: ActivatedRule): MasterCandidate => {
     sources: [`padrão aprendido (${rule.group})`],
     reasoning: rule.description,
     engines: [engineForGroup(rule.group)],
+  };
+};
+
+const fromDiscovered = (d: AutoDiscoveryActivation): MasterCandidate => {
+  const numbersArr = Array.from(d.numbers);
+  const probFinal = d.attempts >= 3 ? d.learnedAccuracy : Math.max(d.learnedAccuracy, d.baseline);
+  const lift = probFinal / Math.max(1e-9, d.baseline);
+  const sampleConf = Math.min(1, d.attempts / 20);
+  const edgeQ = lift <= 0.95 ? 0.55 : lift < 1.05 ? 0.85 : Math.min(1.3, 0.95 + (lift - 1) * 0.5);
+  return {
+    id: `auto-${d.ruleId}`,
+    targetLabel: d.targetLabel,
+    targetType: d.targetType,
+    numbers: numbersArr,
+    numbersKey: numbersArr.sort((a, b) => a - b).join(","),
+    payout: d.payout,
+    baseline: d.baseline,
+    coverage: numbersArr.length,
+    prob: probFinal,
+    lift,
+    confidence: 0.55 * sampleConf + 0.45 * d.strength,
+    edgeQuality: edgeQ,
+    accuracyScore: 0,
+    patternRule: null,
+    unifiedCandidate: null,
+    sources: [`auto-descoberto (${d.attempts} tentativas)`],
+    reasoning: d.description,
+    engines: ["pattern-bank"],
   };
 };
 
@@ -246,6 +275,20 @@ export const computeMasterSignal = (
       map.set(cand.numbersKey, cand);
     }
   }
+
+  const discovered = history.length > 0 ? activateDiscovered(history) : [];
+  for (const d of discovered) {
+    if (d.attempts < 3) continue;
+    const cand = fromDiscovered(d);
+    const existing = map.get(cand.numbersKey);
+    if (existing) {
+      const merged = merge(existing, cand);
+      map.set(cand.numbersKey, merged);
+    } else {
+      map.set(cand.numbersKey, cand);
+    }
+  }
+
   for (const uc of unified) {
     const cand = fromUnifiedCandidate(uc);
     const existing = map.get(cand.numbersKey);

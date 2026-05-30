@@ -104,7 +104,12 @@ export const usePatternLearning = create<PatternLearningStore>()(
           const hit = p.numbers.includes(actualNumber);
           const newAttempts = stat.attempts + 1;
           const newHits = stat.hits + (hit ? 1 : 0);
-          const weight = wilsonLowerBound(newHits, newAttempts);
+          // Reinforcement: Wilson lower bound for stable estimate,
+          // but recent hit/miss gets an instantaneous nudge so
+          // patterns adapt faster than the pure Bayesian rate would.
+          const wilsonW = wilsonLowerBound(newHits, newAttempts);
+          const recentNudge = hit ? 0.05 : -0.03;
+          const weight = Math.max(0, Math.min(1, wilsonW + recentNudge));
           nextStats[ruleId] = {
             hits: newHits,
             attempts: newAttempts,

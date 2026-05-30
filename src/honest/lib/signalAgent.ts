@@ -15,6 +15,12 @@ import { logActivity } from "./activityFeed";
 import { useABTest } from "./abTest";
 import { toastHit, toastMiss, toastSignal } from "./toast";
 import { recordCurrentActivations, usePatternLearning } from "./patternLearning";
+import {
+  mineRecentPatterns,
+  useAutoDiscovery,
+  activateDiscovered,
+  lensTargetMatches,
+} from "./autoDiscovery";
 
 export interface SignalRecord {
   id: string;
@@ -344,6 +350,7 @@ export const startAgentLoop = () => {
     if (previousKey === "") return;
 
     usePatternLearning.getState().resolveWith(newest.n, newest.t);
+    useAutoDiscovery.getState().resolve(newest.n, lensTargetMatches);
     const resolved = useSignalAgent.getState().resolvePending(newest.n);
     const abState = useABTest.getState();
     if (abState.enabled) {
@@ -371,6 +378,14 @@ export const startAgentLoop = () => {
     runAutoTuneCheck();
     const historyForLearning = useHonestStore.getState().spins.map((s) => s.n);
     recordCurrentActivations(historyForLearning, newest.t);
+
+    const spinCount = historyForLearning.length;
+    if (spinCount % 5 === 0 && spinCount >= 10) {
+      const mined = mineRecentPatterns(historyForLearning, spinCount);
+      if (mined.length > 0) useAutoDiscovery.getState().registerDiscoveries(mined);
+    }
+    const activations = activateDiscovered(historyForLearning);
+    useAutoDiscovery.getState().recordPending(activations.map((a) => a.ruleId));
     const t0 = performance.now();
     const tick = runAgentTick();
     usePerf.getState().recordAgentTick(performance.now() - t0);
