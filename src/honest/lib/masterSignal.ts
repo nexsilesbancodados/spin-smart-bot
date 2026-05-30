@@ -211,14 +211,27 @@ const merge = (a: MasterCandidate, b: MasterCandidate): MasterCandidate => {
 
 const computeStrictValid = (c: MasterCandidate, latest: SignalRecord | null): boolean => {
   const r = c.patternRule;
+  // Tier 1: Standard strict — Wilson > baseline*1.25 + ≥10 samples (pattern rule)
+  //         OR lift > 1.2 + confidence > 0.55 (unified analysis)
   const patternStrict = !!(r && r.attempts >= 10 && r.learnedAccuracy > c.baseline * 1.25);
   const unifiedStrict = !!(c.unifiedCandidate && c.lift > 1.2 && c.confidence > 0.55);
   if (!patternStrict && !unifiedStrict) return false;
-  if (!latest) return patternStrict || unifiedStrict;
+
+  // Tier 2: Require multi-engine consensus OR single-engine ultra-strong.
+  // Reduces false positives from "lucky single rule" emissions.
+  // - Multi-engine: candidate has ≥2 distinct contributing engines/sources
+  // - Single-engine ultra: pattern with ≥25 samples + Wilson > baseline*1.4,
+  //   OR unified with lift > 1.5 + confidence > 0.7
+  const multiEngine = c.engines.length >= 2;
+  const patternUltra = !!(r && r.attempts >= 25 && r.learnedAccuracy > c.baseline * 1.4);
+  const unifiedUltra = !!(c.unifiedCandidate && c.lift > 1.5 && c.confidence > 0.7);
+  if (!multiEngine && !patternUltra && !unifiedUltra) return false;
+
+  // Tier 3: Agent IA must overlap with the bet set (existing requirement).
+  if (!latest) return true;
   let agentOverlap = 0;
   for (const pick of latest.topPicks) if (c.numbers.includes(pick)) agentOverlap++;
-  const minOverlap = c.coverage >= 12 ? 1 : c.coverage >= 4 ? 1 : 1;
-  return agentOverlap >= minOverlap;
+  return agentOverlap >= 1;
 };
 
 const numbersFromSet = (set: Set<number>): number[] => Array.from(set);
