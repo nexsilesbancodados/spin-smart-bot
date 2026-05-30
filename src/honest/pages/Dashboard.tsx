@@ -5,11 +5,12 @@ import { sessionPnL } from "../lib/bankroll";
 import { colorOf } from "../lib/wheel";
 import { useSignalAgent } from "../lib/signalAgent";
 import { useUiPrefs } from "../lib/uiPrefs";
-import LearnedSignal from "../components/LearnedSignal";
+import MasterSignal from "../components/MasterSignal";
 import AnomalyBanner from "../components/AnomalyBanner";
 import TiltAlerts from "../components/TiltAlerts";
 import { Card, PageContainer, Button } from "../components/ui";
 
+const LearnedSignal = lazy(() => import("../components/LearnedSignal"));
 const SignalPanel = lazy(() => import("../components/SignalPanel"));
 const BestBetRecommendation = lazy(() => import("../components/BestBetRecommendation"));
 const DozenColumnSignal = lazy(() => import("../components/DozenColumnSignal"));
@@ -79,7 +80,7 @@ const Dashboard = memo(() => {
 
   return (
     <PageContainer>
-      <LearnedSignal />
+      <MasterSignal />
 
       <AnomalyBanner />
       <TiltAlerts />
@@ -175,6 +176,7 @@ const Dashboard = memo(() => {
             </Card>
           }
         >
+          <LearnedSignal />
           <UnifiedSignal />
           <BestBetRecommendation />
           <SignalPanel />
