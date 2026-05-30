@@ -7,6 +7,7 @@ import OnboardingTour from "./OnboardingTourV2";
 import SignalFAB from "./SignalFAB";
 import QuickBetFAB from "./QuickBetFAB";
 import Toaster from "./Toaster";
+import PwaInstall from "./PwaInstall";
 import CommandPalette from "./CommandPalette";
 import GlobalSearch from "./GlobalSearch";
 import DigestPopup from "./DigestPopup";
@@ -139,6 +140,7 @@ const HonestyLayout = memo(({ children }: { children?: ReactNode }) => {
             </div>
           </NavLink>
           <div className="ml-auto shrink-0 flex items-center gap-2">
+            <PwaInstall />
             <GameTimer />
             <button
               onClick={toggleTheme}

@@ -7,6 +7,11 @@ import { useEngineWeights, summarizeEngines } from "../lib/engineWeights";
 import { useUiPrefs } from "../lib/uiPrefs";
 import { useAutoBet } from "../lib/autoBet";
 import { usePatternLearning } from "../lib/patternLearning";
+import {
+  playSignalChord,
+  showBrowserNotification,
+  useNotifications,
+} from "../lib/notifications";
 import { colorOf } from "../lib/wheel";
 import { Card, SectionHeader, Pill } from "./ui";
 
@@ -46,6 +51,8 @@ const MasterSignal = memo(() => {
   const recentWinners = useMasterSignalState((s) => s.recent);
   const recordEngineContribution = useEngineWeights((s) => s.recordContribution);
   const resolveEngineContribution = useEngineWeights((s) => s.resolveContribution);
+  const soundEnabled = useNotifications((s) => s.soundEnabled);
+  const lastNotifiedKeyRef = useRef<string | null>(null);
   const strictValidation = useUiPrefs((s) => s.strictValidation);
   const toggleStrict = useUiPrefs((s) => s.toggleStrictValidation);
   const focusedScope = useUiPrefs((s) => s.focusedScope);
@@ -98,6 +105,26 @@ const MasterSignal = memo(() => {
       }
     }
   }, [ranked, recordShown, recordEngineContribution, spins.length]);
+
+  useEffect(() => {
+    if (ranked.length === 0) return;
+    const top = ranked[0];
+    if (!top.strictValid) return;
+    if (lastNotifiedKeyRef.current === top.numbersKey) return;
+    lastNotifiedKeyRef.current = top.numbersKey;
+    if (soundEnabled) {
+      try {
+        playSignalChord();
+      } catch {
+        /* noop */
+      }
+    }
+    showBrowserNotification(
+      `🎯 ${top.targetLabel}`,
+      `Chance ${(top.prob * 100).toFixed(1)}% · paga ${top.payout.toFixed(1)}:1 · cobre ${top.coverage} nº`,
+      "/icon-192.png"
+    );
+  }, [ranked, soundEnabled]);
 
   useEffect(() => {
     if (!autoBetEnabled || autoBetPaused) return;
