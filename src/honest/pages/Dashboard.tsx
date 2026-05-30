@@ -5,6 +5,7 @@ import { sessionPnL } from "../lib/bankroll";
 import { useSignalAgent } from "../lib/signalAgent";
 import { useUiPrefs } from "../lib/uiPrefs";
 import MasterSignal from "../components/MasterSignal";
+import AutoBetPanel from "../components/AutoBetPanel";
 import { Card, PageContainer, Button } from "../components/ui";
 
 const RealityCheckBanner = lazy(() => import("../components/RealityCheckBanner"));
@@ -64,6 +65,8 @@ const Dashboard = memo(() => {
   return (
     <PageContainer>
       <MasterSignal />
+
+      <AutoBetPanel />
 
       {sessionActive && (hitStop || hitTarget || hitRounds) && (
         <Card accent={hitStop ? "bad" : hitTarget ? "good" : "warn"} padding="sm">

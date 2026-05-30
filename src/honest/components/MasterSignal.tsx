@@ -5,6 +5,7 @@ import { computeMasterSignal, MasterCandidate } from "../lib/masterSignal";
 import { useMasterSignalState } from "../lib/masterSignalState";
 import { useEngineWeights, summarizeEngines } from "../lib/engineWeights";
 import { useUiPrefs } from "../lib/uiPrefs";
+import { useAutoBet } from "../lib/autoBet";
 import { usePatternLearning } from "../lib/patternLearning";
 import { colorOf } from "../lib/wheel";
 import { Card, SectionHeader, Pill } from "./ui";
@@ -47,6 +48,11 @@ const MasterSignal = memo(() => {
   const resolveEngineContribution = useEngineWeights((s) => s.resolveContribution);
   const strictValidation = useUiPrefs((s) => s.strictValidation);
   const toggleStrict = useUiPrefs((s) => s.toggleStrictValidation);
+  const autoBetEnabled = useAutoBet((s) => s.config.enabled);
+  const autoBetOnlyStrict = useAutoBet((s) => s.config.onlyStrict);
+  const autoBetPaused = useAutoBet((s) => s.pausedReason);
+  const registerAutoBet = useAutoBet((s) => s.registerBet);
+  const resolveAutoBets = useAutoBet((s) => s.resolveBets);
   const [stake, setStake] = useState(50);
   const [showAlts, setShowAlts] = useState(false);
   const [pulseKey, setPulseKey] = useState(0);
@@ -62,11 +68,13 @@ const MasterSignal = memo(() => {
   useEffect(() => {
     if (spins.length > prevSpinCountRef.current && spins.length > 0) {
       const newest = spins[0].n;
+      const newestT = spins[0].t;
       const candidateNumbers = recentWinners.map((w) => {
         const numbers = ranked.find((r) => r.numbersKey === w.numbersKey)?.numbers;
         return numbers ?? [];
       });
       resolveLast(newest, candidateNumbers);
+      resolveAutoBets(newest, newestT, newest);
       const previousWinner = recentWinners[0];
       if (previousWinner) {
         const previousNumbers = candidateNumbers[0] ?? [];
@@ -78,7 +86,7 @@ const MasterSignal = memo(() => {
       setPulseKey((k) => k + 1);
     }
     prevSpinCountRef.current = spins.length;
-  }, [spins, ranked, resolveLast, resolveEngineContribution, recentWinners]);
+  }, [spins, ranked, resolveLast, resolveAutoBets, resolveEngineContribution, recentWinners]);
 
   useEffect(() => {
     if (ranked.length > 0) {
@@ -88,6 +96,23 @@ const MasterSignal = memo(() => {
       }
     }
   }, [ranked, recordShown, recordEngineContribution, spins.length]);
+
+  useEffect(() => {
+    if (!autoBetEnabled || autoBetPaused) return;
+    if (ranked.length === 0) return;
+    const top = ranked[0];
+    if (autoBetOnlyStrict && !top.strictValid) return;
+    const newestT = spins[0]?.t ?? Date.now();
+    registerAutoBet({
+      numbersKey: top.numbersKey,
+      numbers: top.numbers,
+      targetLabel: top.targetLabel,
+      targetType: top.targetType,
+      payout: top.payout,
+      prob: top.prob,
+      spinT: newestT,
+    });
+  }, [ranked, autoBetEnabled, autoBetOnlyStrict, autoBetPaused, spins, registerAutoBet]);
 
   if (history.length < 6) {
     return (
