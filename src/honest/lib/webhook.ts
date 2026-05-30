@@ -16,10 +16,25 @@ export interface WebhookConfig {
   totalErrors: number;
 }
 
+export interface WebhookFireRecord {
+  id: string;
+  t: number;
+  channel: "discord" | "telegram" | "legacy";
+  kind: "signal" | "resolution" | "test";
+  targetLabel: string;
+  targetType: string;
+  hit: boolean | null;
+  ok: boolean;
+  error?: string;
+}
+
 interface WebhookStore {
   config: WebhookConfig;
+  history: WebhookFireRecord[];
   setConfig: (patch: Partial<WebhookConfig>) => void;
   recordFired: (error?: string) => void;
+  recordFireDetail: (record: Omit<WebhookFireRecord, "id" | "t">) => void;
+  clearHistory: () => void;
 }
 
 const defaults: WebhookConfig = {
@@ -33,10 +48,13 @@ const defaults: WebhookConfig = {
   totalErrors: 0,
 };
 
+let fireSeq = 0;
+
 export const useWebhook = create<WebhookStore>()(
   persist(
     (set) => ({
       config: defaults,
+      history: [],
       setConfig: (patch) => set((s) => ({ config: { ...s.config, ...patch } })),
       recordFired: (error) =>
         set((s) => ({
@@ -48,8 +66,21 @@ export const useWebhook = create<WebhookStore>()(
             totalErrors: error ? s.config.totalErrors + 1 : s.config.totalErrors,
           },
         })),
+      recordFireDetail: (rec) =>
+        set((s) => {
+          const entry: WebhookFireRecord = {
+            ...rec,
+            id: `wh-${Date.now()}-${fireSeq++}`,
+            t: Date.now(),
+          };
+          return { history: [entry, ...s.history].slice(0, 30) };
+        }),
+      clearHistory: () => set({ history: [] }),
     }),
-    { name: "rv-webhook-v1" }
+    {
+      name: "rv-webhook-v1",
+      partialize: (s) => ({ config: s.config, history: s.history }),
+    }
   )
 );
 
@@ -149,6 +180,26 @@ let relayAvailable: boolean | null = null;
 let telegramRelayAvailable: boolean | null = null;
 const lastSentByType = new Map<string, number>();
 const MIN_INTERVAL_BY_TYPE_MS = 90_000;
+let fireMasterWebhookForceFlag = false;
+
+export const forceFireMasterWebhook = async (
+  candidate: MasterCandidate,
+  context: {
+    spinsSeen: number;
+    validatedCount: number;
+    lastSpin?: number | null;
+    recentHits?: number;
+    recentMisses?: number;
+    recentTotal?: number;
+  }
+): Promise<void> => {
+  fireMasterWebhookForceFlag = true;
+  try {
+    await fireMasterWebhook(candidate, context);
+  } finally {
+    fireMasterWebhookForceFlag = false;
+  }
+};
 
 export interface ResolutionContext {
   recentHits?: number;
@@ -212,6 +263,23 @@ export const fireMasterResolution = async (
     }
   };
   await Promise.all([sendDiscord(), sendTelegram()]);
+  const { recordFireDetail } = useWebhook.getState();
+  recordFireDetail({
+    channel: "discord",
+    kind: "resolution",
+    targetLabel: resolution.targetLabel,
+    targetType: resolution.targetType,
+    hit: resolution.hit,
+    ok: relayAvailable !== false,
+  });
+  recordFireDetail({
+    channel: "telegram",
+    kind: "resolution",
+    targetLabel: resolution.targetLabel,
+    targetType: resolution.targetType,
+    hit: resolution.hit,
+    ok: telegramRelayAvailable !== false,
+  });
 };
 
 const tryTelegramRelay = async (
@@ -323,9 +391,12 @@ export const fireMasterWebhook = async (
 
   // Per-type cooldown: each bet category (color/dozen/parity) has its own
   // 90s window. Lets a strong dúzia signal go through 30s after a cor signal.
+  // Skip if explicitly forced.
   const now = Date.now();
-  const lastForType = lastSentByType.get(type) ?? 0;
-  if (now - lastForType < MIN_INTERVAL_BY_TYPE_MS) return;
+  if (!fireMasterWebhookForceFlag) {
+    const lastForType = lastSentByType.get(type) ?? 0;
+    if (now - lastForType < MIN_INTERVAL_BY_TYPE_MS) return;
+  }
   lastSentByType.set(type, now);
 
   // Try Discord and Telegram relays in parallel
@@ -349,6 +420,25 @@ export const fireMasterWebhook = async (
     tryRelay(candidate, context),
     tryTelegramRelay(sharedPayload as Record<string, unknown>),
   ]);
+  const { recordFireDetail } = useWebhook.getState();
+  recordFireDetail({
+    channel: "discord",
+    kind: "signal",
+    targetLabel: candidate.targetLabel,
+    targetType: candidate.targetType,
+    hit: null,
+    ok: relayResult.ok,
+    error: relayResult.ok ? undefined : relayResult.error,
+  });
+  recordFireDetail({
+    channel: "telegram",
+    kind: "signal",
+    targetLabel: candidate.targetLabel,
+    targetType: candidate.targetType,
+    hit: null,
+    ok: telegramResult.ok,
+    error: telegramResult.ok ? undefined : telegramResult.error,
+  });
   if (relayResult.ok || telegramResult.ok) {
     recordFired();
     return;
