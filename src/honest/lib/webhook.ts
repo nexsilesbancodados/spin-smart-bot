@@ -146,6 +146,7 @@ const formatMasterPayload = (
 };
 
 let relayAvailable: boolean | null = null;
+let telegramRelayAvailable: boolean | null = null;
 const lastSentByType = new Map<string, number>();
 const MIN_INTERVAL_BY_TYPE_MS = 90_000;
 
@@ -164,33 +165,79 @@ export const fireMasterResolution = async (
   },
   context: ResolutionContext = {}
 ): Promise<void> => {
-  if (relayAvailable === false) return;
   const type = resolution.targetType.toLowerCase();
   if (!WEBHOOK_ALLOWED_TYPES.has(type)) return;
+  const payload = {
+    task: "master-resolution" as const,
+    resolution: {
+      targetLabel: resolution.targetLabel,
+      targetType: resolution.targetType,
+      actualNumber: resolution.actualNumber,
+      hit: resolution.hit,
+    },
+    context,
+  };
+  const sendDiscord = async () => {
+    if (relayAvailable === false) return;
+    try {
+      const res = await supabase.functions.invoke<{ ok?: boolean; error?: string }>(
+        "discord-relay",
+        { body: payload }
+      );
+      if (res.error) {
+        const msg = res.error.message ?? "";
+        if (msg.includes("NOT_FOUND") || msg.includes("404")) {
+          relayAvailable = false;
+        }
+      }
+    } catch {
+      /* noop */
+    }
+  };
+  const sendTelegram = async () => {
+    if (telegramRelayAvailable === false) return;
+    try {
+      const res = await supabase.functions.invoke<{ ok?: boolean; error?: string }>(
+        "telegram-relay",
+        { body: payload }
+      );
+      if (res.error) {
+        const msg = res.error.message ?? "";
+        if (msg.includes("NOT_FOUND") || msg.includes("404")) {
+          telegramRelayAvailable = false;
+        }
+      }
+    } catch {
+      /* noop */
+    }
+  };
+  await Promise.all([sendDiscord(), sendTelegram()]);
+};
+
+const tryTelegramRelay = async (
+  payload: Record<string, unknown>
+): Promise<{ ok: boolean; error?: string }> => {
+  if (telegramRelayAvailable === false) return { ok: false, error: "telegram-relay-disabled" };
   try {
     const res = await supabase.functions.invoke<{ ok?: boolean; error?: string }>(
-      "discord-relay",
-      {
-        body: {
-          task: "master-resolution",
-          resolution: {
-            targetLabel: resolution.targetLabel,
-            targetType: resolution.targetType,
-            actualNumber: resolution.actualNumber,
-            hit: resolution.hit,
-          },
-          context,
-        },
-      }
+      "telegram-relay",
+      { body: payload }
     );
     if (res.error) {
       const msg = res.error.message ?? "";
       if (msg.includes("NOT_FOUND") || msg.includes("404")) {
-        relayAvailable = false;
+        telegramRelayAvailable = false;
+        return { ok: false, error: "telegram-relay-not-deployed" };
       }
+      return { ok: false, error: msg };
     }
-  } catch {
-    /* noop */
+    if (!res.data || res.data.ok !== true) {
+      return { ok: false, error: res.data?.error ?? "telegram-unknown" };
+    }
+    telegramRelayAvailable = true;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 };
 
@@ -281,9 +328,28 @@ export const fireMasterWebhook = async (
   if (now - lastForType < MIN_INTERVAL_BY_TYPE_MS) return;
   lastSentByType.set(type, now);
 
-  // Try server-side relay first (URL kept in Supabase secrets, never in client)
-  const relayResult = await tryRelay(candidate, context);
-  if (relayResult.ok) {
+  // Try Discord and Telegram relays in parallel
+  const sharedPayload = {
+    task: "master-signal" as const,
+    candidate: {
+      targetLabel: candidate.targetLabel,
+      targetType: candidate.targetType,
+      prob: candidate.prob,
+      payout: candidate.payout,
+      coverage: candidate.coverage,
+      lift: candidate.lift,
+      baseline: candidate.baseline,
+      confidence: candidate.confidence,
+      strictValid: candidate.strictValid,
+      numbers: candidate.numbers,
+    },
+    context,
+  };
+  const [relayResult, telegramResult] = await Promise.all([
+    tryRelay(candidate, context),
+    tryTelegramRelay(sharedPayload as Record<string, unknown>),
+  ]);
+  if (relayResult.ok || telegramResult.ok) {
     recordFired();
     return;
   }
