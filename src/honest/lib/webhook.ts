@@ -160,10 +160,10 @@ export const fireMasterWebhook = async (
       method: "POST",
       headers,
       body: JSON.stringify(body),
-      mode: "no-cors",
     });
-    if (!res.ok && res.type !== "opaque") {
-      recordFired(`HTTP ${res.status}`);
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      recordFired(`HTTP ${res.status}${text ? ` · ${text.slice(0, 120)}` : ""}`);
       return;
     }
     recordFired();
@@ -195,12 +195,17 @@ export const testWebhook = async (): Promise<{ ok: boolean; error?: string }> =>
         : { type: "test", timestamp: Date.now() };
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (config.bearerToken) headers["Authorization"] = `Bearer ${config.bearerToken}`;
-    await fetch(config.url, {
+    const res = await fetch(config.url, {
       method: "POST",
       headers,
       body: JSON.stringify(testPayload),
-      mode: "no-cors",
     });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      const err = `HTTP ${res.status}${text ? ` · ${text.slice(0, 200)}` : ""}`;
+      recordFired(err);
+      return { ok: false, error: err };
+    }
     recordFired();
     return { ok: true };
   } catch (e) {
@@ -223,9 +228,8 @@ export const fireWebhook = async (sig: SignalRecord): Promise<void> => {
       method: "POST",
       headers,
       body: JSON.stringify(body),
-      mode: "no-cors",
     });
-    if (!res.ok && res.type !== "opaque") {
+    if (!res.ok) {
       recordFired(`HTTP ${res.status}`);
       return;
     }
