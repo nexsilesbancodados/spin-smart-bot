@@ -1,7 +1,7 @@
 import { runPatternBank, ActivatedRule, summarizeLearning, getRankedLearnedPatterns } from "./patternLearning";
 import { activateDiscovered, AutoDiscoveryActivation } from "./autoDiscovery";
 import { computeUnifiedSignal, UnifiedCandidate } from "./unifiedAnalysis";
-import { computeAntiStickPenalty } from "./masterSignalState";
+import { computeAntiStickPenalty, useMasterSignalState } from "./masterSignalState";
 import { getEngineWeight, useEngineWeights, EngineKind } from "./engineWeights";
 import type { SignalRecord } from "./signalAgent";
 import { DOZEN_1, DOZEN_2, DOZEN_3, COLUMN_1, COLUMN_2, COLUMN_3 } from "./wheel";
@@ -209,25 +209,41 @@ const merge = (a: MasterCandidate, b: MasterCandidate): MasterCandidate => {
   };
 };
 
+// Adaptive threshold: types that have been hitting above baseline recently
+// get looser requirements; types that are missing get tighter ones.
+// Reads from masterSignalState.recent (persisted) — pure data adaptation.
+const computeTypeAdjustment = (targetType: string): number => {
+  const recent = useMasterSignalState.getState().recent;
+  const sameType = recent.filter((w) => w.resolved && w.targetType === targetType);
+  if (sameType.length < 5) return 1.0;
+  const hits = sameType.filter((w) => w.hit === true).length;
+  const rate = hits / sameType.length;
+  if (rate >= 0.55) return 0.82;
+  if (rate >= 0.45) return 0.92;
+  if (rate <= 0.2) return 1.25;
+  if (rate <= 0.3) return 1.1;
+  return 1.0;
+};
+
 const computeStrictValid = (c: MasterCandidate, latest: SignalRecord | null): boolean => {
   const r = c.patternRule;
-  // Tier 1: Standard strict — Wilson > baseline*1.25 + ≥10 samples (pattern rule)
-  //         OR lift > 1.2 + confidence > 0.55 (unified analysis)
-  const patternStrict = !!(r && r.attempts >= 10 && r.learnedAccuracy > c.baseline * 1.25);
-  const unifiedStrict = !!(c.unifiedCandidate && c.lift > 1.2 && c.confidence > 0.55);
+  const adj = computeTypeAdjustment(c.targetType);
+  const wilsonThreshold = c.baseline * 1.25 * adj;
+  const liftThreshold = 1.2 * adj;
+  const confThreshold = Math.max(0.4, 0.55 * adj);
+
+  // Tier 1: Standard strict — adaptive by type performance
+  const patternStrict = !!(r && r.attempts >= 10 && r.learnedAccuracy > wilsonThreshold);
+  const unifiedStrict = !!(c.unifiedCandidate && c.lift > liftThreshold && c.confidence > confThreshold);
   if (!patternStrict && !unifiedStrict) return false;
 
-  // Tier 2: Require multi-engine consensus OR single-engine ultra-strong.
-  // Reduces false positives from "lucky single rule" emissions.
-  // - Multi-engine: candidate has ≥2 distinct contributing engines/sources
-  // - Single-engine ultra: pattern with ≥25 samples + Wilson > baseline*1.4,
-  //   OR unified with lift > 1.5 + confidence > 0.7
+  // Tier 2: Multi-engine consensus OR single-engine ultra-strong
   const multiEngine = c.engines.length >= 2;
-  const patternUltra = !!(r && r.attempts >= 25 && r.learnedAccuracy > c.baseline * 1.4);
-  const unifiedUltra = !!(c.unifiedCandidate && c.lift > 1.5 && c.confidence > 0.7);
+  const patternUltra = !!(r && r.attempts >= 25 && r.learnedAccuracy > c.baseline * 1.4 * adj);
+  const unifiedUltra = !!(c.unifiedCandidate && c.lift > 1.5 * adj && c.confidence > 0.7 * adj);
   if (!multiEngine && !patternUltra && !unifiedUltra) return false;
 
-  // Tier 3: Agent IA must overlap with the bet set (existing requirement).
+  // Tier 3: Agent IA must overlap with the bet set
   if (!latest) return true;
   let agentOverlap = 0;
   for (const pick of latest.topPicks) if (c.numbers.includes(pick)) agentOverlap++;
