@@ -7,12 +7,13 @@ interface RecentWinner {
   shownAtSpinCount: number;
   resolved: boolean;
   hit: boolean | null;
+  targetType?: string;
 }
 
 interface MasterSignalState {
   recent: RecentWinner[];
   shownAtSpins: number;
-  recordShown: (id: string, numbersKey: string, spinCount: number) => void;
+  recordShown: (id: string, numbersKey: string, spinCount: number, targetType?: string) => void;
   resolveLast: (actualNumber: number, candidateNumbers: number[][]) => void;
   reset: () => void;
 }
@@ -25,12 +26,12 @@ export const useMasterSignalState = create<MasterSignalState>()(
       recent: [],
       shownAtSpins: 0,
 
-      recordShown: (id, numbersKey, spinCount) => {
+      recordShown: (id, numbersKey, spinCount, targetType) => {
         const last = get().recent[0];
         if (last && last.id === id && last.shownAtSpinCount === spinCount) return;
         set((s) => ({
           recent: [
-            { id, numbersKey, shownAtSpinCount: spinCount, resolved: false, hit: null },
+            { id, numbersKey, shownAtSpinCount: spinCount, resolved: false, hit: null, targetType },
             ...s.recent,
           ].slice(0, WINDOW),
           shownAtSpins: spinCount,

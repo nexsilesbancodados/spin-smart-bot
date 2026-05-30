@@ -21,7 +21,7 @@ const checkRateLimit = (ip: string): boolean => {
 };
 
 interface RelayRequest {
-  task: "master-signal" | "test";
+  task: "master-signal" | "master-resolution" | "test";
   candidate?: {
     targetLabel?: string;
     targetType?: string;
@@ -33,6 +33,12 @@ interface RelayRequest {
     confidence?: number;
     strictValid?: boolean;
     numbers?: number[];
+  };
+  resolution?: {
+    targetLabel?: string;
+    targetType?: string;
+    actualNumber?: number;
+    hit?: boolean;
   };
   context?: {
     spinsSeen?: number;
@@ -79,6 +85,33 @@ const buildDiscordPayload = (req: RelayRequest): unknown | null => {
   if (req.task === "test") {
     return {
       content: "🧪 Teste do Roleta Vision — webhook OK.",
+    };
+  }
+  if (req.task === "master-resolution") {
+    const r = req.resolution ?? {};
+    const type = (r.targetType || "").toLowerCase();
+    if (!ALLOWED_TYPES.has(type)) return null;
+    const label = r.targetLabel || "Sinal";
+    const actual = r.actualNumber ?? 0;
+    const hit = !!r.hit;
+    const ctx = req.context ?? {};
+    const hits = ctx.recentHits ?? 0;
+    const misses = ctx.recentMisses ?? 0;
+    const total = ctx.recentTotal ?? hits + misses;
+    const hitRate = total > 0 ? (hits / total) * 100 : 0;
+    const placarLine =
+      total > 0
+        ? `\n📊 ${hits}✓ / ${misses}✗ · **${hitRate.toFixed(0)}%** acerto`
+        : "";
+    return {
+      embeds: [
+        {
+          title: hit ? `✓ ACERTOU — ${label}` : `✗ ERROU — ${label}`,
+          description:
+            `${colorOfNum(actual)} Saiu: **${actual}**` + placarLine,
+          color: hit ? 3066993 : 15158332,
+        },
+      ],
     };
   }
   const c = req.candidate ?? {};
@@ -164,19 +197,34 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    const discordRes = await fetch(discordUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
 
-    if (!discordRes.ok) {
-      const text = await discordRes.text().catch(() => "");
+    // Retry on transient Discord errors (5xx, rate limit, network)
+    let discordRes: Response | null = null;
+    let lastError = "";
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        discordRes = await fetch(discordUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (discordRes.ok) break;
+        if (discordRes.status < 500 && discordRes.status !== 429) break;
+        lastError = `HTTP ${discordRes.status}`;
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 200 * (attempt + 1) * (attempt + 1)));
+      } catch (err) {
+        lastError = (err as Error).message;
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 200 * (attempt + 1) * (attempt + 1)));
+      }
+    }
+
+    if (!discordRes || !discordRes.ok) {
+      const text = discordRes ? await discordRes.text().catch(() => "") : "";
       return new Response(
         JSON.stringify({
           error: "discord-error",
-          status: discordRes.status,
-          detail: text.slice(0, 300),
+          status: discordRes?.status ?? 0,
+          detail: (text || lastError).slice(0, 300),
         }),
         {
           status: 502,

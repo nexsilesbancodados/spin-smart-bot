@@ -12,7 +12,7 @@ import {
   showBrowserNotification,
   useNotifications,
 } from "../lib/notifications";
-import { fireMasterWebhook } from "../lib/webhook";
+import { fireMasterWebhook, fireMasterResolution } from "../lib/webhook";
 import { colorOf } from "../lib/wheel";
 import { Card, SectionHeader, Pill } from "./ui";
 
@@ -66,6 +66,11 @@ const MasterSignal = memo(() => {
   const [pulseKey, setPulseKey] = useState(0);
   const [previousOutcome, setPreviousOutcome] = useState<{ hit: boolean; predicted: string; actual: number } | null>(null);
   const prevSpinCountRef = useRef(spins.length);
+  const pendingResolutionRef = useRef<{
+    targetLabel: string;
+    targetType: string;
+    numbers: number[];
+  } | null>(null);
 
   const history = useMemo(() => spins.map((s) => s.n), [spins]);
   const { ranked, summary } = useMemo(
@@ -91,6 +96,35 @@ const MasterSignal = memo(() => {
         const previousLabel = ranked.find((r) => r.numbersKey === previousWinner.numbersKey)?.targetLabel ?? "anterior";
         setPreviousOutcome({ hit, predicted: previousLabel, actual: newest });
       }
+
+      // Fire Discord resolution if the previous prediction was sent to webhook
+      const pending = pendingResolutionRef.current;
+      if (pending) {
+        const hit = pending.numbers.includes(newest);
+        const resolvedRecent = recentWinners.filter(
+          (w) => w.resolved && w.targetType === pending.targetType
+        );
+        // resolveLast just ran but state may not reflect yet; compute from new outcome
+        const adjustedHits =
+          resolvedRecent.filter((w) => w.hit === true).length + (hit ? 1 : 0);
+        const adjustedMisses =
+          resolvedRecent.filter((w) => w.hit === false).length + (hit ? 0 : 1);
+        fireMasterResolution(
+          {
+            targetLabel: pending.targetLabel,
+            targetType: pending.targetType,
+            actualNumber: newest,
+            hit,
+          },
+          {
+            recentHits: adjustedHits,
+            recentMisses: adjustedMisses,
+            recentTotal: adjustedHits + adjustedMisses,
+          }
+        ).catch(() => undefined);
+        pendingResolutionRef.current = null;
+      }
+
       setPulseKey((k) => k + 1);
     }
     prevSpinCountRef.current = spins.length;
@@ -98,7 +132,7 @@ const MasterSignal = memo(() => {
 
   useEffect(() => {
     if (ranked.length > 0) {
-      recordShown(ranked[0].id, ranked[0].numbersKey, spins.length);
+      recordShown(ranked[0].id, ranked[0].numbersKey, spins.length, ranked[0].targetType);
       if (ranked[0].engines && ranked[0].engines.length > 0) {
         recordEngineContribution(ranked[0].engines, spins.length);
       }
@@ -124,14 +158,25 @@ const MasterSignal = memo(() => {
       "/icon-192.png"
     );
     const resolvedRecent = recentWinners.filter((w) => w.resolved);
+    const sameTypeRecent = resolvedRecent.filter((w) => w.targetType === top.targetType);
     fireMasterWebhook(top, {
       spinsSeen: history.length,
       validatedCount: summary.validatedCount,
       lastSpin: spins[0]?.n ?? null,
-      recentHits: resolvedRecent.filter((w) => w.hit === true).length,
-      recentMisses: resolvedRecent.filter((w) => w.hit === false).length,
-      recentTotal: resolvedRecent.length,
-    }).catch(() => undefined);
+      recentHits: sameTypeRecent.filter((w) => w.hit === true).length,
+      recentMisses: sameTypeRecent.filter((w) => w.hit === false).length,
+      recentTotal: sameTypeRecent.length,
+    })
+      .then(() => {
+        // Mark this prediction so when the next spin arrives we send
+        // a hit/miss resolution message to Discord too
+        pendingResolutionRef.current = {
+          targetLabel: top.targetLabel,
+          targetType: top.targetType,
+          numbers: top.numbers,
+        };
+      })
+      .catch(() => undefined);
   }, [ranked, soundEnabled, history.length, summary.validatedCount, spins, recentWinners]);
 
   useEffect(() => {

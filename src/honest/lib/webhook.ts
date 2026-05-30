@@ -146,8 +146,53 @@ const formatMasterPayload = (
 };
 
 let relayAvailable: boolean | null = null;
-let lastSentAt = 0;
-const MIN_INTERVAL_MS = 60_000;
+const lastSentByType = new Map<string, number>();
+const MIN_INTERVAL_BY_TYPE_MS = 90_000;
+
+export interface ResolutionContext {
+  recentHits?: number;
+  recentMisses?: number;
+  recentTotal?: number;
+}
+
+export const fireMasterResolution = async (
+  resolution: {
+    targetLabel: string;
+    targetType: string;
+    actualNumber: number;
+    hit: boolean;
+  },
+  context: ResolutionContext = {}
+): Promise<void> => {
+  if (relayAvailable === false) return;
+  const type = resolution.targetType.toLowerCase();
+  if (!WEBHOOK_ALLOWED_TYPES.has(type)) return;
+  try {
+    const res = await supabase.functions.invoke<{ ok?: boolean; error?: string }>(
+      "discord-relay",
+      {
+        body: {
+          task: "master-resolution",
+          resolution: {
+            targetLabel: resolution.targetLabel,
+            targetType: resolution.targetType,
+            actualNumber: resolution.actualNumber,
+            hit: resolution.hit,
+          },
+          context,
+        },
+      }
+    );
+    if (res.error) {
+      const msg = res.error.message ?? "";
+      if (msg.includes("NOT_FOUND") || msg.includes("404")) {
+        relayAvailable = false;
+      }
+    }
+  } catch {
+    /* noop */
+  }
+};
 
 const tryRelay = async (
   candidate: MasterCandidate,
@@ -219,12 +264,15 @@ export const fireMasterWebhook = async (
 ): Promise<void> => {
   const { config, recordFired } = useWebhook.getState();
   if (candidate.confidence < config.minConfidence) return;
-  if (!WEBHOOK_ALLOWED_TYPES.has(candidate.targetType.toLowerCase())) return;
+  const type = candidate.targetType.toLowerCase();
+  if (!WEBHOOK_ALLOWED_TYPES.has(type)) return;
 
-  // Time-based cooldown: prevent spam even when numbersKey changes rapidly
+  // Per-type cooldown: each bet category (color/dozen/parity) has its own
+  // 90s window. Lets a strong dúzia signal go through 30s after a cor signal.
   const now = Date.now();
-  if (now - lastSentAt < MIN_INTERVAL_MS) return;
-  lastSentAt = now;
+  const lastForType = lastSentByType.get(type) ?? 0;
+  if (now - lastForType < MIN_INTERVAL_BY_TYPE_MS) return;
+  lastSentByType.set(type, now);
 
   // Try server-side relay first (URL kept in Supabase secrets, never in client)
   const relayResult = await tryRelay(candidate, context);
