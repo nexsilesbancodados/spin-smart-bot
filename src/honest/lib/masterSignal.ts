@@ -33,6 +33,7 @@ export interface MasterCandidate {
   confidence: number;
   edgeQuality: number;
   accuracyScore: number;
+  strictValid: boolean;
 
   patternRule: ActivatedRule | null;
   unifiedCandidate: UnifiedCandidate | null;
@@ -96,6 +97,7 @@ const fromPatternRule = (rule: ActivatedRule): MasterCandidate => {
     edgeQuality: edgeQ,
     accuracyScore: 0,
 
+    strictValid: false,
     patternRule: rule,
     unifiedCandidate: null,
     sources: [`padrão aprendido (${rule.group})`],
@@ -124,6 +126,7 @@ const fromDiscovered = (d: AutoDiscoveryActivation): MasterCandidate => {
     confidence: 0.55 * sampleConf + 0.45 * d.strength,
     edgeQuality: edgeQ,
     accuracyScore: 0,
+    strictValid: false,
     patternRule: null,
     unifiedCandidate: null,
     sources: [`auto-descoberto (${d.attempts} tentativas)`],
@@ -150,6 +153,7 @@ const fromUnifiedCandidate = (uc: UnifiedCandidate): MasterCandidate => {
     edgeQuality: edgeQ,
     accuracyScore: 0,
 
+    strictValid: false,
     patternRule: null,
     unifiedCandidate: uc,
     sources: uc.sources,
@@ -196,12 +200,25 @@ const merge = (a: MasterCandidate, b: MasterCandidate): MasterCandidate => {
     confidence,
     edgeQuality: edgeQ,
     accuracyScore: 0,
+    strictValid: false,
     patternRule,
     unifiedCandidate,
     sources,
     reasoning,
     engines: Array.from(new Set([...a.engines, ...b.engines])),
   };
+};
+
+const computeStrictValid = (c: MasterCandidate, latest: SignalRecord | null): boolean => {
+  const r = c.patternRule;
+  const patternStrict = !!(r && r.attempts >= 10 && r.learnedAccuracy > c.baseline * 1.25);
+  const unifiedStrict = !!(c.unifiedCandidate && c.lift > 1.2 && c.confidence > 0.55);
+  if (!patternStrict && !unifiedStrict) return false;
+  if (!latest) return patternStrict || unifiedStrict;
+  let agentOverlap = 0;
+  for (const pick of latest.topPicks) if (c.numbers.includes(pick)) agentOverlap++;
+  const minOverlap = c.coverage >= 12 ? 1 : c.coverage >= 4 ? 1 : 1;
+  return agentOverlap >= minOverlap;
 };
 
 const numbersFromSet = (set: Set<number>): number[] => Array.from(set);
@@ -389,6 +406,10 @@ export const computeMasterSignal = (
     }
   }
 
+  for (const c of map.values()) {
+    c.strictValid = computeStrictValid(c, latest);
+  }
+
   const spinCount = history.length;
   // Hit-rate-first ranking with engine self-weighting:
   // - probability dominates (user wants high hit rate)
@@ -414,7 +435,8 @@ export const computeMasterSignal = (
       stick.penalty *
       engineMultiplier;
     const extraSources: string[] = [];
-    if (stick.penalty < 1) extraSources.push(`anti-repetição ×${stick.penalty.toFixed(2)}`);
+    if (stick.cooldown) extraSources.push(`COOLDOWN (errou recente)`);
+    else if (stick.penalty < 1) extraSources.push(`anti-repetição ×${stick.penalty.toFixed(2)}`);
     if (Math.abs(engineMultiplier - 1.0) > 0.05) {
       extraSources.push(`motor adaptado ×${engineMultiplier.toFixed(2)}`);
     }

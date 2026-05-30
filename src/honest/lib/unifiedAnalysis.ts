@@ -188,7 +188,7 @@ export const computeUnifiedSignal = (
     { key: "C3", label: "3ª Coluna", range: "3,6,…,36", set: COLUMN_3 },
   ];
 
-  const window = spins.slice(0, 80);
+  const window = spins.slice(0, 150);
   const baselineDozen = 12 / 37;
 
   for (const d of dozenSets) {

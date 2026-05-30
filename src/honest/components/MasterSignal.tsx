@@ -4,6 +4,7 @@ import { useSignalAgent } from "../lib/signalAgent";
 import { computeMasterSignal, MasterCandidate } from "../lib/masterSignal";
 import { useMasterSignalState } from "../lib/masterSignalState";
 import { useEngineWeights, summarizeEngines } from "../lib/engineWeights";
+import { useUiPrefs } from "../lib/uiPrefs";
 import { usePatternLearning } from "../lib/patternLearning";
 import { colorOf } from "../lib/wheel";
 import { Card, SectionHeader, Pill } from "./ui";
@@ -44,6 +45,8 @@ const MasterSignal = memo(() => {
   const recentWinners = useMasterSignalState((s) => s.recent);
   const recordEngineContribution = useEngineWeights((s) => s.recordContribution);
   const resolveEngineContribution = useEngineWeights((s) => s.resolveContribution);
+  const strictValidation = useUiPrefs((s) => s.strictValidation);
+  const toggleStrict = useUiPrefs((s) => s.toggleStrictValidation);
   const [stake, setStake] = useState(50);
   const [showAlts, setShowAlts] = useState(false);
   const [pulseKey, setPulseKey] = useState(0);
@@ -108,8 +111,13 @@ const MasterSignal = memo(() => {
     );
   }
 
-  const winner = ranked[0];
-  const alternatives = ranked.slice(1, 5);
+  const strictPool = ranked.filter((c) => c.strictValid);
+  const winnerRaw = ranked[0];
+  const winner = strictValidation && strictPool.length > 0 ? strictPool[0] : winnerRaw;
+  const noStrictMatch = strictValidation && strictPool.length === 0;
+  const alternatives = strictValidation
+    ? strictPool.slice(1, 5)
+    : ranked.slice(1, 5);
 
   const lastResolved = recentWinners.find((w) => w.resolved);
   const recentHits = recentWinners.filter((w) => w.resolved && w.hit).length;
@@ -132,6 +140,88 @@ const MasterSignal = memo(() => {
   if (winner.unifiedCandidate) enginesUsed.push("análise unificada (Markov + recência + IA)");
 
   const newestSpin = spins[0];
+
+  if (noStrictMatch) {
+    return (
+      <Card padding="md" accent="warn">
+        {previousOutcome && (
+          <div
+            key={pulseKey}
+            className={`mb-2 rounded-xl border px-3 py-2 flex items-center gap-2 [animation:pop_0.5s_ease-out] ${
+              previousOutcome.hit ? "border-emerald-500 bg-emerald-950/40" : "border-red-500/50 bg-red-950/30"
+            }`}
+          >
+            <span
+              className={`${ballBg(previousOutcome.actual)} text-white text-base font-black w-9 h-9 rounded-full flex items-center justify-center ring-2 ring-white/40`}
+            >
+              {previousOutcome.actual}
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">
+                Saiu o {previousOutcome.actual} ·{" "}
+                {previousOutcome.hit ? (
+                  <span className="text-emerald-300">✓ acertou {previousOutcome.predicted}</span>
+                ) : (
+                  <span className="text-red-300">✗ errou (anterior: {previousOutcome.predicted})</span>
+                )}
+              </div>
+              <div className="text-[11px] font-bold text-white">⚡ Nenhum padrão validado — aguardando</div>
+            </div>
+          </div>
+        )}
+        <SectionHeader
+          title={
+            <span className="flex items-center gap-2">
+              ⏳ AGUARDE
+              <Pill accent="warn">SEM SINAL VALIDADO</Pill>
+              {recentWinners.length >= 3 && (
+                <span className="text-[9px] font-mono text-neutral-500">
+                  últimos: <span className="text-emerald-300">{recentHits}✓</span>/
+                  <span className="text-red-300">{recentMisses}✗</span>
+                </span>
+              )}
+            </span>
+          }
+          eyebrow="Modo estrito: só emite quando passa Wilson > baseline×1.25 + ≥10 amostras + agente concorda"
+          subtitle={
+            <span className="text-[10px] text-neutral-500">
+              {ranked.length} candidatos ativos mas nenhum atende critério estrito.{" "}
+              {summary.validatedCount} validados parcialmente · {summary.autoDiscoveredTotal} auto-aprendidos
+              {lastResolved && (
+                <span className="ml-1">
+                  · último{" "}
+                  {lastResolved.hit ? (
+                    <span className="text-emerald-300">acertou</span>
+                  ) : (
+                    <span className="text-red-300">errou</span>
+                  )}
+                </span>
+              )}
+            </span>
+          }
+        />
+        <div className="rounded-2xl border-2 border-amber-500/40 bg-gradient-to-br from-amber-950/30 to-neutral-950 p-4 mb-2 text-center">
+          <div className="text-5xl mb-2">⏳</div>
+          <div className="text-2xl font-black text-amber-300 mb-1">Não apostar agora</div>
+          <div className="text-[11px] text-neutral-400 max-w-md mx-auto leading-snug">
+            O sistema está rastreando {ranked.length} candidatos ativos, mas nenhum
+            atingiu validação suficiente (≥10 amostras + Wilson 25% acima do acaso +
+            confirmação do agente IA). Esperar é melhor que apostar em ruído.
+          </div>
+          <div className="text-[10px] text-emerald-300 mt-2 font-bold">
+            Melhor candidato atual: {winnerRaw.targetLabel} ({(winnerRaw.prob * 100).toFixed(1)}%) — aguardando validação
+          </div>
+        </div>
+        <div className="flex items-center justify-center gap-2 text-[10px] text-neutral-500">
+          <button onClick={toggleStrict} className="hover:text-amber-300">
+            {strictValidation ? "▣ validação estrita ON" : "▢ estrita OFF"}
+          </button>
+          <span>·</span>
+          <span>desligue se quiser ver sinais fracos também</span>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card
@@ -182,11 +272,24 @@ const MasterSignal = memo(() => {
           </span>
         }
         eyebrow={
-          summary.validationLevel === "strong"
-            ? "✓ Padrão validado — enviando jogada acertiva"
-            : summary.validationLevel === "weak"
-            ? "~ Padrão fraco — sinal disponível mas sem validação forte"
-            : "⏳ Aguardando padrão validado"
+          <span className="flex items-center gap-2">
+            {winner.strictValid
+              ? "✓ Padrão validado — Wilson + ≥10 amostras + agente concorda"
+              : summary.validationLevel === "strong"
+              ? "✓ Padrão forte (mas não estrito) — pode emitir"
+              : summary.validationLevel === "weak"
+              ? "~ Padrão fraco — sinal disponível com ressalva"
+              : "⏳ Mostrando melhor candidato (validação parcial)"}
+            <button
+              onClick={toggleStrict}
+              className={`text-[9px] px-2 py-0.5 rounded font-bold ${
+                strictValidation ? "bg-emerald-700 text-white" : "bg-neutral-800 text-neutral-400"
+              }`}
+              title={strictValidation ? "Modo estrito ON — só emite com validação dura" : "Modo estrito OFF — emite sempre o melhor"}
+            >
+              {strictValidation ? "🔒 estrita" : "📶 normal"}
+            </button>
+          </span>
         }
         subtitle={
           <span className="text-[10px] text-neutral-500">
@@ -297,7 +400,7 @@ const MasterSignal = memo(() => {
         </div>
         {newestSpin && (
           <div className="text-[9px] text-neutral-600 mt-1 text-center">
-            calculado após giro {newestSpin.n} ·{" "}
+            calculado após giro {newestSpin.n} sobre {history.length} giros ·{" "}
             {summary.bankSize} padrões + {summary.autoDiscoveredTotal} auto + {summary.validatedCount} validados
           </div>
         )}

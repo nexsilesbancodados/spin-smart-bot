@@ -149,7 +149,7 @@ export interface MinedDiscovery extends Omit<DiscoveredRule, "hits" | "attempts"
 export const mineRecentPatterns = (history: number[], spinCount: number): MinedDiscovery[] => {
   if (history.length < 8) return [];
   const out: MinedDiscovery[] = [];
-  const sample = history.slice(0, Math.min(200, history.length));
+  const sample = history.slice(0, Math.min(500, history.length));
   for (const m of MINERS) {
     for (const k of NGRAM_LENGTHS) {
       const counts = new Map<string, { occ: number; nexts: Map<string, number> }>();

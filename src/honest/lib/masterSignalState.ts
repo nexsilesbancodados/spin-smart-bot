@@ -50,17 +50,25 @@ export const useMasterSignalState = create<MasterSignalState>((set, get) => ({
   reset: () => set({ recent: [], shownAtSpins: 0 }),
 }));
 
+const MISS_COOLDOWN_SPINS = 5;
+
 export const computeAntiStickPenalty = (
   numbersKey: string,
   currentSpinCount: number
-): { penalty: number; recentCount: number; recentMisses: number } => {
+): { penalty: number; recentCount: number; recentMisses: number; cooldown: boolean } => {
   const recent = useMasterSignalState.getState().recent;
   let recentCount = 0;
   let recentMisses = 0;
+  let cooldown = false;
   for (const w of recent) {
-    if (w.numbersKey === numbersKey && currentSpinCount - w.shownAtSpinCount <= WINDOW) {
+    if (w.numbersKey !== numbersKey) continue;
+    const age = currentSpinCount - w.shownAtSpinCount;
+    if (age <= WINDOW) {
       recentCount++;
       if (w.resolved && w.hit === false) recentMisses++;
+    }
+    if (w.resolved && w.hit === false && age <= MISS_COOLDOWN_SPINS) {
+      cooldown = true;
     }
   }
   let penalty = 1.0;
@@ -69,5 +77,6 @@ export const computeAntiStickPenalty = (
   else if (recentCount >= 2) penalty *= 0.85;
   if (recentMisses >= 2) penalty *= 0.7;
   if (recentMisses >= 3) penalty *= 0.5;
-  return { penalty, recentCount, recentMisses };
+  if (cooldown) penalty *= 0.4;
+  return { penalty, recentCount, recentMisses, cooldown };
 };

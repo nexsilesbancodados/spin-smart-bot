@@ -380,7 +380,7 @@ export const startAgentLoop = () => {
     recordCurrentActivations(historyForLearning, newest.t);
 
     const spinCount = historyForLearning.length;
-    if (spinCount % 5 === 0 && spinCount >= 10) {
+    if (spinCount % 3 === 0 && spinCount >= 10) {
       const mined = mineRecentPatterns(historyForLearning, spinCount);
       if (mined.length > 0) useAutoDiscovery.getState().registerDiscoveries(mined);
     }
