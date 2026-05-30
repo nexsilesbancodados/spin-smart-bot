@@ -46,6 +46,8 @@ const MasterSignal = memo(() => {
   const resolveEngineContribution = useEngineWeights((s) => s.resolveContribution);
   const [stake, setStake] = useState(50);
   const [showAlts, setShowAlts] = useState(false);
+  const [pulseKey, setPulseKey] = useState(0);
+  const [previousOutcome, setPreviousOutcome] = useState<{ hit: boolean; predicted: string; actual: number } | null>(null);
   const prevSpinCountRef = useRef(spins.length);
 
   const history = useMemo(() => spins.map((s) => s.n), [spins]);
@@ -67,7 +69,10 @@ const MasterSignal = memo(() => {
         const previousNumbers = candidateNumbers[0] ?? [];
         const hit = previousNumbers.includes(newest);
         resolveEngineContribution(previousWinner.shownAtSpinCount, hit);
+        const previousLabel = ranked.find((r) => r.numbersKey === previousWinner.numbersKey)?.targetLabel ?? "anterior";
+        setPreviousOutcome({ hit, predicted: previousLabel, actual: newest });
       }
+      setPulseKey((k) => k + 1);
     }
     prevSpinCountRef.current = spins.length;
   }, [spins, ranked, resolveLast, resolveEngineContribution, recentWinners]);
@@ -126,11 +131,43 @@ const MasterSignal = memo(() => {
   if (winner.patternRule) enginesUsed.push("padrões aprendidos");
   if (winner.unifiedCandidate) enginesUsed.push("análise unificada (Markov + recência + IA)");
 
+  const newestSpin = spins[0];
+
   return (
     <Card
       padding="md"
       accent={accent === "good" ? "good" : accent === "bad" ? "bad" : "warn"}
     >
+      {previousOutcome && (
+        <div
+          key={pulseKey}
+          className={`mb-2 rounded-xl border px-3 py-2 flex items-center gap-2 [animation:pop_0.5s_ease-out] ${
+            previousOutcome.hit
+              ? "border-emerald-500 bg-emerald-950/40"
+              : "border-red-500/50 bg-red-950/30"
+          }`}
+        >
+          <span
+            className={`${ballBg(previousOutcome.actual)} text-white text-base font-black w-9 h-9 rounded-full flex items-center justify-center ring-2 ring-white/40`}
+          >
+            {previousOutcome.actual}
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">
+              Saiu o {previousOutcome.actual} ·{" "}
+              {previousOutcome.hit ? (
+                <span className="text-emerald-300">✓ acertou {previousOutcome.predicted}</span>
+              ) : (
+                <span className="text-red-300">✗ errou (anterior: {previousOutcome.predicted})</span>
+              )}
+            </div>
+            <div className="text-[11px] font-bold text-white">
+              ⚡ Nova jogada calculada — TUDO integrado em 1 sinal
+            </div>
+          </div>
+        </div>
+      )}
+
       <SectionHeader
         title={
           <span className="flex items-center gap-2">
@@ -256,8 +293,14 @@ const MasterSignal = memo(() => {
         </div>
 
         <div className="text-[9px] text-neutral-500 mt-1 text-center">
-          motores: {enginesUsed.join(" + ")}
+          motores ativos ({winner.engines.length}): {winner.engines.join(" · ")}
         </div>
+        {newestSpin && (
+          <div className="text-[9px] text-neutral-600 mt-1 text-center">
+            calculado após giro {newestSpin.n} ·{" "}
+            {summary.bankSize} padrões + {summary.autoDiscoveredTotal} auto + {summary.validatedCount} validados
+          </div>
+        )}
 
         {numbersPreview.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2 justify-center">
