@@ -54,7 +54,14 @@ const RED_SET = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 
 const colorOfNum = (n: number): "🔴" | "⚫" | "🟢" =>
   n === 0 ? "🟢" : RED_SET.has(n) ? "🔴" : "⚫";
 
-const ALLOWED_TYPES = new Set(["color", "dozen", "parity"]);
+const ALLOWED_TYPES = new Set([
+  "color",
+  "dozen",
+  "parity",
+  "highlow",
+  "column",
+  "sector",
+]);
 
 const typeEmoji = (type: string, label: string): string => {
   if (type === "dozen") {
@@ -63,15 +70,33 @@ const typeEmoji = (type: string, label: string): string => {
     if (label.includes("3ª")) return "3️⃣";
     return "🎲";
   }
+  if (type === "column") {
+    if (label.includes("1ª")) return "🟦";
+    if (label.includes("2ª")) return "🟪";
+    if (label.includes("3ª")) return "🟩";
+    return "📊";
+  }
   if (type === "color") {
     if (/vermelho/i.test(label)) return "🔴";
     if (/preto/i.test(label)) return "⚫";
     return "🎨";
   }
   if (type === "parity") {
-    if (/par(?!c)/i.test(label) && !/ímpar/i.test(label)) return "2️⃣";
-    if (/ímpar|impar/i.test(label)) return "1️⃣";
+    if (/par(?!c)/i.test(label) && !/ímpar/i.test(label)) return "♟";
+    if (/ímpar|impar/i.test(label)) return "♙";
     return "⚖";
+  }
+  if (type === "highlow") {
+    if (/baixo|1-18|1–18/i.test(label)) return "🔽";
+    if (/alto|19-36|19–36/i.test(label)) return "🔼";
+    return "↕";
+  }
+  if (type === "sector") {
+    if (/voisins/i.test(label)) return "🟢";
+    if (/tiers/i.test(label)) return "🟡";
+    if (/orphelins/i.test(label)) return "🟠";
+    if (/jeu zero|jeu zéro/i.test(label)) return "0️⃣";
+    return "🌀";
   }
   return "🎯";
 };

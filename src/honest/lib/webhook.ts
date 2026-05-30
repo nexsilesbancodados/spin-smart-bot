@@ -249,7 +249,14 @@ const tryRelay = async (
   }
 };
 
-const WEBHOOK_ALLOWED_TYPES = new Set(["color", "dozen", "parity"]);
+const WEBHOOK_ALLOWED_TYPES = new Set([
+  "color",
+  "dozen",
+  "parity",
+  "highlow",
+  "column",
+  "sector",
+]);
 
 export const fireMasterWebhook = async (
   candidate: MasterCandidate,
