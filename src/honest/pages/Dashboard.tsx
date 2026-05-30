@@ -7,6 +7,7 @@ const AutoBetPanel = lazy(() => import("../components/AutoBetPanel"));
 const MasterBacktest = lazy(() => import("../components/MasterBacktest"));
 const BotEnsembleStatus = lazy(() => import("../components/BotEnsembleStatus"));
 const AIInsights = lazy(() => import("../components/AIInsights"));
+const IntegrationsStatus = lazy(() => import("../components/IntegrationsStatus"));
 const StrategyPresets = lazy(() => import("../components/StrategyPresets"));
 const BetTracker = lazy(() => import("../components/BetTracker"));
 
@@ -35,6 +36,7 @@ const Dashboard = memo(() => {
           }
         >
           <RealityCheckBanner />
+          <IntegrationsStatus />
           <StrategyPresets />
           <BotEnsembleStatus />
           <MasterBacktest />
