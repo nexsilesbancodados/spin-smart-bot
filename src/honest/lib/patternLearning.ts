@@ -39,6 +39,41 @@ const wilsonLowerBound = (hits: number, attempts: number, z = 1.96): number => {
   return Math.max(0, center - margin);
 };
 
+export const wilsonInterval = (
+  hits: number,
+  attempts: number,
+  z = 1.96
+): { lower: number; upper: number; center: number } => {
+  if (attempts === 0) return { lower: 0, upper: 0, center: 0 };
+  const p = hits / attempts;
+  const denom = 1 + (z * z) / attempts;
+  const center = (p + (z * z) / (2 * attempts)) / denom;
+  const margin = (z * Math.sqrt((p * (1 - p)) / attempts + (z * z) / (4 * attempts * attempts))) / denom;
+  return {
+    lower: Math.max(0, center - margin),
+    upper: Math.min(1, center + margin),
+    center,
+  };
+};
+
+export const bayesianCredibleInterval = (
+  hits: number,
+  attempts: number,
+  priorAlpha = 1,
+  priorBeta = 1
+): { mean: number; lower: number; upper: number } => {
+  const a = hits + priorAlpha;
+  const b = attempts - hits + priorBeta;
+  const mean = a / (a + b);
+  const variance = (a * b) / ((a + b) * (a + b) * (a + b + 1));
+  const stddev = Math.sqrt(variance);
+  return {
+    mean,
+    lower: Math.max(0, mean - 1.96 * stddev),
+    upper: Math.min(1, mean + 1.96 * stddev),
+  };
+};
+
 export const usePatternLearning = create<PatternLearningStore>()(
   persist(
     (set, get) => ({
@@ -162,11 +197,13 @@ export const recordCurrentActivations = (history: number[], spinT: number): numb
 export const summarizeLearning = () => {
   const { stats, totalLearned } = usePatternLearning.getState();
   const bank = patternBankSize();
+  const ruleMap = new Map(getPatternBank().map((r) => [r.id, r]));
   let tracked = 0;
   let totalHits = 0;
   let totalAttempts = 0;
   let bestWeight = 0;
   let bestId = "";
+  const byGroup: Record<string, { hits: number; attempts: number; rules: number }> = {};
   for (const [id, s] of Object.entries(stats)) {
     if (s.attempts > 0) {
       tracked++;
@@ -175,6 +212,14 @@ export const summarizeLearning = () => {
       if (s.weight > bestWeight) {
         bestWeight = s.weight;
         bestId = id;
+      }
+      const rule = ruleMap.get(id);
+      if (rule) {
+        const g = byGroup[rule.group] || { hits: 0, attempts: 0, rules: 0 };
+        g.hits += s.hits;
+        g.attempts += s.attempts;
+        g.rules += 1;
+        byGroup[rule.group] = g;
       }
     }
   }
@@ -187,5 +232,54 @@ export const summarizeLearning = () => {
     overallAccuracy: totalAttempts > 0 ? totalHits / totalAttempts : 0,
     bestWeight,
     bestId,
+    byGroup,
   };
+};
+
+export interface RankedLearnedPattern {
+  ruleId: string;
+  group: string;
+  description: string;
+  hits: number;
+  attempts: number;
+  accuracy: number;
+  wilsonLower: number;
+  wilsonUpper: number;
+  bayesianMean: number;
+  bayesianLower: number;
+  bayesianUpper: number;
+  lastHitAt: number | null;
+  lastAttemptAt: number | null;
+}
+
+export const getRankedLearnedPatterns = (
+  minAttempts = 5
+): RankedLearnedPattern[] => {
+  const { stats } = usePatternLearning.getState();
+  const ruleMap = new Map(getPatternBank().map((r) => [r.id, r]));
+  const out: RankedLearnedPattern[] = [];
+  for (const [id, s] of Object.entries(stats)) {
+    if (s.attempts < minAttempts) continue;
+    const rule = ruleMap.get(id);
+    if (!rule) continue;
+    const wilson = wilsonInterval(s.hits, s.attempts);
+    const bayes = bayesianCredibleInterval(s.hits, s.attempts);
+    out.push({
+      ruleId: id,
+      group: rule.group,
+      description: rule.description,
+      hits: s.hits,
+      attempts: s.attempts,
+      accuracy: s.hits / s.attempts,
+      wilsonLower: wilson.lower,
+      wilsonUpper: wilson.upper,
+      bayesianMean: bayes.mean,
+      bayesianLower: bayes.lower,
+      bayesianUpper: bayes.upper,
+      lastHitAt: s.lastHitAt,
+      lastAttemptAt: s.lastAttemptAt,
+    });
+  }
+  out.sort((a, b) => b.wilsonLower - a.wilsonLower);
+  return out;
 };

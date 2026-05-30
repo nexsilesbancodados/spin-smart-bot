@@ -854,6 +854,163 @@ const generateDozenZigzag = (): PatternRule[] => {
   return out;
 };
 
+const generateSplits = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  const splits: Array<{ a: number; b: number }> = [];
+  for (let row = 0; row < 12; row++) {
+    const base = row * 3 + 1;
+    splits.push({ a: base, b: base + 1 });
+    splits.push({ a: base + 1, b: base + 2 });
+  }
+  for (let n = 1; n <= 33; n++) splits.push({ a: n, b: n + 3 });
+  splits.push({ a: 0, b: 1 });
+  splits.push({ a: 0, b: 2 });
+  splits.push({ a: 0, b: 3 });
+  for (const s of splits) {
+    out.push({
+      id: `split-${s.a}-${s.b}`,
+      group: "split-after-anchor",
+      description: `Após ${s.a} ou ${s.b} → split ${s.a}/${s.b}`,
+      activate(history) {
+        if (history.length < 1) return null;
+        const head = history[0];
+        if (head !== s.a && head !== s.b) return null;
+        const set = new Set([s.a, s.b]);
+        return {
+          numbers: set,
+          payout: 17,
+          baseline: 2 / SLOTS,
+          targetLabel: `Cavalo ${s.a}/${s.b}`,
+          targetType: "number",
+          strength: 0.4,
+        };
+      },
+    });
+  }
+  return out;
+};
+
+const generateCorners = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (let row = 0; row < 11; row++) {
+    for (let col = 0; col < 2; col++) {
+      const tl = row * 3 + col + 1;
+      const tr = tl + 1;
+      const bl = tl + 3;
+      const br = tr + 3;
+      const set = new Set([tl, tr, bl, br]);
+      out.push({
+        id: `corner-${tl}`,
+        group: "corner-after-anchor",
+        description: `Após ${tl} ou vizinho na quina → quina ${tl}/${tr}/${bl}/${br}`,
+        activate(history) {
+          if (history.length < 1) return null;
+          if (!set.has(history[0])) return null;
+          return {
+            numbers: set,
+            payout: 8,
+            baseline: 4 / SLOTS,
+            targetLabel: `Quina ${tl}-${br}`,
+            targetType: "number",
+            strength: 0.45,
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateStreets = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (let row = 0; row < 12; row++) {
+    const set = new Set([row * 3 + 1, row * 3 + 2, row * 3 + 3]);
+    for (const lookback of [4, 10]) {
+      out.push({
+        id: `street-${row}-l${lookback}`,
+        group: "street-cluster",
+        description: `≥2 da rua ${row * 3 + 1}-${row * 3 + 3} em ${lookback} giros`,
+        activate(history) {
+          if (history.length < lookback) return null;
+          const slice = history.slice(0, lookback);
+          let count = 0;
+          for (const n of slice) if (set.has(n)) count++;
+          if (count < 2) return null;
+          return {
+            numbers: set,
+            payout: 11,
+            baseline: 3 / SLOTS,
+            targetLabel: `Rua ${row * 3 + 1}-${row * 3 + 3}`,
+            targetType: "number",
+            strength: Math.min(1, count / 4),
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateSixains = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  for (let row = 0; row < 11; row++) {
+    const start = row * 3 + 1;
+    const set = new Set([start, start + 1, start + 2, start + 3, start + 4, start + 5]);
+    for (const lookback of [6, 14]) {
+      out.push({
+        id: `sixain-${row}-l${lookback}`,
+        group: "sixain-cluster",
+        description: `≥3 do sixain ${start}-${start + 5} em ${lookback} giros`,
+        activate(history) {
+          if (history.length < lookback) return null;
+          const slice = history.slice(0, lookback);
+          let count = 0;
+          for (const n of slice) if (set.has(n)) count++;
+          if (count < 3) return null;
+          return {
+            numbers: set,
+            payout: 5,
+            baseline: 6 / SLOTS,
+            targetLabel: `Sixain ${start}-${start + 5}`,
+            targetType: "number",
+            strength: Math.min(1, count / 6),
+          };
+        },
+      });
+    }
+  }
+  return out;
+};
+
+const generateTrios = (): PatternRule[] => {
+  const out: PatternRule[] = [];
+  const trios: Array<{ key: string; set: Set<number>; label: string }> = [
+    { key: "0-1-2", set: new Set([0, 1, 2]), label: "Trio 0/1/2" },
+    { key: "0-2-3", set: new Set([0, 2, 3]), label: "Trio 0/2/3" },
+    { key: "0-1-2-3", set: new Set([0, 1, 2, 3]), label: "Primeiros 4" },
+  ];
+  for (const t of trios) {
+    out.push({
+      id: `trio-${t.key}`,
+      group: "trio-low-after-anchor",
+      description: `Após número ≤3 → ${t.label}`,
+      activate(history) {
+        if (history.length < 1) return null;
+        if (history[0] > 3) return null;
+        return {
+          numbers: t.set,
+          payout: t.set.size === 4 ? 8 : 11,
+          baseline: t.set.size / SLOTS,
+          targetLabel: t.label,
+          targetType: "number",
+          strength: 0.5,
+        };
+      },
+    });
+  }
+  return out;
+};
+
 const generateColorRegionCombo = (): PatternRule[] => {
   const out: PatternRule[] = [];
   const colorSets = [
@@ -914,6 +1071,11 @@ export const getPatternBank = (): PatternRule[] => {
     ...generateWheelQuadrants(),
     ...generateTableRegions(),
     ...generateColorRegionCombo(),
+    ...generateSplits(),
+    ...generateCorners(),
+    ...generateStreets(),
+    ...generateSixains(),
+    ...generateTrios(),
   ];
   return CACHED_BANK;
 };

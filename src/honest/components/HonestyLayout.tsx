@@ -61,6 +61,7 @@ const groups: NavGroup[] = [
     primary: "/analise",
     routes: [
       { to: "/analise", label: "Análise" },
+      { to: "/duzias", label: "🎯 Dúzias (deep)" },
       { to: "/padroes", label: "Padrões" },
       { to: "/correlacoes", label: "Correlações" },
       { to: "/comparacao", label: "Comparação A vs B" },
