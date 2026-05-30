@@ -7,6 +7,7 @@ import { useSignalAgent } from "../lib/signalAgent";
 import { useUiPrefs } from "../lib/uiPrefs";
 import SignalPanel from "../components/SignalPanel";
 import BestBetRecommendation from "../components/BestBetRecommendation";
+import DozenColumnSignal from "../components/DozenColumnSignal";
 import AnomalyBanner from "../components/AnomalyBanner";
 import TiltAlerts from "../components/TiltAlerts";
 import Scoreboard from "../components/Scoreboard";
@@ -77,6 +78,8 @@ const Dashboard = memo(() => {
       <BestBetRecommendation />
 
       <SignalPanel />
+
+      <DozenColumnSignal />
 
       {!compact && <Scoreboard />}
       {compact && (
