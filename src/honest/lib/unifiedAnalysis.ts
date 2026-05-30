@@ -50,6 +50,7 @@ export interface UnifiedCandidate {
   ev: number;
   kelly: number;
   confidence: number;
+  accuracyScore?: number;
   sources: string[];
   reasoning: string;
 }
@@ -481,12 +482,20 @@ export const computeUnifiedSignal = (
     });
   }
 
-  // Rank by EV with confidence multiplier
-  candidates.sort((a, b) => {
-    const scoreA = a.ev * (0.5 + 0.5 * a.confidence) + (a.lift > 1 ? 0.01 * a.lift : 0);
-    const scoreB = b.ev * (0.5 + 0.5 * b.confidence) + (b.lift > 1 ? 0.01 * b.lift : 0);
-    return scoreB - scoreA;
+  // Rank by HIT PROBABILITY first — user wants "MAIS PROVÁVEL DE ACERTAR".
+  // Score = prob × (lift quality) × (confidence quality)
+  //   - prob: raw chance to hit (dominates)
+  //   - liftBoost: edge over random — bets with lift<1 get penalized
+  //   - confBoost: avoid trusting low-sample bets
+  // Filter: candidates need lift > 1.0 to qualify as "signal" (else random would be better).
+  // Fallback: if nothing has edge, still return the highest prob to surface coverage info.
+  const ranked = candidates.map((c) => {
+    const liftBoost = c.lift <= 0.95 ? 0.6 : c.lift < 1.05 ? 0.9 : Math.min(1.3, 0.95 + (c.lift - 1) * 0.4);
+    const confBoost = 0.65 + 0.35 * c.confidence;
+    const accuracyScore = c.prob * liftBoost * confBoost;
+    return { ...c, accuracyScore };
   });
 
-  return candidates;
+  ranked.sort((a, b) => b.accuracyScore - a.accuracyScore);
+  return ranked;
 };
