@@ -37,55 +37,54 @@ interface RelayRequest {
   context?: {
     spinsSeen?: number;
     validatedCount?: number;
+    lastSpin?: number | null;
+    recentHits?: number;
+    recentMisses?: number;
+    recentTotal?: number;
   };
 }
 
-const buildDiscordPayload = (req: RelayRequest) => {
+const RED_SET = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+const colorOfNum = (n: number): "🔴" | "⚫" | "🟢" =>
+  n === 0 ? "🟢" : RED_SET.has(n) ? "🔴" : "⚫";
+
+const ALLOWED_TYPES = new Set(["color", "dozen", "parity"]);
+
+const buildDiscordPayload = (req: RelayRequest): unknown | null => {
   if (req.task === "test") {
     return {
-      content:
-        "🧪 Teste do Roleta Vision via Supabase relay — webhook funcionando.",
+      content: "🧪 Teste do Roleta Vision — webhook OK.",
     };
   }
   const c = req.candidate ?? {};
   const ctx = req.context ?? {};
+  const type = (c.targetType || "").toLowerCase();
+  if (!ALLOWED_TYPES.has(type)) return null;
   const label = c.targetLabel || "Sinal";
-  const type = c.targetType || "geral";
   const prob = c.prob ?? 0;
   const payout = c.payout ?? 0;
-  const coverage = c.coverage ?? 0;
-  const lift = c.lift ?? 0;
-  const baseline = c.baseline ?? 0;
-  const confidence = c.confidence ?? 0;
-  const numbers = c.numbers ?? [];
-  const headBalls =
-    numbers.slice(0, 10).join(", ") + (numbers.length > 10 ? "…" : "");
+  const lastSpin = ctx.lastSpin;
+  const lastSpinLine =
+    typeof lastSpin === "number"
+      ? `\n${colorOfNum(lastSpin)} Último: **${lastSpin}**`
+      : "";
+  const hits = ctx.recentHits ?? 0;
+  const misses = ctx.recentMisses ?? 0;
+  const total = ctx.recentTotal ?? hits + misses;
+  const hitRate = total > 0 ? (hits / total) * 100 : 0;
+  const placarLine =
+    total > 0
+      ? `\n📊 Placar: **${hits}✓ / ${misses}✗** (${hitRate.toFixed(0)}% acerto · últimos ${total})`
+      : "";
   return {
     embeds: [
       {
         title: `🎯 ${label}`,
         description:
-          `**Chance combinada:** ${(prob * 100).toFixed(1)}%\n` +
-          `**Paga:** ${payout.toFixed(1)}:1 · cobre ${coverage} nº\n` +
-          `**Lift:** ${lift.toFixed(2)}× o acaso (${(baseline * 100).toFixed(1)}%)\n` +
-          `**Confiança:** ${(confidence * 100).toFixed(0)}%`,
+          `**${(prob * 100).toFixed(1)}%** de chance · paga **${payout.toFixed(0)}:1**` +
+          lastSpinLine +
+          placarLine,
         color: c.strictValid ? 5763719 : 15844367,
-        fields: [
-          { name: "Tipo", value: type, inline: true },
-          {
-            name: "Validação",
-            value: c.strictValid ? "✓ Estrito" : "○ Parcial",
-            inline: true,
-          },
-          { name: "Cobertura", value: headBalls || "—", inline: false },
-          {
-            name: "Contexto",
-            value: `${ctx.spinsSeen ?? 0} giros · ${ctx.validatedCount ?? 0} sinais validados no banco`,
-            inline: false,
-          },
-        ],
-        timestamp: new Date().toISOString(),
-        footer: { text: "Roleta Vision · sinal automático · casa retém 2,7%" },
       },
     ],
   };
@@ -132,6 +131,12 @@ Deno.serve(async (req) => {
     }
 
     const payload = buildDiscordPayload(body);
+    if (!payload) {
+      return new Response(
+        JSON.stringify({ ok: true, skipped: "type-not-allowed" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const discordRes = await fetch(discordUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

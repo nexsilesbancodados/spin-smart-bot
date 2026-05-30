@@ -149,7 +149,14 @@ let relayAvailable: boolean | null = null;
 
 const tryRelay = async (
   candidate: MasterCandidate,
-  context: { spinsSeen: number; validatedCount: number }
+  context: {
+    spinsSeen: number;
+    validatedCount: number;
+    lastSpin?: number | null;
+    recentHits?: number;
+    recentMisses?: number;
+    recentTotal?: number;
+  }
 ): Promise<{ ok: boolean; error?: string }> => {
   if (relayAvailable === false) return { ok: false, error: "relay-disabled" };
   try {
@@ -195,12 +202,22 @@ const tryRelay = async (
   }
 };
 
+const WEBHOOK_ALLOWED_TYPES = new Set(["color", "dozen", "parity"]);
+
 export const fireMasterWebhook = async (
   candidate: MasterCandidate,
-  context: { spinsSeen: number; validatedCount: number }
+  context: {
+    spinsSeen: number;
+    validatedCount: number;
+    lastSpin?: number | null;
+    recentHits?: number;
+    recentMisses?: number;
+    recentTotal?: number;
+  }
 ): Promise<void> => {
   const { config, recordFired } = useWebhook.getState();
   if (candidate.confidence < config.minConfidence) return;
+  if (!WEBHOOK_ALLOWED_TYPES.has(candidate.targetType.toLowerCase())) return;
 
   // Try server-side relay first (URL kept in Supabase secrets, never in client)
   const relayResult = await tryRelay(candidate, context);

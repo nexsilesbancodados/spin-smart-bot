@@ -125,11 +125,16 @@ const MasterSignal = memo(() => {
       `Chance ${(top.prob * 100).toFixed(1)}% · paga ${top.payout.toFixed(1)}:1 · cobre ${top.coverage} nº`,
       "/icon-192.png"
     );
+    const resolvedRecent = recentWinners.filter((w) => w.resolved);
     fireMasterWebhook(top, {
       spinsSeen: history.length,
       validatedCount: summary.validatedCount,
+      lastSpin: spins[0]?.n ?? null,
+      recentHits: resolvedRecent.filter((w) => w.hit === true).length,
+      recentMisses: resolvedRecent.filter((w) => w.hit === false).length,
+      recentTotal: resolvedRecent.length,
     }).catch(() => undefined);
-  }, [ranked, soundEnabled, history.length, summary.validatedCount]);
+  }, [ranked, soundEnabled, history.length, summary.validatedCount, spins, recentWinners]);
 
   useEffect(() => {
     if (!autoBetEnabled || autoBetPaused) return;
