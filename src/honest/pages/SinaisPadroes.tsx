@@ -1,7 +1,9 @@
 import { memo, useMemo, useState } from "react";
 import { useHonestStore } from "../lib/store";
+import { useSignalAgent } from "../lib/signalAgent";
 import { runPatternBank, summarizeLearning, ActivatedRule } from "../lib/patternLearning";
 import { activateDiscovered, useAutoDiscovery } from "../lib/autoDiscovery";
+import { computeMasterSignal } from "../lib/masterSignal";
 import { colorOf } from "../lib/wheel";
 import { Card, PageContainer, SectionHeader, Pill } from "../components/ui";
 
@@ -31,11 +33,24 @@ const ballBg = (n: number) => {
 
 const SinaisPadroes = memo(() => {
   const spins = useHonestStore((s) => s.spins);
+  const latest = useSignalAgent((s) => s.latest);
   const autoRules = useAutoDiscovery((s) => s.rules);
   const totalDiscovered = useAutoDiscovery((s) => s.totalDiscovered);
   const [filter, setFilter] = useState<"all" | "validated" | "auto">("all");
 
   const history = useMemo(() => spins.map((s) => s.n), [spins]);
+
+  const master = useMemo(
+    () => computeMasterSignal(history, latest),
+    [history, latest]
+  );
+  const masterWinner = master.ranked[0];
+  const masterFamilies = useMemo(() => {
+    const families = new Set<string>();
+    if (masterWinner?.patternRule) families.add(masterWinner.patternRule.group);
+    if (masterWinner?.unifiedCandidate) families.add(`unified-${masterWinner.unifiedCandidate.kind}`);
+    return families;
+  }, [masterWinner]);
 
   const familySignals = useMemo<FamilySignal[]>(() => {
     if (history.length < 4) return [];
@@ -125,10 +140,36 @@ const SinaisPadroes = memo(() => {
 
   return (
     <PageContainer>
+      {masterWinner && (
+        <Card padding="md" accent={master.summary.validationLevel === "strong" ? "good" : "warn"}>
+          <div className="text-[10px] uppercase tracking-[0.18em] font-bold text-amber-300 text-center mb-1">
+            {master.summary.validationLevel === "strong"
+              ? "✓ Jogada acertiva (todas análises votaram)"
+              : master.summary.validationLevel === "weak"
+              ? "~ Sinal disponível (validação parcial)"
+              : "⏳ Aguardando padrão validado"}
+          </div>
+          <div className="text-3xl font-black text-white text-center">
+            {masterWinner.targetLabel}
+          </div>
+          <div className="text-center mt-1">
+            <span className="text-2xl font-black font-mono text-emerald-300">
+              {(masterWinner.prob * 100).toFixed(1)}%
+            </span>{" "}
+            <span className="text-[10px] text-neutral-400">
+              · cobre {masterWinner.coverage} nº · paga {masterWinner.payout.toFixed(1)}:1
+            </span>
+          </div>
+          <div className="text-[10px] text-neutral-400 text-center mt-1">
+            Fontes: {masterWinner.engines.join(" + ")} ({master.summary.validatedCount} famílias validadas)
+          </div>
+        </Card>
+      )}
+
       <Card padding="md">
         <SectionHeader
           title="🎯 Sinais por Família de Padrão"
-          eyebrow="Cada tipo tem seu sinal próprio"
+          eyebrow="Cada tipo tem seu sinal — o que aparece no Sinal Mestre vem destas famílias"
           subtitle={
             <span className="text-[10px] text-neutral-500">
               {familySignals.length} famílias ativas · {validatedCount} validadas ·{" "}
@@ -174,11 +215,14 @@ const SinaisPadroes = memo(() => {
                 : sig.attempts >= 5
                 ? "bad"
                 : "neutral";
+              const isMasterPick = masterFamilies.has(sig.group);
               return (
                 <div
                   key={sig.group}
                   className={`rounded-xl border p-2.5 ${
-                    accent === "good"
+                    isMasterPick
+                      ? "border-amber-400 bg-amber-950/40 shadow-lg shadow-amber-500/20"
+                      : accent === "good"
                       ? "border-emerald-600/50 bg-emerald-950/30"
                       : accent === "warn"
                       ? "border-amber-600/50 bg-amber-950/30"
@@ -193,6 +237,7 @@ const SinaisPadroes = memo(() => {
                         <span className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold">
                           {sig.group}
                         </span>
+                        {isMasterPick && <Pill accent="good">🎯 ESCOLHIDA</Pill>}
                         {sig.isAuto && (
                           <Pill accent="warn">auto-aprendido</Pill>
                         )}
