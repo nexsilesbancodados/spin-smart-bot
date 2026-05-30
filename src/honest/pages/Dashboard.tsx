@@ -28,6 +28,7 @@ const EntropyTracker = lazy(() => import("../components/EntropyTracker"));
 const MetaIntelligence = lazy(() => import("../components/MetaIntelligence"));
 const AIInsights = lazy(() => import("../components/AIInsights"));
 const BotEnsembleStatus = lazy(() => import("../components/BotEnsembleStatus"));
+const MasterBacktest = lazy(() => import("../components/MasterBacktest"));
 
 const fmtMoney = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
@@ -144,6 +145,7 @@ const Dashboard = memo(() => {
             </Card>
           }
         >
+          <MasterBacktest />
           <BotEnsembleStatus />
           <AIInsights />
           <MetaIntelligence />
