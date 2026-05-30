@@ -6,6 +6,7 @@ import { colorOf } from "../lib/wheel";
 import { useSignalAgent } from "../lib/signalAgent";
 import { useUiPrefs } from "../lib/uiPrefs";
 import MasterSignal from "../components/MasterSignal";
+import RealityCheckBanner from "../components/RealityCheckBanner";
 import AnomalyBanner from "../components/AnomalyBanner";
 import TiltAlerts from "../components/TiltAlerts";
 import { Card, PageContainer, Button } from "../components/ui";
@@ -52,6 +53,7 @@ const Dashboard = memo(() => {
   const agentEnabled = useSignalAgent((s) => s.config.enabled);
   const compact = useUiPrefs((s) => s.compact);
   const toggleCompact = useUiPrefs((s) => s.toggleCompact);
+  const honestMode = useUiPrefs((s) => s.honestMode);
   const [elapsed, setElapsed] = useState("00:00");
   const [otherSignalsOpen, setOtherSignalsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -80,7 +82,9 @@ const Dashboard = memo(() => {
 
   return (
     <PageContainer>
-      <MasterSignal />
+      <RealityCheckBanner />
+
+      {!honestMode && <MasterSignal />}
 
       <AnomalyBanner />
       <TiltAlerts />
@@ -176,6 +180,16 @@ const Dashboard = memo(() => {
             </Card>
           }
         >
+          {honestMode && (
+            <Card padding="sm" accent="warn">
+              <div className="text-[11px] text-amber-200 text-center leading-snug">
+                ⚠ Modo honesto está ON. Os painéis abaixo são <b>preditivos</b> e foram
+                desativados da tela principal. Mostrados aqui apenas pra você inspecionar — não
+                aposte neles esperando vantagem real.
+              </div>
+            </Card>
+          )}
+          {honestMode && <MasterSignal />}
           <LearnedSignal />
           <UnifiedSignal />
           <BestBetRecommendation />
