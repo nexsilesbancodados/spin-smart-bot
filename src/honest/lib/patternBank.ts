@@ -625,12 +625,6 @@ const WHEEL_QUADRANTS: Array<{ key: string; label: string; set: Set<number> }> =
   { key: "q4", label: "Quadrante NO roleta", set: new Set([9, 22, 18, 29, 7, 28, 12, 35, 3, 26]) },
 ];
 
-const TABLE_REGIONS: Array<{ key: string; label: string; set: Set<number> }> = [
-  { key: "table-left", label: "Mesa esquerda (1-6,…,31-36)", set: new Set([1, 2, 3, 4, 5, 6, 13, 14, 15, 16, 17, 18, 25, 26, 27, 28, 29, 30]) },
-  { key: "table-right", label: "Mesa direita (7-12,…,31-36)", set: new Set([7, 8, 9, 10, 11, 12, 19, 20, 21, 22, 23, 24, 31, 32, 33, 34, 35, 36]) },
-  { key: "table-center", label: "Mesa central (linhas 5-8)", set: new Set([13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]) },
-];
-
 const generateWheelQuadrants = (): PatternRule[] => {
   const out: PatternRule[] = [];
   for (const q of WHEEL_QUADRANTS) {
@@ -669,35 +663,6 @@ const generateWheelQuadrants = (): PatternRule[] => {
             targetLabel: `${q.label} (atrasada)`,
             targetType: "neighbors",
             strength: Math.min(1, gap / 30),
-          };
-        },
-      });
-    }
-  }
-  return out;
-};
-
-const generateTableRegions = (): PatternRule[] => {
-  const out: PatternRule[] = [];
-  for (const r of TABLE_REGIONS) {
-    for (const lookback of [4, 8, 14]) {
-      out.push({
-        id: `table-region-cluster-${r.key}-l${lookback}`,
-        group: "table-region-cluster",
-        description: `≥3 números da ${r.label} nos últimos ${lookback}`,
-        activate(history) {
-          if (history.length < lookback) return null;
-          const slice = history.slice(0, lookback);
-          let count = 0;
-          for (const n of slice) if (r.set.has(n)) count++;
-          if (count < 3) return null;
-          return {
-            numbers: r.set,
-            payout: 35 / r.set.size,
-            baseline: r.set.size / SLOTS,
-            targetLabel: r.label,
-            targetType: "neighbors",
-            strength: Math.min(1, count / 6),
           };
         },
       });
@@ -1072,7 +1037,6 @@ export const getPatternBank = (): PatternRule[] => {
     ...generateRowPatterns(),
     ...generateMirrorPairs(),
     ...generateWheelQuadrants(),
-    ...generateTableRegions(),
     ...generateColorRegionCombo(),
     ...generateSplits(),
     ...generateCorners(),
