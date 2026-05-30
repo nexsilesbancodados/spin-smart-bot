@@ -27,6 +27,7 @@ const Autocorrelation = lazy(() => import("../components/Autocorrelation"));
 const CalibrationCurve = lazy(() => import("../components/CalibrationCurve"));
 const WheelDistanceAnalyzer = lazy(() => import("../components/WheelDistanceAnalyzer"));
 const EntropyTracker = lazy(() => import("../components/EntropyTracker"));
+const MetaIntelligence = lazy(() => import("../components/MetaIntelligence"));
 
 const fmtMoney = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
@@ -173,6 +174,7 @@ const Dashboard = memo(() => {
             </Card>
           }
         >
+          <MetaIntelligence />
           <StrategyPresets />
           <CalibrationCurve />
           <BetCalculator />

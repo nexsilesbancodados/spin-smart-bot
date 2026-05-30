@@ -3,6 +3,7 @@ import { useHonestStore } from "../lib/store";
 import { useSignalAgent } from "../lib/signalAgent";
 import { computeMasterSignal, MasterCandidate } from "../lib/masterSignal";
 import { useMasterSignalState } from "../lib/masterSignalState";
+import { useEngineWeights, summarizeEngines } from "../lib/engineWeights";
 import { usePatternLearning } from "../lib/patternLearning";
 import { colorOf } from "../lib/wheel";
 import { Card, SectionHeader, Pill } from "./ui";
@@ -41,6 +42,8 @@ const MasterSignal = memo(() => {
   const recordShown = useMasterSignalState((s) => s.recordShown);
   const resolveLast = useMasterSignalState((s) => s.resolveLast);
   const recentWinners = useMasterSignalState((s) => s.recent);
+  const recordEngineContribution = useEngineWeights((s) => s.recordContribution);
+  const resolveEngineContribution = useEngineWeights((s) => s.resolveContribution);
   const [stake, setStake] = useState(50);
   const [showAlts, setShowAlts] = useState(false);
   const prevSpinCountRef = useRef(spins.length);
@@ -59,15 +62,24 @@ const MasterSignal = memo(() => {
         return numbers ?? [];
       });
       resolveLast(newest, candidateNumbers);
+      const previousWinner = recentWinners[0];
+      if (previousWinner) {
+        const previousNumbers = candidateNumbers[0] ?? [];
+        const hit = previousNumbers.includes(newest);
+        resolveEngineContribution(previousWinner.shownAtSpinCount, hit);
+      }
     }
     prevSpinCountRef.current = spins.length;
-  }, [spins, ranked, resolveLast, recentWinners]);
+  }, [spins, ranked, resolveLast, resolveEngineContribution, recentWinners]);
 
   useEffect(() => {
     if (ranked.length > 0) {
       recordShown(ranked[0].id, ranked[0].numbersKey, spins.length);
+      if (ranked[0].engines && ranked[0].engines.length > 0) {
+        recordEngineContribution(ranked[0].engines, spins.length);
+      }
     }
-  }, [ranked, recordShown, spins.length]);
+  }, [ranked, recordShown, recordEngineContribution, spins.length]);
 
   if (history.length < 6) {
     return (

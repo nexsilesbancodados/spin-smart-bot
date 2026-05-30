@@ -1,6 +1,7 @@
 import { runPatternBank, ActivatedRule, summarizeLearning, getRankedLearnedPatterns } from "./patternLearning";
 import { computeUnifiedSignal, UnifiedCandidate } from "./unifiedAnalysis";
 import { computeAntiStickPenalty } from "./masterSignalState";
+import { getEngineWeight, useEngineWeights, EngineKind } from "./engineWeights";
 import type { SignalRecord } from "./signalAgent";
 import { DOZEN_1, DOZEN_2, DOZEN_3, COLUMN_1, COLUMN_2, COLUMN_3 } from "./wheel";
 import {
@@ -36,6 +37,7 @@ export interface MasterCandidate {
   unifiedCandidate: UnifiedCandidate | null;
   sources: string[];
   reasoning: string;
+  engines: EngineKind[];
 }
 
 export interface MasterSummary {
@@ -59,6 +61,12 @@ const edgeQualityFromLift = (lift: number): number => {
   if (lift <= 0.95) return 0.55;
   if (lift < 1.05) return 0.85;
   return Math.min(1.3, 0.95 + (lift - 1) * 0.5);
+};
+
+const engineForGroup = (group: string): EngineKind => {
+  if (group.startsWith("cross-")) return "cross-lens";
+  if (group.endsWith("ngram") || group.endsWith("gram")) return "ngram";
+  return "pattern-bank";
 };
 
 const fromPatternRule = (rule: ActivatedRule): MasterCandidate => {
@@ -87,6 +95,7 @@ const fromPatternRule = (rule: ActivatedRule): MasterCandidate => {
     unifiedCandidate: null,
     sources: [`padrão aprendido (${rule.group})`],
     reasoning: rule.description,
+    engines: [engineForGroup(rule.group)],
   };
 };
 
@@ -112,6 +121,11 @@ const fromUnifiedCandidate = (uc: UnifiedCandidate): MasterCandidate => {
     unifiedCandidate: uc,
     sources: uc.sources,
     reasoning: uc.reasoning,
+    engines: [
+      "unified-recency",
+      ...(uc.sources.some((s) => s.includes("Markov")) ? ["unified-markov" as EngineKind] : []),
+      ...(uc.sources.some((s) => s.includes("agente") || s.includes("IA")) ? ["unified-agent" as EngineKind] : []),
+    ],
   };
 };
 
@@ -153,6 +167,7 @@ const merge = (a: MasterCandidate, b: MasterCandidate): MasterCandidate => {
     unifiedCandidate,
     sources,
     reasoning,
+    engines: Array.from(new Set([...a.engines, ...b.engines])),
   };
 };
 
@@ -253,6 +268,7 @@ export const computeMasterSignal = (
           existing.prob = Math.min(0.95, existing.prob * b);
           existing.lift = existing.prob / existing.baseline;
           existing.sources = Array.from(new Set([...existing.sources, `gap-overdue (×${b.toFixed(2)})`]));
+          if (!existing.engines.includes("gap-overdue")) existing.engines.push("gap-overdue");
         }
       }
     }
@@ -267,6 +283,7 @@ export const computeMasterSignal = (
           existing.prob = Math.min(0.95, existing.prob * b);
           existing.lift = existing.prob / existing.baseline;
           existing.sources = Array.from(new Set([...existing.sources, `gap-overdue (×${b.toFixed(2)})`]));
+          if (!existing.engines.includes("gap-overdue")) existing.engines.push("gap-overdue");
         }
       }
     }
@@ -284,6 +301,7 @@ export const computeMasterSignal = (
           existing.lift = existing.prob / existing.baseline;
           existing.confidence = Math.min(1, existing.confidence + 0.1);
           existing.sources = Array.from(new Set([...existing.sources, "ciclo detectado"]));
+          if (!existing.engines.includes("cycle-detect")) existing.engines.push("cycle-detect");
         }
       }
     }
@@ -298,6 +316,7 @@ export const computeMasterSignal = (
           existing.lift = existing.prob / existing.baseline;
           existing.confidence = Math.min(1, existing.confidence + 0.1);
           existing.sources = Array.from(new Set([...existing.sources, "ciclo detectado"]));
+          if (!existing.engines.includes("cycle-detect")) existing.engines.push("cycle-detect");
         }
       }
     }
@@ -324,19 +343,35 @@ export const computeMasterSignal = (
   }
 
   const spinCount = history.length;
-  // Hit-rate-first ranking: probability dominates, edge gates,
-  // confidence is the tiebreaker. Anti-stick penalty as before.
-  // This means high-coverage bets with marginal edge (Voisins ~46%,
-  // cor ~48%) win over a pleno with low absolute probability.
+  // Hit-rate-first ranking with engine self-weighting:
+  // - probability dominates (user wants high hit rate)
+  // - edge filters out negative-edge bets
+  // - engineMultiplier rewards candidates whose contributing engines
+  //   have been hitting recently (self-correcting AI)
+  // - confidence is tiebreaker
+  // - anti-stick keeps the signal varying
   const ranked = Array.from(map.values()).map((c) => {
     const stick = computeAntiStickPenalty(c.numbersKey, spinCount);
     const probScore = c.prob;
     const edgeGate = c.lift < 0.95 ? 0.7 : c.lift < 1.0 ? 0.92 : 1.0;
     const confTiebreaker = 0.85 + 0.15 * c.confidence;
-    const acc = probScore * edgeGate * confTiebreaker * stick.penalty;
-    const sources = stick.penalty < 1
-      ? [...c.sources, `anti-repetição ×${stick.penalty.toFixed(2)}`]
-      : c.sources;
+    let engineMultiplier = 1.0;
+    if (c.engines.length > 0) {
+      const sum = c.engines.reduce((acc, e) => acc + getEngineWeight(e), 0);
+      engineMultiplier = sum / c.engines.length;
+    }
+    const acc =
+      probScore *
+      edgeGate *
+      confTiebreaker *
+      stick.penalty *
+      engineMultiplier;
+    const extraSources: string[] = [];
+    if (stick.penalty < 1) extraSources.push(`anti-repetição ×${stick.penalty.toFixed(2)}`);
+    if (Math.abs(engineMultiplier - 1.0) > 0.05) {
+      extraSources.push(`motor adaptado ×${engineMultiplier.toFixed(2)}`);
+    }
+    const sources = [...c.sources, ...extraSources];
     return { ...c, accuracyScore: acc, sources };
   });
 

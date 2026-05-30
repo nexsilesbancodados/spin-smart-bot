@@ -15,6 +15,7 @@ import {
   physicalNeighbors,
   numbersWithTerminal,
 } from "./wheel";
+import { buildNgramPatterns } from "./ngramPatterns";
 
 export type PredictionTargetKind =
   | "number"
@@ -1076,6 +1077,7 @@ export const getPatternBank = (): PatternRule[] => {
     ...generateStreets(),
     ...generateSixains(),
     ...generateTrios(),
+    ...buildNgramPatterns(),
   ];
   return CACHED_BANK;
 };
