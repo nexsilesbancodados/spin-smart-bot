@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type { SignalRecord } from "./signalAgent";
 import type { MasterCandidate } from "./masterSignal";
 import { supabase } from "@/integrations/supabase/client";
+import { useUiPrefs } from "./uiPrefs";
 
 export interface WebhookConfig {
   enabled: boolean;
@@ -217,7 +218,7 @@ export const fireMasterResolution = async (
   context: ResolutionContext = {}
 ): Promise<void> => {
   const type = resolution.targetType.toLowerCase();
-  if (!WEBHOOK_ALLOWED_TYPES.has(type)) return;
+  if (!isTypeAllowedForWebhook(type)) return;
   const payload = {
     task: "master-resolution" as const,
     resolution: {
@@ -364,14 +365,11 @@ const tryRelay = async (
   }
 };
 
-const WEBHOOK_ALLOWED_TYPES = new Set([
-  "color",
-  "dozen",
-  "parity",
-  "highlow",
-  "column",
-  "sector",
-]);
+const isTypeAllowedForWebhook = (type: string): boolean => {
+  const scope = useUiPrefs.getState().focusedScope;
+  if (scope.length === 0) return false;
+  return scope.includes(type as never);
+};
 
 export const fireMasterWebhook = async (
   candidate: MasterCandidate,
@@ -387,7 +385,7 @@ export const fireMasterWebhook = async (
   const { config, recordFired } = useWebhook.getState();
   if (candidate.confidence < config.minConfidence) return;
   const type = candidate.targetType.toLowerCase();
-  if (!WEBHOOK_ALLOWED_TYPES.has(type)) return;
+  if (!isTypeAllowedForWebhook(type)) return;
 
   // Per-type cooldown: each bet category (color/dozen/parity) has its own
   // 90s window. Lets a strong dúzia signal go through 30s after a cor signal.

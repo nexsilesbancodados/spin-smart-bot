@@ -60,6 +60,10 @@ const ALLOWED_TYPES = new Set([
   "highlow",
   "column",
   "sector",
+  "terminal",
+  "neighbors",
+  "number",
+  "pleno",
 ]);
 
 const typeEmoji = (type: string, label: string): string => {

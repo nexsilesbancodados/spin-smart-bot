@@ -9,6 +9,7 @@ const BotEnsembleStatus = lazy(() => import("../components/BotEnsembleStatus"));
 const AIInsights = lazy(() => import("../components/AIInsights"));
 const IntegrationsStatus = lazy(() => import("../components/IntegrationsStatus"));
 const WebhookLog = lazy(() => import("../components/WebhookLog"));
+const StrategySelector = lazy(() => import("../components/StrategySelector"));
 const StrategyPresets = lazy(() => import("../components/StrategyPresets"));
 const BetTracker = lazy(() => import("../components/BetTracker"));
 
@@ -36,6 +37,7 @@ const Dashboard = memo(() => {
             </Card>
           }
         >
+          <StrategySelector />
           <RealityCheckBanner />
           <IntegrationsStatus />
           <WebhookLog />
