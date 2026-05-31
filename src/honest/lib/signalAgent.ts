@@ -13,6 +13,14 @@ import { runAutoPauseCheck } from "./autoPause";
 import { runAutoTuneCheck } from "./autoTuner";
 import { logActivity } from "./activityFeed";
 import { useABTest } from "./abTest";
+import { toastHit, toastMiss, toastSignal } from "./toast";
+import { recordCurrentActivations, usePatternLearning } from "./patternLearning";
+import {
+  mineRecentPatterns,
+  useAutoDiscovery,
+  activateDiscovered,
+  lensTargetMatches,
+} from "./autoDiscovery";
 
 export interface SignalRecord {
   id: string;
@@ -271,16 +279,48 @@ export const runAgentTick = (): AgentTick => {
     if (signal.mainProb >= ab.configB.threshold) ab.pushPredictionB(signal);
   }
 
+  const calibratedProb = (() => {
+    if (!agent.config.dynamicThreshold) return mainProb;
+    const hist = useSignalAgent.getState().history;
+    const resolved = hist.filter((s) => s.actualNumber !== null);
+    if (resolved.length < 15) return mainProb;
+    const lo = mainProb * 0.7;
+    const hi = Math.max(mainProb * 1.5, mainProb + 0.02);
+    const bucket = resolved.filter((s) => s.mainProb >= lo && s.mainProb <= hi);
+    if (bucket.length < 5) return mainProb;
+    const observed = bucket.filter((s) => s.hitMain).length / bucket.length;
+    const meanPred = bucket.reduce((a, s) => a + s.mainProb, 0) / bucket.length;
+    if (meanPred <= 1e-6) return mainProb;
+    const ratio = Math.max(0.3, Math.min(2.0, observed / meanPred));
+    return mainProb * ratio;
+  })();
+
   let effectiveThreshold = agent.config.threshold;
   if (agent.config.dynamicThreshold) {
     const history = useSignalAgent.getState().history;
-    const resolved = history.filter((s) => s.actualNumber !== null).slice(0, 20);
-    if (resolved.length >= 5) {
+    const resolved = history.filter((s) => s.actualNumber !== null).slice(0, 30);
+    if (resolved.length >= 8) {
       const hitRate = resolved.filter((s) => s.hitTop5).length / resolved.length;
       const baseline = 5 / SLOTS;
       const lift = hitRate / baseline;
-      if (lift > 1.2) effectiveThreshold = Math.max(0.03, agent.config.threshold * 0.85);
-      else if (lift < 0.8) effectiveThreshold = Math.min(0.15, agent.config.threshold * 1.25);
+
+      let brierSum = 0;
+      for (const s of resolved) {
+        const p = Math.max(0, Math.min(1, (s.topProbs || []).slice(0, 5).reduce((a, b) => a + b, 0)));
+        const y = s.hitTop5 ? 1 : 0;
+        brierSum += (p - y) ** 2;
+      }
+      const brier = brierSum / resolved.length;
+      const naiveBrier = baseline * (1 - baseline);
+      const skill = naiveBrier > 0 ? 1 - brier / naiveBrier : 0;
+
+      let multiplier = 1;
+      if (skill > 0.15 && lift > 1.3) multiplier = 0.72;
+      else if (skill > 0.05 && lift > 1.15) multiplier = 0.85;
+      else if (skill < -0.15 || lift < 0.7) multiplier = 1.5;
+      else if (skill < -0.05 || lift < 0.85) multiplier = 1.25;
+
+      effectiveThreshold = Math.max(0.025, Math.min(0.18, agent.config.threshold * multiplier));
     }
   }
 
@@ -291,7 +331,7 @@ export const runAgentTick = (): AgentTick => {
     }
   }
 
-  const shouldEmit = mainProb >= effectiveThreshold;
+  const shouldEmit = calibratedProb >= effectiveThreshold;
   return { signal, shouldEmit, ensembleTopProb: ensembleProbs[mainPick], lstmTopProb: lstmProbs ? lstmProbs[mainPick] : null };
 };
 
@@ -309,6 +349,8 @@ export const startAgentLoop = () => {
     lastSpinKey = key;
     if (previousKey === "") return;
 
+    usePatternLearning.getState().resolveWith(newest.n, newest.t);
+    useAutoDiscovery.getState().resolve(newest.n, lensTargetMatches);
     const resolved = useSignalAgent.getState().resolvePending(newest.n);
     const abState = useABTest.getState();
     if (abState.enabled) {
@@ -319,9 +361,11 @@ export const startAgentLoop = () => {
       if (r.hitMain || r.hitTop5) {
         playHitSound();
         useEntryFilter.getState().pushResult(true);
+        if (r.emitted) toastHit(r.mainPick, r.actualNumber ?? -1, !!r.hitMain);
       } else {
         playMissSound();
         useEntryFilter.getState().pushResult(false);
+        if (r.emitted) toastMiss(r.mainPick, r.actualNumber ?? -1);
       }
       logActivity(
         "signal-resolved",
@@ -332,6 +376,16 @@ export const startAgentLoop = () => {
 
     runAutoPauseCheck();
     runAutoTuneCheck();
+    const historyForLearning = useHonestStore.getState().spins.map((s) => s.n);
+    recordCurrentActivations(historyForLearning, newest.t);
+
+    const spinCount = historyForLearning.length;
+    if (spinCount % 3 === 0 && spinCount >= 10) {
+      const mined = mineRecentPatterns(historyForLearning, spinCount);
+      if (mined.length > 0) useAutoDiscovery.getState().registerDiscoveries(mined);
+    }
+    const activations = activateDiscovered(historyForLearning);
+    useAutoDiscovery.getState().recordPending(activations.map((a) => a.ruleId));
     const t0 = performance.now();
     const tick = runAgentTick();
     usePerf.getState().recordAgentTick(performance.now() - t0);
@@ -360,6 +414,7 @@ export const startAgentLoop = () => {
         if (tick.signal.confidenceScore >= notifyThreshold) {
           playSignalChord();
           speakSignal(tick.signal.mainPick, tick.signal.sector, tick.signal.mainProb);
+          toastSignal(tick.signal.mainPick, tick.signal.mainProb, tick.signal.sector);
           showBrowserNotification(
             `🎯 Sinal: ${tick.signal.mainPick}`,
             `Top 5: ${tick.signal.topPicks.join(", ")} · ${(tick.signal.mainProb * 100).toFixed(1)}% · ${tick.signal.sector}`,

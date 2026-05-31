@@ -1,8 +1,10 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import HonestyLayout from "./components/HonestyLayout";
+import AuthGuard from "./components/AuthGuard";
 import { LoadingPlaceholder } from "./components/ui";
 import Dashboard from "./pages/Dashboard";
+import Login from "./pages/Login";
 
 const MapaRoda = lazy(() => import("./pages/MapaRoda"));
 const Analise = lazy(() => import("./pages/Analise"));
@@ -24,6 +26,8 @@ const Replay = lazy(() => import("./pages/Replay"));
 const Insights = lazy(() => import("./pages/Insights"));
 const Comparacao = lazy(() => import("./pages/Comparacao"));
 const Cobertura = lazy(() => import("./pages/Cobertura"));
+const Duzias = lazy(() => import("./pages/Duzias"));
+const SinaisPadroes = lazy(() => import("./pages/SinaisPadroes"));
 
 const lazyWrap = (el: React.ReactNode) => (
   <Suspense fallback={<LoadingPlaceholder height="h-96" />}>{el}</Suspense>
@@ -32,7 +36,14 @@ const lazyWrap = (el: React.ReactNode) => (
 export default function HonestRouter() {
   return (
     <Routes>
-      <Route element={<HonestyLayout />}>
+      <Route path="login" element={<Login />} />
+      <Route
+        element={
+          <AuthGuard>
+            <HonestyLayout />
+          </AuthGuard>
+        }
+      >
         <Route index element={<Dashboard />} />
         <Route path="roda" element={lazyWrap(<MapaRoda />)} />
         <Route path="analise" element={lazyWrap(<Analise />)} />
@@ -54,6 +65,8 @@ export default function HonestRouter() {
         <Route path="insights" element={lazyWrap(<Insights />)} />
         <Route path="comparacao" element={lazyWrap(<Comparacao />)} />
         <Route path="cobertura" element={lazyWrap(<Cobertura />)} />
+        <Route path="duzias" element={lazyWrap(<Duzias />)} />
+        <Route path="sinais-padroes" element={lazyWrap(<SinaisPadroes />)} />
       </Route>
     </Routes>
   );

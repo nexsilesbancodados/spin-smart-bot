@@ -1,0 +1,363 @@
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { useBetTracker, computeTrackerStats } from "../lib/betTracker";
+import { Card, SectionHeader, Button } from "./ui";
+
+type SpeechRec = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  onresult: ((e: { results: Array<Array<{ transcript: string }>> }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+};
+
+const getSpeech = (): SpeechRec | null => {
+  if (typeof window === "undefined") return null;
+  const Ctor =
+    (window as unknown as { SpeechRecognition?: new () => SpeechRec }).SpeechRecognition ||
+    (window as unknown as { webkitSpeechRecognition?: new () => SpeechRec }).webkitSpeechRecognition;
+  if (!Ctor) return null;
+  const r = new Ctor();
+  r.lang = "pt-BR";
+  r.continuous = false;
+  r.interimResults = false;
+  return r;
+};
+
+const parseVoice = (text: string): { stake?: number; outcome?: "win" | "loss"; note: string } => {
+  const lower = text.toLowerCase();
+  let outcome: "win" | "loss" | undefined;
+  if (/\b(ganh|venc|acert)/.test(lower)) outcome = "win";
+  else if (/\b(perd|err|n[ãa]o foi)/.test(lower)) outcome = "loss";
+  const m = lower.match(/(\d+(?:[.,]\d+)?)/);
+  let stake: number | undefined;
+  if (m) {
+    stake = Number(m[1].replace(",", "."));
+    if (!isFinite(stake)) stake = undefined;
+  }
+  return { stake, outcome, note: text };
+};
+
+const BET_OPTIONS = [
+  { label: "1:1 (cor/par/alto)", payout: 1 },
+  { label: "2:1 (dúzia/coluna)", payout: 2 },
+  { label: "5:1 (sixain)", payout: 5 },
+  { label: "8:1 (quina)", payout: 8 },
+  { label: "11:1 (rua)", payout: 11 },
+  { label: "17:1 (cavalo)", payout: 17 },
+  { label: "35:1 (pleno)", payout: 35 },
+];
+
+const fmt = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
+
+const BetTracker = memo(() => {
+  const entries = useBetTracker((s) => s.entries);
+  const addEntry = useBetTracker((s) => s.addEntry);
+  const resolveEntry = useBetTracker((s) => s.resolveEntry);
+  const removeEntry = useBetTracker((s) => s.removeEntry);
+  const clearAll = useBetTracker((s) => s.clearAll);
+
+  const [betType, setBetType] = useState(BET_OPTIONS[0].label);
+  const [payout, setPayout] = useState(1);
+  const [stake, setStake] = useState(10);
+  const [note, setNote] = useState("");
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const recRef = useRef<SpeechRec | null>(null);
+
+  useEffect(() => {
+    setVoiceSupported(getSpeech() !== null);
+  }, []);
+
+  const handleVoice = () => {
+    if (listening) {
+      recRef.current?.stop();
+      return;
+    }
+    const rec = getSpeech();
+    if (!rec) return;
+    recRef.current = rec;
+    rec.onresult = (e) => {
+      const transcript = e.results?.[0]?.[0]?.transcript || "";
+      const parsed = parseVoice(transcript);
+      if (parsed.stake !== undefined) setStake(parsed.stake);
+      setNote(parsed.note);
+      if (parsed.outcome && parsed.stake !== undefined) {
+        addEntry({ betType, payout, stake: parsed.stake, outcome: parsed.outcome, note: parsed.note });
+        setNote("");
+      }
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    setListening(true);
+    rec.start();
+  };
+
+  const stats = useMemo(() => computeTrackerStats(entries), [entries]);
+
+  const pnlSeries = useMemo(() => {
+    const resolved = entries.filter((e) => e.outcome === "win" || e.outcome === "loss");
+    if (resolved.length < 2) return null;
+    const ordered = [...resolved].reverse();
+    let cumulative = 0;
+    return ordered.map((e) => {
+      cumulative += e.delta;
+      return cumulative;
+    });
+  }, [entries]);
+
+  const handleExport = () => {
+    if (entries.length === 0) return;
+    const header = "data;hora;tipo;payout;aposta;resultado;n_picked;n_actual;delta;nota";
+    const rows = entries.map((e) => {
+      const d = new Date(e.t);
+      const data = d.toLocaleDateString("pt-BR");
+      const hora = d.toLocaleTimeString("pt-BR");
+      return [
+        data,
+        hora,
+        `"${e.betType.replace(/"/g, "")}"`,
+        e.payout,
+        e.stake.toFixed(2),
+        e.outcome ?? "pendente",
+        e.pickedNumber ?? "",
+        e.actualNumber ?? "",
+        e.delta.toFixed(2),
+        `"${(e.note || "").replace(/"/g, "")}"`,
+      ].join(";");
+    });
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([`﻿${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `apostas-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleAdd = (outcome: "win" | "loss" | null) => {
+    addEntry({ betType, payout, stake, outcome, note: note || undefined });
+    setNote("");
+  };
+
+  return (
+    <Card padding="sm">
+      <SectionHeader
+        title="Tracker pessoal de jogadas"
+        eyebrow="Ferramenta"
+        actions={
+          <div className="flex items-center gap-2">
+            {voiceSupported && (
+              <button
+                onClick={handleVoice}
+                className={`text-[10px] font-bold ${listening ? "text-red-400 animate-pulse" : "text-cyan-400 hover:text-cyan-300"}`}
+                title='Diga: "ganhei 50 no vermelho" ou "perdi 20 no pleno"'
+              >
+                {listening ? "● ouvindo" : "🎤 voz"}
+              </button>
+            )}
+            {entries.length > 0 && (
+              <>
+                <button
+                  onClick={handleExport}
+                  className="text-[10px] text-amber-400 hover:text-amber-300 font-bold"
+                  title="Exportar para CSV"
+                >
+                  ↓ CSV
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirmClear) {
+                      clearAll();
+                      setConfirmClear(false);
+                    } else {
+                      setConfirmClear(true);
+                      setTimeout(() => setConfirmClear(false), 3000);
+                    }
+                  }}
+                  className="text-[10px] text-red-400 hover:text-red-300 font-bold"
+                >
+                  {confirmClear ? "Confirmar?" : "Limpar"}
+                </button>
+              </>
+            )}
+          </div>
+        }
+      />
+
+      {pnlSeries && pnlSeries.length >= 2 && (
+        <div className="mb-2">
+          <PnLSpark data={pnlSeries} />
+        </div>
+      )}
+
+      {entries.length > 0 && (
+        <div className="grid grid-cols-4 gap-1 mb-2 text-center">
+          <div className="bg-neutral-900/60 rounded p-1.5">
+            <div className="text-[8px] text-neutral-500 uppercase tracking-wider">PnL</div>
+            <div className={`text-sm font-bold font-mono ${stats.pnl >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+              {stats.pnl >= 0 ? "+" : ""}{fmt(stats.pnl)}
+            </div>
+          </div>
+          <div className="bg-neutral-900/60 rounded p-1.5">
+            <div className="text-[8px] text-neutral-500 uppercase tracking-wider">ROI</div>
+            <div className={`text-sm font-bold font-mono ${stats.roi >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+              {(stats.roi * 100).toFixed(1)}%
+            </div>
+          </div>
+          <div className="bg-neutral-900/60 rounded p-1.5">
+            <div className="text-[8px] text-neutral-500 uppercase tracking-wider">Win rate</div>
+            <div className="text-sm font-bold font-mono text-cyan-300">
+              {(stats.winRate * 100).toFixed(0)}%
+            </div>
+          </div>
+          <div className="bg-neutral-900/60 rounded p-1.5">
+            <div className="text-[8px] text-neutral-500 uppercase tracking-wider">
+              {stats.currentStreakKind === "win" ? "Acertos" : stats.currentStreakKind === "loss" ? "Erros" : "Sequência"}
+            </div>
+            <div className={`text-sm font-bold font-mono ${stats.currentStreakKind === "win" ? "text-emerald-300" : stats.currentStreakKind === "loss" ? "text-red-300" : "text-neutral-400"}`}>
+              {stats.currentStreak || "—"}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-1.5 mb-2">
+        <select
+          value={betType}
+          onChange={(e) => {
+            const opt = BET_OPTIONS.find((b) => b.label === e.target.value);
+            if (opt) {
+              setBetType(opt.label);
+              setPayout(opt.payout);
+            }
+          }}
+          className="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs"
+        >
+          {BET_OPTIONS.map((b) => (
+            <option key={b.label} value={b.label}>{b.label}</option>
+          ))}
+        </select>
+        <div className="flex gap-1.5">
+          <input
+            type="number"
+            min={1}
+            value={stake}
+            onChange={(e) => setStake(Math.max(0, Number(e.target.value) || 0))}
+            placeholder="Aposta R$"
+            className="flex-1 bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs font-mono"
+          />
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Nota (opcional)"
+            className="flex-[2] bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs"
+            maxLength={40}
+          />
+        </div>
+        <div className="flex gap-1.5">
+          <Button variant="success" size="sm" onClick={() => handleAdd("win")} disabled={stake <= 0}>
+            ✓ Ganhei
+          </Button>
+          <Button variant="danger" size="sm" onClick={() => handleAdd("loss")} disabled={stake <= 0}>
+            ✗ Perdi
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => handleAdd(null)} disabled={stake <= 0}>
+            Pendente
+          </Button>
+        </div>
+      </div>
+
+      {entries.length === 0 ? (
+        <div className="text-[11px] text-neutral-500 italic text-center py-2">
+          Anote suas jogadas para ver PnL real e ROI ao vivo
+        </div>
+      ) : (
+        <div className="max-h-[200px] overflow-y-auto space-y-1">
+          {entries.slice(0, 15).map((e) => (
+            <div
+              key={e.id}
+              className={`flex items-center gap-1.5 text-[10px] px-1.5 py-1 rounded ${
+                e.outcome === "win" ? "bg-emerald-950/40" : e.outcome === "loss" ? "bg-red-950/40" : "bg-neutral-900/40"
+              }`}
+            >
+              <span className="text-neutral-400 font-mono shrink-0">
+                {new Date(e.t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+              <span className="text-neutral-300 truncate flex-1">
+                {e.betType.split(" ")[0]} · {fmt(e.stake)}
+                {e.note && <span className="text-neutral-500"> · {e.note}</span>}
+              </span>
+              {e.outcome === null ? (
+                <>
+                  <button
+                    onClick={() => resolveEntry(e.id, "win")}
+                    className="text-emerald-400 hover:text-emerald-300 font-bold px-1"
+                  >✓</button>
+                  <button
+                    onClick={() => resolveEntry(e.id, "loss")}
+                    className="text-red-400 hover:text-red-300 font-bold px-1"
+                  >✗</button>
+                </>
+              ) : (
+                <span className={`font-bold font-mono shrink-0 ${e.delta >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                  {e.delta >= 0 ? "+" : ""}{fmt(e.delta)}
+                </span>
+              )}
+              <button
+                onClick={() => removeEntry(e.id)}
+                className="text-neutral-600 hover:text-red-400 px-1"
+                title="Remover"
+              >×</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+});
+BetTracker.displayName = "BetTracker";
+
+const PnLSpark = memo(({ data }: { data: number[] }) => {
+  const W = 600;
+  const H = 60;
+  const min = Math.min(0, ...data);
+  const max = Math.max(0, ...data);
+  const range = Math.max(0.001, max - min);
+  const x = (i: number) => (i / (data.length - 1)) * W;
+  const y = (v: number) => H - ((v - min) / range) * (H - 8) - 4;
+  const path = data.map((v, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(v)}`).join(" ");
+  const zeroY = y(0);
+  const lastV = data[data.length - 1];
+  const color = lastV >= 0 ? "#10b981" : "#f43f5e";
+  return (
+    <div>
+      <div className="flex items-center justify-between text-[9px] mb-0.5">
+        <span className="uppercase tracking-wider text-neutral-500 font-bold">PnL acumulado</span>
+        <span className={`font-mono font-bold ${lastV >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+          {lastV >= 0 ? "+" : ""}R$ {lastV.toFixed(2)}
+        </span>
+      </div>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full h-12 bg-neutral-950 rounded border border-neutral-800"
+        preserveAspectRatio="none"
+      >
+        {min < 0 && max > 0 && (
+          <line x1={0} y1={zeroY} x2={W} y2={zeroY} stroke="#525252" strokeDasharray="3 3" strokeWidth={0.5} />
+        )}
+        <path d={path} fill="none" stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
+        <circle cx={x(data.length - 1)} cy={y(lastV)} r={3} fill={color} />
+      </svg>
+    </div>
+  );
+});
+PnLSpark.displayName = "PnLSpark";
+
+export default BetTracker;

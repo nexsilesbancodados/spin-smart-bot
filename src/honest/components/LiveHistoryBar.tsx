@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import { useHonestStore } from "../lib/store";
 import { useFeedStatus } from "../lib/feedStatus";
 import { colorOf } from "../lib/wheel";
-import { ingestProxyNumbers } from "../lib/useLiveFeed";
+import { ingestProxyNumbers, resetFeedState } from "../lib/useLiveFeed";
 
 const ballBg = (n: number) => {
   const c = colorOf(n);
@@ -27,6 +27,8 @@ const LiveHistoryBar = memo(() => {
   const totalPolls = useFeedStatus((s) => s.totalPolls);
   const lastPoll = useFeedStatus((s) => s.lastPoll);
   const pollInterval = useFeedStatus((s) => s.pollInterval);
+  const errorMessage = useFeedStatus((s) => s.errorMessage);
+  const status = useFeedStatus((s) => s.status);
   const [pulseKey, setPulseKey] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const prevHeadRef = useRef<number | undefined>(spins[0]?.n);
@@ -35,6 +37,7 @@ const LiveHistoryBar = memo(() => {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
+      resetFeedState();
       await ingestProxyNumbers();
     } finally {
       setRefreshing(false);
@@ -60,11 +63,28 @@ const LiveHistoryBar = memo(() => {
     ? Math.max(0, Math.ceil((pollInterval - (Date.now() - lastPoll)) / 1000))
     : null;
 
+  const dotColor =
+    status === "connected" ? "bg-emerald-400 shadow-emerald-500/50" :
+    status === "connecting" ? "bg-amber-400 shadow-amber-500/50 animate-pulse" :
+    "bg-red-500 shadow-red-500/50";
+
   return (
     <div className="sticky top-[57px] z-20 border-b border-neutral-800/70 bg-neutral-950/95 backdrop-blur">
+      {errorMessage && (
+        <div className="bg-red-900/60 border-b border-red-700/50 px-4 py-1 flex items-center justify-between gap-2 text-[10px]">
+          <span className="text-red-200 font-mono truncate">⚠ {errorMessage}</span>
+          <button
+            onClick={handleRefresh}
+            className="shrink-0 px-2 py-0.5 rounded bg-red-500 hover:bg-red-400 text-white font-bold"
+          >
+            Reconectar
+          </button>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-3">
         <div className="flex flex-col leading-none shrink-0 min-w-[80px]">
-          <span className="text-[9px] uppercase tracking-[0.18em] text-amber-400 font-bold">
+          <span className="text-[9px] uppercase tracking-[0.18em] text-amber-400 font-bold flex items-center gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shadow-sm`} />
             {mesa ?? "AO VIVO"}
           </span>
           <span className="text-[10px] text-neutral-400 font-mono">

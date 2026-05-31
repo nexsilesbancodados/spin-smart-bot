@@ -60,7 +60,7 @@ export const SectionHeader = memo(
     title: ReactNode;
     subtitle?: ReactNode;
     actions?: ReactNode;
-    eyebrow?: string;
+    eyebrow?: ReactNode;
   }) => (
     <div className="flex items-start justify-between gap-3 mb-2.5 flex-wrap">
       <div className="min-w-0">
