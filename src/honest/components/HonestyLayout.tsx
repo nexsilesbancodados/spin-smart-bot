@@ -9,6 +9,7 @@ import QuickBetFAB from "./QuickBetFAB";
 import Toaster from "./Toaster";
 import PwaInstall from "./PwaInstall";
 import UserMenu from "./UserMenu";
+import SyncIndicator from "./SyncIndicator";
 import CommandPalette from "./CommandPalette";
 import GlobalSearch from "./GlobalSearch";
 import DigestPopup from "./DigestPopup";
@@ -151,6 +152,7 @@ const HonestyLayout = memo(({ children }: { children?: ReactNode }) => {
               {theme === "dark" ? "☀" : "🌙"}
             </button>
             <FeedStatusIndicator />
+            <SyncIndicator />
             <UserMenu />
           </div>
         </div>

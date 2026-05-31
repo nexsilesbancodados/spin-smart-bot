@@ -23,14 +23,31 @@ export const initAuth = () => {
   if (initialized) return;
   initialized = true;
 
-  supabase.auth.getSession().then(({ data }) => {
-    useAuth.getState().setSession(data.session);
+  const onSessionChange = async (session: Session | null, prevUserId: string | undefined) => {
+    useAuth.getState().setSession(session);
     useAuth.getState().setLoading(false);
+    try {
+      const { startSync, stopSync } = await import("./sync");
+      if (session?.user) {
+        if (prevUserId && prevUserId !== session.user.id) {
+          stopSync();
+        }
+        void startSync();
+      } else {
+        stopSync();
+      }
+    } catch {
+      /* sync module unavailable */
+    }
+  };
+
+  supabase.auth.getSession().then(({ data }) => {
+    void onSessionChange(data.session, undefined);
   });
 
   supabase.auth.onAuthStateChange((_event, session) => {
-    useAuth.getState().setSession(session);
-    useAuth.getState().setLoading(false);
+    const prev = useAuth.getState().user?.id;
+    void onSessionChange(session, prev);
   });
 };
 
