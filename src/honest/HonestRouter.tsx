@@ -1,8 +1,10 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import HonestyLayout from "./components/HonestyLayout";
+import AuthGuard from "./components/AuthGuard";
 import { LoadingPlaceholder } from "./components/ui";
 import Dashboard from "./pages/Dashboard";
+import Login from "./pages/Login";
 
 const MapaRoda = lazy(() => import("./pages/MapaRoda"));
 const Analise = lazy(() => import("./pages/Analise"));
@@ -34,7 +36,14 @@ const lazyWrap = (el: React.ReactNode) => (
 export default function HonestRouter() {
   return (
     <Routes>
-      <Route element={<HonestyLayout />}>
+      <Route path="login" element={<Login />} />
+      <Route
+        element={
+          <AuthGuard>
+            <HonestyLayout />
+          </AuthGuard>
+        }
+      >
         <Route index element={<Dashboard />} />
         <Route path="roda" element={lazyWrap(<MapaRoda />)} />
         <Route path="analise" element={lazyWrap(<Analise />)} />
