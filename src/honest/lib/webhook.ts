@@ -4,6 +4,7 @@ import type { SignalRecord } from "./signalAgent";
 import type { MasterCandidate } from "./masterSignal";
 import { supabase } from "@/integrations/supabase/client";
 import { useUiPrefs } from "./uiPrefs";
+import { useMasterSignalState } from "./masterSignalState";
 
 export interface WebhookConfig {
   enabled: boolean;
@@ -180,7 +181,20 @@ const formatMasterPayload = (
 let relayAvailable: boolean | null = null;
 let telegramRelayAvailable: boolean | null = null;
 const lastSentByType = new Map<string, number>();
-const MIN_INTERVAL_BY_TYPE_MS = 90_000;
+const COOLDOWN_HOT_MS = 50_000;
+const COOLDOWN_NEUTRAL_MS = 90_000;
+const COOLDOWN_COLD_MS = 130_000;
+
+const computeCooldownForType = (type: string): number => {
+  const recent = useMasterSignalState.getState().recent;
+  const sameType = recent.filter((w) => w.resolved && w.targetType === type);
+  if (sameType.length < 5) return COOLDOWN_NEUTRAL_MS;
+  const hits = sameType.filter((w) => w.hit === true).length;
+  const rate = hits / sameType.length;
+  if (rate >= 0.5) return COOLDOWN_HOT_MS;
+  if (rate <= 0.25) return COOLDOWN_COLD_MS;
+  return COOLDOWN_NEUTRAL_MS;
+};
 let fireMasterWebhookForceFlag = false;
 
 export const forceFireMasterWebhook = async (
@@ -387,13 +401,16 @@ export const fireMasterWebhook = async (
   const type = candidate.targetType.toLowerCase();
   if (!isTypeAllowedForWebhook(type)) return;
 
-  // Per-type cooldown: each bet category (color/dozen/parity) has its own
-  // 90s window. Lets a strong dúzia signal go through 30s after a cor signal.
-  // Skip if explicitly forced.
+  // Per-type adaptive cooldown:
+  //   hot type (hit rate ≥ 50% recente) → 50s entre sinais
+  //   neutro → 90s
+  //   frio (≤25%) → 130s
+  // Tipo quente abre janela mais rápido, tipo frio se contém.
   const now = Date.now();
   if (!fireMasterWebhookForceFlag) {
+    const cooldownMs = computeCooldownForType(type);
     const lastForType = lastSentByType.get(type) ?? 0;
-    if (now - lastForType < MIN_INTERVAL_BY_TYPE_MS) return;
+    if (now - lastForType < cooldownMs) return;
   }
   lastSentByType.set(type, now);
 
