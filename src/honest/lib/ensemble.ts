@@ -118,7 +118,7 @@ const makePageRankTransitionHandle = (iterations = 30): ModelHandle => {
         }
         vec = next;
       }
-      stationary = normalize(vec) as Float32Array;
+      stationary = normalize(vec) as unknown as Float32Array;
     },
   };
 };
