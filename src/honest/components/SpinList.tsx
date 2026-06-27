@@ -68,6 +68,7 @@ const SpinList = memo(({ spins, limit = 300, columns = 10, cellSize = "sm" }: Pr
             <button
               key={`${s.t}-${i}`}
               onClick={() => setSelected((cur) => (cur === s.n ? null : s.n))}
+              onMouseEnter={() => setSelected(s.n)}
               className={`${cellSizeClass[cellSize]} ${cellBg(s.n)} text-white font-bold font-mono tabular-nums flex items-center justify-center rounded relative hover:scale-105 transition ${
                 isMatch
                   ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-neutral-950 shadow-lg shadow-amber-500/30"
