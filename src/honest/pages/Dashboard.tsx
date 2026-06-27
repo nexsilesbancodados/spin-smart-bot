@@ -1,57 +1,21 @@
-import { lazy, memo, Suspense, useState } from "react";
-import MasterSignal from "../components/MasterSignal";
+import { memo } from "react";
+import { useHonestStore } from "../lib/store";
+import SpinList from "../components/SpinList";
 import { Card, PageContainer } from "../components/ui";
 
-const RealityCheckBanner = lazy(() => import("../components/RealityCheckBanner"));
-const AutoBetPanel = lazy(() => import("../components/AutoBetPanel"));
-const MasterBacktest = lazy(() => import("../components/MasterBacktest"));
-const BotEnsembleStatus = lazy(() => import("../components/BotEnsembleStatus"));
-const AIInsights = lazy(() => import("../components/AIInsights"));
-const IntegrationsStatus = lazy(() => import("../components/IntegrationsStatus"));
-const WebhookLog = lazy(() => import("../components/WebhookLog"));
-const StrategySelector = lazy(() => import("../components/StrategySelector"));
-const StrategyPresets = lazy(() => import("../components/StrategyPresets"));
-const BetTracker = lazy(() => import("../components/BetTracker"));
-
 const Dashboard = memo(() => {
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-
+  const spins = useHonestStore((s) => s.spins);
   return (
     <PageContainer>
-      <MasterSignal />
-
-      <button
-        onClick={() => setAdvancedOpen((v) => !v)}
-        className="text-[10px] text-neutral-600 hover:text-amber-300 text-center w-full py-1"
-      >
-        {advancedOpen ? "▲ ocultar avançado" : "⚙ avançado"}
-      </button>
-
-      {advancedOpen && (
-        <Suspense
-          fallback={
-            <Card padding="sm">
-              <div className="text-[11px] text-neutral-500 italic py-2 text-center">
-                Carregando…
-              </div>
-            </Card>
-          }
-        >
-          <StrategySelector />
-          <RealityCheckBanner />
-          <IntegrationsStatus />
-          <WebhookLog />
-          <StrategyPresets />
-          <BotEnsembleStatus />
-          <MasterBacktest />
-          <AutoBetPanel />
-          <BetTracker />
-          <AIInsights />
-        </Suspense>
-      )}
+      <Card padding="sm">
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-sm font-bold tracking-tight">Histórico</h1>
+          <span className="text-[10px] text-neutral-500 font-mono">{spins.length} giros</span>
+        </div>
+        <SpinList spins={spins} limit={500} columns={10} cellSize="sm" />
+      </Card>
     </PageContainer>
   );
 });
 Dashboard.displayName = "Dashboard";
-
 export default Dashboard;
