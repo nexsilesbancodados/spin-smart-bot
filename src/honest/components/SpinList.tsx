@@ -1,8 +1,6 @@
 import { memo, useMemo, useState } from "react";
 import { colorOf } from "../lib/wheel";
 import type { Spin } from "../lib/store";
-import { useAnnotations } from "../lib/annotations";
-import AnnotationDialog from "./AnnotationDialog";
 
 const cellBg = (n: number) => {
   const c = colorOf(n);
@@ -26,14 +24,12 @@ const cellSizeClass: Record<NonNullable<Props["cellSize"]>, string> = {
 
 const SpinList = memo(({ spins, limit = 300, columns = 10, cellSize = "sm" }: Props) => {
   const items = useMemo(() => spins.slice(0, limit), [spins, limit]);
-  const annotations = useAnnotations((s) => s.annotations);
-  const [dialogSpin, setDialogSpin] = useState<Spin | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
 
-  const annotationsByTimestamp = useMemo(() => {
-    const map = new Map<number, number>();
-    for (const a of annotations) map.set(a.spinTimestamp, (map.get(a.spinTimestamp) ?? 0) + 1);
-    return map;
-  }, [annotations]);
+  const matchCount = useMemo(
+    () => (selected === null ? 0 : items.filter((s) => s.n === selected).length),
+    [items, selected]
+  );
 
   if (items.length === 0) {
     return (
@@ -45,6 +41,20 @@ const SpinList = memo(({ spins, limit = 300, columns = 10, cellSize = "sm" }: Pr
 
   return (
     <>
+      {selected !== null && (
+        <div className="flex items-center justify-between mb-2 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/30 text-[11px]">
+          <span className="text-amber-200">
+            Destacando número <strong className="font-mono">{selected}</strong> ·{" "}
+            <span className="font-mono">{matchCount}</span> ocorrência(s)
+          </span>
+          <button
+            onClick={() => setSelected(null)}
+            className="text-amber-300 hover:text-amber-100 font-bold"
+          >
+            limpar
+          </button>
+        </div>
+      )}
       <div
         className="grid gap-1 p-1 bg-neutral-950 border border-neutral-800 rounded-md"
         style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
@@ -52,30 +62,27 @@ const SpinList = memo(({ spins, limit = 300, columns = 10, cellSize = "sm" }: Pr
         aria-label="Histórico de giros"
       >
         {items.map((s, i) => {
-          const annCount = Array.from(annotationsByTimestamp.entries()).filter(
-            ([t]) => Math.abs(t - s.t) < 30_000
-          ).reduce((a, [, c]) => a + c, 0);
+          const isMatch = selected !== null && s.n === selected;
+          const dim = selected !== null && !isMatch;
           return (
             <button
               key={`${s.t}-${i}`}
-              onClick={() => setDialogSpin(s)}
+              onClick={() => setSelected((cur) => (cur === s.n ? null : s.n))}
               className={`${cellSizeClass[cellSize]} ${cellBg(s.n)} text-white font-bold font-mono tabular-nums flex items-center justify-center rounded relative hover:scale-105 transition ${
-                i === 0 ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-neutral-950" : "border border-black/30"
-              }`}
-              title={`${s.n} · ${new Date(s.t).toLocaleString("pt-BR")} · ${s.source}${annCount > 0 ? ` · ${annCount} anotação(ões)` : ""}`}
+                isMatch
+                  ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-neutral-950 shadow-lg shadow-amber-500/30"
+                  : i === 0
+                  ? "ring-2 ring-amber-400/60 ring-offset-1 ring-offset-neutral-950"
+                  : "border border-black/30"
+              } ${dim ? "opacity-25" : ""}`}
+              title={`${s.n} · ${new Date(s.t).toLocaleString("pt-BR")}`}
               role="gridcell"
             >
               {s.n}
-              {annCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-400 text-black text-[8px] font-bold flex items-center justify-center border border-neutral-950">
-                  {annCount}
-                </span>
-              )}
             </button>
           );
         })}
       </div>
-      <AnnotationDialog open={!!dialogSpin} onClose={() => setDialogSpin(null)} spin={dialogSpin} />
     </>
   );
 });
