@@ -84,7 +84,7 @@ const makeFrequencyHandle = (halfLife = 60): ModelHandle => {
 };
 
 const makePageRankTransitionHandle = (iterations = 30): ModelHandle => {
-  let stationary = new Float32Array(SLOTS).fill(1 / SLOTS);
+  let stationary: ProbVector = new Float32Array(SLOTS).fill(1 / SLOTS);
   return {
     id: "pagerank",
     name: "PageRank de transições",
